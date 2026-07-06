@@ -1,0 +1,9 @@
+bundle:
+  name: databricks-academy-lakehouse
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://adb-7405604503619901.1.azuredatabricks.net
