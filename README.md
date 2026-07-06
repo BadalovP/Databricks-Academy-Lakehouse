@@ -137,4 +137,4 @@ databricks bundle validate
 ## Author
 
 **Parvin Badalov** — Data Engineer  
-[GitHub](https://github.com/BadalovP) · [LinkedIn](https://www.linkedin.com/in/parvinbadalov)
+[GitHub](https://github.com/BadalovP) · [LinkedIn](https://www.linkedin.com/in/parvin-badalov/)
