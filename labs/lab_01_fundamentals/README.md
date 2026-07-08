@@ -37,7 +37,9 @@ The notebook contains the full Lab 1 implementation:
 Main dataset:
 
 ```text
-link        --->  https://www.kaggle.com/datasets/rauffauzanrambe/fifa-world-cup-2026-player-performance-dataset
+  https://www.kaggle.com/datasets/rauffauzanrambe/fifa-world-cup-2026-player-performance-dataset
+```
+```text
 data file   --->  fifa_world_cup_2026_player_performance.csv
 ```
 
