@@ -1,0 +1,27 @@
+resources:
+  jobs:
+    lab02_bronze_ingestion_Auto_loader_Copy_into:
+      name: lab02_bronze_ingestion_Auto_loader+Copy_into
+
+      trigger:
+        pause_status: PAUSED
+        file_arrival:
+          url: abfss://parvinbadalov@dlspl21databricks.dfs.core.windows.net/ingestion/
+
+      tasks:
+        - task_key: bronze_ingestion_autoloader
+          notebook_task:
+            notebook_path: /Workspace/Users/parvinbadalov@softserve.academy/Databricks-Academy-Lakehouse/labs/lab_02_azure_uc_setup/notebooks/lab02_bronze_ingestion_auto_loader
+            source: WORKSPACE
+          existing_cluster_id: 0702-132442-toro5spu
+
+        - task_key: bronze_ingestion_copy_into
+          depends_on:
+            - task_key: bronze_ingestion_autoloader
+          notebook_task:
+            notebook_path: /Workspace/Users/parvinbadalov@softserve.academy/Databricks-Academy-Lakehouse/labs/lab_02_azure_uc_setup/notebooks/lab02_bronze_ingestion_copy_into
+            source: WORKSPACE
+          existing_cluster_id: 0702-132442-toro5spu
+
+      queue:
+        enabled: true
