@@ -421,11 +421,11 @@ The Job contains two tasks:
 
 ```text
 bronze_ingestion_autoloader
-        ↓
+        
 bronze_ingestion_copy_into
 ```
 
-The `COPY INTO` task depends on successful completion of the Auto Loader task.
+The `COPY INTO` task does not depends on successful completion of the Auto Loader task, they are paralell.
 
 Both tasks use the shared all-purpose cluster:
 
