@@ -245,7 +245,47 @@ The schema is explicitly defined in the ingestion logic instead of relying compl
 
 ---
 
-## 9. Bronze Metadata Columns
+## 9. Unity Catalog Landing Volume
+
+A Unity Catalog external Volume was created inside the Bronze schema to provide a governed landing path for the source CSV files.
+
+| Setting | Value |
+|---|---|
+| Volume | `dbr_dev.parvinbadalov_bronze.raw_landing` |
+| Cloud location | `abfss://parvinbadalov@dlspl21databricks.dfs.core.windows.net/ingestion/` |
+| Volume path | `/Volumes/dbr_dev/parvinbadalov_bronze/raw_landing/` |
+
+The Volume points to the existing ADLS `ingestion/` folder.
+
+```sql
+CREATE EXTERNAL VOLUME IF NOT EXISTS dbr_dev.parvinbadalov_bronze.raw_landing
+LOCATION 'abfss://parvinbadalov@dlspl21databricks.dfs.core.windows.net/ingestion/';
+```
+
+The Volume does **not** copy or duplicate the CSV files. The cloud path and the `/Volumes/...` path refer to the same physical files.
+
+The ingestion flow is:
+
+```text
+Azure ADLS ingestion/
+        ↓
+Unity Catalog external Volume
+        ↓
+Auto Loader / COPY INTO
+        ↓
+Bronze Delta tables
+```
+
+Both Auto Loader and `COPY INTO` read the files through:
+
+```text
+/Volumes/dbr_dev/parvinbadalov_bronze/raw_landing/
+```
+
+---
+
+## 10. Bronze Metadata Columns
+
 
 The following metadata columns are added during ingestion:
 
@@ -259,7 +299,7 @@ These columns improve traceability and auditing of Bronze data.
 
 ---
 
-## 10. Auto Loader Ingestion
+## 11. Auto Loader Ingestion
 
 Notebook:
 
@@ -273,13 +313,19 @@ Target table:
 dbr_dev.parvinbadalov_bronze.orders_autoloader
 ```
 
+Source Volume:
+
+```text
+/Volumes/dbr_dev/parvinbadalov_bronze/raw_landing/
+```
+
 Checkpoint location:
 
 ```text
 abfss://parvinbadalov@dlspl21databricks.dfs.core.windows.net/checkpoints/orders_autoloader/
 ```
 
-The implementation uses Databricks Auto Loader:
+The implementation uses Databricks Auto Loader and reads from the Unity Catalog Volume:
 
 ```python
 spark.readStream
@@ -311,7 +357,7 @@ This validated incremental ingestion and checkpoint-based idempotency.
 
 ---
 
-## 11. COPY INTO Ingestion
+## 12. COPY INTO Ingestion
 
 Notebook:
 
@@ -329,7 +375,13 @@ dbr_dev.parvinbadalov_bronze.orders_copy_into
 
 Unlike Auto Loader, `COPY INTO` does not use a Structured Streaming checkpoint. It tracks files previously loaded into the target table and normally skips them on subsequent executions.
 
-The same source folder is used:
+The same Unity Catalog Volume is used as the source:
+
+```text
+/Volumes/dbr_dev/parvinbadalov_bronze/raw_landing/
+```
+
+The Volume points to the underlying ADLS location:
 
 ```text
 abfss://parvinbadalov@dlspl21databricks.dfs.core.windows.net/ingestion/
@@ -339,11 +391,12 @@ The `COPY INTO` implementation was also tested for idempotency by rerunning the 
 
 ---
 
-## 12. Auto Loader vs COPY INTO
+## 13. Auto Loader vs COPY INTO
 
 | Feature | Auto Loader | COPY INTO |
 |---|---|---|
 | Processing model | Structured Streaming | Batch |
+| Source access | Unity Catalog Volume | Unity Catalog Volume |
 | Incremental ingestion | Yes | Yes |
 | File tracking | Checkpoint | COPY INTO load history |
 | Continuous ingestion use case | Strong fit | Less suitable |
@@ -354,7 +407,7 @@ The two methods write to separate Bronze tables so their behavior can be compare
 
 ---
 
-## 13. Databricks Job
+## 14. Databricks Job
 
 A Databricks Job was created for Bronze ingestion.
 
@@ -391,8 +444,15 @@ storage_account
 container
 catalog
 bronze_schema
+volume_name
 target_table
 run_validation
+```
+
+Both tasks use:
+
+```text
+volume_name = raw_landing
 ```
 
 The Auto Loader task uses:
@@ -411,7 +471,7 @@ Other notebook widgets use their default values unless explicitly overridden by 
 
 ---
 
-## 14. File Arrival Trigger
+## 15. File Arrival Trigger
 
 A file-arrival trigger was configured for:
 
@@ -436,7 +496,7 @@ Manual Job execution remains functional.
 
 ---
 
-## 15. Legacy Service Principal Access
+## 16. Legacy Service Principal Access
 
 The lab required awareness of the legacy storage-access pattern based on a Service Principal and `dbutils.fs.mount()`.
 
@@ -468,7 +528,7 @@ This provides awareness of the legacy Service Principal access pattern while kee
 
 ---
 
-## 16. Databricks Asset Bundle
+## 17. Databricks Asset Bundle
 
 The Databricks Job definition is stored as code in:
 
@@ -535,7 +595,7 @@ The Job resource YAML contains:
 - the `COPY INTO` task
 - task dependency between the two ingestion methods
 - shared all-purpose cluster configuration
-- notebook task parameters for environment and target-table values
+- notebook task parameters for environment, Volume, and target-table values
 
 The deployed bundle Job completed successfully with both tasks executed sequentially:
 
@@ -554,6 +614,8 @@ Stage 2 was completed with the following outcomes:
 - personal container created in the shared ADLS account
 - personal Unity Catalog external location created
 - Bronze, Silver, and Gold schemas created
+- external Unity Catalog landing Volume created in the Bronze schema
+- Auto Loader and `COPY INTO` configured to read through the Volume path
 - personal Azure Key Vault-backed secret scope created for learning
 - Bronze data ingested as Delta
 - metadata columns added
@@ -583,10 +645,11 @@ Lab 2 was completed in two stages.
 
 Stage 1 provided hands-on experience provisioning the core Azure services and reviewing their important configuration parameters.
 
-Stage 2 used the shared academy infrastructure to build a governed personal lakehouse area with Unity Catalog, medallion schemas, idempotent Bronze ingestion, Databricks Job orchestration, secret management, and bundle-based deployment configuration.
+Stage 2 used the shared academy infrastructure to build a governed personal lakehouse area with Unity Catalog, an external landing Volume, medallion schemas, idempotent Bronze ingestion, Databricks Job orchestration, secret management, and bundle-based deployment configuration.
 
 The implementation satisfies the main Lab 2 completion requirements while also extending the solution with:
 
+- a Unity Catalog external Volume for the landing files
 - a comparison between Auto Loader and `COPY INTO`
 - parameterized notebook execution
 - two-step Job orchestration
