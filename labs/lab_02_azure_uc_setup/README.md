@@ -478,7 +478,7 @@ In `dev` mode, the deployed Job is prefixed with the development target and user
 The Job resource YAML contains:
 
 - the paused file-arrival trigger
-- the Auto Loader and `COPY INTO` tasks with no task dependency (parallel execution)
+- the Auto Loader task with `depends_on` predecessor for COPY INTO
 - shared all-purpose cluster configuration
 - notebook task parameters for Volume and target-table values
 
@@ -551,7 +551,7 @@ dbr_dev.parvinbadalov_bronze.orders_copy_into
 - Bronze data ingested as Delta with metadata columns
 - Auto Loader and `COPY INTO` idempotency validated
 - Databricks Job created on shared all-purpose cluster `GP1`
-- Auto Loader and `COPY INTO` orchestrated as **parallel** Job tasks
+- Auto Loader and `COPY INTO` orchestrated as **sequential** Job tasks
 - File-arrival trigger configured, paused, and documented
 - Legacy Service Principal access tested through direct ABFSS access
 - Databricks Asset Bundle validated, deployed, and executed via CLI
