@@ -388,14 +388,16 @@ A Databricks Job orchestrates both ingestion notebooks on the shared all-purpose
 
 ### Task graph
 
-The two tasks run **in parallel**. The `COPY INTO` task does **not** depend on the Auto Loader task — there is no `depends_on` field on `bronze_ingestion_copy_into`:
+
+The two tasks run **sequentially**. The `COPY INTO` task depends on the Auto Loader task through the `depends_on` configuration.
 
 ```text
-bronze_ingestion_autoloader     bronze_ingestion_copy_into
-         (parallel)                        (parallel)
+bronze_ingestion_autoloader
+            |
+            v
+bronze_ingestion_copy_into
 ```
-
-Both tasks start at the same time and write to separate Bronze tables (`orders_autoloader` and `orders_copy_into`), so they do not need to wait for each other.
+This matches the `depends_on` configuration in `resources/lab02_bronze_ingestion_job.yml`.
 
 ### Task parameters
 
