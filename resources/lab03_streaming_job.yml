@@ -8,6 +8,25 @@ resources:
       queue:
         enabled: true
 
+      parameters:
+        - name: catalog
+          default: "dbr_dev"
+
+        - name: schema
+          default: "parvinbadalov"
+
+        - name: volume_name
+          default: "lab03_streaming"
+
+        - name: trigger_type
+          default: "availableNow"
+
+        - name: max_files_per_trigger
+          default: "50"
+
+        - name: producer_id
+          default: "parvinbadalov"
+
       tasks:
         - task_key: lab03_00_setup
           notebook_task:

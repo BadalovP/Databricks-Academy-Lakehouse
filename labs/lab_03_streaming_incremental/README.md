@@ -326,12 +326,27 @@ instead of creating a duplicate. After binding, the deployment plan reported:
 
 Development mode used a source-linked deployment, so the deployed Job
 references the source notebooks in the Databricks Git folder. The bundle
-deployment completed successfully, and the post-deployment execution finished
-with `TERMINATED SUCCESS` across both branches.
+deployment completed successfully. The final parameterized execution finished
+with `TERMINATED SUCCESS` across both branches in 21 minutes 12 seconds.
+
+### Job parameters
+
+The bundle defines Job-level parameters that are passed to matching notebook
+widgets. This allows environment and run settings to be changed without
+modifying notebook source code.
+
+| Parameter | Default value |
+|---|---|
+| `catalog` | `dbr_dev` |
+| `schema` | `parvinbadalov` |
+| `volume_name` | `lab03_streaming` |
+| `trigger_type` | `availableNow` |
+| `max_files_per_trigger` | `50` |
+| `producer_id` | `parvinbadalov` |
+
 
 ![Successful Asset Bundle deployment and run](images/14_asset_bundle_job_success_terminal.png)
-![Successful Asset Bundle deployment and run](images/14_asset_bundle_job_success.png)
-
+![Successful parameterized Asset Bundle Job run](images/14_asset_bundle_job_success.png)
 
 Once bound and deployed, the Job configuration is managed by the bundle.
 Changes should be made in the YAML files and deployed again rather than edited
@@ -356,6 +371,7 @@ directly in the Job UI.
 | Existing Job binding | Passed; no duplicate created |
 | Asset Bundle deployment | **Succeeded** |
 | Post-deployment Job run | **TERMINATED SUCCESS** |
+| Job parameter propagation | Passed; all six parameters displayed in the deployed Job |
 
 ## Running the project
 
