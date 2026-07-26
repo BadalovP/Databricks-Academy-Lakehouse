@@ -1,0 +1,80 @@
+resources:
+  jobs:
+    lab03_streaming_job:
+      name: "Lab 03 - Streaming and Incremental Ingestion (Auto Loader and Event Hubs Pipeline)"
+
+      max_concurrent_runs: 1
+
+      queue:
+        enabled: true
+
+      tasks:
+        - task_key: lab03_00_setup
+          notebook_task:
+            notebook_path: ../labs/lab_03_streaming_incremental/notebooks/lab03_00_setup.ipynb
+            source: WORKSPACE
+          existing_cluster_id: ${var.lab03_cluster_id}
+
+        - task_key: lab03_01_file_generation
+          depends_on:
+            - task_key: lab03_00_setup
+          notebook_task:
+            notebook_path: ../labs/lab_03_streaming_incremental/notebooks/lab03_01_file_generation.ipynb
+            source: WORKSPACE
+          existing_cluster_id: ${var.lab03_cluster_id}
+
+        - task_key: lab03_02_autoloader_initial_load
+          depends_on:
+            - task_key: lab03_01_file_generation
+          notebook_task:
+            notebook_path: ../labs/lab_03_streaming_incremental/notebooks/lab03_02_autoloader_initial_load.ipynb
+            source: WORKSPACE
+          existing_cluster_id: ${var.lab03_cluster_id}
+
+        - task_key: lab03_03_autoloader_schema_evolution
+          depends_on:
+            - task_key: lab03_02_autoloader_initial_load
+          notebook_task:
+            notebook_path: ../labs/lab_03_streaming_incremental/notebooks/lab03_03_autoloader_schema_evolution.ipynb
+            source: WORKSPACE
+          existing_cluster_id: ${var.lab03_cluster_id}
+
+        - task_key: lab03_04_autoloader_monitoring
+          depends_on:
+            - task_key: lab03_03_autoloader_schema_evolution
+          notebook_task:
+            notebook_path: ../labs/lab_03_streaming_incremental/notebooks/lab03_04_autoloader_monitoring.ipynb
+            source: WORKSPACE
+          existing_cluster_id: ${var.lab03_cluster_id}
+
+        - task_key: lab03_05_checkpoint_recovery
+          depends_on:
+            - task_key: lab03_04_autoloader_monitoring
+          notebook_task:
+            notebook_path: ../labs/lab_03_streaming_incremental/notebooks/lab03_05_checkpoint_recovery.ipynb
+            source: WORKSPACE
+          existing_cluster_id: ${var.lab03_cluster_id}
+
+        - task_key: lab03_06_eventhub_producer
+          depends_on:
+            - task_key: lab03_00_setup
+          notebook_task:
+            notebook_path: ../labs/lab_03_streaming_incremental/notebooks/lab03_06_eventhub_producer.ipynb
+            source: WORKSPACE
+          existing_cluster_id: ${var.lab03_cluster_id}
+
+        - task_key: lab03_07_eventhub_consumer_bronze
+          depends_on:
+            - task_key: lab03_06_eventhub_producer
+          notebook_task:
+            notebook_path: ../labs/lab_03_streaming_incremental/notebooks/lab03_07_eventhub_consumer_bronze_job.ipynb
+            source: WORKSPACE
+          existing_cluster_id: ${var.lab03_cluster_id}
+
+        - task_key: lab03_08_eventhub_silver
+          depends_on:
+            - task_key: lab03_07_eventhub_consumer_bronze
+          notebook_task:
+            notebook_path: ../labs/lab_03_streaming_incremental/notebooks/lab03_08_eventhub_silver.ipynb
+            source: WORKSPACE
+          existing_cluster_id: ${var.lab03_cluster_id}

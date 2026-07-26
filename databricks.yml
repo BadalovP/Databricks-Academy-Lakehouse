@@ -3,7 +3,12 @@ bundle:
 
 include:
   - resources/*.yml
-  
+  - 
+variables:
+  lab03_cluster_id:
+    description: Existing cluster used by the Lab 03 Job
+    default: "0702-132442-toro5spu"  
+    
 targets:
   dev:
     mode: development
