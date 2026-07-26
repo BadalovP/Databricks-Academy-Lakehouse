@@ -329,7 +329,9 @@ references the source notebooks in the Databricks Git folder. The bundle
 deployment completed successfully, and the post-deployment execution finished
 with `TERMINATED SUCCESS` across both branches.
 
+![Successful Asset Bundle deployment and run](images/14_asset_bundle_job_success_terminal.png)
 ![Successful Asset Bundle deployment and run](images/14_asset_bundle_job_success.png)
+
 
 Once bound and deployed, the Job configuration is managed by the bundle.
 Changes should be made in the YAML files and deployed again rather than edited
