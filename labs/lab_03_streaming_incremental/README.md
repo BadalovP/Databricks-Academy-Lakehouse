@@ -306,6 +306,35 @@ The final repaired Job run completed successfully across both branches.
 
 ![Successful Databricks Job run](images/11_job_success.png)
 
+## Asset Bundle deployment
+
+The workflow is managed as a Databricks Asset Bundle (now called a
+Declarative Automation Bundle). The root `databricks.yml` includes
+`resources/lab03_streaming_job.yml`, while the existing cluster ID is supplied
+through the `lab03_cluster_id` bundle variable.
+
+The bundle resource `lab03_streaming_job` was bound to the existing Databricks
+Job before deployment. Binding allowed the bundle to update the tested Job
+instead of creating a duplicate. After binding, the deployment plan reported:
+
+| Planned action | Count |
+|---|---:|
+| Add | 0 |
+| Change | 1 |
+| Delete | 0 |
+| Unchanged | 1 |
+
+Development mode used a source-linked deployment, so the deployed Job
+references the source notebooks in the Databricks Git folder. The bundle
+deployment completed successfully, and the post-deployment execution finished
+with `TERMINATED SUCCESS` across both branches.
+
+![Successful Asset Bundle deployment and run](images/14_asset_bundle_job_success.png)
+
+Once bound and deployed, the Job configuration is managed by the bundle.
+Changes should be made in the YAML files and deployed again rather than edited
+directly in the Job UI.
+
 ## Validated results
 
 | Validation | Result |
@@ -321,17 +350,31 @@ The final repaired Job run completed successfully across both branches.
 | Event Hubs Silver transformation | Passed |
 | Silver uniqueness and required-field checks | Passed |
 | End-to-end Databricks Job | **Succeeded** |
+| Asset Bundle validation | Passed with no warnings |
+| Existing Job binding | Passed; no duplicate created |
+| Asset Bundle deployment | **Succeeded** |
+| Post-deployment Job run | **TERMINATED SUCCESS** |
 
 ## Running the project
 
-### Databricks Job
+### Asset Bundle deployment
 
-1. Configure the environment-specific bundle values, including the existing
-   cluster ID.
-2. Validate and deploy the Databricks Asset Bundle.
-3. Run the Lab 3 Job.
-4. Keep schedules disabled while testing.
-5. Stop any continuous development stream after collecting evidence.
+From the repository root, configure the environment-specific bundle values,
+including the existing cluster ID, and then run:
+
+```bash
+databricks bundle validate -t dev
+databricks bundle deployment bind \
+  lab03_streaming_job <existing-job-id> -t dev
+databricks bundle plan -t dev
+databricks bundle deploy -t dev
+databricks bundle run -t dev lab03_streaming_job
+```
+
+The `bind` command is required only when adopting an existing Job. Subsequent
+updates require validation, planning, and deployment but do not require
+rebinding. Keep schedules disabled while testing and stop any continuous
+development stream after collecting evidence.
 
 ### Manual execution
 

@@ -3,7 +3,7 @@ bundle:
 
 include:
   - resources/*.yml
-  - 
+  
 variables:
   lab03_cluster_id:
     description: Existing cluster used by the Lab 03 Job
