@@ -90,6 +90,7 @@ The project solves this by building one governed lakehouse pipeline that:
 
 ```text
                          BATCH BRANCH
+
 Binance Data Vision
         |
         | monthly ZIP / CSV files
@@ -113,8 +114,8 @@ Historical Silver
                                   |
         +-------------------------+
         |
-        |                STREAMING BRANCH
-Binance Public API
+        |              STREAMING BRANCH
+Binance Public REST API
         |
         v
 Python Event Hub Producer
@@ -130,6 +131,11 @@ Streaming Bronze
         |
         v
 Streaming Silver
+        |
+        +-------------------------+
+                                  |
+                                  v
+                            Gold tables
 ```
 
 ---
