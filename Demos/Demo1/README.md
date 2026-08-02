@@ -216,6 +216,8 @@ Demos/Demo1/
 
 ## Workflow design
 
+![Demo 1 Databricks workflow](docs/evidence/workflow_design.png)
+
 ```text
 01_setup
 ├── 02_historical_download
@@ -228,11 +230,12 @@ Demos/Demo1/
 06_schema_evolution ┴→ 07_validation
                        → 08_silver
                        → 09_gold
+
 ```
 
-The batch and streaming branches run in parallel after setup and meet at validation.
 
----
+The workflow starts with infrastructure setup, then runs the batch and streaming branches in parallel. Both branches meet at validation before Silver and Gold transformations are created.
+
 
 ## Data layers
 
