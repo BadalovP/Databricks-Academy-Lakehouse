@@ -3,6 +3,7 @@ bundle:
 
 include:
   - resources/*.yml
+  - Demos/Demo1/resources/*.yml
   
 variables:
   lab03_cluster_id:

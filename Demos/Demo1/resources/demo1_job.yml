@@ -1,0 +1,103 @@
+resources:
+  jobs:
+    Demo_1_Crypto_Batch_and_Streaming_Pipeline:
+      name: "Demo 1 - Crypto Batch and Streaming Pipeline"
+
+      max_concurrent_runs: 1
+
+      queue:
+        enabled: true
+
+      parameters:
+        - name: catalog
+          default: "dbr_dev"
+
+        - name: schema
+          default: "parvinbadalov"
+
+        - name: volume_name
+          default: "demo1_crypto"
+
+        - name: storage_account
+          default: "dlspl21databricks"
+
+        - name: container
+          default: "parvinbadalov"
+
+        - name: external_volume_dir
+          default: "demos/demo1_crypto"
+
+        - name: historical_period
+          default: "2026-01"
+
+      tasks:
+        - task_key: demo1_01_setup
+          notebook_task:
+            notebook_path: /Workspace/Users/parvinbadalov@softserve.academy/Databricks-Academy-Lakehouse/Demos/Demo1/setup/01_setup
+            source: WORKSPACE
+          existing_cluster_id: 0702-132442-toro5spu
+
+        - task_key: demo1_02_historical_download
+          depends_on:
+            - task_key: demo1_01_setup
+          notebook_task:
+            notebook_path: /Workspace/Users/parvinbadalov@softserve.academy/Databricks-Academy-Lakehouse/Demos/Demo1/batch/02_historical_download
+            source: WORKSPACE
+          existing_cluster_id: 0702-132442-toro5spu
+
+        - task_key: demo1_03_batch_ingestion
+          depends_on:
+            - task_key: demo1_02_historical_download
+          notebook_task:
+            notebook_path: /Workspace/Users/parvinbadalov@softserve.academy/Databricks-Academy-Lakehouse/Demos/Demo1/batch/03_batch_ingestion
+            source: WORKSPACE
+          existing_cluster_id: 0702-132442-toro5spu
+
+        - task_key: demo1_04_eventhub_producer
+          depends_on:
+            - task_key: demo1_01_setup
+          notebook_task:
+            notebook_path: /Workspace/Users/parvinbadalov@softserve.academy/Databricks-Academy-Lakehouse/Demos/Demo1/streaming/04_eventhub_producer
+            source: WORKSPACE
+          existing_cluster_id: 0702-132442-toro5spu
+
+        - task_key: demo1_05_eventhub_consumer
+          depends_on:
+            - task_key: demo1_04_eventhub_producer
+          notebook_task:
+            notebook_path: /Workspace/Users/parvinbadalov@softserve.academy/Databricks-Academy-Lakehouse/Demos/Demo1/streaming/05_eventhub_consumer
+            source: WORKSPACE
+          existing_cluster_id: 0702-132442-toro5spu
+
+        - task_key: demo1_06_schema_evolution
+          depends_on:
+            - task_key: demo1_05_eventhub_consumer
+          notebook_task:
+            notebook_path: /Workspace/Users/parvinbadalov@softserve.academy/Databricks-Academy-Lakehouse/Demos/Demo1/streaming/06_schema_evolution_demo
+            source: WORKSPACE
+          existing_cluster_id: 0702-132442-toro5spu
+
+        - task_key: demo1_07_validation
+          depends_on:
+            - task_key: demo1_03_batch_ingestion
+            - task_key: demo1_06_schema_evolution
+          notebook_task:
+            notebook_path: /Workspace/Users/parvinbadalov@softserve.academy/Databricks-Academy-Lakehouse/Demos/Demo1/validation/07_validation
+            source: WORKSPACE
+          existing_cluster_id: 0702-132442-toro5spu
+
+        - task_key: demo1_08_silver
+          depends_on:
+            - task_key: demo1_07_validation
+          notebook_task:
+            notebook_path: /Workspace/Users/parvinbadalov@softserve.academy/Databricks-Academy-Lakehouse/Demos/Demo1/transformation/08_silver_transformation
+            source: WORKSPACE
+          existing_cluster_id: 0702-132442-toro5spu
+
+        - task_key: demo1_09_gold
+          depends_on:
+            - task_key: demo1_08_silver
+          notebook_task:
+            notebook_path: /Workspace/Users/parvinbadalov@softserve.academy/Databricks-Academy-Lakehouse/Demos/Demo1/transformation/09_gold_aggregation
+            source: WORKSPACE
+          existing_cluster_id: 0702-132442-toro5spu

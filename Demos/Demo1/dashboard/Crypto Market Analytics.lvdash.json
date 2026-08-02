@@ -1,0 +1,1686 @@
+{
+  "datasets": [
+    {
+      "name": "latest_prices",
+      "displayName": "Latest Crypto Prices",
+      "queryLines": [
+        "SELECT\n",
+        "  symbol,\n",
+        "  ROUND(latest_live_price, 2) AS latest_live_price,\n",
+        "  latest_live_event_time,\n",
+        "  latest_historical_date,\n",
+        "  ROUND(latest_historical_close, 2) AS latest_historical_close,\n",
+        "  ROUND(latest_historical_change_pct, 2) AS latest_historical_change_pct,\n",
+        "  ROUND(price_difference, 2) AS price_difference,\n",
+        "  ROUND(price_difference_pct, 2) AS price_difference_pct,\n",
+        "  ROUND(change_pct_24h, 2) AS change_pct_24h,\n",
+        "  ROUND(high_price_24h, 2) AS high_price_24h,\n",
+        "  ROUND(low_price_24h, 2) AS low_price_24h,\n",
+        "  ROUND(volume_24h, 2) AS volume_24h,\n",
+        "  gold_updated_at\n",
+        "FROM\n",
+        "  dbr_dev.parvinbadalov.demo1_crypto_latest_prices_gold\n",
+        "ORDER BY\n",
+        "  symbol"
+      ]
+    },
+    {
+      "name": "live_vs_historical",
+      "displayName": "Live vs Historical Price",
+      "queryLines": [
+        "SELECT\n",
+        "  symbol,\n",
+        "  ROUND(latest_live_price, 2) AS latest_live_price,\n",
+        "  ROUND(latest_historical_close, 2) AS latest_historical_close,\n",
+        "  ROUND(price_difference, 2) AS price_difference,\n",
+        "  ROUND(price_difference_pct, 2) AS price_difference_pct\n",
+        "FROM dbr_dev.parvinbadalov.demo1_crypto_latest_prices_gold\n",
+        "ORDER BY symbol"
+      ]
+    },
+    {
+      "name": "historical_daily_close",
+      "displayName": "Historical Daily Close",
+      "queryLines": [
+        "SELECT\n",
+        "  trade_date,\n",
+        "  symbol,\n",
+        "  close,\n",
+        "  volume,\n",
+        "  price_change_pct,\n",
+        "  candle_direction\n",
+        "FROM dbr_dev.parvinbadalov.demo1_crypto_ohlcv_silver\n",
+        "ORDER BY trade_date, symbol"
+      ]
+    },
+    {
+      "name": "historical_return",
+      "displayName": "Historical Return Summary",
+      "queryLines": [
+        "SELECT\n",
+        "  symbol,\n",
+        "  ROUND(historical_return_pct, 2) AS historical_return_pct,\n",
+        "  ROUND(first_open_price, 2) AS first_open_price,\n",
+        "  ROUND(last_close_price, 2) AS last_close_price,\n",
+        "  historical_start_date,\n",
+        "  historical_end_date\n",
+        "FROM dbr_dev.parvinbadalov.demo1_crypto_market_summary_gold\n",
+        "ORDER BY historical_return_pct DESC"
+      ]
+    },
+    {
+      "name": "historical_price_range",
+      "displayName": "Historical Price Range",
+      "queryLines": [
+        "SELECT\n",
+        "  symbol,\n",
+        "  ROUND(period_minimum_low, 2) AS period_minimum_low,\n",
+        "  ROUND(period_maximum_high, 2) AS period_maximum_high,\n",
+        "  ROUND(historical_price_range, 2) AS historical_price_range,\n",
+        "  ROUND(latest_live_price, 2) AS latest_live_price\n",
+        "FROM dbr_dev.parvinbadalov.demo1_crypto_market_summary_gold\n",
+        "ORDER BY symbol"
+      ]
+    },
+    {
+      "name": "candle_direction",
+      "displayName": "Candle Direction Summary",
+      "queryLines": [
+        "SELECT\n",
+        "  symbol,\n",
+        "  bullish_days,\n",
+        "  bearish_days,\n",
+        "  neutral_days\n",
+        "FROM dbr_dev.parvinbadalov.demo1_crypto_market_summary_gold\n",
+        "ORDER BY symbol"
+      ]
+    },
+    {
+      "name": "streaming_price_trend",
+      "displayName": "Live Streaming Price Trend",
+      "queryLines": [
+        "SELECT\n",
+        "  event_time,\n",
+        "  symbol,\n",
+        "  price_usd,\n",
+        "  change_pct_24h,\n",
+        "  producer_id\n",
+        "FROM dbr_dev.parvinbadalov.demo1_crypto_ticks_silver\n",
+        "ORDER BY event_time, symbol"
+      ]
+    },
+    {
+      "name": "streaming_metrics",
+      "displayName": "Streaming Metrics",
+      "queryLines": [
+        "SELECT\n",
+        "  symbol,\n",
+        "  streaming_event_count,\n",
+        "  evolved_event_count,\n",
+        "  ROUND(streaming_minimum_price, 2) AS streaming_minimum_price,\n",
+        "  ROUND(streaming_maximum_price, 2) AS streaming_maximum_price,\n",
+        "  ROUND(streaming_average_price, 2) AS streaming_average_price,\n",
+        "  ROUND(average_ingestion_delay_seconds, 2) AS average_ingestion_delay_seconds\n",
+        "FROM dbr_dev.parvinbadalov.demo1_crypto_market_summary_gold\n",
+        "ORDER BY symbol"
+      ]
+    },
+    {
+      "name": "market_24h",
+      "displayName": "Latest 24-Hour Market Statistics",
+      "queryLines": [
+        "SELECT\n",
+        "  symbol,\n",
+        "  ROUND(latest_live_price, 2) AS latest_live_price,\n",
+        "  ROUND(change_pct_24h, 2) AS change_pct_24h,\n",
+        "  ROUND(high_price_24h, 2) AS high_price_24h,\n",
+        "  ROUND(low_price_24h, 2) AS low_price_24h,\n",
+        "  ROUND(volume_24h, 2) AS volume_24h,\n",
+        "  latest_live_event_time\n",
+        "FROM dbr_dev.parvinbadalov.demo1_crypto_latest_prices_gold\n",
+        "ORDER BY symbol"
+      ]
+    },
+    {
+      "name": "dashboard_metadata",
+      "displayName": "Dashboard Metadata",
+      "queryLines": [
+        "SELECT\n",
+        "  MAX(gold_updated_at) AS dashboard_last_updated_at\n",
+        "FROM dbr_dev.parvinbadalov.demo1_crypto_latest_prices_gold"
+      ]
+    },
+    {
+      "name": "kpi_summary",
+      "displayName": "KPI Summary",
+      "queryLines": [
+        "SELECT\n",
+        "  MAX(gold_updated_at) AS as_of,\n",
+        "  COUNT(DISTINCT symbol) AS total_symbols,\n",
+        "  ROUND(AVG(latest_live_price), 2) AS avg_live_price,\n",
+        "  ROUND(MAX(change_pct_24h), 2) AS max_gain_pct_24h,\n",
+        "  ROUND(SUM(volume_24h), 0) AS total_volume_24h\n",
+        "FROM\n",
+        "  dbr_dev.parvinbadalov.demo1_crypto_latest_prices_gold"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "crypto_overview",
+      "displayName": "Crypto Overview",
+      "layout": [
+        {
+          "widget": {
+            "name": "header_text",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## 🪙 Crypto Market Analytics\n",
+                "Real-time and historical performance across tracked cryptocurrency pairs — filter by symbol, date range, or candle direction."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "filter_symbol",
+            "queries": [
+              {
+                "name": "dashboards/01f18eba6ba91cc7913ef199e4859cc8/datasets/01f18eba6ba91e53acb891af717d70c9_symbol",
+                "query": {
+                  "datasetName": "historical_daily_close",
+                  "fields": [
+                    {
+                      "name": "symbol",
+                      "expression": "`symbol`"
+                    },
+                    {
+                      "name": "symbol_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Symbol",
+                "showTitle": true
+              },
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "symbol",
+                    "queryName": "dashboards/01f18eba6ba91cc7913ef199e4859cc8/datasets/01f18eba6ba91e53acb891af717d70c9_symbol"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 4,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "filter_date",
+            "queries": [
+              {
+                "name": "dashboards/01f18eba6ba91cc7913ef199e4859cc8/datasets/01f18eba6ba91e53acb891af717d70c9_trade_date",
+                "query": {
+                  "datasetName": "historical_daily_close",
+                  "fields": [
+                    {
+                      "name": "trade_date",
+                      "expression": "`trade_date`"
+                    },
+                    {
+                      "name": "trade_date_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Date Range",
+                "showTitle": true
+              },
+              "widgetType": "filter-date-range-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "trade_date",
+                    "queryName": "dashboards/01f18eba6ba91cc7913ef199e4859cc8/datasets/01f18eba6ba91e53acb891af717d70c9_trade_date"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 5,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "filter_candle",
+            "queries": [
+              {
+                "name": "dashboards/01f18eba6ba91cc7913ef199e4859cc8/datasets/01f18eba6ba91e53acb891af717d70c9_candle_direction",
+                "query": {
+                  "datasetName": "historical_daily_close",
+                  "fields": [
+                    {
+                      "name": "candle_direction",
+                      "expression": "`candle_direction`"
+                    },
+                    {
+                      "name": "candle_direction_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Candle Direction",
+                "showTitle": true
+              },
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "candle_direction",
+                    "queryName": "dashboards/01f18eba6ba91cc7913ef199e4859cc8/datasets/01f18eba6ba91e53acb891af717d70c9_candle_direction"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 2,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "line_close_price",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "historical_daily_close",
+                  "fields": [
+                    {
+                      "name": "symbol",
+                      "expression": "`symbol`"
+                    },
+                    {
+                      "name": "trade_date",
+                      "expression": "`trade_date`"
+                    },
+                    {
+                      "name": "avg(close)",
+                      "expression": "AVG(`close`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "Close Price Over Time",
+                "showTitle": true
+              },
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "trade_date",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "avg(close)",
+                  "displayName": "Close Price (USD)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "symbol",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 8,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_historical_return",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "historical_return",
+                  "fields": [
+                    {
+                      "name": "symbol",
+                      "expression": "`symbol`"
+                    },
+                    {
+                      "name": "avg(historical_return_pct)",
+                      "expression": "AVG(`historical_return_pct`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "Historical Return % by Symbol",
+                "showTitle": true
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "symbol",
+                  "displayName": "symbol",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "avg(historical_return_pct)",
+                  "displayName": "Return %",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "symbol",
+                  "displayName": "symbol",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 4,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "line_volume",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "historical_daily_close",
+                  "fields": [
+                    {
+                      "name": "symbol",
+                      "expression": "`symbol`"
+                    },
+                    {
+                      "name": "trade_date",
+                      "expression": "`trade_date`"
+                    },
+                    {
+                      "name": "sum(volume)",
+                      "expression": "SUM(`volume`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "Trading Volume Over Time",
+                "showTitle": true
+              },
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "trade_date",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(volume)",
+                  "displayName": "Volume",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "symbol",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 9,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "table_candle_summary",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "candle_direction",
+                  "fields": [
+                    {
+                      "name": "symbol",
+                      "expression": "`symbol`"
+                    },
+                    {
+                      "name": "bullish_days",
+                      "expression": "`bullish_days`"
+                    },
+                    {
+                      "name": "bearish_days",
+                      "expression": "`bearish_days`"
+                    },
+                    {
+                      "name": "neutral_days",
+                      "expression": "`neutral_days`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Bullish / Bearish / Neutral Days",
+                "showTitle": true
+              },
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "symbol"
+                  },
+                  {
+                    "fieldName": "bullish_days"
+                  },
+                  {
+                    "fieldName": "bearish_days"
+                  },
+                  {
+                    "fieldName": "neutral_days"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 9,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "table_market_24h",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "market_24h",
+                  "fields": [
+                    {
+                      "name": "symbol",
+                      "expression": "`symbol`"
+                    },
+                    {
+                      "name": "latest_live_price",
+                      "expression": "`latest_live_price`"
+                    },
+                    {
+                      "name": "change_pct_24h",
+                      "expression": "`change_pct_24h`"
+                    },
+                    {
+                      "name": "high_price_24h",
+                      "expression": "`high_price_24h`"
+                    },
+                    {
+                      "name": "low_price_24h",
+                      "expression": "`low_price_24h`"
+                    },
+                    {
+                      "name": "volume_24h",
+                      "expression": "`volume_24h`"
+                    },
+                    {
+                      "name": "latest_live_event_time",
+                      "expression": "`latest_live_event_time`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "24-Hour Market Snapshot",
+                "showTitle": true
+              },
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "symbol"
+                  },
+                  {
+                    "fieldName": "latest_live_price"
+                  },
+                  {
+                    "fieldName": "change_pct_24h"
+                  },
+                  {
+                    "fieldName": "high_price_24h"
+                  },
+                  {
+                    "fieldName": "low_price_24h"
+                  },
+                  {
+                    "fieldName": "volume_24h"
+                  },
+                  {
+                    "fieldName": "latest_live_event_time"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 14,
+            "width": 7,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "table_live_vs_historical",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "live_vs_historical",
+                  "fields": [
+                    {
+                      "name": "symbol",
+                      "expression": "`symbol`"
+                    },
+                    {
+                      "name": "latest_live_price",
+                      "expression": "`latest_live_price`"
+                    },
+                    {
+                      "name": "latest_historical_close",
+                      "expression": "`latest_historical_close`"
+                    },
+                    {
+                      "name": "price_difference",
+                      "expression": "`price_difference`"
+                    },
+                    {
+                      "name": "price_difference_pct",
+                      "expression": "`price_difference_pct`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Live vs Historical Price",
+                "showTitle": true
+              },
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "symbol"
+                  },
+                  {
+                    "fieldName": "latest_live_price"
+                  },
+                  {
+                    "fieldName": "latest_historical_close"
+                  },
+                  {
+                    "fieldName": "price_difference"
+                  },
+                  {
+                    "fieldName": "price_difference_pct"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 7,
+            "y": 14,
+            "width": 5,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "header_streaming",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### 📡 Streaming & Live Market Data\n",
+                "Live tick data, streaming metrics, price ranges, and dashboard freshness."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 19,
+            "width": 12,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "line_streaming_price",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "streaming_price_trend",
+                  "fields": [
+                    {
+                      "name": "symbol",
+                      "expression": "`symbol`"
+                    },
+                    {
+                      "name": "event_time",
+                      "expression": "`event_time`"
+                    },
+                    {
+                      "name": "avg(price_usd)",
+                      "expression": "AVG(`price_usd`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "title": "Live Streaming Price Trend",
+                "showTitle": true
+              },
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "event_time",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "avg(price_usd)",
+                  "displayName": "Price (USD)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "symbol",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 21,
+            "width": 8,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_price_range",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "historical_price_range",
+                  "fields": [
+                    {
+                      "name": "symbol",
+                      "expression": "`symbol`"
+                    },
+                    {
+                      "name": "avg(historical_price_range)",
+                      "expression": "AVG(`historical_price_range`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "Historical Price Range by Symbol",
+                "showTitle": true
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "symbol",
+                  "displayName": "symbol",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "avg(historical_price_range)",
+                  "displayName": "Price Range (USD)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "symbol",
+                  "displayName": "symbol",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 21,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_24h_change",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "latest_prices",
+                  "fields": [
+                    {
+                      "name": "symbol",
+                      "expression": "`symbol`"
+                    },
+                    {
+                      "name": "avg(change_pct_24h)",
+                      "expression": "AVG(`change_pct_24h`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "24h Price Change % by Symbol",
+                "showTitle": true
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "symbol",
+                  "displayName": "symbol",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "avg(change_pct_24h)",
+                  "displayName": "24h Change %",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "symbol",
+                  "displayName": "symbol",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 26,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "table_streaming_metrics",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "streaming_metrics",
+                  "fields": [
+                    {
+                      "name": "symbol",
+                      "expression": "`symbol`"
+                    },
+                    {
+                      "name": "streaming_event_count",
+                      "expression": "`streaming_event_count`"
+                    },
+                    {
+                      "name": "evolved_event_count",
+                      "expression": "`evolved_event_count`"
+                    },
+                    {
+                      "name": "streaming_minimum_price",
+                      "expression": "`streaming_minimum_price`"
+                    },
+                    {
+                      "name": "streaming_maximum_price",
+                      "expression": "`streaming_maximum_price`"
+                    },
+                    {
+                      "name": "streaming_average_price",
+                      "expression": "`streaming_average_price`"
+                    },
+                    {
+                      "name": "average_ingestion_delay_seconds",
+                      "expression": "`average_ingestion_delay_seconds`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Streaming Event Metrics",
+                "showTitle": true
+              },
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "symbol"
+                  },
+                  {
+                    "fieldName": "streaming_event_count"
+                  },
+                  {
+                    "fieldName": "evolved_event_count"
+                  },
+                  {
+                    "fieldName": "streaming_minimum_price"
+                  },
+                  {
+                    "fieldName": "streaming_maximum_price"
+                  },
+                  {
+                    "fieldName": "streaming_average_price"
+                  },
+                  {
+                    "fieldName": "average_ingestion_delay_seconds"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 26,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "table_metadata",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dashboard_metadata",
+                  "fields": [
+                    {
+                      "name": "dashboard_last_updated_at",
+                      "expression": "`dashboard_last_updated_at`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Dashboard Last Refreshed",
+                "showTitle": true
+              },
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "dashboard_last_updated_at"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 31,
+            "width": 4,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "header_kpi",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### 📊 KPI Snapshot\n",
+                "Top-line aggregated metrics across all tracked crypto symbols, sourced from the gold-layer prices table."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 33,
+            "width": 12,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "counter_total_symbols",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "kpi_summary",
+                  "fields": [
+                    {
+                      "name": "as_of",
+                      "expression": "`as_of`"
+                    },
+                    {
+                      "name": "sum(total_symbols)",
+                      "expression": "SUM(`total_symbols`)"
+                    }
+                  ],
+                  "disaggregated": false,
+                  "orders": [
+                    {
+                      "direction": "DESC",
+                      "expression": "`as_of`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Total Symbols Tracked",
+                "showTitle": true
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(total_symbols)"
+                },
+                "period": {
+                  "fieldName": "as_of"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 35,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "table_latest_prices_full",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "latest_prices",
+                  "fields": [
+                    {
+                      "name": "symbol",
+                      "expression": "`symbol`"
+                    },
+                    {
+                      "name": "latest_live_price",
+                      "expression": "`latest_live_price`"
+                    },
+                    {
+                      "name": "latest_live_event_time",
+                      "expression": "`latest_live_event_time`"
+                    },
+                    {
+                      "name": "latest_historical_date",
+                      "expression": "`latest_historical_date`"
+                    },
+                    {
+                      "name": "latest_historical_close",
+                      "expression": "`latest_historical_close`"
+                    },
+                    {
+                      "name": "latest_historical_change_pct",
+                      "expression": "`latest_historical_change_pct`"
+                    },
+                    {
+                      "name": "price_difference",
+                      "expression": "`price_difference`"
+                    },
+                    {
+                      "name": "price_difference_pct",
+                      "expression": "`price_difference_pct`"
+                    },
+                    {
+                      "name": "change_pct_24h",
+                      "expression": "`change_pct_24h`"
+                    },
+                    {
+                      "name": "high_price_24h",
+                      "expression": "`high_price_24h`"
+                    },
+                    {
+                      "name": "low_price_24h",
+                      "expression": "`low_price_24h`"
+                    },
+                    {
+                      "name": "volume_24h",
+                      "expression": "`volume_24h`"
+                    },
+                    {
+                      "name": "gold_updated_at",
+                      "expression": "`gold_updated_at`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Latest Prices — All Columns",
+                "showTitle": true
+              },
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "symbol"
+                  },
+                  {
+                    "fieldName": "latest_live_price"
+                  },
+                  {
+                    "fieldName": "latest_live_event_time"
+                  },
+                  {
+                    "fieldName": "latest_historical_date"
+                  },
+                  {
+                    "fieldName": "latest_historical_close"
+                  },
+                  {
+                    "fieldName": "latest_historical_change_pct"
+                  },
+                  {
+                    "fieldName": "price_difference"
+                  },
+                  {
+                    "fieldName": "price_difference_pct"
+                  },
+                  {
+                    "fieldName": "change_pct_24h"
+                  },
+                  {
+                    "fieldName": "high_price_24h"
+                  },
+                  {
+                    "fieldName": "low_price_24h"
+                  },
+                  {
+                    "fieldName": "volume_24h"
+                  },
+                  {
+                    "fieldName": "gold_updated_at"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 38,
+            "width": 12,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "counter_avg_price",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "kpi_summary",
+                  "fields": [
+                    {
+                      "name": "as_of",
+                      "expression": "`as_of`"
+                    },
+                    {
+                      "name": "sum(avg_live_price)",
+                      "expression": "SUM(`avg_live_price`)"
+                    }
+                  ],
+                  "disaggregated": false,
+                  "orders": [
+                    {
+                      "direction": "DESC",
+                      "expression": "`as_of`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Avg Live Price (USD)",
+                "showTitle": true
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(avg_live_price)"
+                },
+                "period": {
+                  "fieldName": "as_of"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 35,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_hist_change_pct",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "latest_prices",
+                  "fields": [
+                    {
+                      "name": "symbol",
+                      "expression": "`symbol`"
+                    },
+                    {
+                      "name": "avg(latest_historical_change_pct)",
+                      "expression": "AVG(`latest_historical_change_pct`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "Historical Daily Change % by Symbol",
+                "showTitle": true
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "symbol",
+                  "displayName": "symbol",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "avg(latest_historical_change_pct)",
+                  "displayName": "Historical Daily Change %",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "symbol",
+                  "displayName": "symbol",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 43,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "counter_max_gain",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "kpi_summary",
+                  "fields": [
+                    {
+                      "name": "as_of",
+                      "expression": "`as_of`"
+                    },
+                    {
+                      "name": "sum(max_gain_pct_24h)",
+                      "expression": "SUM(`max_gain_pct_24h`)"
+                    }
+                  ],
+                  "disaggregated": false,
+                  "orders": [
+                    {
+                      "direction": "DESC",
+                      "expression": "`as_of`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Best 24h Gain %",
+                "showTitle": true
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(max_gain_pct_24h)"
+                },
+                "period": {
+                  "fieldName": "as_of"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 35,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "pie_volume_24h",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "latest_prices",
+                  "fields": [
+                    {
+                      "name": "sum(volume_24h)",
+                      "expression": "SUM(`volume_24h`)"
+                    },
+                    {
+                      "name": "symbol",
+                      "expression": "`symbol`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "24h Volume Distribution by Symbol",
+                "showTitle": true
+              },
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(volume_24h)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Volume 24h"
+                },
+                "color": {
+                  "fieldName": "symbol",
+                  "displayName": "symbol",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 43,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "counter_total_volume",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "kpi_summary",
+                  "fields": [
+                    {
+                      "name": "as_of",
+                      "expression": "`as_of`"
+                    },
+                    {
+                      "name": "sum(total_volume_24h)",
+                      "expression": "SUM(`total_volume_24h`)"
+                    }
+                  ],
+                  "disaggregated": false,
+                  "orders": [
+                    {
+                      "direction": "DESC",
+                      "expression": "`as_of`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Total 24h Volume",
+                "showTitle": true
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(total_volume_24h)"
+                },
+                "period": {
+                  "fieldName": "as_of"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 35,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "text_howto",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## How to Read This Dashboard\n",
+                "\n",
+                "---\n",
+                "\n",
+                "#### 🎛️ Filters\n",
+                "**Symbol** — pick one or more crypto pairs to isolate their data across every chart on the page.\n",
+                "**Date Range** — narrow historical charts to a specific time window.\n",
+                "**Candle Direction** — show only Bullish, Bearish, or Neutral trading days.\n",
+                "\n",
+                "---\n",
+                "\n",
+                "#### 📈 Historical Analysis\n",
+                "* **Close Price Over Time** — daily closing price trend per symbol\n",
+                "* **Historical Return %** — total percentage gain/loss from first open to last close\n",
+                "* **Trading Volume Over Time** — cumulative daily traded volume colored by symbol\n",
+                "* **Bullish / Bearish / Neutral Days** — breakdown of candle direction counts per symbol\n",
+                "\n",
+                "---\n",
+                "\n",
+                "#### ⚡ Live & Streaming\n",
+                "* **Live Streaming Price Trend** — real-time tick prices from the streaming feed\n",
+                "* **24h Change % by Symbol** — today's percentage move vs the prior close\n",
+                "* **Streaming Event Metrics** — event counts, ingestion latency, and min/max/avg prices\n",
+                "\n",
+                "---\n",
+                "\n",
+                "#### 🏦 Market Snapshot\n",
+                "* **24-Hour Market Snapshot** — live price alongside 24 h high, low, and volume per symbol\n",
+                "* **Live vs Historical** — compares the latest tick price against the last recorded historical close\n",
+                "* **Historical Price Range** — full-period high–low spread per symbol\n",
+                "\n",
+                "---\n",
+                "\n",
+                "#### 💡 Tips\n",
+                "* Counters at the top of the KPI section always reflect **all symbols** — they are not affected by the Symbol filter.\n",
+                "* The **Dashboard Last Refreshed** widget shows when the gold-layer table was last written by the upstream pipeline."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 48,
+            "width": 12,
+            "height": 10
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "canvasBackgroundColor": {
+        "light": "#f0f4f8",
+        "dark": "#0d1117"
+      },
+      "widgetBackgroundColor": {
+        "light": "#ffffff",
+        "dark": "#161b22"
+      },
+      "widgetBorderColor": {
+        "light": "#d0d7de",
+        "dark": "#30363d"
+      },
+      "visualizationColors": [
+        "#58a6ff",
+        "#3fb950",
+        "#f78166",
+        "#d2a8ff",
+        "#ffa657",
+        "#79c0ff",
+        "#56d364",
+        "#ff7b72",
+        "#bc8cff",
+        "#ffc680"
+      ],
+      "widgetHeaderAlignment": "LEFT",
+      "widgetPadding": 12,
+      "widgetMargin": 8,
+      "widgetCornerRadius": 8,
+      "widgetShadow": 15,
+      "fontSettings": {
+        "base": {
+          "fontFamily": "Inter",
+          "fontSize": 13
+        },
+        "widgetTitle": {
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 600
+        },
+        "fieldTitle": {
+          "fontFamily": "Inter",
+          "fontWeight": 500
+        },
+        "fieldValue": {
+          "fontFamily": "Inter"
+        }
+      },
+      "gridLineColor": {
+        "light": "#eaecef",
+        "dark": "#21262d"
+      }
+    },
+    "applyModeEnabled": false
+  }
+}

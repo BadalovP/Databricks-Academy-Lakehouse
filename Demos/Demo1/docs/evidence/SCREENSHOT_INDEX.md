@@ -1,0 +1,21 @@
+# Screenshot Index
+
+- `01_external_volume_created.png`
+- `01_external_volume_validation.png`
+- `02_historical_source_files.png`
+- `03_historical_bronze_table.png`
+- `04_eventhub_producer_30_events.png`
+- `05_streaming_bronze_metadata.png`
+- `06_schema_evolution_columns.png`
+- `07_validation_23_passed.png`
+- `08_historical_silver_table.png`
+- `08_streaming_silver_table.png`
+- `09_gold_tables.png`
+- `11_dashboard_overview_historical.png`
+- `11_dashboard_overview_market_snapshot.png`
+- `11_dashboard_overview_streaming.png`
+- `11_dashboard_overview_streaming_metrics.png`
+- `11_dashboard_overview_kpi_snapshot.png`
+- `11_dashboard_overview_help_and_distribution.png`
+- `10_bundle_workflow_success.png`
+- `10_bundle_cli_success.png`
