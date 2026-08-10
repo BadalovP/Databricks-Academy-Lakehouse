@@ -1,0 +1,110 @@
+resources:
+  jobs:
+    lab04_silver_quality_job:
+      name: lab04_silver_quality_job
+
+      parameters:
+        - name: catalog
+          default: dbr_dev
+        - name: schema
+          default: parvinbadalov
+        - name: volume_name
+          default: lab04_silver_quality
+        - name: source_file_name
+          default: "Online Retail.xlsx"
+        - name: batch_id
+          default: initial
+        - name: contract_version
+          default: v1
+        - name: schema_policy
+          default: fail
+        - name: run_validation
+          default: "true"
+
+      tasks:
+        - task_key: 01_Source_preparation
+          notebook_task:
+            notebook_path: /Workspace/Users/parvinbadalov@yahoo.com/Databricks-Academy-Lakehouse/labs/lab_04_silver_quality/notebooks/lab04_01_source_preparation
+            source: WORKSPACE
+
+        - task_key: 02_Bronze_ingestion
+          depends_on:
+            - task_key: 01_Source_preparation
+          notebook_task:
+            notebook_path: /Workspace/Users/parvinbadalov@yahoo.com/Databricks-Academy-Lakehouse/labs/lab_04_silver_quality/notebooks/lab04_02_bronze_ingestion
+            source: WORKSPACE
+
+        - task_key: 03_Silver_quality
+          depends_on:
+            - task_key: 02_Bronze_ingestion
+          notebook_task:
+            notebook_path: /Workspace/Users/parvinbadalov@yahoo.com/Databricks-Academy-Lakehouse/labs/lab_04_silver_quality/notebooks/lab04_03_silver_quality
+            source: WORKSPACE
+
+        - task_key: 04_Silver_MERGE
+          depends_on:
+            - task_key: 03_Silver_quality
+          notebook_task:
+            notebook_path: /Workspace/Users/parvinbadalov@yahoo.com/Databricks-Academy-Lakehouse/labs/lab_04_silver_quality/notebooks/lab04_04_silver_merge
+            source: WORKSPACE
+
+        - task_key: 05_SCD_Type_1
+          depends_on:
+            - task_key: 04_Silver_MERGE
+          notebook_task:
+            notebook_path: /Workspace/Users/parvinbadalov@yahoo.com/Databricks-Academy-Lakehouse/labs/lab_04_silver_quality/notebooks/lab04_05_scd_type1
+            source: WORKSPACE
+
+        - task_key: 06_SCD_Type_2
+          depends_on:
+            - task_key: 04_Silver_MERGE
+          notebook_task:
+            notebook_path: /Workspace/Users/parvinbadalov@yahoo.com/Databricks-Academy-Lakehouse/labs/lab_04_silver_quality/notebooks/lab04_06_scd_type2
+            source: WORKSPACE
+
+        - task_key: 07_SCD_comparison
+          depends_on:
+            - task_key: 05_SCD_Type_1
+            - task_key: 06_SCD_Type_2
+          notebook_task:
+            notebook_path: /Workspace/Users/parvinbadalov@yahoo.com/Databricks-Academy-Lakehouse/labs/lab_04_silver_quality/notebooks/lab04_07_scd_comparison
+            source: WORKSPACE
+
+        - task_key: 08_Schema_enforcement
+          depends_on:
+            - task_key: 07_SCD_comparison
+          notebook_task:
+            notebook_path: /Workspace/Users/parvinbadalov@yahoo.com/Databricks-Academy-Lakehouse/labs/lab_04_silver_quality/notebooks/lab04_08_schema_enforcement
+            source: WORKSPACE
+
+        - task_key: 09_Schema_evolution
+          depends_on:
+            - task_key: 08_Schema_enforcement
+          notebook_task:
+            notebook_path: /Workspace/Users/parvinbadalov@yahoo.com/Databricks-Academy-Lakehouse/labs/lab_04_silver_quality/notebooks/lab04_09_schema_evolution
+            source: WORKSPACE
+
+        - task_key: 10_Column_mapping
+          depends_on:
+            - task_key: 09_Schema_evolution
+          notebook_task:
+            notebook_path: /Workspace/Users/parvinbadalov@yahoo.com/Databricks-Academy-Lakehouse/labs/lab_04_silver_quality/notebooks/lab04_10_column_mapping
+            source: WORKSPACE
+
+        - task_key: 11_Maintenance
+          depends_on:
+            - task_key: 10_Column_mapping
+          notebook_task:
+            notebook_path: /Workspace/Users/parvinbadalov@yahoo.com/Databricks-Academy-Lakehouse/labs/lab_04_silver_quality/notebooks/lab04_11_maintenance
+            source: WORKSPACE
+
+        - task_key: 12_Final_validation
+          depends_on:
+            - task_key: 11_Maintenance
+          notebook_task:
+            notebook_path: /Workspace/Users/parvinbadalov@yahoo.com/Databricks-Academy-Lakehouse/labs/lab_04_silver_quality/notebooks/lab04_12_validation
+            source: WORKSPACE
+
+      queue:
+        enabled: true
+      performance_target: PERFORMANCE_OPTIMIZED

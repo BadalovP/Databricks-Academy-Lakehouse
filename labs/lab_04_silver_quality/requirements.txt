@@ -1,0 +1,4 @@
+# PySpark, Delta Lake, pandas, and the Databricks SDK are provided by Databricks.
+openpyxl>=3.1,<4
+PyYAML>=6,<7
+pytest>=8,<9

@@ -1,0 +1,87 @@
+contract:
+  name: online_retail
+  version: 1
+  status: active
+  owner: parvinbadalov
+  description: Baseline contract for the UCI Online Retail transaction dataset.
+
+source:
+  provider: UCI Machine Learning Repository
+  url: "https://archive.ics.uci.edu/dataset/352/online+retail"
+  format: xlsx
+  worksheet: Online Retail
+
+schema:
+  allow_additional_columns: false
+  columns:
+    - name: InvoiceNo
+      type: string
+      nullable: false
+    - name: StockCode
+      type: string
+      nullable: false
+    - name: Description
+      type: string
+      nullable: true
+    - name: Quantity
+      type: integer
+      nullable: false
+    - name: InvoiceDate
+      type: timestamp
+      nullable: false
+    - name: UnitPrice
+      type: double
+      nullable: false
+    - name: CustomerID
+      type: string
+      nullable: true
+    - name: Country
+      type: string
+      nullable: false
+
+quality_rules:
+  - id: required_invoice_no
+    severity: error
+    expression: "InvoiceNo IS NOT NULL AND trim(InvoiceNo) <> ''"
+  - id: required_stock_code
+    severity: error
+    expression: "StockCode IS NOT NULL AND trim(StockCode) <> ''"
+  - id: nonzero_quantity
+    severity: error
+    expression: "Quantity <> 0"
+  - id: nonnegative_unit_price
+    severity: error
+    expression: "UnitPrice >= 0"
+  - id: required_invoice_date
+    severity: error
+    expression: "InvoiceDate IS NOT NULL"
+  - id: required_country
+    severity: error
+    expression: "Country IS NOT NULL AND trim(Country) <> ''"
+  - id: missing_description
+    severity: warning
+    expression: "Description IS NOT NULL AND trim(Description) <> ''"
+  - id: missing_customer_id
+    severity: warning
+    expression: "CustomerID IS NOT NULL AND trim(CustomerID) <> ''"
+
+business_rules:
+  cancellations:
+    allowed: true
+    identification: "InvoiceNo LIKE 'C%' OR Quantity < 0"
+  deduplication:
+    strategy: deterministic_hash
+    fields:
+      - InvoiceNo
+      - StockCode
+      - Quantity
+      - InvoiceDate
+      - UnitPrice
+      - CustomerID
+      - Country
+
+evolution_policy:
+  mode: reject_unapproved
+  approved_contract_required: true
+  rescue_unknown_columns: true
+

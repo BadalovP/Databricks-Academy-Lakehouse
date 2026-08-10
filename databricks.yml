@@ -11,8 +11,13 @@ variables:
     default: "0702-132442-toro5spu"  
     
 targets:
-  dev:
+  azure_dev:
+    mode: development
+    workspace:
+      host: https://adb-7405604503619901.1.azuredatabricks.net
+
+  personal_dev:
     mode: development
     default: true
     workspace:
-      host: https://adb-7405604503619901.1.azuredatabricks.net
+      host: https://dbc-1750318a-76a9.cloud.databricks.com

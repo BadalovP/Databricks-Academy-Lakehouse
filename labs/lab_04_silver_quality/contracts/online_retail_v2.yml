@@ -1,0 +1,115 @@
+contract:
+  name: online_retail
+  version: 2
+  status: proposed
+  supersedes: 1
+  owner: parvinbadalov
+  description: >-
+    Controlled evolution of the Online Retail contract. Version 2 approves
+    loyalty_tier and sales_channel and widens Quantity from integer to long.
+
+source:
+  provider: UCI Machine Learning Repository
+  url: "https://archive.ics.uci.edu/dataset/352/online+retail"
+  format: xlsx
+  worksheet: Online Retail
+
+schema:
+  allow_additional_columns: false
+  columns:
+    - name: InvoiceNo
+      type: string
+      nullable: false
+    - name: StockCode
+      type: string
+      nullable: false
+    - name: Description
+      type: string
+      nullable: true
+    - name: Quantity
+      type: long
+      nullable: false
+      change_from_v1: widened_from_integer
+    - name: InvoiceDate
+      type: timestamp
+      nullable: false
+    - name: UnitPrice
+      type: double
+      nullable: false
+    - name: CustomerID
+      type: string
+      nullable: true
+    - name: Country
+      type: string
+      nullable: false
+    - name: loyalty_tier
+      type: string
+      nullable: true
+      allowed_values:
+        - STANDARD
+        - SILVER
+        - GOLD
+      change_from_v1: added
+    - name: sales_channel
+      type: string
+      nullable: true
+      allowed_values:
+        - ONLINE
+        - MARKETPLACE
+        - DIRECT
+      change_from_v1: added
+
+quality_rules:
+  - id: required_invoice_no
+    severity: error
+    expression: "InvoiceNo IS NOT NULL AND trim(InvoiceNo) <> ''"
+  - id: required_stock_code
+    severity: error
+    expression: "StockCode IS NOT NULL AND trim(StockCode) <> ''"
+  - id: nonzero_quantity
+    severity: error
+    expression: "Quantity <> 0"
+  - id: nonnegative_unit_price
+    severity: error
+    expression: "UnitPrice >= 0"
+  - id: required_invoice_date
+    severity: error
+    expression: "InvoiceDate IS NOT NULL"
+  - id: required_country
+    severity: error
+    expression: "Country IS NOT NULL AND trim(Country) <> ''"
+  - id: valid_loyalty_tier
+    severity: error
+    expression: >-
+      loyalty_tier IS NULL OR loyalty_tier IN ('STANDARD', 'SILVER', 'GOLD')
+  - id: valid_sales_channel
+    severity: error
+    expression: >-
+      sales_channel IS NULL OR sales_channel IN ('ONLINE', 'MARKETPLACE', 'DIRECT')
+
+business_rules:
+  cancellations:
+    allowed: true
+    identification: "InvoiceNo LIKE 'C%' OR Quantity < 0"
+  deduplication:
+    strategy: deterministic_hash
+    fields:
+      - InvoiceNo
+      - StockCode
+      - Quantity
+      - InvoiceDate
+      - UnitPrice
+      - CustomerID
+      - Country
+
+evolution_policy:
+  mode: approved_changes_only
+  approved_contract_required: true
+  rescue_unknown_columns: true
+  approved_changes:
+    - add_nullable_column
+    - widen_integer_to_long
+  forbidden_changes:
+    - remove_required_column
+    - narrow_numeric_type
+    - change_business_key
