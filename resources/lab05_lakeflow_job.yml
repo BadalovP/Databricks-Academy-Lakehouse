@@ -1,0 +1,87 @@
+resources:
+  jobs:
+    lab05_lakeflow_job:
+      name: "Lab 05 - Citi Bike Lakeflow Orchestration"
+
+      description: >
+        Optional orchestration job for Lab 05.
+        Produces one new Citi Bike station_status snapshot,
+        runs the Lakeflow pipeline incrementally,
+        then executes the final validation notebook.
+
+      max_concurrent_runs: 1
+      performance_target: STANDARD
+
+      parameters:
+        - name: catalog
+          default: dbr_dev
+
+        - name: schema
+          default: parvinbadalov
+
+        - name: volume_name
+          default: lab05_lakeflow
+
+        - name: streaming_volume_name
+          default: lab05_lakeflow_streaming
+
+        - name: run_checks
+          default: "true"
+
+      tasks:
+        # ---------------------------------------------------------------
+        # 1. Produce exactly one new immutable station_status JSON file.
+        # ---------------------------------------------------------------
+        - task_key: produce_status_snapshot
+          spark_python_task:
+            python_file: ../labs/lab_05_lakeflow/tools/citibike_status_producer.py
+            parameters:
+              - "--catalog"
+              - "{{job.parameters.catalog}}"
+              - "--schema"
+              - "{{job.parameters.schema}}"
+              - "--streaming-volume-name"
+              - "{{job.parameters.streaming_volume_name}}"
+          environment_key: default
+
+        # ---------------------------------------------------------------
+        # 2. Run the Lakeflow pipeline incrementally.
+        #
+        # full_refresh is deliberately false so the job preserves the
+        # incremental behavior demonstrated in Lab 05.
+        # ---------------------------------------------------------------
+        - task_key: run_lakeflow_pipeline
+          depends_on:
+            - task_key: produce_status_snapshot
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.lab05_lakeflow_pipeline.id}
+            full_refresh: false
+
+        # ---------------------------------------------------------------
+        # 3. Validate the completed pipeline output.
+        # ---------------------------------------------------------------
+        - task_key: validate_pipeline
+          depends_on:
+            - task_key: run_lakeflow_pipeline
+          notebook_task:
+            notebook_path: ../labs/lab_05_lakeflow/notebooks/lab05_02_validation.ipynb
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume_name: "{{job.parameters.volume_name}}"
+              streaming_volume_name: "{{job.parameters.streaming_volume_name}}"
+              run_checks: "{{job.parameters.run_checks}}"
+
+      # Serverless environment used by the Python script task.
+      # Notebook tasks can also run serverless without a cluster definition.
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "5"
+            dependencies:
+              - "requests>=2.31,<3"
+
+      tags:
+        lab: "05"
+        project: "citibike_lakeflow"
+        purpose: "orchestration"

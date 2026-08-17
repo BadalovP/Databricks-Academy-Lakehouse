@@ -1,0 +1,29 @@
+resources:
+  pipelines:
+    lab05_lakeflow_pipeline:
+      name: lab05_lakeflow_pipeline
+
+      catalog: dbr_dev
+      schema: parvinbadalov
+
+      serverless: true
+      continuous: false
+      edition: ADVANCED
+      channel: PREVIEW
+
+      root_path: ../labs/lab_05_lakeflow
+
+      libraries:
+        - glob:
+            include: ../labs/lab_05_lakeflow/pipeline/**
+
+      configuration:
+        lab05.catalog: dbr_dev
+        lab05.schema: parvinbadalov
+        lab05.volume_name: lab05_lakeflow
+        lab05.streaming_volume_name: lab05_lakeflow_streaming
+        lab05.run_checks: "true"
+
+      tags:
+        lab: "05"
+        project: citibike_lakeflow

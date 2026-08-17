@@ -1,0 +1,181 @@
+{
+  "type": "struct",
+  "fields": [
+    {
+      "name": "last_updated",
+      "type": "long",
+      "nullable": true,
+      "metadata": {}
+    },
+    {
+      "name": "ttl",
+      "type": "long",
+      "nullable": true,
+      "metadata": {}
+    },
+    {
+      "name": "version",
+      "type": "string",
+      "nullable": true,
+      "metadata": {}
+    },
+    {
+      "name": "data",
+      "type": {
+        "type": "struct",
+        "fields": [
+          {
+            "name": "stations",
+            "type": {
+              "type": "array",
+              "elementType": {
+                "type": "struct",
+                "fields": [
+                  {
+                    "name": "station_id",
+                    "type": "string",
+                    "nullable": true,
+                    "metadata": {}
+                  },
+                  {
+                    "name": "name",
+                    "type": "string",
+                    "nullable": true,
+                    "metadata": {}
+                  },
+                  {
+                    "name": "short_name",
+                    "type": "string",
+                    "nullable": true,
+                    "metadata": {}
+                  },
+                  {
+                    "name": "lat",
+                    "type": "double",
+                    "nullable": true,
+                    "metadata": {}
+                  },
+                  {
+                    "name": "lon",
+                    "type": "double",
+                    "nullable": true,
+                    "metadata": {}
+                  },
+                  {
+                    "name": "address",
+                    "type": "string",
+                    "nullable": true,
+                    "metadata": {}
+                  },
+                  {
+                    "name": "cross_street",
+                    "type": "string",
+                    "nullable": true,
+                    "metadata": {}
+                  },
+                  {
+                    "name": "region_id",
+                    "type": "string",
+                    "nullable": true,
+                    "metadata": {}
+                  },
+                  {
+                    "name": "post_code",
+                    "type": "string",
+                    "nullable": true,
+                    "metadata": {}
+                  },
+                  {
+                    "name": "rental_methods",
+                    "type": {
+                      "type": "array",
+                      "elementType": "string",
+                      "containsNull": true
+                    },
+                    "nullable": true,
+                    "metadata": {}
+                  },
+                  {
+                    "name": "is_virtual_station",
+                    "type": "boolean",
+                    "nullable": true,
+                    "metadata": {}
+                  },
+                  {
+                    "name": "parking_type",
+                    "type": "string",
+                    "nullable": true,
+                    "metadata": {}
+                  },
+                  {
+                    "name": "parking_hoop",
+                    "type": "boolean",
+                    "nullable": true,
+                    "metadata": {}
+                  },
+                  {
+                    "name": "contact_phone",
+                    "type": "string",
+                    "nullable": true,
+                    "metadata": {}
+                  },
+                  {
+                    "name": "capacity",
+                    "type": "long",
+                    "nullable": true,
+                    "metadata": {}
+                  },
+                  {
+                    "name": "is_valet_station",
+                    "type": "boolean",
+                    "nullable": true,
+                    "metadata": {}
+                  },
+                  {
+                    "name": "is_charging_station",
+                    "type": "boolean",
+                    "nullable": true,
+                    "metadata": {}
+                  },
+                  {
+                    "name": "rental_uris",
+                    "type": {
+                      "type": "struct",
+                      "fields": [
+                        {
+                          "name": "android",
+                          "type": "string",
+                          "nullable": true,
+                          "metadata": {}
+                        },
+                        {
+                          "name": "ios",
+                          "type": "string",
+                          "nullable": true,
+                          "metadata": {}
+                        },
+                        {
+                          "name": "web",
+                          "type": "string",
+                          "nullable": true,
+                          "metadata": {}
+                        }
+                      ]
+                    },
+                    "nullable": true,
+                    "metadata": {}
+                  }
+                ]
+              },
+              "containsNull": true
+            },
+            "nullable": true,
+            "metadata": {}
+          }
+        ]
+      },
+      "nullable": true,
+      "metadata": {}
+    }
+  ]
+}

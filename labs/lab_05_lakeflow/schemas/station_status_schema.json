@@ -1,0 +1,157 @@
+{
+  "type": "struct",
+  "fields": [
+    {
+      "name": "last_updated",
+      "type": "long",
+      "nullable": true,
+      "metadata": {}
+    },
+    {
+      "name": "ttl",
+      "type": "long",
+      "nullable": true,
+      "metadata": {}
+    },
+    {
+      "name": "version",
+      "type": "string",
+      "nullable": true,
+      "metadata": {}
+    },
+    {
+      "name": "data",
+      "type": {
+        "type": "struct",
+        "fields": [
+          {
+            "name": "stations",
+            "type": {
+              "type": "array",
+              "elementType": {
+                "type": "struct",
+                "fields": [
+                  {
+                    "name": "station_id",
+                    "type": "string",
+                    "nullable": true,
+                    "metadata": {}
+                  },
+                  {
+                    "name": "num_bikes_available",
+                    "type": "long",
+                    "nullable": true,
+                    "metadata": {}
+                  },
+                  {
+                    "name": "vehicle_types_available",
+                    "type": {
+                      "type": "array",
+                      "elementType": {
+                        "type": "struct",
+                        "fields": [
+                          {
+                            "name": "vehicle_type_id",
+                            "type": "string",
+                            "nullable": true,
+                            "metadata": {}
+                          },
+                          {
+                            "name": "count",
+                            "type": "long",
+                            "nullable": true,
+                            "metadata": {}
+                          }
+                        ]
+                      },
+                      "containsNull": true
+                    },
+                    "nullable": true,
+                    "metadata": {}
+                  },
+                  {
+                    "name": "num_bikes_disabled",
+                    "type": "long",
+                    "nullable": true,
+                    "metadata": {}
+                  },
+                  {
+                    "name": "num_docks_available",
+                    "type": "long",
+                    "nullable": true,
+                    "metadata": {}
+                  },
+                  {
+                    "name": "vehicle_docks_available",
+                    "type": {
+                      "type": "array",
+                      "elementType": {
+                        "type": "struct",
+                        "fields": [
+                          {
+                            "name": "vehicle_type_ids",
+                            "type": {
+                              "type": "array",
+                              "elementType": "string",
+                              "containsNull": true
+                            },
+                            "nullable": true,
+                            "metadata": {}
+                          },
+                          {
+                            "name": "count",
+                            "type": "long",
+                            "nullable": true,
+                            "metadata": {}
+                          }
+                        ]
+                      },
+                      "containsNull": true
+                    },
+                    "nullable": true,
+                    "metadata": {}
+                  },
+                  {
+                    "name": "num_docks_disabled",
+                    "type": "long",
+                    "nullable": true,
+                    "metadata": {}
+                  },
+                  {
+                    "name": "is_installed",
+                    "type": "boolean",
+                    "nullable": true,
+                    "metadata": {}
+                  },
+                  {
+                    "name": "is_renting",
+                    "type": "boolean",
+                    "nullable": true,
+                    "metadata": {}
+                  },
+                  {
+                    "name": "is_returning",
+                    "type": "boolean",
+                    "nullable": true,
+                    "metadata": {}
+                  },
+                  {
+                    "name": "last_reported",
+                    "type": "long",
+                    "nullable": true,
+                    "metadata": {}
+                  }
+                ]
+              },
+              "containsNull": true
+            },
+            "nullable": true,
+            "metadata": {}
+          }
+        ]
+      },
+      "nullable": true,
+      "metadata": {}
+    }
+  ]
+}
