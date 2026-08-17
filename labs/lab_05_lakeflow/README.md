@@ -837,11 +837,41 @@ Asset Bundle development deployment    PASS
 Pipeline completed                     PASS
 Final validation                       PASS
 Optional orchestration Job             PASS
+Shared Azure deploy-only handoff        PASS
 ```
 
 The development implementation is complete and tested.
 
-The remaining operational handoff is to deploy the ready Lab 05 bundle resources to the shared Azure target **without running either the pipeline or the Job**.
+The ready Lab 05 pipeline and orchestration Job were also deployed successfully to the shared Azure target **without running either resource**, completing the supervisor handoff requirement.
+
+---
+
+# Shared Azure deployment
+
+The final Lab 05 resources were validated and selectively deployed to the Azure target from the local repository using the Azure CLI profile.
+
+Validation:
+
+```text
+databricks bundle validate -t azure_dev --profile AZURE_DEV
+→ Validation OK!
+```
+
+Selective deployment:
+
+```text
+pipelines.lab05_lakeflow_pipeline
+→ Deployment complete!
+
+jobs.lab05_lakeflow_job
+→ Deployment complete!
+```
+
+No Azure pipeline or Job run was triggered after deployment.
+
+![Azure deployment](images/16_azure_deployment.png)
+
+This satisfies the supervisor instruction to deploy the ready resources to the shared environment without running them.
 
 ---
 
@@ -864,9 +894,10 @@ The remaining operational handoff is to deploy the ready Lab 05 bundle resources
 | `13_validation_matrix.png` | 20/20 validation checks |
 | `14_job_orchestration_dag.png` | producer → pipeline → validation Job DAG |
 | `15_job_timeline.png` | successful three-task Job execution timeline |
+| `16_azure_deployment.png` | Azure validation + deploy-only evidence |
 
 ---
 
 ## Result
 
-Lab 05 demonstrates an end-to-end Lakeflow declarative pipeline that combines streaming and batch JSON sources, applies declarative quality expectations, enriches live station observations with reference metadata, produces a Gold analytical materialized view, reloads safely, processes new files incrementally, and is packaged for bundle-based deployment. An optional Lakeflow Job additionally proves automated producer → pipeline → validation orchestration.
+Lab 05 demonstrates an end-to-end Lakeflow declarative pipeline that combines streaming and batch JSON sources, applies declarative quality expectations, enriches live station observations with reference metadata, produces a Gold analytical materialized view, reloads safely, processes new files incrementally, and is packaged for bundle-based deployment. An optional Lakeflow Job additionally proves automated producer → pipeline → validation orchestration. The final pipeline and Job were then selectively deployed to the shared Azure target without execution.
