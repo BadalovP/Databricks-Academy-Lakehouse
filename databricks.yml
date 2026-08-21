@@ -26,11 +26,10 @@ targets:
     workspace:
       host: https://adb-7405604503619901.1.azuredatabricks.net
 
-    # Add real Azure-specific Lab 06 values before final Azure deployment.
-    # variables:
-    #   lab06_warehouse_id: "<real Azure warehouse ID>"
-    #   lab06_alert_subscriber_email: "parvinbadalov@yahoo.com"
-    #   lab06_alert_parent_path: "<writable Azure workspace folder>"
+    variables:
+      lab06_warehouse_id: "3ed106620db591d9"
+      lab06_alert_subscriber_email: "parvinbadalov@softserve.academy"
+      lab06_alert_parent_path: "/Workspace/Users/parvinbadalov@softserve.academy"
 
   personal_dev:
     mode: development
