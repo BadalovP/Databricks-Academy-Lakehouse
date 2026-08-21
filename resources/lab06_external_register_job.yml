@@ -1,0 +1,28 @@
+resources:
+  jobs:
+    lab06_external_register_job:
+      name: "Lab 06 External V2 - Register Shared Gold"
+      description: >
+        Registers existing shared ADLS Delta paths in the current workspace.
+        It does not rerun the Gold transformations.
+
+      parameters:
+
+        - name: catalog
+          default: ${var.lab06_external_catalog}
+        - name: source_schema
+          default: ${var.lab06_external_source_schema}
+        - name: source_volume_name
+          default: ${var.lab06_external_source_volume_name}
+        - name: target_schema
+          default: ${var.lab06_external_target_schema}
+        - name: external_gold_root
+          default: ${var.lab06_external_gold_root}
+        - name: register_metrics
+          default: "true"
+
+      tasks:
+        - task_key: register_shared_tables
+          notebook_task:
+            notebook_path: ../labs/lab_06_gold_analytics_external/notebooks/lab06e_05_register_shared_tables.ipynb
+          max_retries: 0

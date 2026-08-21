@@ -1,0 +1,45 @@
+resources:
+  alerts:
+    lab06_external_healthcare_volume_drop:
+      display_name: "Lab 06 External V2 - Healthcare Volume Drop Alert"
+      parent_path: ${var.lab06_alert_parent_path}
+
+      query_text: |
+        SELECT
+          should_alert,
+          alert_status,
+          data_source,
+          test_month,
+          baseline_encounter_count,
+          observed_encounter_count,
+          volume_drop_pct,
+          drop_threshold_pct,
+          generated_at
+        FROM ${var.lab06_external_catalog}.${var.lab06_external_target_schema}.lab06_data_volume_metrics
+        LIMIT 1
+
+      warehouse_id: ${var.lab06_warehouse_id}
+
+      evaluation:
+        comparison_operator: EQUAL
+        empty_result_state: ERROR
+        source:
+          name: should_alert
+          display: should_alert
+        threshold:
+          value:
+            double_value: 1
+        notification:
+          notify_on_ok: false
+          retrigger_seconds: 0
+          subscriptions:
+            - user_email: ${var.lab06_alert_subscriber_email}
+
+      schedule:
+        quartz_cron_schedule: "0 0 * * * ?"
+        timezone_id: "Europe/Warsaw"
+        pause_status: PAUSED
+
+      custom_summary: "Lab 06 External V2 shared-table volume-drop alert"
+      custom_description: >
+        Reads the shared external metrics Delta table registered in this workspace.

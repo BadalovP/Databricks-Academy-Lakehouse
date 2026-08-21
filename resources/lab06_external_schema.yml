@@ -1,0 +1,6 @@
+resources:
+  schemas:
+    lab06_external_schema:
+      name: ${var.lab06_external_target_schema}
+      catalog_name: ${var.lab06_external_catalog}
+      comment: "Lab 06 External V2 - shared external Delta Gold tables"

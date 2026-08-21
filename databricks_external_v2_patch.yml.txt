@@ -1,0 +1,29 @@
+# Merge this under the existing top-level `variables:` section of databricks.yml.
+# Do NOT add another `variables:` block.
+
+lab06_external_catalog:
+  description: "Catalog for Lab 06 External V2"
+  default: "dbr_dev"
+
+lab06_external_source_schema:
+  description: "Schema containing the existing shared source Volume"
+  default: "parvinbadalov"
+
+lab06_external_source_volume_name:
+  description: "Existing shared Synthea source Volume"
+  default: "lab06_gold_analytics"
+
+lab06_external_target_schema:
+  description: "UC schema used to register External V2 tables"
+  default: "parvinbadalov_lab06_ext"
+
+lab06_external_gold_root:
+  description: "Shared ADLS root for External V2 Delta tables"
+  default: "abfss://parvinbadalov@dlspl21databricks.dfs.core.windows.net/lab06_gold_external_v2"
+
+# Existing Lab 06 variables are reused by the V2 Alert:
+# - lab06_warehouse_id
+# - lab06_alert_subscriber_email
+# - lab06_alert_parent_path
+#
+# Keep the existing target-specific values for those variables.

@@ -1,0 +1,8 @@
+# Rename this file to lab06_external_dashboard.yml only AFTER
+# tools/rewrite_exported_assets.py creates the referenced .lvdash.json file.
+resources:
+  dashboards:
+    lab06_external_healthcare_dashboard:
+      display_name: "Healthcare Operations & Cost Analytics - External V2"
+      warehouse_id: ${var.lab06_warehouse_id}
+      file_path: ../labs/lab_06_gold_analytics_external/dashboards/healthcare_operations_cost_analytics_external.lvdash.json

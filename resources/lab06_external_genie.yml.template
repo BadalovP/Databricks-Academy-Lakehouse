@@ -1,0 +1,10 @@
+# Rename this file to lab06_external_genie.yml only AFTER
+# tools/rewrite_exported_assets.py creates the referenced .geniespace.json file.
+resources:
+  genie_spaces:
+    lab06_external_healthcare_genie:
+      title: "Lab 06 External V2 - Healthcare Analytics Genie"
+      warehouse_id: ${var.lab06_warehouse_id}
+      file_path: ../labs/lab_06_gold_analytics_external/genie/lab06_external_healthcare_analytics.geniespace.json
+      description: >
+        Healthcare analytics Genie backed by the shared external Delta Gold model.

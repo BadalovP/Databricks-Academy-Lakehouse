@@ -11,6 +11,10 @@ variables:
     description: Existing cluster used by the Lab 03 Job
     default: "0702-132442-toro5spu"
 
+  # -------------------------------------------------------------------
+  # Lab 06 V1
+  # -------------------------------------------------------------------
+
   lab06_warehouse_id:
     description: SQL warehouse used by Lab 06 Dashboard and Genie
 
@@ -20,9 +24,34 @@ variables:
   lab06_alert_parent_path:
     description: Workspace folder containing the Lab 06 SQL alert
 
+  # -------------------------------------------------------------------
+  # Lab 06 External V2
+  # -------------------------------------------------------------------
+
+  lab06_external_catalog:
+    description: Catalog used by Lab 06 External V2
+    default: "dbr_dev"
+
+  lab06_external_source_schema:
+    description: Schema containing the existing shared Synthea source Volume
+    default: "parvinbadalov"
+
+  lab06_external_source_volume_name:
+    description: Existing shared Synthea source Volume
+    default: "lab06_gold_analytics"
+
+  lab06_external_target_schema:
+    description: Unity Catalog schema used to register External V2 Gold tables
+    default: "parvinbadalov_lab06_ext"
+
+  lab06_external_gold_root:
+    description: Shared ADLS root used by External V2 Delta Gold tables
+    default: "abfss://parvinbadalov@dlspl21databricks.dfs.core.windows.net/lab06_gold_external_v2"
+
 targets:
   azure_dev:
     mode: development
+
     workspace:
       host: https://adb-7405604503619901.1.azuredatabricks.net
 
@@ -34,6 +63,7 @@ targets:
   personal_dev:
     mode: development
     default: true
+
     workspace:
       host: https://dbc-1750318a-76a9.cloud.databricks.com
 

@@ -1,0 +1,17 @@
+LAB 06 EXTERNAL V2 — QUICK START
+
+1. Merge databricks_external_v2_patch.yml.txt into root databricks.yml.
+2. Copy labs/ and resources/ from this package into the repository.
+3. personal_dev:
+   - deploy schema
+   - deploy/run lab06_external_gold_job
+   - deploy/run lab06_external_metrics_job
+4. azure_dev:
+   - deploy schema
+   - deploy/run lab06_external_register_job
+5. Verify DESCRIBE DETAIL + counts in Azure.
+6. Deploy lab06_external_healthcare_volume_drop.
+7. Optional: run rewrite_exported_assets.py, activate dashboard/genie templates,
+   validate, and deploy them.
+
+V1 IS NOT MODIFIED.
