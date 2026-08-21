@@ -1,0 +1,9 @@
+resources:
+  volumes:
+    lab06_gold_volume:
+      catalog_name: dbr_dev
+      schema_name: parvinbadalov
+      name: lab06_gold_analytics
+      volume_type: EXTERNAL
+      storage_location: abfss://parvinbadalov@dlspl21databricks.dfs.core.windows.net/lab06_gold_analytics
+      comment: "Lab 06 Synthea Healthcare external volume"

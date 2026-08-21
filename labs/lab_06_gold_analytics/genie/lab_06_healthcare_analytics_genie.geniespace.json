@@ -1,0 +1,658 @@
+{
+  "data_sources": {
+    "tables": [
+      {
+        "column_configs": [
+          {
+            "column_name": "active_condition_events",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "active_condition_pct",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "avg_condition_duration_days",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "condition_code",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "condition_description",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "condition_event_count",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "condition_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "first_recorded_date",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "last_recorded_date",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "linked_encounters",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "unique_patients",
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "dbr_dev.parvinbadalov.agg_condition_summary"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "avg_duration_minutes",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "base_encounter_cost",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "date_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "emergency_encounter_pct",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "emergency_encounters",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "encounter_count",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "encounter_date",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "organizations_active",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "patient_responsibility",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "payer_coverage",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "providers_active",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "total_claim_cost",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "unique_patients",
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "dbr_dev.parvinbadalov.agg_daily_encounters"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "avg_claim_cost",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "avg_duration_minutes",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "city",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "encounter_count",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "first_encounter_date",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "last_encounter_date",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "organization_id",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "organization_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "organization_name",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "patient_responsibility",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "payer_coverage",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "state",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "total_claim_cost",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "unique_patients",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "unique_providers",
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "dbr_dev.parvinbadalov.agg_organization_performance"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "avg_claim_cost",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "avg_payer_coverage",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "coverage_pct",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "encounter_count",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "patient_responsibility",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "payer_coverage",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "payer_id",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "payer_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "payer_name",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "state_headquartered",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "total_claim_cost",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "unique_patients",
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "dbr_dev.parvinbadalov.agg_payer_performance"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "date_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "day_name",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "day_of_month",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "full_date",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "is_weekend",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "iso_day_of_week",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "month",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "month_name",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "quarter",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "week_of_year",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "year",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "year_month",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "dbr_dev.parvinbadalov.dim_date"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "address",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "city",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "latitude",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "longitude",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "organization_id",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "organization_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "organization_name",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "phone",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "revenue",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "state",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "utilization",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "zip_code",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "dbr_dev.parvinbadalov.dim_organization"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "amount_covered",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "amount_uncovered",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "city",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "covered_encounters",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "member_months",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "payer_id",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "payer_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "payer_name",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "phone",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "qols_avg",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "revenue",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "state_headquartered",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "uncovered_encounters",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "unique_customers",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "zip_code",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "dbr_dev.parvinbadalov.dim_payer"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "address",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "city",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "gender",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "latitude",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "longitude",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "organization_id",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "provider_id",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "provider_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "provider_name",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "specialty",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "state",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "utilization",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "zip_code",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "dbr_dev.parvinbadalov.dim_provider"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "condition_code",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "condition_description",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "condition_duration_days",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "condition_event_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "condition_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "condition_start_date",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "condition_start_date_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "condition_stop_date",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "encounter_id",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "encounter_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "is_active_condition",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "patient_id",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "patient_key",
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "dbr_dev.parvinbadalov.fact_conditions"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "base_encounter_cost"
+          },
+          {
+            "column_name": "date_key"
+          },
+          {
+            "column_name": "duration_minutes"
+          },
+          {
+            "column_name": "encounter_class"
+          },
+          {
+            "column_name": "encounter_code"
+          },
+          {
+            "column_name": "encounter_date"
+          },
+          {
+            "column_name": "encounter_description"
+          },
+          {
+            "column_name": "encounter_id"
+          },
+          {
+            "column_name": "encounter_key"
+          },
+          {
+            "column_name": "encounter_start_ts"
+          },
+          {
+            "column_name": "encounter_stop_ts"
+          },
+          {
+            "column_name": "organization_id"
+          },
+          {
+            "column_name": "organization_key"
+          },
+          {
+            "column_name": "patient_id"
+          },
+          {
+            "column_name": "patient_key"
+          },
+          {
+            "column_name": "patient_responsibility"
+          },
+          {
+            "column_name": "payer_coverage"
+          },
+          {
+            "column_name": "payer_id"
+          },
+          {
+            "column_name": "payer_key"
+          },
+          {
+            "column_name": "provider_id"
+          },
+          {
+            "column_name": "provider_key"
+          },
+          {
+            "column_name": "reason_code"
+          },
+          {
+            "column_name": "reason_description"
+          },
+          {
+            "column_name": "total_claim_cost"
+          }
+        ],
+        "identifier": "dbr_dev.parvinbadalov.fact_encounters"
+      }
+    ]
+  },
+  "instructions": {
+    "text_instructions": [
+      {
+        "content": [
+          "This Genie Agent analyzes the Lab 06 Synthea Healthcare Gold model.\r\n",
+          "\r\n",
+          "Business definitions:\r\n",
+          "- An encounter is one healthcare encounter in fact_encounters.\r\n",
+          "- A condition event is one patient-condition occurrence in fact_conditions.\r\n",
+          "- Total healthcare cost is total_claim_cost.\r\n",
+          "- Payer contribution is payer_coverage.\r\n",
+          "- Patient responsibility is patient_responsibility.\r\n",
+          "- Encounter duration is measured in duration_minutes.\r\n",
+          "- Emergency encounter percentage is emergency encounters divided by total encounters.\r\n",
+          "\r\n",
+          "Prefer these aggregate tables when possible:\r\n",
+          "- Time-series analysis: agg_daily_encounters\r\n",
+          "- Organization analysis: agg_organization_performance\r\n",
+          "- Payer analysis: agg_payer_performance\r\n",
+          "- Condition analysis: agg_condition_summary\r\n",
+          "\r\n",
+          "Prefer readable organization names, payer names, condition descriptions and dates instead of surrogate keys.\r\n",
+          "\r\n",
+          "Respect all Unity Catalog row filters and column masks.\r\n",
+          "\r\n",
+          "Which organizations had the most encounters?\r\n",
+          "What were the top 10 medical conditions by number of events?\r\n",
+          "Show monthly encounter volume in 2021.\r\n",
+          "Which payer covered the most healthcare cost?\r\n",
+          "What is the average encounter duration by encounter class?"
+        ],
+        "id": "01f19ce9baa41ef7aa0ddd67d033d313"
+      }
+    ]
+  },
+  "version": 2
+}

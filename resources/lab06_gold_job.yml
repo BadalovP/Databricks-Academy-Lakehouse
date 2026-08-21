@@ -1,0 +1,81 @@
+resources:
+  jobs:
+    lab06_gold_job:
+      name: "Lab 06 - Gold Analytics"
+
+      description: >
+        Recurring Gold-layer build for the Lab 06 Synthea Healthcare project.
+        Builds dimensions, facts, business aggregates, and performs final validation.
+        Source preparation, governance setup, alert simulation, dashboard creation,
+        and Genie configuration are intentionally excluded from this recurring job.
+
+      max_concurrent_runs: 1
+
+      queue:
+        enabled: true
+
+      parameters:
+        - name: catalog
+          default: dbr_dev
+
+        - name: schema
+          default: parvinbadalov
+
+        - name: volume_name
+          default: lab06_gold_analytics
+
+        - name: date_start
+          default: "1900-01-01"
+
+        - name: date_end
+          default: "2035-12-31"
+
+        - name: rebuild_dim_date
+          default: "false"
+
+        - name: run_validation
+          default: "true"
+
+      tasks:
+        - task_key: 01_dimensions
+          description: "Build and validate Gold dimensions."
+          notebook_task:
+            notebook_path: ../labs/lab_06_gold_analytics/notebooks/lab06_01_dimensions.ipynb
+          max_retries: 1
+          min_retry_interval_millis: 60000
+
+        - task_key: 02_fact_encounters
+          description: "Build the encounter-level Gold fact table."
+          depends_on:
+            - task_key: 01_dimensions
+          notebook_task:
+            notebook_path: ../labs/lab_06_gold_analytics/notebooks/lab06_02_fact_encounters.ipynb
+          max_retries: 1
+          min_retry_interval_millis: 60000
+
+        - task_key: 03_fact_conditions
+          description: "Build the patient-condition occurrence Gold fact table."
+          depends_on:
+            - task_key: 02_fact_encounters
+          notebook_task:
+            notebook_path: ../labs/lab_06_gold_analytics/notebooks/lab06_03_fact_conditions.ipynb
+          max_retries: 1
+          min_retry_interval_millis: 60000
+
+        - task_key: 04_aggregations
+          description: "Build dashboard-ready Gold aggregate tables."
+          depends_on:
+            - task_key: 03_fact_conditions
+          notebook_task:
+            notebook_path: ../labs/lab_06_gold_analytics/notebooks/lab06_04_aggregations.ipynb
+          max_retries: 1
+          min_retry_interval_millis: 60000
+
+        - task_key: 07_validation
+          description: "Validate the complete recurring Gold model."
+          depends_on:
+            - task_key: 04_aggregations
+          notebook_task:
+            notebook_path: ../labs/lab_06_gold_analytics/notebooks/lab06_07_validation.ipynb
+          max_retries: 1
+          min_retry_interval_millis: 60000

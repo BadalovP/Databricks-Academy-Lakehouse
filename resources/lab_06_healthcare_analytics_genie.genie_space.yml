@@ -1,0 +1,9 @@
+resources:
+  genie_spaces:
+    lab_06_healthcare_analytics_genie:
+      title: "Lab 06 - Healthcare Analytics Genie"
+      warehouse_id: ${var.lab06_warehouse_id}
+      file_path: ../labs/lab_06_gold_analytics/genie/lab_06_healthcare_analytics_genie.geniespace.json
+      description: >
+        This Agent provides insights into healthcare encounters, organizational and
+        payer performance, and condition trends across providers, payers, and organizations.

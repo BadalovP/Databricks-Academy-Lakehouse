@@ -1,0 +1,77 @@
+-- LAB 06 — Governance policies
+-- Table-level RLS/CLS pattern implemented in lab06_05_governance.ipynb.
+-- Runtime catalog/schema/user values are resolved by the notebook.
+
+-- RLS mapping table:
+-- <catalog>.<schema>.lab06_user_organization_access
+--   username STRING
+--   organization_id STRING
+--   access_reason STRING
+--   updated_at TIMESTAMP
+
+-- RLS function:
+-- CREATE OR REPLACE FUNCTION <catalog>.<schema>.lab06_org_row_filter(
+--   row_organization_id STRING
+-- )
+-- RETURN EXISTS (
+--   SELECT 1
+--   FROM <catalog>.<schema>.lab06_user_organization_access a
+--   WHERE a.username = SESSION_USER()
+--     AND (
+--       a.organization_id = row_organization_id
+--       OR a.organization_id = '*'
+--     )
+-- );
+--
+-- ALTER TABLE <catalog>.<schema>.fact_encounters
+-- SET ROW FILTER <catalog>.<schema>.lab06_org_row_filter
+-- ON (organization_id);
+
+-- CLS privileged-user table:
+-- <catalog>.<schema>.lab06_patient_data_privileged_users
+
+-- CLS function:
+-- CREATE OR REPLACE FUNCTION <catalog>.<schema>.lab06_mask_sensitive_string(
+--   value STRING
+-- )
+-- RETURN CASE
+--   WHEN EXISTS (
+--     SELECT 1
+--     FROM <catalog>.<schema>.lab06_patient_data_privileged_users p
+--     WHERE p.username = SESSION_USER()
+--   )
+--   THEN value
+--   WHEN value IS NULL THEN NULL
+--   ELSE '***MASKED***'
+-- END;
+--
+-- ALTER TABLE <catalog>.<schema>.dim_patient
+-- ALTER COLUMN ssn
+-- SET MASK <catalog>.<schema>.lab06_mask_sensitive_string;
+--
+-- ALTER TABLE <catalog>.<schema>.dim_patient
+-- ALTER COLUMN first_name
+-- SET MASK <catalog>.<schema>.lab06_mask_sensitive_string;
+--
+-- ALTER TABLE <catalog>.<schema>.dim_patient
+-- ALTER COLUMN last_name
+-- SET MASK <catalog>.<schema>.lab06_mask_sensitive_string;
+--
+-- ALTER TABLE <catalog>.<schema>.dim_patient
+-- ALTER COLUMN address
+-- SET MASK <catalog>.<schema>.lab06_mask_sensitive_string;
+
+-- Example GRANT shape:
+-- GRANT USE CATALOG ON CATALOG <catalog> TO `<principal>`;
+-- GRANT USE SCHEMA ON SCHEMA <catalog>.<schema> TO `<principal>`;
+-- GRANT SELECT ON TABLE <catalog>.<schema>.fact_encounters TO `<principal>`;
+-- GRANT SELECT ON TABLE <catalog>.<schema>.dim_patient TO `<principal>`;
+
+-- Rollback (run intentionally only):
+-- ALTER TABLE <catalog>.<schema>.fact_encounters DROP ROW FILTER;
+-- ALTER TABLE <catalog>.<schema>.dim_patient ALTER COLUMN ssn DROP MASK;
+-- ALTER TABLE <catalog>.<schema>.dim_patient ALTER COLUMN first_name DROP MASK;
+-- ALTER TABLE <catalog>.<schema>.dim_patient ALTER COLUMN last_name DROP MASK;
+-- ALTER TABLE <catalog>.<schema>.dim_patient ALTER COLUMN address DROP MASK;
+-- DROP FUNCTION IF EXISTS <catalog>.<schema>.lab06_org_row_filter;
+-- DROP FUNCTION IF EXISTS <catalog>.<schema>.lab06_mask_sensitive_string;
