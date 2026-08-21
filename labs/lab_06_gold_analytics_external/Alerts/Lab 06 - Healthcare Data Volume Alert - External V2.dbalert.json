@@ -1,0 +1,35 @@
+{
+  "evaluation": {
+    "source": {
+      "name": "should_alert",
+      "display": "should_alert",
+      "aggregation": "AGGREGATION_UNSPECIFIED"
+    },
+    "comparison_operator": "EQUAL",
+    "threshold": {
+      "value": {
+        "double_value": 1.0
+      }
+    },
+    "notification": {
+      "retrigger_seconds": 1
+    }
+  },
+  "schedule": {
+    "quartz_cron_schedule": "43 59 0 * * ?",
+    "timezone_id": "Europe/Warsaw"
+  },
+  "query_lines": [
+    "SELECT",
+    "    should_alert,",
+    "    alert_status,",
+    "    data_source,",
+    "    test_month,",
+    "    baseline_encounter_count,",
+    "    observed_encounter_count,",
+    "    volume_drop_pct,",
+    "    drop_threshold_pct,",
+    "    generated_at",
+    "FROM dbr_dev.parvinbadalov_lab06_ext.lab06_data_volume_metrics;"
+  ]
+}

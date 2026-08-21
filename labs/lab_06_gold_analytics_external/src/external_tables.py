@@ -1,104 +1,133 @@
-"""Helpers for writing and registering shared external Delta tables."""
+"""Serverless-safe external Delta table helpers for Lab 06 External V2.
 
-from delta.tables import DeltaTable
+Important:
+- No REFRESH TABLE
+- No CACHE TABLE / UNCACHE TABLE
+- Writes Delta files to an explicit external location
+- Registers Unity Catalog tables with USING DELTA LOCATION
+"""
 
+from __future__ import annotations
 
-def ensure_target_schema(spark, config) -> None:
-    spark.sql(
-        f"CREATE SCHEMA IF NOT EXISTS {config.target_schema_fqn}"
-    )
+from typing import Optional
 
-
-def _quoted_path(path: str) -> str:
-    return path.replace("'", "''")
-
-
-def describe_table_location(spark, table_name: str) -> str:
-    row = (
-        spark.sql(f"DESCRIBE DETAIL {table_name}")
-        .select("location")
-        .first()
-    )
-    return str(row["location"]).rstrip("/")
+from pyspark.sql import DataFrame, SparkSession
 
 
-def write_external_delta(
-    spark,
-    df,
-    config,
+def normalize_location(value: str) -> str:
+    """Normalize a storage location for safe equality checks."""
+    return str(value).strip().rstrip("/").lower()
+
+
+def registered_table_location(
+    spark: SparkSession,
     table_name: str,
-) -> str:
-    """Overwrite one shared Delta path and register it in the current workspace."""
-    ensure_target_schema(spark, config)
+) -> Optional[str]:
+    """Return the registered Delta location, or None when table is absent."""
+    if not spark.catalog.tableExists(table_name):
+        return None
 
-    short_name = config.short_name(table_name)
-    path = config.table_path(short_name)
+    row = spark.sql(f"DESCRIBE DETAIL {table_name}").first()
+    if row is None:
+        return None
+
+    return row.asDict().get("location")
+
+
+def validate_registered_location(
+    spark: SparkSession,
+    table_name: str,
+    expected_location: str,
+) -> str:
+    """Raise when a table is not registered at the expected external location."""
+    actual_location = registered_table_location(spark, table_name)
+
+    if actual_location is None:
+        raise RuntimeError(
+            f"{table_name} is not registered in Unity Catalog."
+        )
+
+    if normalize_location(actual_location) != normalize_location(expected_location):
+        raise RuntimeError(
+            f"{table_name} location mismatch. "
+            f"Expected={expected_location}; actual={actual_location}"
+        )
+
+    return actual_location
+
+
+def register_external_delta_table(
+    spark: SparkSession,
+    table_name: str,
+    location: str,
+) -> None:
+    """Register an existing Delta location without any cache refresh command."""
+    existing_location = registered_table_location(spark, table_name)
+
+    if existing_location is not None:
+        if normalize_location(existing_location) != normalize_location(location):
+            raise RuntimeError(
+                f"{table_name} is already registered at {existing_location}, "
+                f"but this run expects {location}."
+            )
+        return
+
+    escaped_location = location.replace("'", "''")
+
+    spark.sql(
+        f"""
+        CREATE TABLE {table_name}
+        USING DELTA
+        LOCATION '{escaped_location}'
+        """
+    )
+
+    validate_registered_location(
+        spark,
+        table_name,
+        location,
+    )
+
+
+def overwrite_external_delta(
+    spark: SparkSession,
+    df: DataFrame,
+    table_name: str,
+    location: str,
+) -> None:
+    """Overwrite Delta data and register the external table safely on Serverless."""
+    existing_location = registered_table_location(spark, table_name)
+
+    if existing_location is not None:
+        if normalize_location(existing_location) != normalize_location(location):
+            raise RuntimeError(
+                f"{table_name} is already registered at {existing_location}, "
+                f"but this run expects {location}."
+            )
 
     (
         df.write
         .format("delta")
         .mode("overwrite")
         .option("overwriteSchema", "true")
-        .save(path)
+        .save(location)
     )
 
-    escaped = _quoted_path(path)
+    register_external_delta_table(
+        spark,
+        table_name,
+        location,
+    )
 
-    if not spark.catalog.tableExists(table_name):
-        spark.sql(
-            f"CREATE TABLE {table_name} "
-            f"USING DELTA LOCATION '{escaped}'"
-        )
-
-    actual = describe_table_location(spark, table_name)
-    expected = path.rstrip("/")
-
-    if actual != expected:
-        raise RuntimeError(
-            f"{table_name} is registered at {actual}, "
-            f"but External V2 expects {expected}. "
-            "Use the dedicated V2 schema or fix the registration."
-        )
-
-    spark.sql(f"REFRESH TABLE {table_name}")
-    return path
+    # Deliberately no REFRESH TABLE. Serverless does not support it.
+    validate_registered_location(
+        spark,
+        table_name,
+        location,
+    )
 
 
-def register_external_delta(
-    spark,
-    config,
-    short_name: str,
-) -> tuple[str, str, int]:
-    """Register an existing Delta path without rebuilding its data."""
-    ensure_target_schema(spark, config)
-
-    table_name = config.table(short_name)
-    path = config.table_path(short_name)
-
-    if not DeltaTable.isDeltaTable(spark, path):
-        raise FileNotFoundError(
-            f"Shared Delta table does not exist at: {path}. "
-            "Build External V2 in the source workspace first."
-        )
-
-    escaped = _quoted_path(path)
-
-    if not spark.catalog.tableExists(table_name):
-        spark.sql(
-            f"CREATE TABLE {table_name} "
-            f"USING DELTA LOCATION '{escaped}'"
-        )
-
-    actual = describe_table_location(spark, table_name)
-    expected = path.rstrip("/")
-
-    if actual != expected:
-        raise RuntimeError(
-            f"Existing table {table_name} points to {actual}; "
-            f"expected {expected}."
-        )
-
-    spark.sql(f"REFRESH TABLE {table_name}")
-    row_count = spark.table(table_name).count()
-
-    return table_name, expected, row_count
+# Friendly aliases for compatibility with earlier Lab 06 drafts.
+write_external_delta = overwrite_external_delta
+ensure_external_table = register_external_delta_table
+get_registered_table_location = registered_table_location

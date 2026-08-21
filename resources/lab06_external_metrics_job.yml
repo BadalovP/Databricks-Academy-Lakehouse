@@ -3,11 +3,14 @@ resources:
     lab06_external_metrics_job:
       name: "Lab 06 External V2 - Shared Alert Metrics"
       description: >
-        Creates the controlled volume-drop metric as a shared external Delta table.
-        Run once in the source/development workspace before registering the metric elsewhere.
+        Builds the Lab 06 External V2 data-volume alert metric as a shared
+        external Delta table.
+
+      max_concurrent_runs: 1
+      queue:
+        enabled: true
 
       parameters:
-
         - name: catalog
           default: ${var.lab06_external_catalog}
         - name: source_schema
@@ -18,13 +21,15 @@ resources:
           default: ${var.lab06_external_target_schema}
         - name: external_gold_root
           default: ${var.lab06_external_gold_root}
+        - name: run_validation
+          default: "true"
         - name: drop_threshold_pct
           default: "30"
-        - name: simulated_volume_pct
+        - name: simulated_observed_pct
           default: "20"
 
       tasks:
-        - task_key: build_shared_alert_metrics
+        - task_key: 06_alert_metrics
           notebook_task:
-            notebook_path: ../labs/lab_06_gold_analytics_external/notebooks/lab06e_06_alert_metrics.ipynb
+            notebook_path: ../labs/lab_06_gold_analytics_external/notebooks/lab06_06_alert_metrics.ipynb
           max_retries: 0
