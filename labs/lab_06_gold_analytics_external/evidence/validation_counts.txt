@@ -1,0 +1,4 @@
+Final validation counts from Azure:
+fact_encounters       61459
+fact_conditions       38094
+agg_daily_encounters  17019

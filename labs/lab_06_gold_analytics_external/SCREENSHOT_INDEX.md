@@ -1,14 +1,15 @@
-# Screenshot Index
+# Screenshot Index — Final README
 
-These screenshots were captured from the final Azure / SoftServe deployment.
+| File | Purpose |
+|---|---|
+| `00_architecture_overview.png` | Static overview of the final one-deployment / one-job architecture |
+| `01_final_single_job_no_runs.png` | Clean Azure Jobs page showing one manager-facing Lab 06 V2 Job |
+| `02_end_to_end_dag_success.png` | Successful seven-task End-to-End DAG |
+| `03_end_to_end_timeline_success.png` | Parallel execution of tasks 05 and 06 |
+| `04_external_gold_schema_tables.png` | 13 Gold/monitoring tables in Unity Catalog |
+| `05_validation_row_counts.png` | Final fact/aggregate counts |
+| `06_azure_dashboard.png` | Azure Dashboard validation |
+| `07_azure_genie.png` | Genie validation result |
+| `08_azure_alert_triggered.png` | Azure SQL Alert triggered |
 
-1. `01_azure_v2_jobs_overview.png` — three External V2 jobs, successful recent runs.
-2. `02_gold_build_dag_success.png` — Gold DAG and successful task chain.
-3. `03_gold_build_timeline.png` — Gold task durations.
-4. `04_register_shared_gold_success.png` — registration job success.
-5. `05_external_gold_schema_tables.png` — 13 External V2 tables in Unity Catalog.
-6. `06_validation_row_counts.png` — key fact/aggregate counts.
-7. `07_azure_dashboard.png` — final V2 dashboard and KPIs.
-8. `08_azure_genie.png` — Genie validation result.
-9. `09_azure_alert_triggered.png` — Azure SQL Alert triggered and destination.
-10. `10_bundle_azure_summary.png` — final bundle summary with Azure URLs.
+The main README uses concise Mermaid architecture/job diagrams. Detailed dimensional relationships remain in `DATA_MODEL.md`.
