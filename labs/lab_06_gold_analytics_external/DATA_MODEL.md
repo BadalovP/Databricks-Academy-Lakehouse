@@ -1,89 +1,210 @@
 # Lab 06 External V2 — Data Model
 
-## Overview
+## Purpose
 
-The Gold model uses a dimensional design with shared dimensions, two fact grains, four BI aggregates, and one monitoring table.
+This document describes the final Gold analytical model used by Lab 06.
 
-## Tables
-
-| Type | Tables |
-|---|---|
-| Dimensions | `dim_date`, `dim_patient`, `dim_provider`, `dim_organization`, `dim_payer`, `dim_condition` |
-| Facts | `fact_encounters`, `fact_conditions` |
-| Aggregates | `agg_daily_encounters`, `agg_organization_performance`, `agg_payer_performance`, `agg_condition_summary` |
-| Monitoring | `lab06_data_volume_metrics` |
-
-## Fact grains
-
-### fact_encounters
-
-One row = one healthcare encounter.
-
-Relationships:
-- `date_key` → `dim_date`
-- `patient_key` → `dim_patient`
-- `provider_key` → `dim_provider`
-- `organization_key` → `dim_organization`
-- `payer_key` → `dim_payer`
-
-Typical measures:
-- claim cost
-- payer coverage
-- patient responsibility
-- duration
-
-### fact_conditions
-
-One row = one patient-condition event.
-
-Relationships:
-- `patient_key` → `dim_patient`
-- `condition_key` → `dim_condition`
-- `condition_start_date_key` → `dim_date`
-- `encounter_key` → `fact_encounters` when present
-
-## Why two facts?
-
-One encounter can be associated with multiple condition events. Combining both grains in one fact would duplicate encounter-level financial measures.
-
-Separate facts preserve correct grain and aggregation semantics.
-
-## Aggregates
+Target schema:
 
 ```text
-fact_encounters
-├── agg_daily_encounters
-├── agg_organization_performance
-└── agg_payer_performance
-
-fact_conditions
-└── agg_condition_summary
+dbr_dev.parvinbadalov_lab06_ext
 ```
 
-These aggregates are optimized for BI/Genie consumption and reconcile back to the detailed facts.
+Physical Delta root:
 
-## Relationship diagram
-
-```mermaid
-flowchart TB
-    DD["dim_date"]
-    DP["dim_patient"]
-    DPROV["dim_provider"]
-    DORG["dim_organization"]
-    DPAY["dim_payer"]
-    DCOND["dim_condition"]
-
-    FE["fact_encounters"]
-    FC["fact_conditions"]
-
-    DD --> FE
-    DP --> FE
-    DPROV --> FE
-    DORG --> FE
-    DPAY --> FE
-
-    DD --> FC
-    DP --> FC
-    DCOND --> FC
-    FE -->|"encounter_key"| FC
+```text
+abfss://parvinbadalov@dlspl21databricks.dfs.core.windows.net/lab06_gold_external_v2
 ```
+
+---
+
+## Star Schema
+
+```text
+                         dim_date
+                            |
+                            |
+dim_patient ----- fact_encounters ----- dim_provider
+      |                 |   |
+      |                 |   +---------- dim_payer
+      |                 |
+      |                 +-------------- dim_organization
+      |
+      +------- fact_conditions -------- dim_condition
+```
+
+---
+
+## Dimensions
+
+### `dim_date`
+
+Grain: one row per calendar date.
+
+The dimension is generated from the configured date range rather than only from
+dates appearing in fact data.
+
+### `dim_patient`
+
+Grain: one row per synthetic patient.
+
+### `dim_provider`
+
+Grain: one row per healthcare provider.
+
+### `dim_organization`
+
+Grain: one row per healthcare organization.
+
+### `dim_payer`
+
+Grain: one row per payer.
+
+### `dim_condition`
+
+Grain: one row per medical condition code/description.
+
+---
+
+## Facts
+
+### `fact_encounters`
+
+Grain: one row per healthcare encounter.
+
+Main relationships:
+
+```text
+date_key
+patient_key
+provider_key
+organization_key
+payer_key
+```
+
+Main measures:
+
+```text
+duration_minutes
+base_encounter_cost
+total_claim_cost
+payer_coverage
+patient_responsibility
+```
+
+Patient responsibility:
+
+```text
+total_claim_cost - payer_coverage
+```
+
+Validated row count:
+
+```text
+61,459
+```
+
+### `fact_conditions`
+
+Grain: one patient-condition occurrence/event.
+
+Main relationships:
+
+```text
+patient_key
+condition_key
+encounter_key
+condition_start_date_key
+```
+
+Validated row count:
+
+```text
+38,094
+```
+
+---
+
+## Business Aggregates
+
+### `agg_daily_encounters`
+
+Typical measures:
+
+```text
+encounter_count
+unique_patients
+organizations_active
+providers_active
+avg_duration_minutes
+total_claim_cost
+payer_coverage
+patient_responsibility
+emergency_encounters
+emergency_encounter_pct
+```
+
+### `agg_organization_performance`
+
+One row per healthcare organization.
+
+### `agg_payer_performance`
+
+One row per payer.
+
+### `agg_condition_summary`
+
+One row per medical condition.
+
+---
+
+## Monitoring Table
+
+### `lab06_data_volume_metrics`
+
+Important columns:
+
+```text
+should_alert
+alert_status
+data_source
+test_month
+baseline_encounter_count
+observed_encounter_count
+volume_drop_pct
+drop_threshold_pct
+generated_at
+```
+
+Designed demonstration state:
+
+```text
+baseline_encounter_count = 326
+observed_encounter_count = 65
+volume_drop_pct          = 80.06
+drop_threshold_pct       = 30
+should_alert             = 1
+alert_status             = TRIGGERED
+```
+
+---
+
+## Physical Storage
+
+Each Gold table is written as Delta under the shared external root, for example:
+
+```text
+.../lab06_gold_external_v2/dim_patient
+.../lab06_gold_external_v2/fact_encounters
+.../lab06_gold_external_v2/agg_daily_encounters
+.../lab06_gold_external_v2/lab06_data_volume_metrics
+```
+
+Example:
+
+```text
+abfss://parvinbadalov@dlspl21databricks.dfs.core.windows.net/lab06_gold_external_v2/fact_encounters
+```
+
+Because multiple targets use the same physical external root, target runs should
+be performed sequentially.
