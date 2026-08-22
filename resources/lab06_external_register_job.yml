@@ -29,3 +29,4 @@ resources:
           notebook_task:
             notebook_path: ../labs/lab_06_gold_analytics_external/notebooks/lab06e_05_register_shared_tables.ipynb
           max_retries: 0
+

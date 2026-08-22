@@ -68,3 +68,4 @@ resources:
             notebook_path: ../labs/lab_06_gold_analytics_external/notebooks/lab06e_07_validation.ipynb
           max_retries: 1
           min_retry_interval_millis: 60000
+
