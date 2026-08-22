@@ -1,0 +1,809 @@
+{
+  "data_sources": {
+    "tables": [
+      {
+        "column_configs": [
+          {
+            "column_name": "active_condition_events",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "avg_duration_days",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "condition_code",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "condition_description",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "condition_events",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "condition_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "first_observed_date",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "last_observed_date",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "unique_patients",
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "dbr_dev.parvinbadalov_lab06_ext.agg_condition_summary"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "avg_duration_minutes",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "base_encounter_cost",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "date_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "emergency_encounter_pct",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "emergency_encounters",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "encounter_count",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "encounter_date",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "organizations_active",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "patient_responsibility",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "payer_coverage",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "providers_active",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "total_claim_cost",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "unique_patients",
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "dbr_dev.parvinbadalov_lab06_ext.agg_daily_encounters"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "avg_claim_cost",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "avg_duration_minutes",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "city",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "encounter_count",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "first_encounter_date",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "last_encounter_date",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "organization_id",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "organization_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "organization_name",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "patient_responsibility",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "payer_coverage",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "state",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "total_claim_cost",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "unique_patients",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "unique_providers",
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "dbr_dev.parvinbadalov_lab06_ext.agg_organization_performance"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "avg_claim_cost",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "coverage_pct",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "encounter_count",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "patient_responsibility",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "payer_coverage",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "payer_id",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "payer_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "payer_name",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "total_claim_cost",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "unique_patients",
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "dbr_dev.parvinbadalov_lab06_ext.agg_payer_performance"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "condition_code",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "condition_description",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "condition_key",
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "dbr_dev.parvinbadalov_lab06_ext.dim_condition"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "date_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "day_name",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "day_of_month",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "full_date",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "is_weekend",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "iso_day_of_week",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "month",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "month_name",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "quarter",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "week_of_year",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "year",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "year_month",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "dbr_dev.parvinbadalov_lab06_ext.dim_date"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "address",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "city",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "latitude",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "longitude",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "organization_id",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "organization_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "organization_name",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "phone",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "revenue",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "state",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "utilization",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "zip_code",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "dbr_dev.parvinbadalov_lab06_ext.dim_organization"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "address",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "birth_date",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "birthplace",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "city",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "county",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "death_date",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "ethnicity",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "first_name",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "gender",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "healthcare_coverage",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "healthcare_expenses",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "last_name",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "latitude",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "longitude",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "maiden_name",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "marital_status",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "patient_id",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "patient_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "race",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "ssn",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "state",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "zip_code",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "dbr_dev.parvinbadalov_lab06_ext.dim_patient"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "address",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "amount_covered",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "amount_uncovered",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "city",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "covered_encounters",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "member_months",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "payer_id",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "payer_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "payer_name",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "phone",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "qols_avg",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "revenue",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "state",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "uncovered_encounters",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "unique_customers",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "zip_code",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "dbr_dev.parvinbadalov_lab06_ext.dim_payer"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "address",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "city",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "gender",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "latitude",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "longitude",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "organization_id",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "provider_id",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "provider_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "provider_name",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "specialty",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "state",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "utilization",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "zip_code",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "dbr_dev.parvinbadalov_lab06_ext.dim_provider"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "condition_code",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "condition_description",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "condition_duration_days",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "condition_event_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "condition_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "condition_start_date",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "condition_start_date_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "condition_stop_date",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "encounter_id",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "encounter_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "is_active_condition",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "patient_id",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "patient_key",
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "dbr_dev.parvinbadalov_lab06_ext.fact_conditions"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "base_encounter_cost",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "date_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "duration_minutes",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "encounter_class",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "encounter_code",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "encounter_date",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "encounter_description",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "encounter_id",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "encounter_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "encounter_start_ts",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "encounter_stop_ts",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "organization_id",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "organization_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "patient_id",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "patient_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "patient_responsibility",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "payer_coverage",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "payer_id",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "payer_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "provider_id",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "provider_key",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "reason_code",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "reason_description",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "total_claim_cost",
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "dbr_dev.parvinbadalov_lab06_ext.fact_encounters"
+      },
+      {
+        "column_configs": [
+          {
+            "column_name": "alert_status",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "baseline_encounter_count",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "data_source",
+            "enable_entity_matching": true,
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "drop_threshold_pct",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "generated_at",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "observed_encounter_count",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "should_alert",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "test_month",
+            "enable_format_assistance": true
+          },
+          {
+            "column_name": "volume_drop_pct",
+            "enable_format_assistance": true
+          }
+        ],
+        "identifier": "dbr_dev.parvinbadalov_lab06_ext.lab06_data_volume_metrics"
+      }
+    ]
+  },
+  "version": 2
+}
