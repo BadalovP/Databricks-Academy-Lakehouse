@@ -5,7 +5,7 @@ resources:
 
       description: >
         End-to-end orchestration for Lab 05.
-        Creates/validates the required volumes and directories,
+        Creates and validates the required managed volumes and directories,
         prepares Citi Bike source data, produces one new immutable
         station_status snapshot, runs the Lakeflow pipeline incrementally,
         then executes final validation.
@@ -26,9 +26,6 @@ resources:
         - name: streaming_volume_name
           default: lab05_lakeflow_streaming
 
-        - name: external_location_name
-          default: parvinbadalov_root_location
-
         - name: seed_snapshot_count
           default: "3"
 
@@ -38,7 +35,7 @@ resources:
       tasks:
 
         # ---------------------------------------------------------------
-        # 0. Create / validate schema, volumes and required directories.
+        # 0. Create / validate schema, managed volumes and directories.
         # Safe to rerun because setup uses IF NOT EXISTS.
         # ---------------------------------------------------------------
         - task_key: 00_setup
@@ -49,7 +46,6 @@ resources:
               schema: "{{job.parameters.schema}}"
               volume_name: "{{job.parameters.volume_name}}"
               streaming_volume_name: "{{job.parameters.streaming_volume_name}}"
-              external_location_name: "{{job.parameters.external_location_name}}"
 
         # ---------------------------------------------------------------
         # 1. Prepare batch/reference data and initial streaming snapshots.
