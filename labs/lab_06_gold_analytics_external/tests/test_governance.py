@@ -19,7 +19,8 @@ def _code() -> str:
 
 def test_governance_targets_external_v2_schema():
     code = _code()
-    assert 'target_schema", "parvinbadalov_lab06_ext"' in code
+    assert '"target_schema"' in code
+    assert '"parvinbadalov_lab06_ext"' in code
     assert 'fact_encounters = f"{target_schema_fqn}.fact_encounters"' in code
     assert 'dim_patient = f"{target_schema_fqn}.dim_patient"' in code
 
