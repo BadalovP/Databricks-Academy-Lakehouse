@@ -23,13 +23,13 @@ resources:
         - file:
             path: ../labs/lab_05_lakeflow/pipeline/gold.py
 
-      # IMPORTANT:
-      # src/config.py expects these exact Spark configuration keys.
+      # Exact Spark configuration keys expected by src/config.py.
       configuration:
         lab05.catalog: ${var.lab05_catalog}
         lab05.schema: ${var.lab05_schema}
         lab05.volume_name: ${var.lab05_volume_name}
         lab05.streaming_volume_name: ${var.lab05_streaming_volume_name}
+        lab05.run_checks: "true"
 
       channel: CURRENT
 
