@@ -1,0 +1,1456 @@
+{
+  "datasets": [
+    {
+      "name": "800f84ce",
+      "displayName": "agg_daily_encounters",
+      "config": {
+        "version": "1.1",
+        "source": "dbr_dev.parvinbadalov_lab06_ext.agg_daily_encounters",
+        "dimensions": [
+          {
+            "expr": "source.*"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "f6326da6",
+      "displayName": "agg_organization_performance",
+      "config": {
+        "version": "1.1",
+        "source": "dbr_dev.parvinbadalov_lab06_ext.agg_organization_performance",
+        "dimensions": [
+          {
+            "expr": "source.*"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "193cfaf1",
+      "displayName": "agg_payer_performance",
+      "config": {
+        "version": "1.1",
+        "source": "dbr_dev.parvinbadalov_lab06_ext.agg_payer_performance",
+        "dimensions": [
+          {
+            "expr": "source.*"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "5acc0090",
+      "displayName": "agg_condition_summary",
+      "config": {
+        "version": "1.1",
+        "source": "dbr_dev.parvinbadalov_lab06_ext.agg_condition_summary",
+        "dimensions": [
+          {
+            "expr": "source.*"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "12e61789",
+      "displayName": "lab06_data_volume_metrics",
+      "config": {
+        "version": "1.1",
+        "source": "dbr_dev.parvinbadalov_lab06_ext.lab06_data_volume_metrics",
+        "dimensions": [
+          {
+            "expr": "source.*"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "top_10_conditions",
+      "displayName": "Top 10 Conditions",
+      "config": {
+        "version": "1.1",
+        "source": "SELECT \n  condition_description,\n  SUM(condition_events) AS total_events_sum\nFROM dbr_dev.parvinbadalov_lab06_ext.agg_condition_summary GROUP BY condition_description ORDER BY SUM(condition_events) DESC LIMIT 10\n",
+        "dimensions": [
+          {
+            "name": "condition_description",
+            "expr": "condition_description"
+          }
+        ],
+        "measures": [
+          {
+            "name": "condition_events",
+            "expr": "SUM(total_events_sum)"
+          }
+        ]
+      }
+    },
+    {
+      "name": "top_10_orgs",
+      "displayName": "Top 10 Organizations",
+      "config": {
+        "version": "1.1",
+        "source": "SELECT \n  organization_name,\n  SUM(encounter_count) AS total_encounter_count\nFROM dbr_dev.parvinbadalov_lab06_ext.agg_organization_performance GROUP BY organization_name ORDER BY SUM(encounter_count) DESC LIMIT 10\n",
+        "dimensions": [
+          {
+            "name": "organization_name",
+            "expr": "organization_name"
+          }
+        ],
+        "measures": [
+          {
+            "name": "encounter_count",
+            "expr": "SUM(total_encounter_count)"
+          }
+        ]
+      }
+    },
+    {
+      "name": "top_10_payers",
+      "displayName": "Top 10 Payers",
+      "config": {
+        "version": "1.1",
+        "source": "SELECT \n  payer_name,\n  SUM(total_claim_cost) AS total_cost_sum\nFROM dbr_dev.parvinbadalov_lab06_ext.agg_payer_performance GROUP BY payer_name ORDER BY SUM(total_claim_cost) DESC LIMIT 10\n",
+        "dimensions": [
+          {
+            "name": "payer_name",
+            "expr": "payer_name"
+          }
+        ],
+        "measures": [
+          {
+            "name": "total_claim_cost",
+            "expr": "SUM(total_cost_sum)"
+          }
+        ]
+      }
+    },
+    {
+      "name": "d91a4696",
+      "displayName": "kpi_total_patients",
+      "queryLines": [
+        "SELECT\r\n",
+        "    COUNT(DISTINCT patient_key) AS total_patients\r\n",
+        "FROM dbr_dev.parvinbadalov_lab06_ext.fact_encounters;"
+      ]
+    },
+    {
+      "name": "encounter_class_analysis",
+      "displayName": "Encounter Class Analysis",
+      "queryLines": [
+        "SELECT\n",
+        "  encounter_class,\n",
+        "  COUNT(*) AS encounter_count,\n",
+        "  SUM(\n",
+        "    CASE\n",
+        "      WHEN encounter_class = 'emergency' THEN 1\n",
+        "      ELSE 0\n",
+        "    END\n",
+        "  ) AS emergency_count\n",
+        "FROM\n",
+        "  dbr_dev.parvinbadalov_lab06_ext.fact_encounters\n",
+        "WHERE\n",
+        "  (\n",
+        "    :encounter_date_range.min IS NULL\n",
+        "    OR encounter_date >= :encounter_date_range.min\n",
+        "  )\n",
+        "  AND (\n",
+        "    :encounter_date_range.max IS NULL\n",
+        "    OR encounter_date <= :encounter_date_range.max\n",
+        "  )\n",
+        "GROUP BY\n",
+        "  encounter_class\n",
+        "ORDER BY\n",
+        "  encounter_count DESC"
+      ],
+      "parameters": [
+        {
+          "displayName": "Encounter Date Range",
+          "keyword": "encounter_date_range",
+          "dataType": "DATE",
+          "complexType": "RANGE",
+          "defaultSelection": {}
+        }
+      ]
+    },
+    {
+      "name": "kpi_metrics",
+      "displayName": "KPI Metrics",
+      "queryLines": [
+        "SELECT\n",
+        "  AVG(duration_minutes) AS avg_duration_minutes,\n",
+        "  SUM(patient_responsibility) AS total_patient_responsibility,\n",
+        "  SUM(\n",
+        "    CASE\n",
+        "      WHEN encounter_class = 'emergency' THEN 1\n",
+        "      ELSE 0\n",
+        "    END\n",
+        "  ) AS emergency_encounters,\n",
+        "  COUNT(*) AS total_encounters,\n",
+        "  CAST(\n",
+        "    SUM(\n",
+        "      CASE\n",
+        "        WHEN encounter_class = 'emergency' THEN 1\n",
+        "        ELSE 0\n",
+        "      END\n",
+        "    ) AS DOUBLE\n",
+        "  )\n",
+        "    / COUNT(*) AS emergency_pct\n",
+        "FROM\n",
+        "  dbr_dev.parvinbadalov_lab06_ext.fact_encounters\n",
+        "WHERE\n",
+        "  (\n",
+        "    :encounter_date_range.min IS NULL\n",
+        "    OR encounter_date >= :encounter_date_range.min\n",
+        "  )\n",
+        "  AND (\n",
+        "    :encounter_date_range.max IS NULL\n",
+        "    OR encounter_date <= :encounter_date_range.max\n",
+        "  )"
+      ],
+      "parameters": [
+        {
+          "displayName": "Encounter Date Range",
+          "keyword": "encounter_date_range",
+          "dataType": "DATE",
+          "complexType": "RANGE",
+          "defaultSelection": {
+            "operator": {
+              "operator": "AND"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "active_conditions",
+      "displayName": "Active Conditions",
+      "config": {
+        "version": "1.1",
+        "source": "SELECT \n  condition_description,\n  SUM(active_condition_events) AS active_events_sum\nFROM dbr_dev.parvinbadalov_lab06_ext.agg_condition_summary GROUP BY condition_description ORDER BY SUM(active_condition_events) DESC LIMIT 10\n",
+        "dimensions": [
+          {
+            "name": "condition_description",
+            "expr": "condition_description"
+          }
+        ],
+        "measures": [
+          {
+            "name": "active_condition_events",
+            "expr": "SUM(active_events_sum)"
+          }
+        ]
+      }
+    },
+    {
+      "name": "payer_coverage_pct",
+      "displayName": "Payer Coverage Percentage",
+      "config": {
+        "version": "1.1",
+        "source": "dbr_dev.parvinbadalov_lab06_ext.agg_payer_performance",
+        "dimensions": [
+          {
+            "name": "payer_name",
+            "expr": "payer_name"
+          },
+          {
+            "name": "coverage_pct",
+            "expr": "coverage_pct"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)"
+          }
+        ]
+      }
+    },
+    {
+      "name": "org_cost_performance",
+      "displayName": "Organization Cost Performance",
+      "config": {
+        "version": "1.1",
+        "source": "SELECT \n  organization_name,\n  SUM(total_claim_cost) AS total_claim_cost_sum,\n  SUM(unique_patients) AS unique_patients_sum,\n  AVG(avg_claim_cost) AS avg_claim_cost_avg\nFROM dbr_dev.parvinbadalov_lab06_ext.agg_organization_performance GROUP BY organization_name ORDER BY SUM(total_claim_cost) DESC LIMIT 10\n",
+        "dimensions": [
+          {
+            "name": "organization_name",
+            "expr": "organization_name"
+          }
+        ],
+        "measures": [
+          {
+            "name": "total_claim_cost",
+            "expr": "SUM(total_claim_cost_sum)"
+          },
+          {
+            "name": "unique_patients",
+            "expr": "SUM(unique_patients_sum)"
+          },
+          {
+            "name": "avg_claim_cost",
+            "expr": "AVG(avg_claim_cost_avg)"
+          }
+        ]
+      }
+    },
+    {
+      "name": "conditions_by_patients",
+      "displayName": "Conditions by Unique Patients",
+      "queryLines": [
+        "SELECT\n",
+        "  condition_description,\n",
+        "  SUM(unique_patients) AS total_unique_patients\n",
+        "FROM\n",
+        "  dbr_dev.parvinbadalov_lab06_ext.agg_condition_summary\n",
+        "GROUP BY\n",
+        "  condition_description\n",
+        "ORDER BY\n",
+        "  SUM(unique_patients) DESC\n",
+        "LIMIT 10"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "ade739cb",
+      "displayName": "Operations Overview",
+      "layout": [
+        {
+          "widget": {
+            "name": "total_encounters_kpi",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "800f84ce",
+                  "fields": [
+                    {
+                      "name": "sum(encounter_count)",
+                      "expression": "SUM(`encounter_count`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Total Encounters",
+                "showTitle": true
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(encounter_count)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "total_claim_cost_kpi",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "800f84ce",
+                  "fields": [
+                    {
+                      "name": "sum(total_claim_cost)",
+                      "expression": "SUM(`total_claim_cost`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Total Claim Cost",
+                "showTitle": true
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(total_claim_cost)",
+                  "rowNumber": 0,
+                  "format": {
+                    "type": "number-currency",
+                    "abbreviation": "compact",
+                    "currencyCode": "USD",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 0,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "total_payer_coverage_kpi",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "800f84ce",
+                  "fields": [
+                    {
+                      "name": "sum(payer_coverage)",
+                      "expression": "SUM(`payer_coverage`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Total Payer Coverage",
+                "showTitle": true
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(payer_coverage)",
+                  "rowNumber": 0,
+                  "format": {
+                    "type": "number-currency",
+                    "abbreviation": "compact",
+                    "currencyCode": "USD",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 0,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "encounters_over_time",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "800f84ce",
+                  "fields": [
+                    {
+                      "name": "daily(encounter_date)",
+                      "expression": "DATE_TRUNC(\"DAY\", `encounter_date`)"
+                    },
+                    {
+                      "name": "sum(encounter_count)",
+                      "expression": "SUM(`encounter_count`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "Encounters Over Time",
+                "showTitle": true
+              },
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "daily(encounter_date)",
+                  "displayName": "Day",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(encounter_count)",
+                  "displayName": "encounter_count",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 7,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "claim_cost_over_time",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "800f84ce",
+                  "fields": [
+                    {
+                      "name": "daily(encounter_date)",
+                      "expression": "DATE_TRUNC(\"DAY\", `encounter_date`)"
+                    },
+                    {
+                      "name": "sum(total_claim_cost)",
+                      "expression": "SUM(`total_claim_cost`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "Total Claim Cost Over Time",
+                "showTitle": true
+              },
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "daily(encounter_date)",
+                  "displayName": "Day",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(total_claim_cost)",
+                  "displayName": "total_claim_cost",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 7,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "top_organizations",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "top_10_orgs",
+                  "fields": [
+                    {
+                      "name": "organization_name",
+                      "expression": "`organization_name`"
+                    },
+                    {
+                      "name": "measure(encounter_count)",
+                      "expression": "MEASURE(`encounter_count`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "Top Organizations by Encounter Count",
+                "showTitle": true
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "organization_name",
+                  "displayName": "organization_name",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(encounter_count)",
+                  "displayName": "encounter_count",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "organization_name",
+                  "displayName": "organization_name",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 12,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "payer_performance",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "top_10_payers",
+                  "fields": [
+                    {
+                      "name": "payer_name",
+                      "expression": "`payer_name`"
+                    },
+                    {
+                      "name": "measure(total_claim_cost)",
+                      "expression": "MEASURE(`total_claim_cost`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "Payer Performance: Cost vs Coverage",
+                "showTitle": true
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "payer_name",
+                  "displayName": "payer_name",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(total_claim_cost)",
+                  "displayName": "total_claim_cost",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "payer_name",
+                  "displayName": "payer_name",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 12,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "top_conditions",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "top_10_conditions",
+                  "fields": [
+                    {
+                      "name": "condition_description",
+                      "expression": "`condition_description`"
+                    },
+                    {
+                      "name": "measure(condition_events)",
+                      "expression": "MEASURE(`condition_events`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "Top Conditions by Event Count",
+                "showTitle": true
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "condition_description",
+                  "displayName": "condition_description",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(condition_events)",
+                  "displayName": "condition_events",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "condition_description",
+                  "displayName": "condition_description",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 12,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "data_quality_alerts",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "12e61789",
+                  "fields": [
+                    {
+                      "name": "alert_status",
+                      "expression": "`alert_status`"
+                    },
+                    {
+                      "name": "volume_drop_pct",
+                      "expression": "`volume_drop_pct`"
+                    },
+                    {
+                      "name": "baseline_encounter_count",
+                      "expression": "`baseline_encounter_count`"
+                    },
+                    {
+                      "name": "observed_encounter_count",
+                      "expression": "`observed_encounter_count`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Data Quality Alerts",
+                "showTitle": true
+              },
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "alert_status"
+                  },
+                  {
+                    "fieldName": "volume_drop_pct"
+                  },
+                  {
+                    "fieldName": "baseline_encounter_count"
+                  },
+                  {
+                    "fieldName": "observed_encounter_count"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 27,
+            "width": 12,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "total_patients_kpi",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "d91a4696",
+                  "fields": [
+                    {
+                      "name": "sum(total_patients)",
+                      "expression": "SUM(`total_patients`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Total Unique Patients",
+                "showTitle": true
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(total_patients)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 0,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "org_cost_performance",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "org_cost_performance",
+                  "fields": [
+                    {
+                      "name": "organization_name",
+                      "expression": "`organization_name`"
+                    },
+                    {
+                      "name": "measure(total_claim_cost)",
+                      "expression": "MEASURE(`total_claim_cost`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "Top Organizations by Total Claim Cost",
+                "showTitle": true
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "organization_name",
+                  "displayName": "organization_name",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(total_claim_cost)",
+                  "displayName": "total_claim_cost",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "organization_name",
+                  "displayName": "organization_name",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 17,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "conditions_by_patients",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "conditions_by_patients",
+                  "fields": [
+                    {
+                      "name": "condition_description",
+                      "expression": "`condition_description`"
+                    },
+                    {
+                      "name": "sum(total_unique_patients)",
+                      "expression": "SUM(`total_unique_patients`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "Top Conditions by Unique Patients",
+                "showTitle": true
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "condition_description",
+                  "displayName": "condition_description",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(total_unique_patients)",
+                  "displayName": "unique_patients",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "condition_description",
+                  "displayName": "condition_description",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 22,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "active_conditions",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "active_conditions",
+                  "fields": [
+                    {
+                      "name": "condition_description",
+                      "expression": "`condition_description`"
+                    },
+                    {
+                      "name": "measure(active_condition_events)",
+                      "expression": "MEASURE(`active_condition_events`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "Top Active Conditions",
+                "showTitle": true
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "condition_description",
+                  "displayName": "condition_description",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(active_condition_events)",
+                  "displayName": "active_condition_events",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "condition_description",
+                  "displayName": "condition_description",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 22,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "payer_coverage_pct",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "payer_coverage_pct",
+                  "fields": [
+                    {
+                      "name": "payer_name",
+                      "expression": "`payer_name`"
+                    },
+                    {
+                      "name": "sum(coverage_pct)",
+                      "expression": "SUM(`coverage_pct`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "Payer Coverage Percentage",
+                "showTitle": true
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "payer_name",
+                  "displayName": "payer_name",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(coverage_pct)",
+                  "displayName": "coverage_pct",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "payer_name",
+                  "displayName": "payer_name",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 17,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "encounter_class_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "encounter_class_analysis",
+                  "fields": [
+                    {
+                      "name": "encounter_class",
+                      "expression": "`encounter_class`"
+                    },
+                    {
+                      "name": "sum(encounter_count)",
+                      "expression": "SUM(`encounter_count`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "Encounters by Class",
+                "showTitle": true
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "encounter_class",
+                  "displayName": "encounter_class",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(encounter_count)",
+                  "displayName": "encounter_count",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "encounter_class",
+                  "displayName": "encounter_class",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 22,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "emergency_pct_kpi",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "kpi_metrics",
+                  "fields": [
+                    {
+                      "name": "emergency_pct",
+                      "expression": "`emergency_pct`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Emergency %"
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "emergency_pct",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 4,
+            "width": 4,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "avg_duration_kpi",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "kpi_metrics",
+                  "fields": [
+                    {
+                      "name": "avg_duration_minutes",
+                      "expression": "`avg_duration_minutes`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Avg Encounter Duration (min)"
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg_duration_minutes",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 4,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "patient_resp_kpi",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "kpi_metrics",
+                  "fields": [
+                    {
+                      "name": "total_patient_responsibility",
+                      "expression": "`total_patient_responsibility`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Total Patient Responsibility",
+                "showDescription": false
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "total_patient_responsibility",
+                  "format": {
+                    "type": "number-currency",
+                    "abbreviation": "compact",
+                    "currencyCode": "USD",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 4,
+            "width": 4,
+            "height": 3
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "global_filters",
+      "displayName": "Global Filters",
+      "layout": [
+        {
+          "widget": {
+            "name": "date_filter",
+            "queries": [
+              {
+                "name": "dashboards/01f19dab76bd1062b9a09eb0ea01756c/datasets/01f19dabaaa91acc922bc52ca6425fab_encounter_date",
+                "query": {
+                  "datasetName": "800f84ce",
+                  "fields": [
+                    {
+                      "name": "encounter_date",
+                      "expression": "`encounter_date`"
+                    },
+                    {
+                      "name": "encounter_date_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Encounter Date Range",
+                "showTitle": true
+              },
+              "widgetType": "filter-date-range-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "encounter_date",
+                    "queryName": "dashboards/01f19dab76bd1062b9a09eb0ea01756c/datasets/01f19dabaaa91acc922bc52ca6425fab_encounter_date"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 4,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_GLOBAL_FILTERS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    },
+    "applyModeEnabled": false
+  }
+}
