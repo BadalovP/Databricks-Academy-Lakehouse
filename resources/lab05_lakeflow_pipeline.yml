@@ -1,29 +1,34 @@
 resources:
   pipelines:
     lab05_lakeflow_pipeline:
-      name: lab05_lakeflow_pipeline
+      name: "Lab 05 - Citi Bike Lakeflow Pipeline"
 
-      catalog: dbr_dev
-      schema: parvinbadalov
+      catalog: ${var.lab05_catalog}
+      schema: ${var.lab05_schema}
 
+      # Lakeflow pipeline compute remains serverless.
       serverless: true
       continuous: false
-      edition: ADVANCED
-      channel: PREVIEW
-
-      root_path: ../labs/lab_05_lakeflow
 
       libraries:
-        - glob:
-            include: ../labs/lab_05_lakeflow/pipeline/**
+        - file:
+            path: ../labs/lab_05_lakeflow/pipeline/bronze.py
+
+        - file:
+            path: ../labs/lab_05_lakeflow/pipeline/silver.py
+
+        - file:
+            path: ../labs/lab_05_lakeflow/pipeline/gold.py
 
       configuration:
-        lab05.catalog: dbr_dev
-        lab05.schema: parvinbadalov
-        lab05.volume_name: lab05_lakeflow
-        lab05.streaming_volume_name: lab05_lakeflow_streaming
-        lab05.run_checks: "true"
+        catalog: ${var.lab05_catalog}
+        schema: ${var.lab05_schema}
+        volume_name: ${var.lab05_volume_name}
+        streaming_volume_name: ${var.lab05_streaming_volume_name}
+
+      channel: CURRENT
 
       tags:
         lab: "05"
-        project: citibike_lakeflow
+        project: "citibike_lakeflow"
+        purpose: "declarative_pipeline"

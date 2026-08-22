@@ -1,0 +1,53 @@
+# Lab 05 production infrastructure.
+#
+# Development keeps using the existing dbr_dev.parvinbadalov schema/Volumes.
+# Production gets an isolated schema and managed Volumes created by the Bundle.
+#
+# This keeps DDL/infrastructure creation OUT of the operational Job DAG.
+
+targets:
+  azure_prod:
+    resources:
+      schemas:
+        lab05_prod_schema:
+          name: ${var.lab05_schema}
+          catalog_name: ${var.lab05_catalog}
+          comment: "Lab 05 production schema managed by Declarative Automation Bundles"
+
+      volumes:
+        lab05_reference_volume:
+          name: ${var.lab05_volume_name}
+          catalog_name: ${resources.schemas.lab05_prod_schema.catalog_name}
+          schema_name: ${resources.schemas.lab05_prod_schema.name}
+          volume_type: MANAGED
+          comment: "Lab 05 production reference and test data"
+
+        lab05_streaming_volume:
+          name: ${var.lab05_streaming_volume_name}
+          catalog_name: ${resources.schemas.lab05_prod_schema.catalog_name}
+          schema_name: ${resources.schemas.lab05_prod_schema.name}
+          volume_type: MANAGED
+          comment: "Lab 05 production streaming landing data"
+
+  personal_prod:
+    resources:
+      schemas:
+        lab05_prod_schema:
+          name: ${var.lab05_schema}
+          catalog_name: ${var.lab05_catalog}
+          comment: "Lab 05 production schema managed by Declarative Automation Bundles"
+
+      volumes:
+        lab05_reference_volume:
+          name: ${var.lab05_volume_name}
+          catalog_name: ${resources.schemas.lab05_prod_schema.catalog_name}
+          schema_name: ${resources.schemas.lab05_prod_schema.name}
+          volume_type: MANAGED
+          comment: "Lab 05 production reference and test data"
+
+        lab05_streaming_volume:
+          name: ${var.lab05_streaming_volume_name}
+          catalog_name: ${resources.schemas.lab05_prod_schema.catalog_name}
+          schema_name: ${resources.schemas.lab05_prod_schema.name}
+          volume_type: MANAGED
+          comment: "Lab 05 production streaming landing data"

@@ -4,35 +4,18 @@ set -euo pipefail
 # ============================================================================
 # Databricks Academy reusable runner
 #
-# Azure compute selection:
-#   --cluster gp1   -> GP1 (DEFAULT); start it if needed
-#   --cluster gp2   -> GP2; start it if needed
-#   --cluster auto  -> use an already-running GP1/GP2; if neither runs, start GP1
+# Azure:
+#   --cluster gp1  (default)
+#   --cluster gp2
+#   --cluster auto
 #
-# Personal targets:
-#   serverless compute is used; --cluster is ignored.
+# Personal:
+#   serverless compute; --cluster is ignored.
 #
-# Examples:
-#
-#   Default GP1:
-#     bash tools/run_academy_lab.sh \
-#       --lab 05 \
-#       --target azure_dev \
-#       --profile adb-7405604503619901
-#
-#   Explicit GP2:
-#     bash tools/run_academy_lab.sh \
-#       --lab 05 \
-#       --cluster gp2 \
-#       --target azure_dev \
-#       --profile adb-7405604503619901
-#
-#   Automatic:
-#     bash tools/run_academy_lab.sh \
-#       --lab 05 \
-#       --cluster auto \
-#       --target azure_dev \
-#       --profile adb-7405604503619901
+# Lab 05 production deployment additionally creates:
+#   - schema
+#   - reference/test managed Volume
+#   - streaming managed Volume
 # ============================================================================
 
 AZURE_GP1_DEFAULT="0702-132442-toro5spu"
@@ -71,20 +54,14 @@ Options:
       Databricks CLI profile.
 
   --cluster gp1|gp2|auto
-      Azure all-purpose compute selection.
-      Default: gp1
-
-      gp1  = use GP1; start it if terminated
-      gp2  = use GP2; start it if terminated
-      auto = use a currently running GP1/GP2; otherwise start GP1
-
-      Personal targets use serverless and ignore this option.
+      Azure compute selection. Default: gp1.
+      Personal targets ignore this option and use serverless.
 
   --gp1 CLUSTER_ID
-      Override configured Azure GP1 cluster ID.
+      Override Azure GP1 cluster ID.
 
   --gp2 CLUSTER_ID
-      Override configured Azure GP2 cluster ID.
+      Override Azure GP2 cluster ID.
 
   --skip-validate
   --skip-deploy
@@ -100,11 +77,19 @@ configure_lab() {
       LAB="05"
       JOB_KEY="lab05_lakeflow_job"
       CLUSTER_VAR="lab05_cluster_id"
-      RESOURCE_SELECT="jobs.lab05_lakeflow_job,pipelines.lab05_lakeflow_pipeline"
+
+      case "$TARGET" in
+        azure_prod|personal_prod)
+          RESOURCE_SELECT="schemas.lab05_prod_schema,volumes.lab05_reference_volume,volumes.lab05_streaming_volume,jobs.lab05_lakeflow_job,pipelines.lab05_lakeflow_pipeline"
+          ;;
+        *)
+          RESOURCE_SELECT="jobs.lab05_lakeflow_job,pipelines.lab05_lakeflow_pipeline"
+          ;;
+      esac
       ;;
     6|06|7|07|8|08|9|09|10|11|12)
       echo "ERROR: Lab $LAB is not wired into this runner yet." >&2
-      echo "Add its JOB_KEY, CLUSTER_VAR and RESOURCE_SELECT to configure_lab()." >&2
+      echo "Add its resource mapping to configure_lab()." >&2
       exit 2
       ;;
     *)

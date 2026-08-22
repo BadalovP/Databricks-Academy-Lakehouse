@@ -21,10 +21,25 @@ variables:
 
   lab05_cluster_id:
     description: >
-      Existing all-purpose cluster used by Lab 05 in Azure targets.
-      tools/run_academy_lab.sh can override this value after checking GP1/GP2.
-      Personal targets keep Lab 05 serverless and do not use this value.
+      Existing all-purpose cluster used by Lab 05 notebook and Python tasks
+      in Azure targets. tools/run_academy_lab.sh can override this value.
     default: "0702-132442-toro5spu"
+
+  lab05_catalog:
+    description: Unity Catalog catalog used by Lab 05
+    default: "dbr_dev"
+
+  lab05_schema:
+    description: Unity Catalog schema used by Lab 05
+    default: "parvinbadalov"
+
+  lab05_volume_name:
+    description: Managed Volume used for Lab 05 reference and test data
+    default: "lab05_lakeflow"
+
+  lab05_streaming_volume_name:
+    description: Managed Volume used for Lab 05 streaming landing data
+    default: "lab05_lakeflow_streaming"
 
   # -------------------------------------------------------------------
   # Lab 06 V1
@@ -75,21 +90,18 @@ targets:
       host: https://adb-7405604503619901.1.azuredatabricks.net
 
     variables:
+      lab05_catalog: "dbr_dev"
+      lab05_schema: "parvinbadalov"
       lab05_cluster_id: "0702-132442-toro5spu"
+
       lab06_warehouse_id: "3ed106620db591d9"
       lab06_alert_subscriber_email: "parvinbadalov@softserve.academy"
       lab06_alert_parent_path: "/Workspace/Users/parvinbadalov@softserve.academy"
 
-    # Lab 05:
-    # Azure notebook/Python tasks use an existing all-purpose cluster.
-    # The runner may override lab05_cluster_id with GP2 if GP2 is already active.
     resources:
       jobs:
         lab05_lakeflow_job:
           tasks:
-            - task_key: 00_setup
-              existing_cluster_id: ${var.lab05_cluster_id}
-
             - task_key: 01_source_preparation
               existing_cluster_id: ${var.lab05_cluster_id}
 
@@ -121,7 +133,10 @@ targets:
         user_name: parvinbadalov@softserve.academy
 
     variables:
+      lab05_catalog: "dbr_dev"
+      lab05_schema: "parvinbadalov_lab05_prod"
       lab05_cluster_id: "0702-132442-toro5spu"
+
       lab06_warehouse_id: "3ed106620db591d9"
       lab06_alert_subscriber_email: "parvinbadalov@softserve.academy"
       lab06_alert_parent_path: "/Workspace/Users/parvinbadalov@softserve.academy"
@@ -130,9 +145,6 @@ targets:
       jobs:
         lab05_lakeflow_job:
           tasks:
-            - task_key: 00_setup
-              existing_cluster_id: ${var.lab05_cluster_id}
-
             - task_key: 01_source_preparation
               existing_cluster_id: ${var.lab05_cluster_id}
 
@@ -154,13 +166,13 @@ targets:
       host: https://dbc-1750318a-76a9.cloud.databricks.com
 
     variables:
+      lab05_catalog: "dbr_dev"
+      lab05_schema: "parvinbadalov"
+
       lab06_warehouse_id: "410e5f3b4784e981"
       lab06_alert_subscriber_email: "parvinbadalov@yahoo.com"
       lab06_alert_parent_path: "/Workspace/Users/parvinbadalov@yahoo.com/Drafts"
 
-    # Lab 05:
-    # Notebook tasks are serverless when no cluster is specified.
-    # Python script tasks need an environment_key for serverless compute.
     resources:
       jobs:
         lab05_lakeflow_job:
@@ -190,6 +202,9 @@ targets:
         user_name: parvinbadalov@yahoo.com
 
     variables:
+      lab05_catalog: "dbr_dev"
+      lab05_schema: "parvinbadalov_lab05_prod"
+
       lab06_warehouse_id: "410e5f3b4784e981"
       lab06_alert_subscriber_email: "parvinbadalov@yahoo.com"
       lab06_alert_parent_path: "/Workspace/Users/parvinbadalov@yahoo.com/Drafts"

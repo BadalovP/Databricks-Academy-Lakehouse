@@ -4,27 +4,30 @@ resources:
       name: "Lab 05 - Citi Bike Lakeflow Orchestration"
 
       description: >
-        End-to-end orchestration for Lab 05.
-        Creates and validates the required managed volumes and directories,
-        prepares Citi Bike source data, produces one new immutable
-        station_status snapshot, runs the Lakeflow pipeline incrementally,
-        then executes final validation.
+        Operational Lab 05 orchestration.
+        Production schema and managed Volumes are created by the Bundle,
+        not by this Job. The Job prepares runtime folders/source data,
+        produces one immutable station_status snapshot, runs the Lakeflow
+        pipeline incrementally, then executes final validation.
 
       max_concurrent_runs: 1
-      performance_target: STANDARD
+
+      # Applies to serverless Job tasks, including the serverless Lakeflow
+      # pipeline task. It does not change the performance of GP1/GP2 tasks.
+      performance_target: PERFORMANCE_OPTIMIZED
 
       parameters:
         - name: catalog
-          default: dbr_dev
+          default: ${var.lab05_catalog}
 
         - name: schema
-          default: parvinbadalov
+          default: ${var.lab05_schema}
 
         - name: volume_name
-          default: lab05_lakeflow
+          default: ${var.lab05_volume_name}
 
         - name: streaming_volume_name
-          default: lab05_lakeflow_streaming
+          default: ${var.lab05_streaming_volume_name}
 
         - name: seed_snapshot_count
           default: "3"
@@ -33,24 +36,10 @@ resources:
           default: "true"
 
       tasks:
-        # Compute is intentionally target-specific:
-        # - azure_dev / azure_prod: existing GP1/GP2 all-purpose cluster
-        # - personal_dev / personal_prod: serverless
-        #
-        # Target overrides are defined in the root databricks.yml.
-
-        - task_key: 00_setup
-          notebook_task:
-            notebook_path: ../labs/lab_05_lakeflow/notebooks/lab05_00_setup.ipynb
-            base_parameters:
-              catalog: "{{job.parameters.catalog}}"
-              schema: "{{job.parameters.schema}}"
-              volume_name: "{{job.parameters.volume_name}}"
-              streaming_volume_name: "{{job.parameters.streaming_volume_name}}"
+        # 00_setup intentionally removed.
+        # Infrastructure belongs to Bundle deployment, not the operational Job.
 
         - task_key: 01_source_preparation
-          depends_on:
-            - task_key: 00_setup
           notebook_task:
             notebook_path: ../labs/lab_05_lakeflow/notebooks/lab05_01_source_preparation.ipynb
             base_parameters:
@@ -92,8 +81,8 @@ resources:
               streaming_volume_name: "{{job.parameters.streaming_volume_name}}"
               run_checks: "{{job.parameters.run_checks}}"
 
-      # Used only by serverless Python tasks in Personal targets.
-      # It can remain defined but unused in Azure targets.
+      # Needed only by the Personal serverless Python task.
+      # Azure targets attach the Python task to GP1/GP2 instead.
       environments:
         - environment_key: default
           spec:
