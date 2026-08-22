@@ -1,0 +1,17 @@
+DESCRIBE DETAIL evidence — fact_encounters
+
+format: delta
+id: 8f42c2fc-eaab-4784-ad10-d371a0238280
+name: dbr_dev.parvinbadalov_lab06_ext.fact_encounters
+location: abfss://parvinbadalov@dlspl21databricks.dfs.core.windows.net/lab06_gold_external_v2/fact_encounters
+createdAt: 2026-08-21T20:00:44.304+00:00
+lastModified: 2026-08-22T01:12:36.000+00:00
+partitionColumns: []
+clusteringColumns: []
+numFiles: 1
+sizeInBytes: 5142765
+properties: {"delta.enableDeletionVectors":"true"}
+minReaderVersion: 3
+minWriterVersion: 7
+tableFeatures: ["appendOnly","deletionVectors","invariants"]
+clusterByAuto: false
