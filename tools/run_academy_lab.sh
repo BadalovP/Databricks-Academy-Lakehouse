@@ -2,62 +2,53 @@
 set -euo pipefail
 
 # ============================================================================
-# Databricks Academy — reusable runner for Labs 05-12
+# Databricks Academy reusable runner
 #
-# One script:
-#   - checks GP1 / GP2
-#   - prefers an already RUNNING all-purpose cluster
-#   - starts GP1 if neither is running
-#   - injects the selected cluster ID into a Bundle variable
-#   - validates the Bundle
-#   - deploys only the selected lab resources
-#   - runs the selected lab Job
+# Azure compute selection:
+#   --cluster gp1   -> GP1 (DEFAULT); start it if needed
+#   --cluster gp2   -> GP2; start it if needed
+#   --cluster auto  -> use an already-running GP1/GP2; if neither runs, start GP1
 #
-# Known mappings are currently configured for Lab 05 and Lab 06.
-# Add Labs 07-12 to configure_lab() when their resource keys are finalized.
+# Personal targets:
+#   serverless compute is used; --cluster is ignored.
 #
 # Examples:
 #
-#   Lab 05 dev:
+#   Default GP1:
 #     bash tools/run_academy_lab.sh \
 #       --lab 05 \
 #       --target azure_dev \
 #       --profile adb-7405604503619901
 #
-#   Lab 05 prod:
+#   Explicit GP2:
 #     bash tools/run_academy_lab.sh \
 #       --lab 05 \
-#       --target prod \
-#       --profile adb-7405604503619901
-#
-#   Lab 06 dev:
-#     bash tools/run_academy_lab.sh \
-#       --lab 06 \
+#       --cluster gp2 \
 #       --target azure_dev \
 #       --profile adb-7405604503619901
 #
-#   Generic/future lab:
+#   Automatic:
 #     bash tools/run_academy_lab.sh \
-#       --job-key my_job \
-#       --cluster-var my_cluster_id \
-#       --select "jobs.my_job" \
+#       --lab 05 \
+#       --cluster auto \
 #       --target azure_dev \
 #       --profile adb-7405604503619901
 # ============================================================================
 
-GP1_DEFAULT="0702-132442-toro5spu"
-GP2_DEFAULT="0702-171207-xo9bbc0y"
+AZURE_GP1_DEFAULT="0702-132442-toro5spu"
+AZURE_GP2_DEFAULT="0702-171207-xo9bbc0y"
 
 LAB=""
 TARGET="azure_dev"
 PROFILE=""
+CLUSTER_CHOICE="gp1"
 
 JOB_KEY=""
 CLUSTER_VAR=""
 RESOURCE_SELECT=""
 
-GP1="$GP1_DEFAULT"
-GP2="$GP2_DEFAULT"
+GP1="$AZURE_GP1_DEFAULT"
+GP2="$AZURE_GP2_DEFAULT"
 
 DO_VALIDATE="true"
 DO_DEPLOY="true"
@@ -66,57 +57,40 @@ DO_RUN="true"
 usage() {
   cat <<'EOF'
 Usage:
-  run_academy_lab.sh --lab <05|06|...> [options]
-
-or:
-
-  run_academy_lab.sh \
-    --job-key KEY \
-    --cluster-var VARIABLE \
-    --select RESOURCE_LIST \
-    [options]
+  run_academy_lab.sh --lab 05 [options]
 
 Options:
   --lab LAB
-      Academy lab number. Built-in mappings currently: 05, 06.
+      Lab number.
 
   --target TARGET
-      Bundle target. Default: azure_dev
+      azure_dev, azure_prod, personal_dev, personal_prod.
+      Default: azure_dev
 
   --profile PROFILE
-      Databricks CLI profile. Optional.
+      Databricks CLI profile.
 
-  --job-key KEY
-      Override / manually supply Bundle job resource key.
+  --cluster gp1|gp2|auto
+      Azure all-purpose compute selection.
+      Default: gp1
 
-  --cluster-var VARIABLE
-      Bundle variable that receives the selected cluster ID.
+      gp1  = use GP1; start it if terminated
+      gp2  = use GP2; start it if terminated
+      auto = use a currently running GP1/GP2; otherwise start GP1
 
-  --select RESOURCE_LIST
-      Comma-separated Bundle resources to deploy.
+      Personal targets use serverless and ignore this option.
 
   --gp1 CLUSTER_ID
-      Primary all-purpose cluster.
+      Override configured Azure GP1 cluster ID.
 
   --gp2 CLUSTER_ID
-      Secondary all-purpose cluster.
+      Override configured Azure GP2 cluster ID.
 
   --skip-validate
-      Skip bundle validation.
-
   --skip-deploy
-      Skip deployment.
-
   --skip-run
-      Skip Job execution.
 
   -h, --help
-      Show this help.
-
-Cluster selection:
-  GP1 RUNNING -> use GP1
-  else GP2 RUNNING -> use GP2
-  else -> start GP1 and wait until RUNNING
 EOF
 }
 
@@ -124,26 +98,17 @@ configure_lab() {
   case "$LAB" in
     5|05)
       LAB="05"
-      JOB_KEY="${JOB_KEY:-lab05_lakeflow_job}"
-      CLUSTER_VAR="${CLUSTER_VAR:-lab05_cluster_id}"
-      RESOURCE_SELECT="${RESOURCE_SELECT:-jobs.lab05_lakeflow_job,pipelines.lab05_lakeflow_pipeline}"
+      JOB_KEY="lab05_lakeflow_job"
+      CLUSTER_VAR="lab05_cluster_id"
+      RESOURCE_SELECT="jobs.lab05_lakeflow_job,pipelines.lab05_lakeflow_pipeline"
       ;;
-    6|06)
-      LAB="06"
-      JOB_KEY="${JOB_KEY:-lab06_external_gold_job}"
-      CLUSTER_VAR="${CLUSTER_VAR:-lab06_cluster_id}"
-      RESOURCE_SELECT="${RESOURCE_SELECT:-jobs.lab06_external_gold_job,dashboards.lab06_external_healthcare_dashboard,genie_spaces.lab06_external_healthcare_genie,alerts.lab06_external_healthcare_volume_drop}"
-      ;;
-    7|07|8|08|9|09|10|11|12)
-      echo "ERROR: Lab $LAB mapping has not been configured yet." >&2
-      echo "Add its JOB_KEY / CLUSTER_VAR / RESOURCE_SELECT in configure_lab()," >&2
-      echo "or call this script with --job-key, --cluster-var and --select." >&2
+    6|06|7|07|8|08|9|09|10|11|12)
+      echo "ERROR: Lab $LAB is not wired into this runner yet." >&2
+      echo "Add its JOB_KEY, CLUSTER_VAR and RESOURCE_SELECT to configure_lab()." >&2
       exit 2
       ;;
-    "")
-      ;;
     *)
-      echo "ERROR: Unsupported lab number: $LAB" >&2
+      echo "ERROR: Use --lab 05 for the currently configured lab." >&2
       exit 2
       ;;
   esac
@@ -157,12 +122,8 @@ while [[ $# -gt 0 ]]; do
       TARGET="$2"; shift 2 ;;
     --profile)
       PROFILE="$2"; shift 2 ;;
-    --job-key)
-      JOB_KEY="$2"; shift 2 ;;
-    --cluster-var)
-      CLUSTER_VAR="$2"; shift 2 ;;
-    --select)
-      RESOURCE_SELECT="$2"; shift 2 ;;
+    --cluster)
+      CLUSTER_CHOICE="$(echo "$2" | tr '[:upper:]' '[:lower:]')"; shift 2 ;;
     --gp1)
       GP1="$2"; shift 2 ;;
     --gp2)
@@ -182,32 +143,23 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ -z "$LAB" ]]; then
+  echo "ERROR: --lab is required." >&2
+  usage
+  exit 2
+fi
+
+case "$CLUSTER_CHOICE" in
+  gp1|gp2|auto) ;;
+  *)
+    echo "ERROR: --cluster must be gp1, gp2, or auto." >&2
+    exit 2 ;;
+esac
+
 configure_lab
-
-if [[ -z "$JOB_KEY" ]]; then
-  echo "ERROR: A Job key is required." >&2
-  echo "Use --lab for a configured lab or --job-key manually." >&2
-  exit 2
-fi
-
-if [[ -z "$CLUSTER_VAR" ]]; then
-  echo "ERROR: A cluster Bundle variable is required." >&2
-  echo "Use --lab for a configured lab or --cluster-var manually." >&2
-  exit 2
-fi
-
-if [[ "$DO_DEPLOY" == "true" && -z "$RESOURCE_SELECT" ]]; then
-  echo "ERROR: --select is required when deployment is enabled." >&2
-  exit 2
-fi
 
 command -v databricks >/dev/null 2>&1 || {
   echo "ERROR: Databricks CLI is not available in PATH." >&2
-  exit 1
-}
-
-command -v python >/dev/null 2>&1 || {
-  echo "ERROR: Python is required to parse CLI JSON output." >&2
   exit 1
 }
 
@@ -216,105 +168,156 @@ if [[ -n "$PROFILE" ]]; then
   DBX_AUTH_ARGS=(--profile "$PROFILE")
 fi
 
-cluster_state() {
-  local cluster_id="$1"
+BUNDLE_VAR_ARGS=()
 
-  databricks clusters get \
-    "$cluster_id" \
-    "${DBX_AUTH_ARGS[@]}" \
-    -o json |
-    python -c 'import json,sys; print(json.load(sys.stdin)["state"])'
-}
-
-echo "============================================================"
-echo "Databricks Academy Runner"
-echo "Lab         : ${LAB:-custom}"
-echo "Target      : $TARGET"
-echo "Job         : $JOB_KEY"
-echo "Cluster var : $CLUSTER_VAR"
-echo "GP1         : $GP1"
-echo "GP2         : $GP2"
-echo "============================================================"
-echo
-
-echo "Checking all-purpose clusters..."
-
-GP1_STATE="$(cluster_state "$GP1")"
-GP2_STATE="$(cluster_state "$GP2")"
-
-echo "GP1: $GP1_STATE"
-echo "GP2: $GP2_STATE"
-echo
-
-if [[ "$GP1_STATE" == "RUNNING" ]]; then
-  CLUSTER_ID="$GP1"
-  CLUSTER_NAME="GP1"
-
-elif [[ "$GP2_STATE" == "RUNNING" ]]; then
-  CLUSTER_ID="$GP2"
-  CLUSTER_NAME="GP2"
-
-else
-  CLUSTER_ID="$GP1"
-  CLUSTER_NAME="GP1"
-
-  echo "No preferred all-purpose cluster is RUNNING."
-  echo "Starting GP1..."
-
-  databricks clusters start \
-    "$GP1" \
-    "${DBX_AUTH_ARGS[@]}" >/dev/null
-
-  echo "Waiting for GP1 to become RUNNING..."
-
-  for attempt in $(seq 1 60); do
-    STATE="$(cluster_state "$GP1")"
-
-    if [[ "$STATE" == "RUNNING" ]]; then
-      echo "GP1 is RUNNING."
-      break
-    fi
-
-    if [[ "$STATE" == "ERROR" || "$STATE" == "UNKNOWN" ]]; then
-      echo "ERROR: GP1 entered state: $STATE" >&2
+case "$TARGET" in
+  azure_dev|azure_prod)
+    command -v python >/dev/null 2>&1 || {
+      echo "ERROR: Python is required to parse cluster state." >&2
       exit 1
-    fi
+    }
 
-    if [[ "$attempt" -eq 60 ]]; then
-      echo "ERROR: Timed out waiting for GP1." >&2
-      exit 1
-    fi
+    cluster_state() {
+      local cluster_id="$1"
+      databricks clusters get \
+        "$cluster_id" \
+        "${DBX_AUTH_ARGS[@]}" \
+        -o json |
+        python -c 'import json,sys; print(json.load(sys.stdin)["state"])'
+    }
 
-    sleep 10
-  done
-fi
+    wait_until_running() {
+      local cluster_id="$1"
+      local cluster_name="$2"
 
-echo
-echo "Selected compute: $CLUSTER_NAME ($CLUSTER_ID)"
-echo
+      echo "Waiting for $cluster_name to become RUNNING..."
 
-BUNDLE_VAR_ARG="${CLUSTER_VAR}=${CLUSTER_ID}"
+      for attempt in $(seq 1 60); do
+        local state
+        state="$(cluster_state "$cluster_id")"
+
+        if [[ "$state" == "RUNNING" ]]; then
+          echo "$cluster_name is RUNNING."
+          return 0
+        fi
+
+        if [[ "$state" == "ERROR" || "$state" == "UNKNOWN" ]]; then
+          echo "ERROR: $cluster_name entered state $state." >&2
+          exit 1
+        fi
+
+        if [[ "$attempt" -eq 60 ]]; then
+          echo "ERROR: Timed out waiting for $cluster_name." >&2
+          exit 1
+        fi
+
+        sleep 10
+      done
+    }
+
+    start_if_needed() {
+      local cluster_id="$1"
+      local cluster_name="$2"
+      local state
+
+      state="$(cluster_state "$cluster_id")"
+      echo "$cluster_name state: $state"
+
+      if [[ "$state" != "RUNNING" ]]; then
+        echo "Starting $cluster_name ($cluster_id)..."
+        databricks clusters start \
+          "$cluster_id" \
+          "${DBX_AUTH_ARGS[@]}" >/dev/null
+        wait_until_running "$cluster_id" "$cluster_name"
+      fi
+    }
+
+    echo "============================================================"
+    echo "Databricks Academy Runner"
+    echo "Lab             : $LAB"
+    echo "Target          : $TARGET"
+    echo "Cluster choice  : $CLUSTER_CHOICE"
+    echo "============================================================"
+    echo
+
+    case "$CLUSTER_CHOICE" in
+      gp1)
+        CLUSTER_ID="$GP1"
+        CLUSTER_NAME="GP1"
+        start_if_needed "$CLUSTER_ID" "$CLUSTER_NAME"
+        ;;
+
+      gp2)
+        CLUSTER_ID="$GP2"
+        CLUSTER_NAME="GP2"
+        start_if_needed "$CLUSTER_ID" "$CLUSTER_NAME"
+        ;;
+
+      auto)
+        GP1_STATE="$(cluster_state "$GP1")"
+        GP2_STATE="$(cluster_state "$GP2")"
+
+        echo "GP1 state: $GP1_STATE"
+        echo "GP2 state: $GP2_STATE"
+
+        if [[ "$GP1_STATE" == "RUNNING" ]]; then
+          CLUSTER_ID="$GP1"
+          CLUSTER_NAME="GP1"
+        elif [[ "$GP2_STATE" == "RUNNING" ]]; then
+          CLUSTER_ID="$GP2"
+          CLUSTER_NAME="GP2"
+        else
+          CLUSTER_ID="$GP1"
+          CLUSTER_NAME="GP1"
+          start_if_needed "$CLUSTER_ID" "$CLUSTER_NAME"
+        fi
+        ;;
+    esac
+
+    echo
+    echo "Selected compute: $CLUSTER_NAME ($CLUSTER_ID)"
+    echo
+
+    BUNDLE_VAR_ARGS=(--var "${CLUSTER_VAR}=${CLUSTER_ID}")
+    ;;
+
+  personal_dev|personal_prod)
+    echo "============================================================"
+    echo "Databricks Academy Runner"
+    echo "Lab     : $LAB"
+    echo "Target  : $TARGET"
+    echo "Compute : serverless"
+    echo "============================================================"
+    echo
+    echo "Personal workspace uses serverless compute."
+    echo "--cluster $CLUSTER_CHOICE is ignored for this target."
+    echo
+    ;;
+
+  *)
+    echo "ERROR: Unsupported target '$TARGET'." >&2
+    exit 2
+    ;;
+esac
 
 if [[ "$DO_VALIDATE" == "true" ]]; then
-  echo "Validating Bundle..."
+  echo "Validating bundle..."
   databricks bundle validate \
     -t "$TARGET" \
     "${DBX_AUTH_ARGS[@]}" \
-    --var "$BUNDLE_VAR_ARG"
-
+    "${BUNDLE_VAR_ARGS[@]}"
   echo
 fi
 
 if [[ "$DO_DEPLOY" == "true" ]]; then
-  echo "Deploying:"
+  echo "Deploying selected Lab $LAB resources:"
   echo "  $RESOURCE_SELECT"
 
   databricks bundle deploy \
     -t "$TARGET" \
     "${DBX_AUTH_ARGS[@]}" \
-    --var "$BUNDLE_VAR_ARG" \
+    "${BUNDLE_VAR_ARGS[@]}" \
     --select "$RESOURCE_SELECT"
-
   echo
 fi
 
@@ -324,16 +327,19 @@ if [[ "$DO_RUN" == "true" ]]; then
   databricks bundle run \
     -t "$TARGET" \
     "${DBX_AUTH_ARGS[@]}" \
-    --var "$BUNDLE_VAR_ARG" \
+    "${BUNDLE_VAR_ARGS[@]}" \
     "$JOB_KEY"
-
   echo
 fi
 
 echo "============================================================"
-echo "Completed"
-echo "Lab     : ${LAB:-custom}"
-echo "Target  : $TARGET"
-echo "Job     : $JOB_KEY"
-echo "Compute : $CLUSTER_NAME ($CLUSTER_ID)"
+echo "Completed Lab $LAB"
+echo "Target: $TARGET"
+
+if [[ "$TARGET" == azure_* ]]; then
+  echo "Compute: $CLUSTER_NAME ($CLUSTER_ID)"
+else
+  echo "Compute: serverless"
+fi
+
 echo "============================================================"

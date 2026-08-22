@@ -33,8 +33,13 @@ resources:
           default: "true"
 
       tasks:
+        # Compute is intentionally target-specific:
+        # - azure_dev / azure_prod: existing GP1/GP2 all-purpose cluster
+        # - personal_dev / personal_prod: serverless
+        #
+        # Target overrides are defined in the root databricks.yml.
+
         - task_key: 00_setup
-          existing_cluster_id: ${var.lab05_cluster_id}
           notebook_task:
             notebook_path: ../labs/lab_05_lakeflow/notebooks/lab05_00_setup.ipynb
             base_parameters:
@@ -46,7 +51,6 @@ resources:
         - task_key: 01_source_preparation
           depends_on:
             - task_key: 00_setup
-          existing_cluster_id: ${var.lab05_cluster_id}
           notebook_task:
             notebook_path: ../labs/lab_05_lakeflow/notebooks/lab05_01_source_preparation.ipynb
             base_parameters:
@@ -59,7 +63,6 @@ resources:
         - task_key: produce_status_snapshot
           depends_on:
             - task_key: 01_source_preparation
-          existing_cluster_id: ${var.lab05_cluster_id}
           spark_python_task:
             python_file: ../labs/lab_05_lakeflow/tools/citibike_status_producer.py
             parameters:
@@ -80,7 +83,6 @@ resources:
         - task_key: validate_pipeline
           depends_on:
             - task_key: run_lakeflow_pipeline
-          existing_cluster_id: ${var.lab05_cluster_id}
           notebook_task:
             notebook_path: ../labs/lab_05_lakeflow/notebooks/lab05_02_validation.ipynb
             base_parameters:
@@ -89,6 +91,15 @@ resources:
               volume_name: "{{job.parameters.volume_name}}"
               streaming_volume_name: "{{job.parameters.streaming_volume_name}}"
               run_checks: "{{job.parameters.run_checks}}"
+
+      # Used only by serverless Python tasks in Personal targets.
+      # It can remain defined but unused in Azure targets.
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "5"
+            dependencies:
+              - "requests>=2.31,<3"
 
       tags:
         lab: "05"

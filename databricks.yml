@@ -21,11 +21,10 @@ variables:
 
   lab05_cluster_id:
     description: >
-      Existing all-purpose cluster used by Lab 05 notebook and Python tasks.
-      GP1 is used as the normal fallback. tools/run_academy_lab.sh can
-      override this value when another preferred cluster is already running.
-    lookup:
-      cluster: "GP1"
+      Existing all-purpose cluster used by Lab 05 in Azure targets.
+      tools/run_academy_lab.sh can override this value after checking GP1/GP2.
+      Personal targets keep Lab 05 serverless and do not use this value.
+    default: "0702-132442-toro5spu"
 
   # -------------------------------------------------------------------
   # Lab 06 V1
@@ -64,7 +63,6 @@ variables:
     description: Shared ADLS root used by External V2 Delta Gold tables
     default: "abfss://parvinbadalov@dlspl21databricks.dfs.core.windows.net/lab06_gold_external_v2"
 
-
 targets:
   # ===================================================================
   # AZURE - DEVELOPMENT
@@ -77,10 +75,29 @@ targets:
       host: https://adb-7405604503619901.1.azuredatabricks.net
 
     variables:
+      lab05_cluster_id: "0702-132442-toro5spu"
       lab06_warehouse_id: "3ed106620db591d9"
       lab06_alert_subscriber_email: "parvinbadalov@softserve.academy"
       lab06_alert_parent_path: "/Workspace/Users/parvinbadalov@softserve.academy"
 
+    # Lab 05:
+    # Azure notebook/Python tasks use an existing all-purpose cluster.
+    # The runner may override lab05_cluster_id with GP2 if GP2 is already active.
+    resources:
+      jobs:
+        lab05_lakeflow_job:
+          tasks:
+            - task_key: 00_setup
+              existing_cluster_id: ${var.lab05_cluster_id}
+
+            - task_key: 01_source_preparation
+              existing_cluster_id: ${var.lab05_cluster_id}
+
+            - task_key: produce_status_snapshot
+              existing_cluster_id: ${var.lab05_cluster_id}
+
+            - task_key: validate_pipeline
+              existing_cluster_id: ${var.lab05_cluster_id}
 
   # ===================================================================
   # AZURE - PRODUCTION TEST
@@ -91,7 +108,7 @@ targets:
 
     workspace:
       host: https://adb-7405604503619901.1.azuredatabricks.net
-      root_path: /Workspace/Production/.bundle/${bundle.name}/${bundle.target}
+      root_path: /Workspace/Users/parvinbadalov@softserve.academy/.bundle/${bundle.name}/azure_prod
 
     git:
       branch: main
@@ -104,10 +121,26 @@ targets:
         user_name: parvinbadalov@softserve.academy
 
     variables:
+      lab05_cluster_id: "0702-132442-toro5spu"
       lab06_warehouse_id: "3ed106620db591d9"
       lab06_alert_subscriber_email: "parvinbadalov@softserve.academy"
       lab06_alert_parent_path: "/Workspace/Users/parvinbadalov@softserve.academy"
 
+    resources:
+      jobs:
+        lab05_lakeflow_job:
+          tasks:
+            - task_key: 00_setup
+              existing_cluster_id: ${var.lab05_cluster_id}
+
+            - task_key: 01_source_preparation
+              existing_cluster_id: ${var.lab05_cluster_id}
+
+            - task_key: produce_status_snapshot
+              existing_cluster_id: ${var.lab05_cluster_id}
+
+            - task_key: validate_pipeline
+              existing_cluster_id: ${var.lab05_cluster_id}
 
   # ===================================================================
   # PERSONAL - DEVELOPMENT
@@ -125,6 +158,15 @@ targets:
       lab06_alert_subscriber_email: "parvinbadalov@yahoo.com"
       lab06_alert_parent_path: "/Workspace/Users/parvinbadalov@yahoo.com/Drafts"
 
+    # Lab 05:
+    # Notebook tasks are serverless when no cluster is specified.
+    # Python script tasks need an environment_key for serverless compute.
+    resources:
+      jobs:
+        lab05_lakeflow_job:
+          tasks:
+            - task_key: produce_status_snapshot
+              environment_key: default
 
   # ===================================================================
   # PERSONAL - PRODUCTION TEST
@@ -135,7 +177,7 @@ targets:
 
     workspace:
       host: https://dbc-1750318a-76a9.cloud.databricks.com
-      root_path: /Workspace/Production/.bundle/${bundle.name}/${bundle.target}
+      root_path: /Workspace/Users/parvinbadalov@yahoo.com/.bundle/${bundle.name}/personal_prod
 
     git:
       branch: main
@@ -151,3 +193,10 @@ targets:
       lab06_warehouse_id: "410e5f3b4784e981"
       lab06_alert_subscriber_email: "parvinbadalov@yahoo.com"
       lab06_alert_parent_path: "/Workspace/Users/parvinbadalov@yahoo.com/Drafts"
+
+    resources:
+      jobs:
+        lab05_lakeflow_job:
+          tasks:
+            - task_key: produce_status_snapshot
+              environment_key: default
