@@ -6,6 +6,12 @@ resources:
       catalog: ${var.lab05_catalog}
       schema: ${var.lab05_schema}
 
+      # Make the Lab 05 project root importable during pipeline execution.
+      # This allows pipeline files to use imports such as:
+      #   from src.config import ...
+      #   from src.quality_rules import ...
+      root_path: ../labs/lab_05_lakeflow
+
       # Lakeflow pipeline compute remains serverless.
       serverless: true
       continuous: false
