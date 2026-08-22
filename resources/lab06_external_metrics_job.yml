@@ -31,5 +31,5 @@ resources:
       tasks:
         - task_key: 06_alert_metrics
           notebook_task:
-            notebook_path: ../labs/lab_06_gold_analytics_external/notebooks/lab06_06_alert_metrics.ipynb
+            notebook_path: ../labs/lab_06_gold_analytics_external/notebooks/lab06e_06_alert_metrics.ipynb
           max_retries: 0

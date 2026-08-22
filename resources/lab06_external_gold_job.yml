@@ -33,7 +33,7 @@ resources:
       tasks:
         - task_key: 01_dimensions
           notebook_task:
-            notebook_path: ../labs/lab_06_gold_analytics_external/notebooks/lab06_01_dimensions.ipynb
+            notebook_path: ../labs/lab_06_gold_analytics_external/notebooks/lab06e_01_dimensions.ipynb
           max_retries: 1
           min_retry_interval_millis: 60000
 
@@ -41,7 +41,7 @@ resources:
           depends_on:
             - task_key: 01_dimensions
           notebook_task:
-            notebook_path: ../labs/lab_06_gold_analytics_external/notebooks/lab06_02_fact_encounters.ipynb
+            notebook_path: ../labs/lab_06_gold_analytics_external/notebooks/lab06e_02_fact_encounters.ipynb
           max_retries: 1
           min_retry_interval_millis: 60000
 
@@ -49,7 +49,7 @@ resources:
           depends_on:
             - task_key: 02_fact_encounters
           notebook_task:
-            notebook_path: ../labs/lab_06_gold_analytics_external/notebooks/lab06_03_fact_conditions.ipynb
+            notebook_path: ../labs/lab_06_gold_analytics_external/notebooks/lab06e_03_fact_conditions.ipynb
           max_retries: 1
           min_retry_interval_millis: 60000
 
@@ -57,7 +57,7 @@ resources:
           depends_on:
             - task_key: 03_fact_conditions
           notebook_task:
-            notebook_path: ../labs/lab_06_gold_analytics_external/notebooks/lab06_04_aggregations.ipynb
+            notebook_path: ../labs/lab_06_gold_analytics_external/notebooks/lab06e_04_aggregations.ipynb
           max_retries: 1
           min_retry_interval_millis: 60000
 
@@ -65,6 +65,6 @@ resources:
           depends_on:
             - task_key: 04_aggregations
           notebook_task:
-            notebook_path: ../labs/lab_06_gold_analytics_external/notebooks/lab06_07_validation.ipynb
+            notebook_path: ../labs/lab_06_gold_analytics_external/notebooks/lab06e_07_validation.ipynb
           max_retries: 1
           min_retry_interval_millis: 60000
