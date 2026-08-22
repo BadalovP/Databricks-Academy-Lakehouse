@@ -1,4 +1,4 @@
-"""Static contract tests for Lab 06 External V2 governance."""
+"""Static contract tests for Lab 06 External V2 secure-view governance."""
 
 import json
 from pathlib import Path
@@ -17,41 +17,51 @@ def _code() -> str:
     )
 
 
-def test_governance_targets_external_v2_schema():
+def test_governance_targets_external_v2_schema_and_secure_views():
     code = _code()
+
     assert '"target_schema"' in code
     assert '"parvinbadalov_lab06_ext"' in code
     assert 'fact_encounters = f"{target_schema_fqn}.fact_encounters"' in code
     assert 'dim_patient = f"{target_schema_fqn}.dim_patient"' in code
+    assert "vw_fact_encounters_secure" in code
+    assert "vw_dim_patient_secure" in code
 
 
-def test_rls_uses_organization_row_filter():
+def test_rls_is_implemented_in_secure_view():
     code = _code()
-    assert "CREATE OR REPLACE FUNCTION {org_filter_function}" in code
+
+    assert "CREATE OR REPLACE VIEW {secure_fact_view}" in code
     assert "SESSION_USER()" in code
-    assert "SET ROW FILTER {org_filter_function}" in code
-    assert "ON (organization_id)" in code
     assert "organization_id = '*'" in code
+    assert "CAST(f.organization_id AS STRING)" in code
+    assert "lab06_user_organization_access" in code
 
 
-def test_cls_masks_patient_sensitive_columns():
+def test_cls_is_implemented_in_secure_view():
     code = _code()
+
     for column in ["ssn", "first_name", "last_name", "address"]:
         assert f'"{column}"' in code
 
-    assert "CREATE OR REPLACE FUNCTION {mask_function}" in code
-    assert "ELSE '***MASKED***'" in code
-    assert "SET MASK {mask_function}" in code
+    assert "CREATE OR REPLACE VIEW {secure_patient_view}" in code
+    assert "***MASKED***" in code
+    assert "lab06_patient_data_privileged_users" in code
 
 
-def test_demo_restores_full_access_for_job_identity():
+def test_native_policies_are_not_attached_to_base_tables():
     code = _code()
-    assert "'*'," in code
-    assert "full organization access" in code
-    assert "patient-data privileged access" in code
+
+    assert "SET ROW FILTER" not in code
+    assert "SET MASK" not in code
+    assert "DROP ROW FILTER" in code
+    assert "DROP MASK" in code
 
 
-def test_governance_is_not_embedded_in_gold_data_write_logic():
+def test_demo_restores_pipeline_identity_and_does_not_write_gold_data():
     code = _code()
+
+    assert "VALUES ('{escaped_user}', '*')" in code
+    assert "Current user restored to full / privileged access." in code
     assert "overwrite_external_delta(" not in code
     assert ".save(" not in code

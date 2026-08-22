@@ -1,41 +1,41 @@
--- Lab 06 External V2 governance reference / rollback
+-- Lab 06 External V2 - Secure-View Governance Reference / Rollback
 --
--- Replace <catalog> and <target_schema> before running manually.
+-- Governance is implemented with views, NOT native row filters / column masks
+-- on the externally path-written Gold base tables.
+
+-- Expected governed query surfaces:
+--   <catalog>.<target_schema>.vw_fact_encounters_secure
+--   <catalog>.<target_schema>.vw_dim_patient_secure
 --
--- Normal policy state:
---   fact_encounters -> row filter on organization_id
---   dim_patient     -> masks on ssn, first_name, last_name, address
---
--- IMPORTANT:
--- Remove policies from tables BEFORE dropping the referenced functions.
+-- Mapping tables:
+--   <catalog>.<target_schema>.lab06_user_organization_access
+--   <catalog>.<target_schema>.lab06_patient_data_privileged_users
 
--- Inspect grants
-SHOW GRANTS ON TABLE <catalog>.<target_schema>.fact_encounters;
-SHOW GRANTS ON TABLE <catalog>.<target_schema>.dim_patient;
+-- Inspect mappings:
+SELECT *
+FROM <catalog>.<target_schema>.lab06_user_organization_access
+ORDER BY user_email, organization_id;
 
--- Optional rollback: remove RLS
-ALTER TABLE <catalog>.<target_schema>.fact_encounters
-DROP ROW FILTER;
+SELECT *
+FROM <catalog>.<target_schema>.lab06_patient_data_privileged_users
+ORDER BY user_email;
 
--- Optional rollback: remove CLS
-ALTER TABLE <catalog>.<target_schema>.dim_patient
-ALTER COLUMN ssn DROP MASK;
+-- Validate secure views:
+SELECT COUNT(*) AS secure_encounter_rows
+FROM <catalog>.<target_schema>.vw_fact_encounters_secure;
 
-ALTER TABLE <catalog>.<target_schema>.dim_patient
-ALTER COLUMN first_name DROP MASK;
+SELECT patient_id, ssn, first_name, last_name, address
+FROM <catalog>.<target_schema>.vw_dim_patient_secure
+LIMIT 10;
 
-ALTER TABLE <catalog>.<target_schema>.dim_patient
-ALTER COLUMN last_name DROP MASK;
+-- Rollback only the secure governance layer:
+DROP VIEW IF EXISTS <catalog>.<target_schema>.vw_fact_encounters_secure;
+DROP VIEW IF EXISTS <catalog>.<target_schema>.vw_dim_patient_secure;
 
-ALTER TABLE <catalog>.<target_schema>.dim_patient
-ALTER COLUMN address DROP MASK;
-
--- Drop policy functions only after detaching them.
-DROP FUNCTION IF EXISTS <catalog>.<target_schema>.lab06_org_row_filter;
-DROP FUNCTION IF EXISTS <catalog>.<target_schema>.lab06_mask_sensitive_string;
-
--- Mapping tables can be kept for audit/history.
--- Uncomment only when a complete governance teardown is intended.
---
+-- Optional: remove mapping tables as well.
 -- DROP TABLE IF EXISTS <catalog>.<target_schema>.lab06_user_organization_access;
 -- DROP TABLE IF EXISTS <catalog>.<target_schema>.lab06_patient_data_privileged_users;
+
+-- Important:
+-- Do not attach SET ROW FILTER / SET MASK policies to the External V2 base tables
+-- while the Gold pipeline continues to use explicit ABFSS path-based writes.
