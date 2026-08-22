@@ -15,6 +15,26 @@ The Lab 05 pipeline contains:
 
 ---
 
+## Review feedback addressed
+
+The comparison now makes one point explicit:
+
+> **Auto Loader can be used in classic Spark Jobs too.**
+
+For example, a classic Structured Streaming Job can use:
+
+```python
+spark.readStream.format("cloudFiles")
+```
+
+The architectural difference is not Auto Loader availability. The difference is
+that classic Spark code explicitly manages more of the streaming-query
+lifecycle, checkpoint/state handling, triggers, writes, orchestration, and
+recovery, while Lakeflow lets the developer declare datasets and dependencies
+and manages more of that lifecycle for the pipeline.
+
+---
+
 ## 1. Main difference
 
 ### Classic Spark / Structured Streaming
@@ -35,6 +55,13 @@ The developer typically controls:
 - dependency management
 
 A classic streaming application is therefore more **procedural**.
+
+> **Important clarification:** Auto Loader is **not exclusive to Lakeflow**.  
+> A classic Spark Job can also use Auto Loader with
+> `spark.readStream.format("cloudFiles")`. The main difference is that in a
+> classic Job the developer still explicitly manages the streaming query,
+> checkpoint/output lifecycle, trigger, and orchestration, while Lakeflow
+> manages more of the dataset lifecycle and execution graph declaratively.
 
 ### Lakeflow Spark Declarative Pipelines
 
@@ -60,23 +87,28 @@ The pipeline is therefore more **declarative**.
 
 | Lab 05 responsibility | Classic Spark / Jobs | Lakeflow implementation |
 |---|---|---|
-| Streaming JSON ingestion | `readStream` + explicit streaming query | `@dp.table` + Auto Loader |
+| Streaming JSON ingestion | **Auto Loader can also be used:** `spark.readStream.format("cloudFiles")` + explicit streaming query | `@dp.table` + Auto Loader |
+| Query lifecycle | explicit `writeStream`, trigger, start/termination handling | pipeline-managed dataset execution |
 | Batch/reference JSON | batch DataFrame + explicit write | `@dp.materialized_view` |
 | Bronze persistence | `.writeStream` / `.write` | managed by pipeline |
-| Streaming checkpoint | developer-defined checkpoint path | managed by Lakeflow |
+| Streaming checkpoint/state | developer-defined checkpoint/state lifecycle | managed by Lakeflow |
 | Pipeline execution order | Job task dependencies / custom orchestration | inferred automatically from dataset dependencies |
 | Data quality | filters, assertions, custom metrics | expectations |
 | Drop invalid rows | explicit `.filter()` | `@dp.expect_all_or_drop` |
 | Monitor invalid rows | custom counters/metrics | `@dp.expect_all` |
 | Stream-static join | developer manages streaming query | declared as downstream streaming table |
 | Gold aggregation | batch job + overwrite/merge | materialized view |
-| Safe incremental rerun | checkpoint + idempotent write design | managed streaming state |
+| Safe incremental rerun | Auto Loader + checkpoint + idempotent write design | Auto Loader + pipeline-managed streaming state |
 | Lineage | documented separately | pipeline graph generated automatically |
 | Deployment | Jobs / scripts / Terraform / custom CI/CD | bundle pipeline resource |
 
 ---
 
 ## 3. Streaming Bronze — classic Spark
+
+Classic Spark can use **the same Auto Loader `cloudFiles` source**. What remains
+explicit is the streaming-query lifecycle: write target, checkpoint, trigger,
+startup, termination, monitoring, and recovery.
 
 A simplified classic Spark equivalent of `station_status_bronze` would look like:
 
@@ -478,10 +510,13 @@ This prepares the project for later CI/CD work.
 ### Classic Spark
 
 ```text
-Developer manages:
-    ingestion query
-    checkpoint
+Auto Loader can be used for ingestion.
+
+Developer still manages:
+    streaming query lifecycle
+    checkpoint/state location
     output write
+    trigger
     orchestration
     data-quality logic
     monitoring

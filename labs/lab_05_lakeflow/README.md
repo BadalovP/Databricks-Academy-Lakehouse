@@ -15,9 +15,9 @@ The implementation demonstrates:
 - safe reruns without duplicate ingestion
 - incremental ingestion of newly arriving JSON files
 - deployment as a Databricks bundle pipeline resource
-- optional Lakeflow Job orchestration: producer → pipeline → validation
+- production-ready Lakeflow Job orchestration: source preparation → producer → pipeline → validation
 
-The final development pipeline completed successfully with all validation checks passing.
+The final Lab 05 implementation was validated in development and in the personal production-style target. The shared Azure production target is kept as a clean runnable environment, so Azure production run results are intentionally not included in this README.
 
 ---
 
@@ -38,7 +38,7 @@ The Lab 05 requirements are covered as follows:
 | Passing pipeline | completed successfully |
 | Visible expectations | 6 expectations on each Silver dataset |
 | Final validation | 20/20 validation checks passed |
-| Optional orchestration Job | producer → pipeline → validation completed successfully |
+| Orchestration Job | source preparation → producer → pipeline → validation completed successfully |
 
 ---
 
@@ -89,40 +89,47 @@ Citi Bike GBFS
 
 ## Storage design
 
-Lab 05 intentionally uses two Unity Catalog volumes.
+Lab 05 uses target-specific Unity Catalog storage so development and production
+do not compete for ownership of the same Lakeflow-managed tables.
 
-### Managed volume
+### Development
+
+```text
+Catalog: dbr_dev
+Schema : parvinbadalov
+```
+
+The existing development volumes remain:
 
 ```text
 /Volumes/dbr_dev/parvinbadalov/lab05_lakeflow
-```
-
-Used for:
-
-```text
-reference/
-└── station_information.json
-
-test_data/
-```
-
-### External streaming volume
-
-```text
 /Volumes/dbr_dev/parvinbadalov/lab05_lakeflow_streaming
 ```
 
-Used for:
+### Production-style targets
+
+The Bundle creates an isolated schema and two **managed Volumes**:
 
 ```text
-landing/
-└── station_status/
-    ├── station_status_<timestamp>.json
-    ├── station_status_<timestamp>.json
-    └── ...
+dbr_dev.parvinbadalov_lab05_prod
+├── lab05_lakeflow
+└── lab05_lakeflow_streaming
 ```
 
-The separation keeps the reference/test data in managed storage while the Auto Loader landing source is backed by external storage.
+Runtime folders are created by `lab05_01_source_preparation.ipynb`:
+
+```text
+lab05_lakeflow/
+├── reference/
+└── test_data/
+
+lab05_lakeflow_streaming/
+└── landing/
+    └── station_status/
+```
+
+This keeps schema/Volume DDL out of the operational Job while allowing a fresh
+production deployment to be ready for its first Job run.
 
 ---
 
@@ -164,29 +171,48 @@ labs/
         └── ...
 ```
 
-Bundle resource:
+Bundle / runner resources:
 
 ```text
 resources/
+├── lab05_infrastructure.yml
 ├── lab05_lakeflow_pipeline.yml
 └── lab05_lakeflow_job.yml
+
+tools/
+└── run_academy_lab.sh
 ```
 
 ---
 
 # Implementation evidence
 
-## 1. Environment setup
+## 1. Environment / infrastructure setup
 
-The setup notebook prepares:
+Development keeps the original setup notebook for learning and manual
+preparation.
 
-- the managed Lab 05 volume
-- the external streaming volume
-- streaming landing folder
-- reference folder
-- test-data folder
+For production-style targets, infrastructure is declarative:
 
-![Environment setup](images/01_environment_setup.png)
+```text
+databricks bundle deploy
+        ↓
+create schema
+        ↓
+create lab05_lakeflow managed Volume
+        ↓
+create lab05_lakeflow_streaming managed Volume
+        ↓
+deploy Lakeflow pipeline
+        ↓
+deploy orchestration Job
+```
+
+The operational Job itself does not contain schema/Volume DDL.
+
+> **New screenshot recommended:** replace the old environment-setup screenshot
+> with a Catalog Explorer view of
+> `dbr_dev.parvinbadalov_lab05_prod` showing both Lab 05 Volumes.
 
 ---
 
@@ -606,7 +632,7 @@ This makes new-file arrival explicit and easy to test.
 Example destination:
 
 ```text
-/Volumes/dbr_dev/parvinbadalov/
+/Volumes/<catalog>/<schema>/
 lab05_lakeflow_streaming/
 landing/station_status/
 station_status_<timestamp>.json
@@ -622,18 +648,25 @@ A detailed comparison is available in:
 CLASSIC_VS_LAKEFLOW.md
 ```
 
-The main distinction is:
+The main distinction is **not** whether Auto Loader can be used.
 
-### Classic Spark
+### Classic Spark / Jobs
 
-The developer typically manages:
+Classic Spark Jobs can also use Auto Loader:
+
+```python
+spark.readStream.format("cloudFiles")
+```
+
+The developer still explicitly manages more of the streaming application
+lifecycle:
 
 ```text
-streaming query lifecycle
-checkpoint paths
 writeStream
+checkpoint/state location
 output mode
-triggers
+trigger
+query startup / termination
 orchestration
 quality metrics
 recovery logic
@@ -641,53 +674,64 @@ recovery logic
 
 ### Lakeflow
 
-The developer declares:
+The same Auto Loader source can feed a declarative streaming table:
 
 ```text
-streaming tables
-materialized views
-transformations
-expectations
-dataset dependencies
+@dp.table
++ spark.readStream.format("cloudFiles")
 ```
 
-while Lakeflow manages the execution graph, dataset lifecycle, streaming state, expectation metrics, and lineage.
+while Lakeflow manages the execution graph, dataset lifecycle, streaming state,
+expectation metrics, and lineage.
+
+This clarification reflects review feedback: **Auto Loader is available in
+classic Jobs too; the procedural-versus-declarative lifecycle is the important
+difference.**
 
 ---
 
 # Databricks Asset Bundle
 
-Lab 05 is defined through two bundle resources:
+Lab 05 is deployed through three Bundle resources plus one reusable runner:
 
 ```text
 resources/
+├── lab05_infrastructure.yml
 ├── lab05_lakeflow_pipeline.yml
 └── lab05_lakeflow_job.yml
+
+tools/
+└── run_academy_lab.sh
 ```
 
-The declarative data pipeline was deployed selectively to the development target as:
+The production infrastructure resource creates the isolated schema and managed
+Volumes before the Job is run.
+
+Target model:
 
 ```text
-pipelines.lab05_lakeflow_pipeline
+azure_dev      → dbr_dev.parvinbadalov + GP1/GP2 for Job tasks
+azure_prod     → dbr_dev.parvinbadalov_lab05_prod + GP1/GP2
+personal_dev   → dbr_dev.parvinbadalov + serverless Job tasks
+personal_prod  → dbr_dev.parvinbadalov_lab05_prod + serverless Job tasks
 ```
 
-The optional orchestration Job was also deployed selectively as:
+The Lakeflow pipeline itself remains serverless in all targets. Azure Job
+notebook/Python tasks can use GP1/GP2 through `tools/run_academy_lab.sh`.
 
-```text
-jobs.lab05_lakeflow_job
-```
-
-Selective deployment keeps Lab 05 isolated from unrelated Lab 2 / Lab 3 / demo resources in the same repository.
+Execution evidence in this README uses **Personal Prod**. The Azure production
+target is intentionally kept as a clean shared run environment and its
+run results are not documented here.
 
 ---
 
-# Optional Lakeflow Job orchestration
+# Lakeflow Job orchestration
 
-The core Lab 05 requirement is satisfied by the Lakeflow declarative pipeline itself.
-
-An additional Lakeflow Job was created to demonstrate end-to-end process orchestration:
+The final Job contains four operational tasks:
 
 ```text
+01_source_preparation
+        ↓
 produce_status_snapshot
         ↓
 run_lakeflow_pipeline
@@ -697,103 +741,133 @@ validate_pipeline
 
 The tasks perform:
 
-1. **Producer task** — runs `citibike_status_producer.py` and creates exactly one new immutable `station_status` JSON snapshot.
-2. **Pipeline task** — triggers `lab05_lakeflow_pipeline` with a normal incremental update (`full_refresh: false`).
-3. **Validation task** — runs `lab05_02_validation.ipynb` after the pipeline succeeds.
+1. **Source preparation** — creates runtime folders, prepares the reference
+   file, and seeds source snapshots; it contains no schema/Volume DDL.
+2. **Producer task** — creates exactly one new immutable `station_status`
+   snapshot.
+3. **Pipeline task** — triggers `lab05_lakeflow_pipeline` with
+   `full_refresh: false`.
+4. **Validation task** — verifies the final pipeline outputs and invariants.
 
-The Job completed successfully in the development workspace.
+## Personal Prod execution
 
-![Job orchestration DAG](images/14_job_orchestration_dag.png)
-
-The successful timeline shows all three dependent tasks completed in sequence.
-
-![Job timeline](images/15_job_timeline.png)
-
-This demonstrates the difference between the two orchestration levels:
+The Personal Prod target provides a clean production-style execution proof
+without using the shared Azure run environment.
 
 ```text
-Lakeflow Spark Declarative Pipeline
-= data dependencies
-  Bronze → Silver → Enriched Silver → Gold
-
-Lakeflow Job
-= process dependencies
-  Produce source file → Run pipeline → Validate
+Target  : personal_prod
+Catalog : dbr_dev
+Schema  : parvinbadalov_lab05_prod
+Compute : serverless
+Status  : SUCCESS
 ```
+
+All four tasks completed successfully.
+
+![Personal Prod Job DAG](images/14_job_orchestration_dag.png)
+
+The timeline shows the four dependent tasks completing in sequence.
+
+![Personal Prod Job timeline](images/15_job_timeline.png)
+
+The production-style schema contains the six Lakeflow datasets and the two
+managed Lab 05 Volumes.
+
+![Personal Prod schema and volumes](images/01_environment_setup.png)
+
+The workspace Jobs view shows the separate development and production-style
+Lab 05 Jobs.
+
+![Personal Prod jobs](images/16_personal_prod_jobs.png)
+
+> Azure production run screenshots are intentionally excluded. The shared Azure
+> target is kept clean for the person who runs or reviews the project.
 
 ---
 
 # Recommended execution order
 
-## One-time / manual setup
+## Development / learning flow
 
-Run:
+The original setup notebook can still be used when learning or preparing the
+development environment manually:
 
 ```text
 notebooks/lab05_00_setup.ipynb
 ```
 
-This prepares storage only and is intentionally not part of the production pipeline.
+## Production-style flow
 
-## Source preparation
-
-Run:
+For a fresh production-style target, deploy first:
 
 ```text
-notebooks/lab05_01_source_preparation.ipynb
+databricks bundle deploy -t <prod-target>
 ```
 
-This:
-
-- fetches / prepares reference data
-- seeds status snapshots
-- profiles the sources
-- validates `station_id`
-- proves join compatibility
-
-## Unit tests
-
-Run:
+The Bundle creates/manages:
 
 ```text
-tests/test_quality_rules.py
+Lab 05 production schema
+lab05_lakeflow Volume
+lab05_lakeflow_streaming Volume
+Lakeflow pipeline
+orchestration Job
 ```
 
-## Deploy pipeline
-
-Deploy the bundle pipeline resource to the desired target.
-
-## Run Lakeflow pipeline
-
-Run a normal triggered update.
-
-## Validate
-
-Run:
+Then the Job can run directly:
 
 ```text
-notebooks/lab05_02_validation.ipynb
+01_source_preparation
+→ produce_status_snapshot
+→ run_lakeflow_pipeline
+→ validate_pipeline
 ```
 
-## Optional end-to-end orchestration
+No separate schema/Volume DDL task is required inside the Job.
 
-Instead of manually running producer → pipeline → validation, the optional bundle Job can orchestrate all three steps:
+## Clean run handoff
 
-```text
-Lab 05 - Citi Bike Lakeflow Orchestration
-```
+The Personal Prod target is used as the documented execution proof.
 
-This Job is an additional demonstration and is not required for the declarative pipeline itself.
+The shared Azure production target is intended to remain ready for the next
+person who runs or reviews the project. After validation/deployment it should be
+left clean rather than adding Azure production run screenshots to the project
+documentation.
 
 ---
 
 # Design decisions
 
-## Setup is separate from the pipeline
+## Infrastructure is separate from the operational Job
 
-Infrastructure creation is intentionally kept in `lab05_00_setup.ipynb`.
+Schema and managed Volume creation are handled by
+`resources/lab05_infrastructure.yml` for production-style targets.
 
-The Lakeflow source files focus on dataflow definitions rather than embedding environment DDL inside normal pipeline execution.
+`lab05_00_setup.ipynb` remains useful for development/learning, but the final
+operational Job contains no schema/Volume DDL.
+
+## Runtime directories belong to source preparation
+
+`lab05_01_source_preparation.ipynb` creates:
+
+```text
+reference/
+test_data/
+landing/station_status/
+```
+
+inside already-created Volumes.
+
+## Dev and Prod are isolated
+
+Lakeflow-managed tables cannot be owned by two pipelines at the same time.
+Therefore production uses:
+
+```text
+dbr_dev.parvinbadalov_lab05_prod
+```
+
+instead of sharing `dbr_dev.parvinbadalov` with development.
 
 ## Triggered rather than continuous
 
@@ -801,9 +875,11 @@ The pipeline is configured as triggered:
 
 ```yaml
 continuous: false
+serverless: true
 ```
 
-because the lab deliberately creates periodic Citi Bike snapshots rather than requiring an always-on streaming service.
+because the lab deliberately creates periodic Citi Bike snapshots rather than
+requiring an always-on streaming service.
 
 ## Reusable expectations
 
@@ -813,11 +889,14 @@ Quality expressions live in:
 src/quality_rules.py
 ```
 
-The same rules can be tested independently rather than duplicating expressions across pipeline files and tests.
+The same rules can be tested independently rather than duplicating expressions
+across pipeline files and tests.
 
-## External source vs managed reference storage
+## Auto Loader is available in both approaches
 
-Streaming file arrival uses an external volume, while stable reference and test data remain in the managed Lab 05 volume.
+Classic Structured Streaming Jobs and Lakeflow can both use Auto Loader
+(`cloudFiles`). The comparison focuses on how much lifecycle/state/orchestration
+logic is managed explicitly by the developer versus declaratively by Lakeflow.
 
 ---
 
@@ -826,78 +905,94 @@ Streaming file arrival uses an external volume, while stable reference and test 
 Core Lab 05 requirements are complete:
 
 ```text
-Streaming source                       PASS
-JSON/reference source                  PASS
-Silver expectations                    PASS
-Lineage / DAG                          PASS
-Safe rerun                             PASS
-Incremental ingestion                  PASS
-Classic Spark comparison               PASS
-Asset Bundle development deployment    PASS
-Pipeline completed                     PASS
-Final validation                       PASS
-Optional orchestration Job             PASS
-Shared Azure deploy-only handoff        PASS
+Streaming source                         PASS
+JSON/reference source                    PASS
+Silver expectations                      PASS
+Lineage / DAG                            PASS
+Safe rerun                               PASS
+Incremental ingestion                    PASS
+Classic Spark comparison                 PASS
+Auto Loader review clarification          PASS
+Asset Bundle deployment                  PASS
+Bundle-managed production infrastructure PASS
+Development execution                    PASS
+Personal production execution            PASS
+Final validation                         PASS
+Clean deploy-only handoff design         PASS
 ```
 
-The development implementation is complete and tested.
+The operational Job contains four tasks with no schema/Volume DDL.
 
-The ready Lab 05 pipeline and orchestration Job were also deployed successfully to the shared Azure target **without running either resource**, completing the supervisor handoff requirement.
+Personal Prod is the production-style execution evidence used in this README.
+Azure production execution results are intentionally excluded.
 
 ---
 
-# Shared Azure deployment
+# Shared Azure run environment
 
-The final Lab 05 resources were validated and selectively deployed to the Azure target from the local repository using the Azure CLI profile.
+The repository supports the shared Azure targets through the same Bundle
+configuration and reusable runner.
 
-Validation:
+For the final shared state, Azure production is treated as a
+**clean runnable environment**, not as documentation evidence.
 
-```text
-databricks bundle validate -t azure_dev --profile AZURE_DEV
-→ Validation OK!
-```
-
-Selective deployment:
+This README therefore does **not** include:
 
 ```text
-pipelines.lab05_lakeflow_pipeline
-→ Deployment complete!
-
-jobs.lab05_lakeflow_job
-→ Deployment complete!
+Azure Prod run IDs
+Azure Prod success/failure history
+Azure Prod execution screenshots
+Azure Prod timing results
 ```
 
-No Azure pipeline or Job run was triggered after deployment.
-
-![Azure deployment](images/16_azure_deployment.png)
-
-This satisfies the supervisor instruction to deploy the ready resources to the shared environment without running them.
+The documented production-style proof comes from `personal_prod`, while the
+Azure target remains available for the next person to review and run.
 
 ---
 
 # Evidence index
 
+The original Lab 05 evidence remains useful for the core implementation. Keep
+the existing repository screenshots `02` through `13` where they are still
+accurate.
+
 | Screenshot | Evidence |
 |---|---|
-| `01_environment_setup.png` | managed + external volume setup |
-| `02_source_profile.png` | source schemas and sample data |
-| `03_join_validation.png` | 100% natural-key coverage |
-| `04_source_preparation_passed.png` | source-preparation validation |
-| `05_quality_rules_tests.png` | reusable quality tests |
-| `06_pipeline_success.png` | successful Lakeflow run |
-| `07_pipeline_dag.png` | declarative DAG / lineage |
-| `08_expectation_results_status.png` | status Silver expectations |
-| `09_expectation_results_information.png` | information Silver expectations |
-| `10_safe_rerun.png` | idempotent normal rerun |
-| `11_incremental_ingestion.png` | one-new-file incremental update |
-| `12_final_validation.png` | final metrics and PASS |
-| `13_validation_matrix.png` | 20/20 validation checks |
-| `14_job_orchestration_dag.png` | producer → pipeline → validation Job DAG |
-| `15_job_timeline.png` | successful three-task Job execution timeline |
-| `16_azure_deployment.png` | Azure validation + deploy-only evidence |
+| `01_environment_setup.png` | Personal Prod schema with six pipeline datasets and two managed Volumes |
+| `02_source_profile.png` | existing source-profile evidence — keep from the repository |
+| `03_join_validation.png` | 100% `station_id` join coverage |
+| `04_source_preparation_passed.png` | source-preparation validation PASS |
+| `05_quality_rules_tests.png` | reusable expectation/unit tests passing |
+| `06_pipeline_success.png` | existing Lakeflow pipeline success evidence — keep |
+| `07_pipeline_dag.png` | existing declarative lineage/DAG evidence — keep |
+| `08_expectation_results_status.png` | existing status Silver expectation evidence — keep |
+| `09_expectation_results_information.png` | existing information Silver expectation evidence — keep |
+| `10_safe_rerun.png` | existing safe-rerun evidence — keep |
+| `11_incremental_ingestion.png` | existing one-new-file incremental-ingestion evidence — keep |
+| `12_final_validation.png` | existing final validation PASS evidence — keep |
+| `13_validation_matrix.png` | existing validation-matrix evidence — keep |
+| `14_job_orchestration_dag.png` | **Personal Prod** four-task successful Job DAG |
+| `15_job_timeline.png` | **Personal Prod** successful four-task timeline |
+| `16_personal_prod_jobs.png` | Personal workspace showing separate dev and production-style Lab 05 Jobs |
+
+No Azure production execution screenshot is included.
 
 ---
 
 ## Result
 
-Lab 05 demonstrates an end-to-end Lakeflow declarative pipeline that combines streaming and batch JSON sources, applies declarative quality expectations, enriches live station observations with reference metadata, produces a Gold analytical materialized view, reloads safely, processes new files incrementally, and is packaged for bundle-based deployment. An optional Lakeflow Job additionally proves automated producer → pipeline → validation orchestration. The final pipeline and Job were then selectively deployed to the shared Azure target without execution.
+Lab 05 demonstrates an end-to-end Lakeflow declarative pipeline that combines
+streaming and batch JSON sources, applies declarative expectations, enriches
+station observations with reference metadata, produces a Gold materialized
+view, reloads safely, and processes newly arriving files incrementally.
+
+The final project also demonstrates:
+
+- Auto Loader in both classic Structured Streaming and Lakeflow
+- Bundle-managed production-style schema and managed Volumes
+- isolated Dev/Prod Lakeflow table ownership
+- target-specific compute behavior
+- serverless Lakeflow pipeline execution
+- a four-task operational Job with no schema/Volume DDL
+- successful **Personal Prod** execution
+- a clean shared Azure run environment without publishing Azure Prod run evidence
