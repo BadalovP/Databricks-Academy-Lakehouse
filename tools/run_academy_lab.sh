@@ -4,6 +4,10 @@ set -euo pipefail
 # ============================================================================
 # Databricks Academy reusable runner
 #
+# Supported labs:
+#   05 - Citi Bike Lakeflow
+#   06 - External V2 End-to-End Gold Analytics
+#
 # Azure:
 #   --cluster gp1  (default)
 #   --cluster gp2
@@ -12,10 +16,15 @@ set -euo pipefail
 # Personal:
 #   serverless compute; --cluster is ignored.
 #
-# Lab 05 production deployment additionally creates:
-#   - schema
-#   - reference/test managed Volume
-#   - streaming managed Volume
+# Lab 05 production deployment additionally creates its Prod schema/Volumes.
+# Lab 06 uses ONE combined end-to-end Job:
+#   01_dimensions
+#     -> 02_fact_encounters
+#     -> 03_fact_conditions
+#     -> 04_aggregations
+#          -> 05_register_shared_tables
+#          -> 06_alert_metrics
+#     -> 07_validation
 # ============================================================================
 
 AZURE_GP1_DEFAULT="0702-132442-toro5spu"
@@ -40,11 +49,11 @@ DO_RUN="true"
 usage() {
   cat <<'EOF'
 Usage:
-  run_academy_lab.sh --lab 05 [options]
+  run_academy_lab.sh --lab 05|06 [options]
 
 Options:
   --lab LAB
-      Lab number.
+      Supported: 05, 06.
 
   --target TARGET
       azure_dev, azure_prod, personal_dev, personal_prod.
@@ -87,13 +96,24 @@ configure_lab() {
           ;;
       esac
       ;;
-    6|06|7|07|8|08|9|09|10|11|12)
+
+    6|06)
+      LAB="06"
+
+      # Final Lab 06 design: ONE combined end-to-end Job.
+      JOB_KEY="lab06_external_gold_job"
+      CLUSTER_VAR="lab06_cluster_id"
+      RESOURCE_SELECT="jobs.lab06_external_gold_job"
+      ;;
+
+    7|07|8|08|9|09|10|11|12)
       echo "ERROR: Lab $LAB is not wired into this runner yet." >&2
       echo "Add its resource mapping to configure_lab()." >&2
       exit 2
       ;;
+
     *)
-      echo "ERROR: Use --lab 05 for the currently configured lab." >&2
+      echo "ERROR: Supported labs are 05 and 06." >&2
       exit 2
       ;;
   esac

@@ -67,6 +67,13 @@ variables:
   # project. Targets are expected to run sequentially, not concurrently.
   # -------------------------------------------------------------------
 
+  lab06_cluster_id:
+    description: >
+      Existing all-purpose cluster used by the Lab 06 end-to-end Job in Azure
+      targets. tools/run_academy_lab.sh can override this value after selecting
+      GP1, GP2, or auto.
+    default: "0702-132442-toro5spu"
+
   lab06_external_catalog:
     description: Catalog used by Lab 06 External V2
     default: "dbr_dev"
@@ -104,6 +111,9 @@ targets:
       lab05_schema: "parvinbadalov"
       lab05_cluster_id: "0702-132442-toro5spu"
 
+      # Lab 06 compute
+      lab06_cluster_id: "0702-132442-toro5spu"
+
       # Lab 06 shared analytics
       lab06_warehouse_id: "3ed106620db591d9"
       lab06_alert_subscriber_email: "parvinbadalov@softserve.academy"
@@ -128,6 +138,29 @@ targets:
 
             - task_key: validate_pipeline
               existing_cluster_id: ${var.lab05_cluster_id}
+
+        lab06_external_gold_job:
+          tasks:
+            - task_key: 01_dimensions
+              existing_cluster_id: ${var.lab06_cluster_id}
+
+            - task_key: 02_fact_encounters
+              existing_cluster_id: ${var.lab06_cluster_id}
+
+            - task_key: 03_fact_conditions
+              existing_cluster_id: ${var.lab06_cluster_id}
+
+            - task_key: 04_aggregations
+              existing_cluster_id: ${var.lab06_cluster_id}
+
+            - task_key: 05_register_shared_tables
+              existing_cluster_id: ${var.lab06_cluster_id}
+
+            - task_key: 06_alert_metrics
+              existing_cluster_id: ${var.lab06_cluster_id}
+
+            - task_key: 07_validation
+              existing_cluster_id: ${var.lab06_cluster_id}
 
   # ===================================================================
   # AZURE - PRODUCTION TEST
@@ -156,6 +189,9 @@ targets:
       lab05_schema: "parvinbadalov_lab05_prod"
       lab05_cluster_id: "0702-132442-toro5spu"
 
+      # Lab 06 compute
+      lab06_cluster_id: "0702-132442-toro5spu"
+
       # Lab 06 shared analytics
       lab06_warehouse_id: "3ed106620db591d9"
       lab06_alert_subscriber_email: "parvinbadalov@softserve.academy"
@@ -181,6 +217,29 @@ targets:
 
             - task_key: validate_pipeline
               existing_cluster_id: ${var.lab05_cluster_id}
+
+        lab06_external_gold_job:
+          tasks:
+            - task_key: 01_dimensions
+              existing_cluster_id: ${var.lab06_cluster_id}
+
+            - task_key: 02_fact_encounters
+              existing_cluster_id: ${var.lab06_cluster_id}
+
+            - task_key: 03_fact_conditions
+              existing_cluster_id: ${var.lab06_cluster_id}
+
+            - task_key: 04_aggregations
+              existing_cluster_id: ${var.lab06_cluster_id}
+
+            - task_key: 05_register_shared_tables
+              existing_cluster_id: ${var.lab06_cluster_id}
+
+            - task_key: 06_alert_metrics
+              existing_cluster_id: ${var.lab06_cluster_id}
+
+            - task_key: 07_validation
+              existing_cluster_id: ${var.lab06_cluster_id}
 
   # ===================================================================
   # PERSONAL - DEVELOPMENT
