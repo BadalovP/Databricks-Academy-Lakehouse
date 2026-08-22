@@ -6,13 +6,10 @@ resources:
       catalog: ${var.lab05_catalog}
       schema: ${var.lab05_schema}
 
-      # Make the Lab 05 project root importable during pipeline execution.
-      # This allows pipeline files to use imports such as:
-      #   from src.config import ...
-      #   from src.quality_rules import ...
+      # Add the Lab 05 project root to sys.path so imports like
+      # `from src.config import ...` work inside the pipeline.
       root_path: ../labs/lab_05_lakeflow
 
-      # Lakeflow pipeline compute remains serverless.
       serverless: true
       continuous: false
 
@@ -26,11 +23,13 @@ resources:
         - file:
             path: ../labs/lab_05_lakeflow/pipeline/gold.py
 
+      # IMPORTANT:
+      # src/config.py expects these exact Spark configuration keys.
       configuration:
-        catalog: ${var.lab05_catalog}
-        schema: ${var.lab05_schema}
-        volume_name: ${var.lab05_volume_name}
-        streaming_volume_name: ${var.lab05_streaming_volume_name}
+        lab05.catalog: ${var.lab05_catalog}
+        lab05.schema: ${var.lab05_schema}
+        lab05.volume_name: ${var.lab05_volume_name}
+        lab05.streaming_volume_name: ${var.lab05_streaming_volume_name}
 
       channel: CURRENT
 
