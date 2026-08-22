@@ -7,9 +7,25 @@ include:
   - Demos/Demo1/resources/*.yml
 
 variables:
+  # -------------------------------------------------------------------
+  # Lab 03
+  # -------------------------------------------------------------------
+
   lab03_cluster_id:
     description: Existing cluster used by the Lab 03 Job
     default: "0702-132442-toro5spu"
+
+  # -------------------------------------------------------------------
+  # Lab 05
+  # -------------------------------------------------------------------
+
+  lab05_cluster_id:
+    description: >
+      Existing all-purpose cluster used by Lab 05 notebook and Python tasks.
+      GP1 is used as the normal fallback. tools/run_academy_lab.sh can
+      override this value when another preferred cluster is already running.
+    lookup:
+      cluster: "GP1"
 
   # -------------------------------------------------------------------
   # Lab 06 V1
@@ -48,7 +64,12 @@ variables:
     description: Shared ADLS root used by External V2 Delta Gold tables
     default: "abfss://parvinbadalov@dlspl21databricks.dfs.core.windows.net/lab06_gold_external_v2"
 
+
 targets:
+  # ===================================================================
+  # AZURE - DEVELOPMENT
+  # ===================================================================
+
   azure_dev:
     mode: development
 
@@ -60,12 +81,71 @@ targets:
       lab06_alert_subscriber_email: "parvinbadalov@softserve.academy"
       lab06_alert_parent_path: "/Workspace/Users/parvinbadalov@softserve.academy"
 
+
+  # ===================================================================
+  # AZURE - PRODUCTION TEST
+  # ===================================================================
+
+  azure_prod:
+    mode: production
+
+    workspace:
+      host: https://adb-7405604503619901.1.azuredatabricks.net
+      root_path: /Workspace/Production/.bundle/${bundle.name}/${bundle.target}
+
+    git:
+      branch: main
+
+    run_as:
+      user_name: parvinbadalov@softserve.academy
+
+    permissions:
+      - level: CAN_MANAGE
+        user_name: parvinbadalov@softserve.academy
+
+    variables:
+      lab06_warehouse_id: "3ed106620db591d9"
+      lab06_alert_subscriber_email: "parvinbadalov@softserve.academy"
+      lab06_alert_parent_path: "/Workspace/Users/parvinbadalov@softserve.academy"
+
+
+  # ===================================================================
+  # PERSONAL - DEVELOPMENT
+  # ===================================================================
+
   personal_dev:
     mode: development
     default: true
 
     workspace:
       host: https://dbc-1750318a-76a9.cloud.databricks.com
+
+    variables:
+      lab06_warehouse_id: "410e5f3b4784e981"
+      lab06_alert_subscriber_email: "parvinbadalov@yahoo.com"
+      lab06_alert_parent_path: "/Workspace/Users/parvinbadalov@yahoo.com/Drafts"
+
+
+  # ===================================================================
+  # PERSONAL - PRODUCTION TEST
+  # ===================================================================
+
+  personal_prod:
+    mode: production
+
+    workspace:
+      host: https://dbc-1750318a-76a9.cloud.databricks.com
+      root_path: /Workspace/Production/.bundle/${bundle.name}/${bundle.target}
+
+    git:
+      branch: main
+
+    run_as:
+      user_name: parvinbadalov@yahoo.com
+
+    permissions:
+      - level: CAN_MANAGE
+        user_name: parvinbadalov@yahoo.com
 
     variables:
       lab06_warehouse_id: "410e5f3b4784e981"
