@@ -77,6 +77,33 @@ variables:
     description: Shared ADLS root used by External V2 Delta Gold tables
     default: "abfss://parvinbadalov@dlspl21databricks.dfs.core.windows.net/lab06_gold_external_v2"
 
+  # -------------------------------------------------------------------
+  # Lab 07
+  # -------------------------------------------------------------------
+  lab07_catalog:
+    description: Catalog used by Lab 07
+    default: "dbr_dev"
+
+  lab07_schema:
+    description: Existing shared schema used by Lab 07
+    default: "parvinbadalov"
+
+  lab07_volume_name:
+    description: Managed Unity Catalog Volume used by Lab 07
+    default: "lab07_data_quality"
+
+  lab07_snapshot_count:
+    description: Number of canonical Chicago license snapshots used by Lab 07
+    default: "3"
+
+  lab07_snapshot_cutoffs:
+    description: Comma-separated cutoff dates used to build canonical snapshots
+    default: "2024-12-31,2025-12-31,2026-08-15"
+
+  lab07_cluster_id:
+    description: Existing Azure cluster used by Lab 07 notebook tasks
+    default: "0702-132442-toro5spu"
+
 targets:
   # ===================================================================
   # AZURE - DEVELOPMENT
@@ -96,6 +123,8 @@ targets:
       lab06_warehouse_id: "3ed106620db591d9"
       lab06_alert_subscriber_email: "parvinbadalov@softserve.academy"
       lab06_alert_parent_path: "/Workspace/Users/parvinbadalov@softserve.academy"
+
+      lab07_cluster_id: "0702-132442-toro5spu"
 
     resources:
       jobs:
@@ -135,6 +164,41 @@ targets:
 
             - task_key: 07_validation
               existing_cluster_id: ${var.lab06_cluster_id}
+
+        lab07_data_quality_job:
+          tasks:
+            - task_key: 00_source_preparation
+              existing_cluster_id: ${var.lab07_cluster_id}
+
+            - task_key: 02_scd2_validation
+              existing_cluster_id: ${var.lab07_cluster_id}
+
+            - task_key: 03_quarantine_review
+              existing_cluster_id: ${var.lab07_cluster_id}
+
+            - task_key: 04_delta_constraints
+              existing_cluster_id: ${var.lab07_cluster_id}
+
+            - task_key: 05_gx_validation
+              existing_cluster_id: ${var.lab07_cluster_id}
+
+            - task_key: 06_reconciliation
+              existing_cluster_id: ${var.lab07_cluster_id}
+
+            - task_key: 07_freshness_volume
+              existing_cluster_id: ${var.lab07_cluster_id}
+
+            - task_key: 08_schema_contract
+              existing_cluster_id: ${var.lab07_cluster_id}
+
+            - task_key: 09_monitoring_validation
+              existing_cluster_id: ${var.lab07_cluster_id}
+
+            - task_key: 10_quality_scorecard
+              existing_cluster_id: ${var.lab07_cluster_id}
+
+            - task_key: 11_final_gate
+              existing_cluster_id: ${var.lab07_cluster_id}
 
   # ===================================================================
   # AZURE - PRODUCTION TEST
@@ -166,6 +230,8 @@ targets:
       lab06_alert_subscriber_email: "parvinbadalov@softserve.academy"
       lab06_alert_parent_path: "/Workspace/Users/parvinbadalov@softserve.academy"
 
+      lab07_cluster_id: "0702-132442-toro5spu"
+
     resources:
       jobs:
         lab05_lakeflow_job:
@@ -204,6 +270,41 @@ targets:
 
             - task_key: 07_validation
               existing_cluster_id: ${var.lab06_cluster_id}
+
+        lab07_data_quality_job:
+          tasks:
+            - task_key: 00_source_preparation
+              existing_cluster_id: ${var.lab07_cluster_id}
+
+            - task_key: 02_scd2_validation
+              existing_cluster_id: ${var.lab07_cluster_id}
+
+            - task_key: 03_quarantine_review
+              existing_cluster_id: ${var.lab07_cluster_id}
+
+            - task_key: 04_delta_constraints
+              existing_cluster_id: ${var.lab07_cluster_id}
+
+            - task_key: 05_gx_validation
+              existing_cluster_id: ${var.lab07_cluster_id}
+
+            - task_key: 06_reconciliation
+              existing_cluster_id: ${var.lab07_cluster_id}
+
+            - task_key: 07_freshness_volume
+              existing_cluster_id: ${var.lab07_cluster_id}
+
+            - task_key: 08_schema_contract
+              existing_cluster_id: ${var.lab07_cluster_id}
+
+            - task_key: 09_monitoring_validation
+              existing_cluster_id: ${var.lab07_cluster_id}
+
+            - task_key: 10_quality_scorecard
+              existing_cluster_id: ${var.lab07_cluster_id}
+
+            - task_key: 11_final_gate
+              existing_cluster_id: ${var.lab07_cluster_id}
 
   # ===================================================================
   # PERSONAL - DEVELOPMENT
@@ -257,10 +358,10 @@ targets:
       lab06_warehouse_id: "410e5f3b4784e981"
       lab06_alert_subscriber_email: "parvinbadalov@yahoo.com"
       lab06_alert_parent_path: "/Workspace/Users/parvinbadalov@yahoo.com/Drafts"
-      
+
     resources:
       jobs:
         lab05_lakeflow_job:
           tasks:
             - task_key: produce_status_snapshot
-              environment_key: default  
+              environment_key: default

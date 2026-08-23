@@ -1,0 +1,9 @@
+resources:
+  dashboards:
+    lab07_dq_scorecard:
+      display_name: "Lab 07 - Chicago Business Licenses Data Quality Scorecard"
+      file_path: ../labs/lab_07_data_quality_testing/dashboards/lab07_dq_scorecard.lvdash.json
+      warehouse_id: ${var.lab07_warehouse_id}
+      dataset_catalog: ${var.lab07_catalog}
+      dataset_schema: ${var.lab07_schema}
+      embed_credentials: true

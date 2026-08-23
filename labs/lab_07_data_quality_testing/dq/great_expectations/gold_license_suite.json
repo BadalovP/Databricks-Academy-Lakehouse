@@ -1,0 +1,19 @@
+{
+  "name": "lab07_gold",
+  "expectations": [
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "quality_date"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_between",
+      "kwargs": {
+        "column": "quality_score_pct",
+        "min_value": 0,
+        "max_value": 100
+      }
+    }
+  ]
+}

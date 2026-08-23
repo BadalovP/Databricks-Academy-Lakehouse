@@ -1,0 +1,8 @@
+resources:
+  volumes:
+    lab07_data_quality:
+      name: ${var.lab07_volume_name}
+      catalog_name: ${var.lab07_catalog}
+      schema_name: ${var.lab07_schema}
+      volume_type: MANAGED
+      comment: Lab 07 Chicago Business Licenses DQ files

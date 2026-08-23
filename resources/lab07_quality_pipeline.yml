@@ -1,0 +1,19 @@
+resources:
+  pipelines:
+    lab07_quality_pipeline:
+      name: "Lab 07 - Chicago Business Licenses Data Quality Pipeline"
+      catalog: ${var.lab07_catalog}
+      schema: ${var.lab07_schema}
+      serverless: true
+      continuous: false
+      channel: PREVIEW
+      configuration:
+        lab07.catalog: ${var.lab07_catalog}
+        lab07.schema: ${var.lab07_schema}
+        lab07.volume_name: ${var.lab07_volume_name}
+        lab07.snapshot_count: ${var.lab07_snapshot_count}
+      libraries:
+        - file: {path: ../labs/lab_07_data_quality_testing/pipeline/bronze.py}
+        - file: {path: ../labs/lab_07_data_quality_testing/pipeline/quality.py}
+        - file: {path: ../labs/lab_07_data_quality_testing/pipeline/scd2.py}
+        - file: {path: ../labs/lab_07_data_quality_testing/pipeline/gold.py}

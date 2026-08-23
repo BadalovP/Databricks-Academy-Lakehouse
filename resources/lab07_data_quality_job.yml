@@ -1,0 +1,126 @@
+resources:
+  jobs:
+    lab07_data_quality_job:
+      name: "Lab 07 - Chicago Business Licenses Data Quality Gate"
+      max_concurrent_runs: 1
+      parameters:
+        - {name: catalog, default: "${var.lab07_catalog}"}
+        - {name: schema, default: "${var.lab07_schema}"}
+        - {name: volume_name, default: "${var.lab07_volume_name}"}
+        - {name: snapshot_count, default: "${var.lab07_snapshot_count}"}
+        - {name: require_monitor, default: "true"}
+      tasks:
+        - task_key: 00_source_preparation
+          notebook_task:
+            notebook_path: ../labs/lab_07_data_quality_testing/notebooks/lab07_00_source_preparation.ipynb
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume_name: "{{job.parameters.volume_name}}"
+              run_id: "{{job.run_id}}"
+        - task_key: 01_quality_pipeline
+          depends_on: [{task_key: 00_source_preparation}]
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.lab07_quality_pipeline.id}
+            full_refresh: true
+        - task_key: 02_scd2_validation
+          depends_on:
+            - {task_key: 01_quality_pipeline}
+          notebook_task:
+            notebook_path: ../labs/lab_07_data_quality_testing/notebooks/lab07_02_scd2_validation.ipynb
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume_name: "{{job.parameters.volume_name}}"
+              run_id: "{{job.run_id}}"
+        - task_key: 03_quarantine_review
+          depends_on:
+            - {task_key: 02_scd2_validation}
+          notebook_task:
+            notebook_path: ../labs/lab_07_data_quality_testing/notebooks/lab07_03_quarantine_review.ipynb
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume_name: "{{job.parameters.volume_name}}"
+              run_id: "{{job.run_id}}"
+        - task_key: 04_delta_constraints
+          depends_on:
+            - {task_key: 03_quarantine_review}
+          notebook_task:
+            notebook_path: ../labs/lab_07_data_quality_testing/notebooks/lab07_04_delta_constraints.ipynb
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume_name: "{{job.parameters.volume_name}}"
+              run_id: "{{job.run_id}}"
+        - task_key: 05_gx_validation
+          depends_on:
+            - {task_key: 04_delta_constraints}
+          notebook_task:
+            notebook_path: ../labs/lab_07_data_quality_testing/notebooks/lab07_05_gx_validation.ipynb
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume_name: "{{job.parameters.volume_name}}"
+              run_id: "{{job.run_id}}"
+        - task_key: 06_reconciliation
+          depends_on:
+            - {task_key: 05_gx_validation}
+          notebook_task:
+            notebook_path: ../labs/lab_07_data_quality_testing/notebooks/lab07_06_reconciliation.ipynb
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume_name: "{{job.parameters.volume_name}}"
+              run_id: "{{job.run_id}}"
+        - task_key: 07_freshness_volume
+          depends_on:
+            - {task_key: 05_gx_validation}
+          notebook_task:
+            notebook_path: ../labs/lab_07_data_quality_testing/notebooks/lab07_07_freshness_volume.ipynb
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume_name: "{{job.parameters.volume_name}}"
+              run_id: "{{job.run_id}}"
+        - task_key: 08_schema_contract
+          depends_on:
+            - {task_key: 06_reconciliation}
+            - {task_key: 07_freshness_volume}
+          notebook_task:
+            notebook_path: ../labs/lab_07_data_quality_testing/notebooks/lab07_08_schema_contract.ipynb
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume_name: "{{job.parameters.volume_name}}"
+              run_id: "{{job.run_id}}"
+        - task_key: 09_monitoring_validation
+          depends_on:
+            - {task_key: 08_schema_contract}
+          notebook_task:
+            notebook_path: ../labs/lab_07_data_quality_testing/notebooks/lab07_09_monitoring_validation.ipynb
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume_name: "{{job.parameters.volume_name}}"
+              run_id: "{{job.run_id}}"
+        - task_key: 10_quality_scorecard
+          depends_on:
+            - {task_key: 09_monitoring_validation}
+          notebook_task:
+            notebook_path: ../labs/lab_07_data_quality_testing/notebooks/lab07_10_quality_scorecard.ipynb
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume_name: "{{job.parameters.volume_name}}"
+              run_id: "{{job.run_id}}"
+        - task_key: 11_final_gate
+          depends_on:
+            - {task_key: 10_quality_scorecard}
+          notebook_task:
+            notebook_path: ../labs/lab_07_data_quality_testing/notebooks/lab07_11_final_gate.ipynb
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume_name: "{{job.parameters.volume_name}}"
+              run_id: "{{job.run_id}}"

@@ -1,0 +1,1 @@
+SELECT (SELECT COUNT(*) FROM dbr_dev.parvinbadalov.business_license_bronze) bronze_rows, (SELECT COUNT(*) FROM dbr_dev.parvinbadalov.business_license_validated) validated_rows, (SELECT COUNT(*) FROM dbr_dev.parvinbadalov.business_license_quarantine) quarantine_rows;

@@ -1,0 +1,10 @@
+resources:
+  quality_monitors:
+    lab07_license_monitor:
+      table_name: ${var.lab07_catalog}.${var.lab07_schema}.business_license_validated
+      output_schema_name: ${var.lab07_catalog}.${var.lab07_schema}
+      assets_dir: /Workspace/Users/${workspace.current_user.userName}/lab07_data_quality_monitoring/business_license_validated
+      skip_builtin_dashboard: true
+      time_series:
+        granularities: [1 day]
+        timestamp_col: _ingested_at
