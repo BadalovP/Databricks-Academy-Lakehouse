@@ -128,6 +128,7 @@ targets:
       lab06_alert_parent_path: "/Workspace/Users/parvinbadalov@softserve.academy"
 
       lab07_cluster_id: "0702-132442-toro5spu"
+      lab07_warehouse_id: "3ed106620db591d9"
 
     resources:
       jobs:
@@ -234,6 +235,7 @@ targets:
       lab06_alert_parent_path: "/Workspace/Users/parvinbadalov@softserve.academy"
 
       lab07_cluster_id: "0702-132442-toro5spu"
+      lab07_warehouse_id: "3ed106620db591d9"
 
     resources:
       jobs:
@@ -327,6 +329,8 @@ targets:
       lab06_alert_subscriber_email: "parvinbadalov@yahoo.com"
       lab06_alert_parent_path: "/Workspace/Users/parvinbadalov@yahoo.com/Drafts"
 
+      lab07_warehouse_id: "410e5f3b4784e981"
+
     resources:
       jobs:
         lab05_lakeflow_job:
@@ -361,6 +365,8 @@ targets:
       lab06_warehouse_id: "410e5f3b4784e981"
       lab06_alert_subscriber_email: "parvinbadalov@yahoo.com"
       lab06_alert_parent_path: "/Workspace/Users/parvinbadalov@yahoo.com/Drafts"
+
+      lab07_warehouse_id: "410e5f3b4784e981"
 
     resources:
       jobs:
