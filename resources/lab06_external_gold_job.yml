@@ -45,9 +45,6 @@ resources:
           default: "20"
 
         - name: run_demo
-          description: >
-            Governance demo switch. Keep false for normal recurring runs.
-            Set true when you want RLS/CLS demonstration output.
           default: "false"
 
       tasks:
