@@ -104,6 +104,9 @@ variables:
     description: Existing Azure cluster used by Lab 07 notebook tasks
     default: "0702-132442-toro5spu"
 
+  lab07_warehouse_id:
+    description: SQL warehouse used by Lab 07 quality monitoring resources
+
 targets:
   # ===================================================================
   # AZURE - DEVELOPMENT
