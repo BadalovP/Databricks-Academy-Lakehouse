@@ -1,0 +1,19 @@
+{
+  "datasets": [
+    {
+      "name": "overall_quality",
+      "displayName": "Overall Quality",
+      "queryLines": [
+        "SELECT * FROM lab07_quality_scorecard WHERE dimension='OVERALL'"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "overview",
+      "displayName": "Data Quality Overview",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": []
+    }
+  ]
+}
