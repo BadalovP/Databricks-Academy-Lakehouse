@@ -6,6 +6,7 @@ from pathlib import Path
 
 LAB_ROOT = Path(__file__).resolve().parents[1]
 NOTEBOOK = LAB_ROOT / "notebooks" / "lab06e_08_governance.ipynb"
+JOB_RESOURCE = LAB_ROOT.parents[1] / "resources" / "lab06_external_gold_job.yml"
 
 
 def _code() -> str:
@@ -15,6 +16,17 @@ def _code() -> str:
         for cell in payload["cells"]
         if cell.get("cell_type") == "code"
     )
+
+
+def _job() -> str:
+    return JOB_RESOURCE.read_text(encoding="utf-8")
+
+
+def _task_block(job_text: str, task_key: str) -> str:
+    marker = f"- task_key: {task_key}"
+    block = job_text.split(marker, 1)[1]
+    next_task = block.find("\n        - task_key:")
+    return block if next_task == -1 else block[:next_task]
 
 
 def test_governance_targets_external_v2_schema_and_secure_views():
@@ -65,3 +77,20 @@ def test_demo_restores_pipeline_identity_and_does_not_write_gold_data():
     assert "Current user restored to full / privileged access." in code
     assert "overwrite_external_delta(" not in code
     assert ".save(" not in code
+
+
+def test_main_job_wires_governance_after_registration_before_validation():
+    job = _job()
+
+    assert '- name: run_demo' in job
+    assert 'default: "false"' in job
+    assert "- task_key: 08_governance" in job
+
+    governance = _task_block(job, "08_governance")
+    assert "- task_key: 05_register_shared_tables" in governance
+    assert "lab06e_08_governance.ipynb" in governance
+    assert 'run_demo: "{{job.parameters.run_demo}}"' in governance
+
+    validation = _task_block(job, "07_validation")
+    assert "- task_key: 06_alert_metrics" in validation
+    assert "- task_key: 08_governance" in validation

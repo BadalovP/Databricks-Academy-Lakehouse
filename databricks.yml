@@ -10,7 +10,6 @@ variables:
   # -------------------------------------------------------------------
   # Lab 03
   # -------------------------------------------------------------------
-
   lab03_cluster_id:
     description: Existing cluster used by the Lab 03 Job
     default: "0702-132442-toro5spu"
@@ -18,7 +17,6 @@ variables:
   # -------------------------------------------------------------------
   # Lab 05
   # -------------------------------------------------------------------
-
   lab05_cluster_id:
     description: >
       Existing all-purpose cluster used by Lab 05 notebook and Python tasks
@@ -42,8 +40,13 @@ variables:
     default: "lab05_lakeflow_streaming"
 
   # -------------------------------------------------------------------
-  # Lab 06 V1 / shared analytics resources
+  # Lab 06
   # -------------------------------------------------------------------
+  lab06_cluster_id:
+    description: >
+      Existing all-purpose cluster used by Lab 06 notebook tasks in Azure
+      targets. tools/run_academy_lab.sh can override this value.
+    default: "0702-132442-toro5spu"
 
   lab06_warehouse_id:
     description: SQL warehouse used by Lab 06 Dashboard and Genie
@@ -53,26 +56,6 @@ variables:
 
   lab06_alert_parent_path:
     description: Workspace folder containing the Lab 06 SQL alert
-
-  # -------------------------------------------------------------------
-  # Lab 06 External V2
-  #
-  # Lab 06 intentionally keeps ONE schema name per workspace:
-  #   dbr_dev.parvinbadalov_lab06_ext
-  #
-  # Azure and Personal are separate workspaces, so the UC schema objects are
-  # separate even though the names are identical.
-  #
-  # The External V2 Gold Delta files use one shared ADLS root for this academy
-  # project. Targets are expected to run sequentially, not concurrently.
-  # -------------------------------------------------------------------
-
-  lab06_cluster_id:
-    description: >
-      Existing all-purpose cluster used by the Lab 06 end-to-end Job in Azure
-      targets. tools/run_academy_lab.sh can override this value after selecting
-      GP1, GP2, or auto.
-    default: "0702-132442-toro5spu"
 
   lab06_external_catalog:
     description: Catalog used by Lab 06 External V2
@@ -87,18 +70,17 @@ variables:
     default: "lab06_gold_analytics"
 
   lab06_external_target_schema:
-    description: Unity Catalog schema used to register Lab 06 External V2 Gold tables
+    description: Unity Catalog schema used to register External V2 Gold tables
     default: "parvinbadalov_lab06_ext"
 
   lab06_external_gold_root:
-    description: Shared ADLS root used by Lab 06 External V2 Delta Gold tables
+    description: Shared ADLS root used by External V2 Delta Gold tables
     default: "abfss://parvinbadalov@dlspl21databricks.dfs.core.windows.net/lab06_gold_external_v2"
 
 targets:
   # ===================================================================
   # AZURE - DEVELOPMENT
   # ===================================================================
-
   azure_dev:
     mode: development
 
@@ -106,25 +88,14 @@ targets:
       host: https://adb-7405604503619901.1.azuredatabricks.net
 
     variables:
-      # Lab 05
       lab05_catalog: "dbr_dev"
       lab05_schema: "parvinbadalov"
       lab05_cluster_id: "0702-132442-toro5spu"
 
-      # Lab 06 compute
       lab06_cluster_id: "0702-132442-toro5spu"
-
-      # Lab 06 shared analytics
       lab06_warehouse_id: "3ed106620db591d9"
       lab06_alert_subscriber_email: "parvinbadalov@softserve.academy"
       lab06_alert_parent_path: "/Workspace/Users/parvinbadalov@softserve.academy"
-
-      # Lab 06 External V2
-      lab06_external_catalog: "dbr_dev"
-      lab06_external_source_schema: "parvinbadalov"
-      lab06_external_source_volume_name: "lab06_gold_analytics"
-      lab06_external_target_schema: "parvinbadalov_lab06_ext"
-      lab06_external_gold_root: "abfss://parvinbadalov@dlspl21databricks.dfs.core.windows.net/lab06_gold_external_v2"
 
     resources:
       jobs:
@@ -159,13 +130,15 @@ targets:
             - task_key: 06_alert_metrics
               existing_cluster_id: ${var.lab06_cluster_id}
 
+            - task_key: 08_governance
+              existing_cluster_id: ${var.lab06_cluster_id}
+
             - task_key: 07_validation
               existing_cluster_id: ${var.lab06_cluster_id}
 
   # ===================================================================
   # AZURE - PRODUCTION TEST
   # ===================================================================
-
   azure_prod:
     mode: production
 
@@ -184,26 +157,14 @@ targets:
         user_name: parvinbadalov@softserve.academy
 
     variables:
-      # Lab 05
       lab05_catalog: "dbr_dev"
       lab05_schema: "parvinbadalov_lab05_prod"
       lab05_cluster_id: "0702-132442-toro5spu"
 
-      # Lab 06 compute
       lab06_cluster_id: "0702-132442-toro5spu"
-
-      # Lab 06 shared analytics
       lab06_warehouse_id: "3ed106620db591d9"
       lab06_alert_subscriber_email: "parvinbadalov@softserve.academy"
       lab06_alert_parent_path: "/Workspace/Users/parvinbadalov@softserve.academy"
-
-      # Lab 06 External V2
-      # Same Lab 06 schema/root as azure_dev by design.
-      lab06_external_catalog: "dbr_dev"
-      lab06_external_source_schema: "parvinbadalov"
-      lab06_external_source_volume_name: "lab06_gold_analytics"
-      lab06_external_target_schema: "parvinbadalov_lab06_ext"
-      lab06_external_gold_root: "abfss://parvinbadalov@dlspl21databricks.dfs.core.windows.net/lab06_gold_external_v2"
 
     resources:
       jobs:
@@ -238,13 +199,15 @@ targets:
             - task_key: 06_alert_metrics
               existing_cluster_id: ${var.lab06_cluster_id}
 
+            - task_key: 08_governance
+              existing_cluster_id: ${var.lab06_cluster_id}
+
             - task_key: 07_validation
               existing_cluster_id: ${var.lab06_cluster_id}
 
   # ===================================================================
   # PERSONAL - DEVELOPMENT
   # ===================================================================
-
   personal_dev:
     mode: development
     default: true
@@ -253,21 +216,12 @@ targets:
       host: https://dbc-1750318a-76a9.cloud.databricks.com
 
     variables:
-      # Lab 05
       lab05_catalog: "dbr_dev"
       lab05_schema: "parvinbadalov"
 
-      # Lab 06 shared analytics
       lab06_warehouse_id: "410e5f3b4784e981"
       lab06_alert_subscriber_email: "parvinbadalov@yahoo.com"
       lab06_alert_parent_path: "/Workspace/Users/parvinbadalov@yahoo.com/Drafts"
-
-      # Lab 06 External V2
-      lab06_external_catalog: "dbr_dev"
-      lab06_external_source_schema: "parvinbadalov"
-      lab06_external_source_volume_name: "lab06_gold_analytics"
-      lab06_external_target_schema: "parvinbadalov_lab06_ext"
-      lab06_external_gold_root: "abfss://parvinbadalov@dlspl21databricks.dfs.core.windows.net/lab06_gold_external_v2"
 
     resources:
       jobs:
@@ -279,7 +233,6 @@ targets:
   # ===================================================================
   # PERSONAL - PRODUCTION TEST
   # ===================================================================
-
   personal_prod:
     mode: production
 
@@ -298,26 +251,9 @@ targets:
         user_name: parvinbadalov@yahoo.com
 
     variables:
-      # Lab 05
       lab05_catalog: "dbr_dev"
       lab05_schema: "parvinbadalov_lab05_prod"
 
-      # Lab 06 shared analytics
       lab06_warehouse_id: "410e5f3b4784e981"
       lab06_alert_subscriber_email: "parvinbadalov@yahoo.com"
       lab06_alert_parent_path: "/Workspace/Users/parvinbadalov@yahoo.com/Drafts"
-
-      # Lab 06 External V2
-      # Same Lab 06 schema/root as personal_dev by design.
-      lab06_external_catalog: "dbr_dev"
-      lab06_external_source_schema: "parvinbadalov"
-      lab06_external_source_volume_name: "lab06_gold_analytics"
-      lab06_external_target_schema: "parvinbadalov_lab06_ext"
-      lab06_external_gold_root: "abfss://parvinbadalov@dlspl21databricks.dfs.core.windows.net/lab06_gold_external_v2"
-
-    resources:
-      jobs:
-        lab05_lakeflow_job:
-          tasks:
-            - task_key: produce_status_snapshot
-              environment_key: default

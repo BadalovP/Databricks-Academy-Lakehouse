@@ -3,12 +3,10 @@ resources:
     lab06_external_gold_job:
       name: "Lab 06 External V2 - End-to-End Gold Analytics"
       description: >
-        Runs the complete Lab 06 External V2 Gold analytics workflow:
-        dimensions, facts, aggregations, external-table registration,
-        alert metrics, and final validation.
+        Builds and registers the External V2 Gold model, creates alert metrics,
+        applies secure-view governance, and validates the final analytical model.
 
       max_concurrent_runs: 1
-
       queue:
         enabled: true
 
@@ -46,10 +44,26 @@ resources:
         - name: simulated_observed_pct
           default: "20"
 
+        - name: run_demo
+          description: >
+            Governance demo switch. Keep false for normal recurring runs.
+            Set true when you want RLS/CLS demonstration output.
+          default: "false"
+
       tasks:
         - task_key: 01_dimensions
           notebook_task:
             notebook_path: ../labs/lab_06_gold_analytics_external/notebooks/lab06e_01_dimensions.ipynb
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              source_schema: "{{job.parameters.source_schema}}"
+              source_volume_name: "{{job.parameters.source_volume_name}}"
+              target_schema: "{{job.parameters.target_schema}}"
+              external_gold_root: "{{job.parameters.external_gold_root}}"
+              date_start: "{{job.parameters.date_start}}"
+              date_end: "{{job.parameters.date_end}}"
+              rebuild_dim_date: "{{job.parameters.rebuild_dim_date}}"
+              run_validation: "{{job.parameters.run_validation}}"
           max_retries: 1
           min_retry_interval_millis: 60000
 
@@ -58,6 +72,13 @@ resources:
             - task_key: 01_dimensions
           notebook_task:
             notebook_path: ../labs/lab_06_gold_analytics_external/notebooks/lab06e_02_fact_encounters.ipynb
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              source_schema: "{{job.parameters.source_schema}}"
+              source_volume_name: "{{job.parameters.source_volume_name}}"
+              target_schema: "{{job.parameters.target_schema}}"
+              external_gold_root: "{{job.parameters.external_gold_root}}"
+              run_validation: "{{job.parameters.run_validation}}"
           max_retries: 1
           min_retry_interval_millis: 60000
 
@@ -66,6 +87,13 @@ resources:
             - task_key: 02_fact_encounters
           notebook_task:
             notebook_path: ../labs/lab_06_gold_analytics_external/notebooks/lab06e_03_fact_conditions.ipynb
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              source_schema: "{{job.parameters.source_schema}}"
+              source_volume_name: "{{job.parameters.source_volume_name}}"
+              target_schema: "{{job.parameters.target_schema}}"
+              external_gold_root: "{{job.parameters.external_gold_root}}"
+              run_validation: "{{job.parameters.run_validation}}"
           max_retries: 1
           min_retry_interval_millis: 60000
 
@@ -74,6 +102,13 @@ resources:
             - task_key: 03_fact_conditions
           notebook_task:
             notebook_path: ../labs/lab_06_gold_analytics_external/notebooks/lab06e_04_aggregations.ipynb
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              source_schema: "{{job.parameters.source_schema}}"
+              source_volume_name: "{{job.parameters.source_volume_name}}"
+              target_schema: "{{job.parameters.target_schema}}"
+              external_gold_root: "{{job.parameters.external_gold_root}}"
+              run_validation: "{{job.parameters.run_validation}}"
           max_retries: 1
           min_retry_interval_millis: 60000
 
@@ -82,21 +117,62 @@ resources:
             - task_key: 04_aggregations
           notebook_task:
             notebook_path: ../labs/lab_06_gold_analytics_external/notebooks/lab06e_05_register_shared_tables.ipynb
-          max_retries: 0
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              source_schema: "{{job.parameters.source_schema}}"
+              source_volume_name: "{{job.parameters.source_volume_name}}"
+              target_schema: "{{job.parameters.target_schema}}"
+              external_gold_root: "{{job.parameters.external_gold_root}}"
+              run_validation: "{{job.parameters.run_validation}}"
+          max_retries: 1
+          min_retry_interval_millis: 60000
 
         - task_key: 06_alert_metrics
           depends_on:
             - task_key: 04_aggregations
           notebook_task:
             notebook_path: ../labs/lab_06_gold_analytics_external/notebooks/lab06e_06_alert_metrics.ipynb
-          max_retries: 0
-
-        - task_key: 07_validation
-          depends_on:
-            - task_key: 05_register_shared_tables
-            - task_key: 06_alert_metrics
-          notebook_task:
-            notebook_path: ../labs/lab_06_gold_analytics_external/notebooks/lab06e_07_validation.ipynb
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              source_schema: "{{job.parameters.source_schema}}"
+              source_volume_name: "{{job.parameters.source_volume_name}}"
+              target_schema: "{{job.parameters.target_schema}}"
+              external_gold_root: "{{job.parameters.external_gold_root}}"
+              run_validation: "{{job.parameters.run_validation}}"
+              drop_threshold_pct: "{{job.parameters.drop_threshold_pct}}"
+              simulated_observed_pct: "{{job.parameters.simulated_observed_pct}}"
           max_retries: 1
           min_retry_interval_millis: 60000
 
+        - task_key: 08_governance
+          depends_on:
+            - task_key: 05_register_shared_tables
+          notebook_task:
+            notebook_path: ../labs/lab_06_gold_analytics_external/notebooks/lab06e_08_governance.ipynb
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              target_schema: "{{job.parameters.target_schema}}"
+              run_demo: "{{job.parameters.run_demo}}"
+          max_retries: 1
+          min_retry_interval_millis: 60000
+
+        - task_key: 07_validation
+          depends_on:
+            - task_key: 06_alert_metrics
+            - task_key: 08_governance
+          notebook_task:
+            notebook_path: ../labs/lab_06_gold_analytics_external/notebooks/lab06e_07_validation.ipynb
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              source_schema: "{{job.parameters.source_schema}}"
+              source_volume_name: "{{job.parameters.source_volume_name}}"
+              target_schema: "{{job.parameters.target_schema}}"
+              external_gold_root: "{{job.parameters.external_gold_root}}"
+              run_validation: "{{job.parameters.run_validation}}"
+          max_retries: 1
+          min_retry_interval_millis: 60000
+
+      tags:
+        lab: "06"
+        project: "healthcare_external_v2"
+        purpose: "gold_analytics_governance"
