@@ -1,0 +1,29 @@
+name: Lab 07 Quality Gate
+on:
+  pull_request:
+    paths: ["labs/lab_07_data_quality_testing/**", "resources/lab07_*.yml", "databricks.yml"]
+  workflow_dispatch:
+jobs:
+  unit-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - run: pip install -r labs/lab_07_data_quality_testing/requirements-dev.txt
+      - run: ruff check labs/lab_07_data_quality_testing/src labs/lab_07_data_quality_testing/pipeline labs/lab_07_data_quality_testing/tests
+      - run: black --check labs/lab_07_data_quality_testing/src labs/lab_07_data_quality_testing/pipeline labs/lab_07_data_quality_testing/tests
+      - env: {PYTHONPATH: labs/lab_07_data_quality_testing/src}
+        run: pytest labs/lab_07_data_quality_testing/tests -v -m "not remote"
+  remote-dq-gate:
+    needs: unit-quality
+    runs-on: ubuntu-latest
+    if: ${{ vars.LAB07_REMOTE_CI_ENABLED == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: databricks/setup-cli@main
+      - env: {DATABRICKS_HOST: "${{ secrets.DATABRICKS_HOST }}", DATABRICKS_TOKEN: "${{ secrets.DATABRICKS_TOKEN }}"}
+        run: |
+          databricks bundle validate -t personal_dev
+          databricks bundle deploy -t personal_dev --select volumes.lab07_data_quality,pipelines.lab07_quality_pipeline,jobs.lab07_data_quality_job,dashboards.lab07_dq_scorecard
+          databricks bundle run -t personal_dev lab07_data_quality_job

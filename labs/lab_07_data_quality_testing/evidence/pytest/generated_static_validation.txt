@@ -1,0 +1,17 @@
+Lab 07 Chicago repository static validation
+============================================
+Python source syntax: PASS
+Notebook JSON/Python cells: PASS
+YAML syntax: PASS
+Pure helper tests:
+...                                                                      [100%]
+3 passed in 0.03s
+
+Not executed in this packaging environment:
+- PySpark/chispa suite (install requirements-dev.txt)
+- Databricks Connect remote tests
+- Lakeflow TestPipeline editor tests
+- live bundle validation/deployment
+- live Socrata ingestion and monitor refresh
+
+Workspace execution is the next validation stage.
