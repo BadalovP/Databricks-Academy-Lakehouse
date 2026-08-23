@@ -2,18 +2,38 @@ resources:
   pipelines:
     lab07_quality_pipeline:
       name: "Lab 07 - Chicago Business Licenses Data Quality Pipeline"
+
       catalog: ${var.lab07_catalog}
       schema: ${var.lab07_schema}
+
+      # The Lab 07 package lives under src/lab07.
+      # Lakeflow adds root_path to sys.path, so pipeline files can use:
+      #   from lab07.transformations import ...
+      #   from lab07.quality_rules import ...
+      #   from lab07.config import ...
+      # This avoids relying on __file__, which is not guaranteed during
+      # Lakeflow pipeline initialization.
+      root_path: ../labs/lab_07_data_quality_testing/src
+
       serverless: true
       continuous: false
       channel: PREVIEW
+
       configuration:
         lab07.catalog: ${var.lab07_catalog}
         lab07.schema: ${var.lab07_schema}
         lab07.volume_name: ${var.lab07_volume_name}
         lab07.snapshot_count: ${var.lab07_snapshot_count}
+
       libraries:
-        - file: {path: ../labs/lab_07_data_quality_testing/pipeline/bronze.py}
-        - file: {path: ../labs/lab_07_data_quality_testing/pipeline/quality.py}
-        - file: {path: ../labs/lab_07_data_quality_testing/pipeline/scd2.py}
-        - file: {path: ../labs/lab_07_data_quality_testing/pipeline/gold.py}
+        - file:
+            path: ../labs/lab_07_data_quality_testing/pipeline/bronze.py
+
+        - file:
+            path: ../labs/lab_07_data_quality_testing/pipeline/quality.py
+
+        - file:
+            path: ../labs/lab_07_data_quality_testing/pipeline/scd2.py
+
+        - file:
+            path: ../labs/lab_07_data_quality_testing/pipeline/gold.py
