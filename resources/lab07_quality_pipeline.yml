@@ -6,18 +6,18 @@ resources:
       catalog: ${var.lab07_catalog}
       schema: ${var.lab07_schema}
 
-      # The Lab 07 package lives under src/lab07.
-      # Lakeflow adds root_path to sys.path, so pipeline files can use:
-      #   from lab07.transformations import ...
-      #   from lab07.quality_rules import ...
-      #   from lab07.config import ...
-      # This avoids relying on __file__, which is not guaranteed during
-      # Lakeflow pipeline initialization.
+      # Make labs/lab_07_data_quality_testing/src/lab07 importable.
       root_path: ../labs/lab_07_data_quality_testing/src
 
       serverless: true
       continuous: false
-      channel: PREVIEW
+
+      # Use the stable/default Lakeflow runtime for the actual lab.
+      # PREVIEW is intended for testing upcoming runtime changes.
+      channel: CURRENT
+
+      # Expectations + AUTO CDC are supported by Advanced edition.
+      edition: ADVANCED
 
       configuration:
         lab07.catalog: ${var.lab07_catalog}

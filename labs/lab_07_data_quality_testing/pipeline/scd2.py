@@ -1,5 +1,4 @@
 from pyspark import pipelines as dp
-from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 
 from lab07.config import SCD_TRACKED_COLUMNS
@@ -19,11 +18,11 @@ feed = (
 
 def next_snapshot_and_version(latest_snapshot_version):
     """
-    Return the next complete snapshot and its logical version.
+    Return the next historical snapshot and its logical version.
 
-    Lakeflow can analyze flows in parallel using cloned Spark sessions.
-    Do not use the module-level `spark` object inside this callback.
-    Resolve the active session for the current flow thread instead.
+    This follows the Databricks AUTO CDC FROM SNAPSHOT historical-source
+    callback pattern: the callback returns either (DataFrame, version)
+    or None when all snapshots have been processed.
     """
     version = (
         1
@@ -34,10 +33,8 @@ def next_snapshot_and_version(latest_snapshot_version):
     if version > snapshot_count:
         return None
 
-    flow_spark = SparkSession.active()
-
     snapshot_df = (
-        flow_spark.read.table(feed)
+        spark.read.table(feed)
         .filter(F.col("snapshot_version") == F.lit(version))
         .select(*SCD_TRACKED_COLUMNS)
     )
