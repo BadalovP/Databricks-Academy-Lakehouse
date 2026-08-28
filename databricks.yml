@@ -89,7 +89,7 @@ variables:
     default: "parvinbadalov"
 
   lab07_volume_name:
-    description: Managed Unity Catalog Volume used by Lab 07
+    description: External Unity Catalog Volume used by Lab 07
     default: "lab07_data_quality"
 
   lab07_snapshot_count:

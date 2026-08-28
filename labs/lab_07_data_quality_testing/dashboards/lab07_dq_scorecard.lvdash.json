@@ -12,8 +12,13 @@
     {
       "name": "overview",
       "displayName": "Data Quality Overview",
-      "pageType": "PAGE_TYPE_CANVAS",
-      "layout": []
+      "pageType": "PAGE_TYPE_CANVAS"
     }
-  ]
+  ],
+  "uiSettings": {
+    "theme": {
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    },
+    "applyModeEnabled": false
+  }
 }

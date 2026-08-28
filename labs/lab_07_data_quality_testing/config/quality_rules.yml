@@ -1,0 +1,28 @@
+version: 1
+
+domains:
+  application_type: [ISSUE, RENEW, C_LOC, C_CAPA, C_EXPA, C_SBA]
+  license_status: [AAI, AAC, REV, REA]
+
+thresholds:
+  source_freshness_warn_hours: 36
+  source_freshness_block_hours: 72
+  volume_change_warn_pct: 25
+  volume_change_block_pct: 50
+  quarantine_rate_warn_pct: 2
+  quarantine_rate_block_pct: 5
+  minimum_quality_score_pct: 95
+
+rules:
+  - {id: ingestion_metadata_present, dimension: completeness, severity: BLOCK}
+  - {id: source_id_present, dimension: completeness, severity: QUARANTINE}
+  - {id: license_number_present, dimension: completeness, severity: QUARANTINE}
+  - {id: legal_name_present, dimension: completeness, severity: QUARANTINE}
+  - {id: dba_name_present, dimension: completeness, severity: WARN}
+  - {id: unique_source_id, dimension: uniqueness, severity: QUARANTINE}
+  - {id: valid_application_type, dimension: validity, severity: QUARANTINE}
+  - {id: valid_license_status, dimension: validity, severity: QUARANTINE}
+  - {id: valid_zip, dimension: validity, severity: QUARANTINE}
+  - {id: valid_coordinates, dimension: validity, severity: QUARANTINE}
+  - {id: valid_term_chronology, dimension: consistency, severity: QUARANTINE}
+  - {id: status_change_date_consistent, dimension: consistency, severity: QUARANTINE}
