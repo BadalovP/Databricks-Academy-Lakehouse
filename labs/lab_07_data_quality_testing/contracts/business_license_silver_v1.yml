@@ -6,6 +6,9 @@ contract:
     dataset produced as business_license_validated.
 table: business_license_validated
 strict_columns: false
+scd_key_columns:
+  - license_number
+
 columns:
 - name: id
   type: string
