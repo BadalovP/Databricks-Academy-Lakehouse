@@ -6,3 +6,4 @@ __pycache__/
 .DS_Store
 .venv-lab07/
 .vscode/
+labs/lab_06_gold_analytics_external/evidence/*.txt
