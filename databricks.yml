@@ -339,6 +339,31 @@ targets:
               environment_key: default
 
   # ===================================================================
+  # PERSONAL - NORMAL / NEUTRAL
+  # No development or production mode.
+  # Use this target for a normal Lab 07 pipeline deployment/run.
+  # ===================================================================
+  personal:
+    workspace:
+      host: https://dbc-1750318a-76a9.cloud.databricks.com
+      root_path: /Workspace/Users/parvinbadalov@yahoo.com/.bundle/${bundle.name}/personal
+
+    run_as:
+      user_name: parvinbadalov@yahoo.com
+
+    variables:
+      lab06_warehouse_id: "410e5f3b4784e981"
+      lab06_alert_subscriber_email: "parvinbadalov@yahoo.com"
+      lab06_alert_parent_path: "/Workspace/Users/parvinbadalov@yahoo.com/Drafts"
+
+      lab07_warehouse_id: "410e5f3b4784e981"
+
+    resources:
+      pipelines:
+        lab07_quality_pipeline:
+          channel: CURRENT
+
+  # ===================================================================
   # PERSONAL - PRODUCTION TEST
   # ===================================================================
   personal_prod:
