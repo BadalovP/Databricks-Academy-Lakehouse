@@ -1,1 +1,1 @@
-LATE_ARRIVALS=[(700001,"late-business-date")]
+LATE_ARRIVALS = [(700001, "late-business-date")]

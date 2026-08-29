@@ -1,4 +1,4 @@
-from pyspark.pipelines.testing import TestPipeline, test_spark
+from pyspark.pipelines.testing import TestPipeline
 
 test_pipeline = TestPipeline.active()
 

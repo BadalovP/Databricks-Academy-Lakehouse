@@ -42,22 +42,19 @@ def test_prepare_business_licenses_dataframe(spark):
         """,
     )
 
-    actual = (
-        prepare_business_licenses(source)
-        .select(
-            "id",
-            "legal_name",
-            "doing_business_as_name",
-            "state",
-            "license_number",
-            "application_type",
-            "license_start_date",
-            "expiration_date",
-            "license_term_days",
-            "is_location_change",
-            "is_renewal",
-            "_ingestion_date",
-        )
+    actual = prepare_business_licenses(source).select(
+        "id",
+        "legal_name",
+        "doing_business_as_name",
+        "state",
+        "license_number",
+        "application_type",
+        "license_start_date",
+        "expiration_date",
+        "license_term_days",
+        "is_location_change",
+        "is_renewal",
+        "_ingestion_date",
     )
 
     expected = spark.createDataFrame(
@@ -167,17 +164,12 @@ def test_quality_classification_dataframe(spark):
         """,
     )
 
-    actual = (
-        classify_license_records(
-            prepare_business_licenses(source)
-        )
-        .select(
-            "id",
-            "_dq_status",
-            "_dq_warn_reasons",
-            "_dq_quarantine_reasons",
-            "_dq_dimensions",
-        )
+    actual = classify_license_records(prepare_business_licenses(source)).select(
+        "id",
+        "_dq_status",
+        "_dq_warn_reasons",
+        "_dq_quarantine_reasons",
+        "_dq_dimensions",
     )
 
     expected = spark.createDataFrame(
@@ -266,16 +258,11 @@ def test_quarantine_reasons_dataframe(spark):
         """,
     )
 
-    actual = (
-        classify_license_records(
-            prepare_business_licenses(source)
-        )
-        .select(
-            "id",
-            "_dq_status",
-            "_dq_quarantine_reasons",
-            "_dq_dimensions",
-        )
+    actual = classify_license_records(prepare_business_licenses(source)).select(
+        "id",
+        "_dq_status",
+        "_dq_quarantine_reasons",
+        "_dq_dimensions",
     )
 
     expected = spark.createDataFrame(

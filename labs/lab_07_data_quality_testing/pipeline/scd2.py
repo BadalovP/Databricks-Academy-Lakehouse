@@ -3,17 +3,11 @@ from pyspark.sql import functions as F
 
 from lab07.config import SCD_TRACKED_COLUMNS
 
-
 catalog = spark.conf.get("lab07.catalog", "dbr_dev")
 schema = spark.conf.get("lab07.schema", "parvinbadalov")
-snapshot_count = int(
-    spark.conf.get("lab07.snapshot_count", "3")
-)
+snapshot_count = int(spark.conf.get("lab07.snapshot_count", "3"))
 
-feed = (
-    f"{catalog}.{schema}."
-    "business_license_snapshot_feed"
-)
+feed = f"{catalog}.{schema}." "business_license_snapshot_feed"
 
 
 def next_snapshot_and_version(latest_snapshot_version):
@@ -24,11 +18,7 @@ def next_snapshot_and_version(latest_snapshot_version):
     callback pattern: the callback returns either (DataFrame, version)
     or None when all snapshots have been processed.
     """
-    version = (
-        1
-        if latest_snapshot_version is None
-        else int(latest_snapshot_version) + 1
-    )
+    version = 1 if latest_snapshot_version is None else int(latest_snapshot_version) + 1
 
     if version > snapshot_count:
         return None
@@ -42,9 +32,7 @@ def next_snapshot_and_version(latest_snapshot_version):
     return snapshot_df, version
 
 
-dp.create_streaming_table(
-    "dim_license_scd2"
-)
+dp.create_streaming_table("dim_license_scd2")
 
 dp.create_auto_cdc_from_snapshot_flow(
     target="dim_license_scd2",

@@ -12,12 +12,7 @@ schema = spark.conf.get("lab07.schema", "parvinbadalov")
     "_source_batch_id IS NOT NULL AND _ingested_at IS NOT NULL",
 )
 def business_license_bronze():
-    return (
-        spark.read.table(
-            f"{catalog}.{schema}.business_license_landing"
-        )
-        .withColumn(
-            "_bronze_loaded_at",
-            F.current_timestamp(),
-        )
+    return spark.read.table(f"{catalog}.{schema}.business_license_landing").withColumn(
+        "_bronze_loaded_at",
+        F.current_timestamp(),
     )

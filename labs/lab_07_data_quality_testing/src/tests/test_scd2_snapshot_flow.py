@@ -1,4 +1,4 @@
-from pyspark.pipelines.testing import TestPipeline, test_spark
+from pyspark.pipelines.testing import TestPipeline
 
 test_pipeline = TestPipeline.active()
 
@@ -119,10 +119,11 @@ def test_scd2_preserves_snapshot_history(test_spark):
 
     # ALPHA changed twice: initial + two historical versions.
     assert alpha.count() == 3
-    assert {
-        row["address"]
-        for row in alpha.select("address").collect()
-    } == {"100 STATE ST", "110 STATE ST", "120 STATE ST"}
+    assert {row["address"] for row in alpha.select("address").collect()} == {
+        "100 STATE ST",
+        "110 STATE ST",
+        "120 STATE ST",
+    }
 
     alpha_current = alpha.filter("__END_AT IS NULL")
     assert alpha_current.count() == 1

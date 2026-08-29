@@ -1,6 +1,8 @@
-import pytest
-from pyspark.pipelines.testing import TestPipeline, test_spark
-test_pipeline=TestPipeline.active()
+from pyspark.pipelines.testing import TestPipeline
+
+test_pipeline = TestPipeline.active()
+
+
 def test_license_quality_daily(test_spark):
     # Populate mocked named source tables in the Editor before running this test.
     # This file is intentionally a runnable scaffold to customize with the supplied fixtures.
