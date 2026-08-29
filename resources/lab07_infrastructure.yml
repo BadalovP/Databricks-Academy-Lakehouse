@@ -4,5 +4,8 @@ resources:
       name: ${var.lab07_volume_name}
       catalog_name: ${var.lab07_catalog}
       schema_name: ${var.lab07_schema}
-      volume_type: MANAGED
+      volume_type: EXTERNAL
+      storage_location: abfss://parvinbadalov@dlspl21databricks.dfs.core.windows.net/lab07_data_quality
       comment: Lab 07 Chicago Business Licenses DQ files
+      lifecycle:
+        prevent_destroy: true

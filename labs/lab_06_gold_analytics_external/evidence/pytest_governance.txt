@@ -1,0 +1,14 @@
+============================= test session starts =============================
+platform win32 -- Python 3.13.11, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\User\AppData\Local\Programs\Python\Python313\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\User\Desktop\databricks-academy-lakehouse
+collecting ... collected 6 items
+
+labs/lab_06_gold_analytics_external/tests/test_governance.py::test_governance_targets_external_v2_schema_and_secure_views PASSED [ 16%]
+labs/lab_06_gold_analytics_external/tests/test_governance.py::test_rls_is_implemented_in_secure_view PASSED [ 33%]
+labs/lab_06_gold_analytics_external/tests/test_governance.py::test_cls_is_implemented_in_secure_view PASSED [ 50%]
+labs/lab_06_gold_analytics_external/tests/test_governance.py::test_native_policies_are_not_attached_to_base_tables PASSED [ 66%]
+labs/lab_06_gold_analytics_external/tests/test_governance.py::test_demo_restores_pipeline_identity_and_does_not_write_gold_data PASSED [ 83%]
+labs/lab_06_gold_analytics_external/tests/test_governance.py::test_main_job_wires_governance_after_registration_before_validation PASSED [100%]
+
+============================== 6 passed in 0.03s ==============================
