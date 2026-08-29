@@ -42,22 +42,35 @@
       "name": "quality_by_dimension",
       "displayName": "Quality by Dimension",
       "queryLines": [
+        "WITH latest_quality_date AS (\n",
+        "  SELECT\n",
+        "    MAX(quality_date) AS quality_date\n",
+        "  FROM\n",
+        "    dbr_dev.parvinbadalov.license_quality_by_dimension\n",
+        "), dimension_counts AS (\n",
+        "  SELECT\n",
+        "    q.dimension,\n",
+        "    SUM(q.`count`) AS affected_records,\n",
+        "    SUM(CASE WHEN q._dq_status = 'WARN' THEN q.`count` ELSE 0 END) AS warnings,\n",
+        "    SUM(CASE WHEN q._dq_status = 'QUARANTINE' THEN q.`count` ELSE 0 END) AS failed\n",
+        "  FROM\n",
+        "    dbr_dev.parvinbadalov.license_quality_by_dimension q\n",
+        "    INNER JOIN latest_quality_date l\n",
+        "      ON q.quality_date = l.quality_date\n",
+        "  GROUP BY\n",
+        "    q.dimension\n",
+        ")\n",
         "SELECT\n",
         "  dimension,\n",
-        "  checks,\n",
-        "  passed,\n",
+        "  affected_records,\n",
         "  warnings,\n",
         "  failed,\n",
-        "  score_pct,\n",
-        "  ROUND((passed * 100.0) / NULLIF(checks, 0), 1) as pass_rate,\n",
-        "  ROUND((warnings * 100.0) / NULLIF(checks, 0), 1) as warning_rate,\n",
-        "  ROUND((failed * 100.0) / NULLIF(checks, 0), 1) as fail_rate\n",
+        "  ROUND((failed * 100.0) / NULLIF(affected_records, 0), 1) as quarantine_rate\n",
         "FROM\n",
-        "  dbr_dev.parvinbadalov.lab07_quality_scorecard\n",
-        "WHERE\n",
-        "  dimension != 'OVERALL'\n",
+        "  dimension_counts\n",
         "ORDER BY\n",
-        "  score_pct ASC"
+        "  failed DESC,\n",
+        "  dimension"
       ]
     },
     {
@@ -98,11 +111,11 @@
                   "datasetName": "overall_quality",
                   "fields": [
                     {
-                      "name": "count(score_pct)",
-                      "expression": "COUNT(`score_pct`)"
+                      "name": "score_pct",
+                      "expression": "`score_pct`"
                     }
                   ],
-                  "disaggregated": false
+                  "disaggregated": true
                 }
               }
             ],
@@ -115,7 +128,7 @@
               "widgetType": "counter",
               "encodings": {
                 "value": {
-                  "fieldName": "count(score_pct)",
+                  "fieldName": "score_pct",
                   "rowNumber": 0
                 }
               },
@@ -141,11 +154,11 @@
                   "datasetName": "overall_quality",
                   "fields": [
                     {
-                      "name": "count(checks)",
-                      "expression": "COUNT(`checks`)"
+                      "name": "checks",
+                      "expression": "`checks`"
                     }
                   ],
-                  "disaggregated": false
+                  "disaggregated": true
                 }
               }
             ],
@@ -158,7 +171,7 @@
               "widgetType": "counter",
               "encodings": {
                 "value": {
-                  "fieldName": "count(checks)",
+                  "fieldName": "checks",
                   "rowNumber": 0
                 }
               },
@@ -184,11 +197,11 @@
                   "datasetName": "overall_quality",
                   "fields": [
                     {
-                      "name": "count(passed)",
-                      "expression": "COUNT(`passed`)"
+                      "name": "passed",
+                      "expression": "`passed`"
                     }
                   ],
-                  "disaggregated": false
+                  "disaggregated": true
                 }
               }
             ],
@@ -201,7 +214,7 @@
               "widgetType": "counter",
               "encodings": {
                 "value": {
-                  "fieldName": "count(passed)",
+                  "fieldName": "passed",
                   "rowNumber": 0
                 }
               },
@@ -227,11 +240,11 @@
                   "datasetName": "overall_quality",
                   "fields": [
                     {
-                      "name": "count(failed)",
-                      "expression": "COUNT(`failed`)"
+                      "name": "failed",
+                      "expression": "`failed`"
                     }
                   ],
-                  "disaggregated": false
+                  "disaggregated": true
                 }
               }
             ],
@@ -244,7 +257,7 @@
               "widgetType": "counter",
               "encodings": {
                 "value": {
-                  "fieldName": "count(failed)",
+                  "fieldName": "failed",
                   "rowNumber": 0
                 }
               },
@@ -274,12 +287,8 @@
                       "expression": "`dimension`"
                     },
                     {
-                      "name": "checks",
-                      "expression": "`checks`"
-                    },
-                    {
-                      "name": "passed",
-                      "expression": "`passed`"
+                      "name": "affected_records",
+                      "expression": "`affected_records`"
                     },
                     {
                       "name": "warnings",
@@ -290,8 +299,8 @@
                       "expression": "`failed`"
                     },
                     {
-                      "name": "score_pct",
-                      "expression": "`score_pct`"
+                      "name": "quarantine_rate",
+                      "expression": "`quarantine_rate`"
                     }
                   ],
                   "disaggregated": true
@@ -311,10 +320,7 @@
                     "fieldName": "dimension"
                   },
                   {
-                    "fieldName": "checks"
-                  },
-                  {
-                    "fieldName": "passed"
+                    "fieldName": "affected_records"
                   },
                   {
                     "fieldName": "warnings"
@@ -323,7 +329,7 @@
                     "fieldName": "failed"
                   },
                   {
-                    "fieldName": "score_pct"
+                    "fieldName": "quarantine_rate"
                   }
                 ]
               },
@@ -353,18 +359,18 @@
                       "expression": "`dimension`"
                     },
                     {
-                      "name": "sum(score_pct)",
-                      "expression": "SUM(`score_pct`)"
+                      "name": "failed",
+                      "expression": "`failed`"
                     }
                   ],
-                  "disaggregated": false
+                  "disaggregated": true
                 }
               }
             ],
             "spec": {
               "frame": {
                 "showTitle": true,
-                "title": "Dimension Quality Scores"
+                "title": "Quality Issues by Dimension"
               },
               "version": 3,
               "widgetType": "bar",
@@ -377,8 +383,8 @@
                   }
                 },
                 "y": {
-                  "fieldName": "sum(score_pct)",
-                  "displayName": "score_pct",
+                  "fieldName": "failed",
+                  "displayName": "failed",
                   "scale": {
                     "type": "quantitative"
                   }
