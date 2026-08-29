@@ -316,7 +316,6 @@ targets:
   # ===================================================================
   personal_dev:
     mode: development
-    default: true
 
     workspace:
       host: https://dbc-1750318a-76a9.cloud.databricks.com
@@ -344,6 +343,8 @@ targets:
   # Use this target for a normal Lab 07 pipeline deployment/run.
   # ===================================================================
   personal:
+    default: true
+
     workspace:
       host: https://dbc-1750318a-76a9.cloud.databricks.com
       root_path: /Workspace/Users/parvinbadalov@yahoo.com/.bundle/${bundle.name}/personal
@@ -359,6 +360,8 @@ targets:
       lab06_alert_subscriber_email: "parvinbadalov@yahoo.com"
       lab06_alert_parent_path: "/Workspace/Users/parvinbadalov@yahoo.com/Drafts"
 
+      lab07_catalog: "dbr_dev"
+      lab07_schema: "parvinbadalov"
       lab07_warehouse_id: "410e5f3b4784e981"
 
     resources:
