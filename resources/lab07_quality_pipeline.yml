@@ -14,7 +14,7 @@ resources:
 
       # Use the stable/default Lakeflow runtime for the actual lab.
       # PREVIEW is intended for testing upcoming runtime changes.
-      channel: CURRENT
+      channel: PREVIEW
 
       # Expectations + AUTO CDC are supported by Advanced edition.
       edition: ADVANCED

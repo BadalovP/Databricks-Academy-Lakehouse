@@ -1,0 +1,862 @@
+{
+  "datasets": [
+    {
+      "name": "overall_quality",
+      "displayName": "Overall Quality Score",
+      "queryLines": [
+        "SELECT\n",
+        "  dimension,\n",
+        "  checks,\n",
+        "  passed,\n",
+        "  warnings,\n",
+        "  failed,\n",
+        "  score_pct,\n",
+        "  run_id\n",
+        "FROM\n",
+        "  dbr_dev.parvinbadalov.lab07_quality_scorecard\n",
+        "WHERE\n",
+        "  dimension = 'OVERALL'\n",
+        "ORDER BY\n",
+        "  run_id DESC\n",
+        "LIMIT 1"
+      ]
+    },
+    {
+      "name": "quality_status_breakdown",
+      "displayName": "Quality Status Breakdown",
+      "queryLines": [
+        "SELECT\n",
+        "  quality_date,\n",
+        "  dimension,\n",
+        "  _dq_status,\n",
+        "  count as record_count\n",
+        "FROM\n",
+        "  dbr_dev.parvinbadalov.license_quality_by_dimension\n",
+        "ORDER BY\n",
+        "  quality_date DESC,\n",
+        "  dimension,\n",
+        "  _dq_status"
+      ]
+    },
+    {
+      "name": "quality_by_dimension",
+      "displayName": "Quality by Dimension",
+      "queryLines": [
+        "SELECT\n",
+        "  dimension,\n",
+        "  checks,\n",
+        "  passed,\n",
+        "  warnings,\n",
+        "  failed,\n",
+        "  score_pct,\n",
+        "  ROUND((passed * 100.0) / NULLIF(checks, 0), 1) as pass_rate,\n",
+        "  ROUND((warnings * 100.0) / NULLIF(checks, 0), 1) as warning_rate,\n",
+        "  ROUND((failed * 100.0) / NULLIF(checks, 0), 1) as fail_rate\n",
+        "FROM\n",
+        "  dbr_dev.parvinbadalov.lab07_quality_scorecard\n",
+        "WHERE\n",
+        "  dimension != 'OVERALL'\n",
+        "ORDER BY\n",
+        "  score_pct ASC"
+      ]
+    },
+    {
+      "name": "daily_quality_trends",
+      "displayName": "Daily Quality Trends",
+      "queryLines": [
+        "SELECT\n",
+        "  quality_date,\n",
+        "  total_rows,\n",
+        "  trusted_rows,\n",
+        "  quarantined_rows,\n",
+        "  warning_rows,\n",
+        "  quality_score_pct,\n",
+        "  ROUND((trusted_rows * 100.0) / NULLIF(total_rows, 0), 1) as trusted_pct,\n",
+        "  ROUND((quarantined_rows * 100.0) / NULLIF(total_rows, 0), 1) as quarantined_pct,\n",
+        "  ROUND((warning_rows * 100.0) / NULLIF(total_rows, 0), 1) as warning_pct,\n",
+        "  latest_ingested_at,\n",
+        "  latest_source_updated_at\n",
+        "FROM\n",
+        "  dbr_dev.parvinbadalov.license_quality_daily\n",
+        "ORDER BY\n",
+        "  quality_date DESC"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "overview",
+      "displayName": "Overview",
+      "layout": [
+        {
+          "widget": {
+            "name": "overall_score",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "overall_quality",
+                  "fields": [
+                    {
+                      "name": "count(score_pct)",
+                      "expression": "COUNT(`score_pct`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Overall Quality Score"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "count(score_pct)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 14,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "total_checks",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "overall_quality",
+                  "fields": [
+                    {
+                      "name": "count(checks)",
+                      "expression": "COUNT(`checks`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Total Checks"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "count(checks)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 14,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "passed_checks",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "overall_quality",
+                  "fields": [
+                    {
+                      "name": "count(passed)",
+                      "expression": "COUNT(`passed`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Passed Checks"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "count(passed)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 14,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "failed_checks",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "overall_quality",
+                  "fields": [
+                    {
+                      "name": "count(failed)",
+                      "expression": "COUNT(`failed`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Failed Checks"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "count(failed)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 14,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "dimension_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "quality_by_dimension",
+                  "fields": [
+                    {
+                      "name": "dimension",
+                      "expression": "`dimension`"
+                    },
+                    {
+                      "name": "checks",
+                      "expression": "`checks`"
+                    },
+                    {
+                      "name": "passed",
+                      "expression": "`passed`"
+                    },
+                    {
+                      "name": "warnings",
+                      "expression": "`warnings`"
+                    },
+                    {
+                      "name": "failed",
+                      "expression": "`failed`"
+                    },
+                    {
+                      "name": "score_pct",
+                      "expression": "`score_pct`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Quality by Dimension"
+              },
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "dimension"
+                  },
+                  {
+                    "fieldName": "checks"
+                  },
+                  {
+                    "fieldName": "passed"
+                  },
+                  {
+                    "fieldName": "warnings"
+                  },
+                  {
+                    "fieldName": "failed"
+                  },
+                  {
+                    "fieldName": "score_pct"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 18,
+            "width": 8,
+            "height": 10
+          }
+        },
+        {
+          "widget": {
+            "name": "dimension_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "quality_by_dimension",
+                  "fields": [
+                    {
+                      "name": "dimension",
+                      "expression": "`dimension`"
+                    },
+                    {
+                      "name": "sum(score_pct)",
+                      "expression": "SUM(`score_pct`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Dimension Quality Scores"
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "dimension",
+                  "displayName": "dimension",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(score_pct)",
+                  "displayName": "score_pct",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "dimension",
+                  "displayName": "dimension",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 18,
+            "width": 4,
+            "height": 10
+          }
+        },
+        {
+          "widget": {
+            "name": "header",
+            "multilineTextboxSpec": {
+              "lines": [
+                "# Lab 07: Data Quality Scorecard\n",
+                "\n",
+                "This dashboard tracks data quality metrics across dimensions, including daily trends and detailed breakdowns by validation status."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 12,
+            "width": 12,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "daily_trends",
+      "displayName": "Daily Trends",
+      "layout": [
+        {
+          "widget": {
+            "name": "quality_trend",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "daily_quality_trends",
+                  "fields": [
+                    {
+                      "name": "daily(quality_date)",
+                      "expression": "DATE_TRUNC(\"DAY\", `quality_date`)"
+                    },
+                    {
+                      "name": "sum(quality_score_pct)",
+                      "expression": "SUM(`quality_score_pct`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Quality Score Trend"
+              },
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "daily(quality_date)",
+                  "displayName": "Day",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(quality_score_pct)",
+                  "displayName": "quality_score_pct",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "row_volume",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "daily_quality_trends",
+                  "fields": [
+                    {
+                      "name": "daily(quality_date)",
+                      "expression": "DATE_TRUNC(\"DAY\", `quality_date`)"
+                    },
+                    {
+                      "name": "sum(total_rows)",
+                      "expression": "SUM(`total_rows`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Row Volume Over Time"
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "daily(quality_date)",
+                  "displayName": "Day",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(total_rows)",
+                  "displayName": "total_rows",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 6,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "quality_distribution",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "daily_quality_trends",
+                  "fields": [
+                    {
+                      "name": "daily(quality_date)",
+                      "expression": "DATE_TRUNC(\"DAY\", `quality_date`)"
+                    },
+                    {
+                      "name": "sum(trusted_rows)",
+                      "expression": "SUM(`trusted_rows`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Data Quality Distribution"
+              },
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "daily(quality_date)",
+                  "displayName": "Day",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(trusted_rows)",
+                  "displayName": "trusted_rows",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 6,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "daily_detail",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "daily_quality_trends",
+                  "fields": [
+                    {
+                      "name": "quality_date",
+                      "expression": "`quality_date`"
+                    },
+                    {
+                      "name": "total_rows",
+                      "expression": "`total_rows`"
+                    },
+                    {
+                      "name": "trusted_rows",
+                      "expression": "`trusted_rows`"
+                    },
+                    {
+                      "name": "quarantined_rows",
+                      "expression": "`quarantined_rows`"
+                    },
+                    {
+                      "name": "warning_rows",
+                      "expression": "`warning_rows`"
+                    },
+                    {
+                      "name": "quality_score_pct",
+                      "expression": "`quality_score_pct`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Daily Quality Metrics Detail"
+              },
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "quality_date"
+                  },
+                  {
+                    "fieldName": "total_rows"
+                  },
+                  {
+                    "fieldName": "trusted_rows"
+                  },
+                  {
+                    "fieldName": "quarantined_rows"
+                  },
+                  {
+                    "fieldName": "warning_rows"
+                  },
+                  {
+                    "fieldName": "quality_score_pct"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 12,
+            "width": 12,
+            "height": 8
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "dimension_analysis",
+      "displayName": "Dimension Analysis",
+      "layout": [
+        {
+          "widget": {
+            "name": "status_by_dimension",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "quality_status_breakdown",
+                  "fields": [
+                    {
+                      "name": "quality_date",
+                      "expression": "`quality_date`"
+                    },
+                    {
+                      "name": "dimension",
+                      "expression": "`dimension`"
+                    },
+                    {
+                      "name": "_dq_status",
+                      "expression": "`_dq_status`"
+                    },
+                    {
+                      "name": "record_count",
+                      "expression": "`record_count`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Quality Status by Dimension"
+              },
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "quality_date"
+                  },
+                  {
+                    "fieldName": "dimension"
+                  },
+                  {
+                    "fieldName": "_dq_status"
+                  },
+                  {
+                    "fieldName": "record_count"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 8,
+            "height": 10
+          }
+        },
+        {
+          "widget": {
+            "name": "status_distribution",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "quality_status_breakdown",
+                  "fields": [
+                    {
+                      "name": "dimension",
+                      "expression": "`dimension`"
+                    },
+                    {
+                      "name": "sum(record_count)",
+                      "expression": "SUM(`record_count`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Status Distribution"
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "dimension",
+                  "displayName": "dimension",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(record_count)",
+                  "displayName": "record_count",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "dimension",
+                  "displayName": "dimension",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 0,
+            "width": 4,
+            "height": 10
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "canvasBackgroundColor": {
+        "light": "#F5F7FA",
+        "dark": "#1A1D23"
+      },
+      "widgetBackgroundColor": {
+        "light": "#FFFFFF",
+        "dark": "#2D3139"
+      },
+      "visualizationColors": [
+        "#1E88E5",
+        "#43A047",
+        "#FDD835",
+        "#E53935",
+        "#8E24AA",
+        "#00ACC1",
+        "#FB8C00",
+        "#546E7A"
+      ],
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED",
+      "widgetPadding": 12,
+      "widgetCornerRadius": 8,
+      "widgetShadow": 10,
+      "fontSettings": {
+        "base": {
+          "fontFamily": "Inter",
+          "fontSize": 14
+        },
+        "widgetTitle": {
+          "fontFamily": "Inter",
+          "fontSize": 16,
+          "fontWeight": 600
+        }
+      }
+    },
+    "applyModeEnabled": false
+  }
+}
