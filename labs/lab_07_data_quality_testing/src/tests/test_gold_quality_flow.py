@@ -1,4 +1,5 @@
-from pyspark.pipelines.testing import TestPipeline
+# ruff: noqa: F401, F811
+from pyspark.pipelines.testing import TestPipeline, test_spark
 
 test_pipeline = TestPipeline.active()
 
