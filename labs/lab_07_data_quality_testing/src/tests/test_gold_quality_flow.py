@@ -1,5 +1,7 @@
 # ruff: noqa: F401, F811
+
 from pyspark.pipelines.testing import TestPipeline, test_spark
+
 
 test_pipeline = TestPipeline.active()
 
@@ -7,11 +9,20 @@ CATALOG = "dbr_dev"
 SCHEMA = "parvinbadalov"
 
 LANDING = f"{CATALOG}.{SCHEMA}.business_license_landing"
+BRONZE = f"{CATALOG}.{SCHEMA}.business_license_bronze"
+CLASSIFIED = f"{CATALOG}.{SCHEMA}.business_license_classified"
 QUALITY_DAILY = f"{CATALOG}.{SCHEMA}.license_quality_daily"
 
 
 def mock_quality_mix(test_spark):
-    """Create 1 VALID, 1 WARN, and 2 QUARANTINE records for one day."""
+    """
+    Create four records for one ingestion day:
+
+    - 1 VALID
+    - 1 WARN
+    - 2 QUARANTINE
+    """
+
     test_spark.sql(
         f"""
         CREATE TABLE {LANDING} AS
@@ -108,18 +119,43 @@ def mock_quality_mix(test_spark):
 def test_license_quality_daily_reconciles(test_spark):
     mock_quality_mix(test_spark)
 
-    test_pipeline.run(test_spark, {QUALITY_DAILY})
+    # Execute the complete dependency path:
+    #
+    # landing
+    #   -> bronze
+    #   -> classified
+    #   -> license_quality_daily
+    test_pipeline.run(
+        test_spark,
+        {
+            BRONZE,
+            CLASSIFIED,
+            QUALITY_DAILY,
+        },
+    )
 
     result = test_spark.table(QUALITY_DAILY)
+
     assert result.count() == 1
 
     row = result.first()
 
     assert row["total_rows"] == 4
+
+    # VALID + WARN
     assert row["trusted_rows"] == 2
+
+    # BAD_STATUS + BAD_ZIP
     assert row["quarantined_rows"] == 2
+
+    # Missing DBA
     assert row["warning_rows"] == 1
 
-    assert row["total_rows"] == row["trusted_rows"] + row["quarantined_rows"]
+    assert (
+        row["total_rows"]
+        == row["trusted_rows"] + row["quarantined_rows"]
+    )
+
     assert float(row["quality_score_pct"]) == 50.0
+
     assert str(row["quality_date"]) == "2026-08-29"

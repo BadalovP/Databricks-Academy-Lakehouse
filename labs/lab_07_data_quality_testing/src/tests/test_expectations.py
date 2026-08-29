@@ -1,5 +1,8 @@
 # ruff: noqa: F401, F811
+
+import pytest
 from pyspark.pipelines.testing import TestPipeline, test_spark
+
 
 test_pipeline = TestPipeline.active()
 
@@ -7,11 +10,14 @@ CATALOG = "dbr_dev"
 SCHEMA = "parvinbadalov"
 
 LANDING = f"{CATALOG}.{SCHEMA}.business_license_landing"
+BRONZE = f"{CATALOG}.{SCHEMA}.business_license_bronze"
+CLASSIFIED = f"{CATALOG}.{SCHEMA}.business_license_classified"
 VALIDATED = f"{CATALOG}.{SCHEMA}.business_license_validated"
 
 
 def mock_business_licenses(test_spark):
-    """Create isolated landing data for expectation behavior."""
+    """Create isolated landing data for expectation testing."""
+
     test_spark.sql(
         f"""
         CREATE TABLE {LANDING} AS
@@ -89,24 +95,74 @@ def mock_business_licenses(test_spark):
 
 
 def test_business_license_validated_expectations(test_spark):
+    """Verify VALID, WARN and QUARANTINE behavior."""
+
+    # ---------------------------------------------------------
+    # 1. Create mocked source data
+    # ---------------------------------------------------------
     mock_business_licenses(test_spark)
 
-    # Selecting the final target also executes its required pipeline dependencies.
-    test_pipeline.run(test_spark, {VALIDATED})
+    # ---------------------------------------------------------
+    # 2. Run the complete dependency chain needed by VALIDATED
+    #
+    # landing
+    #   -> bronze
+    #   -> classified
+    #   -> validated
+    #
+    # LANDING is mocked input and therefore is not a pipeline
+    # output included in the selective refresh.
+    # ---------------------------------------------------------
+    test_pipeline.run(
+        test_spark,
+        {
+            BRONZE,
+            CLASSIFIED,
+            VALIDATED,
+        },
+    )
 
+    # ---------------------------------------------------------
+    # 3. Read isolated TestPipeline output
+    # ---------------------------------------------------------
     result = test_spark.table(VALIDATED)
-    rows = {row["id"]: row for row in result.collect()}
 
-    # Valid row survives.
+    rows = {
+        row["id"]: row
+        for row in result.collect()
+    }
+
+    # ---------------------------------------------------------
+    # 4. VALID
+    # ---------------------------------------------------------
     assert "GOOD_001" in rows
     assert rows["GOOD_001"]["_dq_status"] == "VALID"
 
-    # Missing DBA violates the monitoring expectation, but the row is retained.
+    # ---------------------------------------------------------
+    # 5. WARN
+    #
+    # Missing DBA produces DBA_NAME_MISSING.
+    # WARN records remain trusted and therefore survive in
+    # business_license_validated.
+    # ---------------------------------------------------------
     assert "WARN_001" in rows
     assert rows["WARN_001"]["_dq_status"] == "WARN"
     assert rows["WARN_001"]["doing_business_as_name"] is None
 
-    # Invalid license status is classified as QUARANTINE and trusted_only drops it.
+    assert (
+        "DBA_NAME_MISSING"
+        in rows["WARN_001"]["_dq_warn_reasons"]
+    )
+
+    # ---------------------------------------------------------
+    # 6. QUARANTINE
+    #
+    # INVALID is not a supported license_status.
+    # classify_license_records() marks the row QUARANTINE.
+    # validated has expect_or_drop(trusted_only), therefore it
+    # must not survive.
+    # ---------------------------------------------------------
     assert "BAD_001" not in rows
 
+    # GOOD + WARN survive.
     assert result.count() == 2

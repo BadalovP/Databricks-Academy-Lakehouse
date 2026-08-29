@@ -1,5 +1,7 @@
 # ruff: noqa: F401, F811
+
 from pyspark.pipelines.testing import TestPipeline, test_spark
+
 
 test_pipeline = TestPipeline.active()
 
@@ -7,11 +9,16 @@ CATALOG = "dbr_dev"
 SCHEMA = "parvinbadalov"
 
 LANDING = f"{CATALOG}.{SCHEMA}.business_license_landing"
+BRONZE = f"{CATALOG}.{SCHEMA}.business_license_bronze"
+CLASSIFIED = f"{CATALOG}.{SCHEMA}.business_license_classified"
 QUARANTINE = f"{CATALOG}.{SCHEMA}.business_license_quarantine"
 
 
 def mock_invalid_business_licenses(test_spark):
-    """Create three rows that each violate a different quarantine rule."""
+    """
+    Create records that violate three different quarantine rules.
+    """
+
     test_spark.sql(
         f"""
         CREATE TABLE {LANDING} AS
@@ -91,15 +98,62 @@ def mock_invalid_business_licenses(test_spark):
 def test_business_license_quarantine_reasons(test_spark):
     mock_invalid_business_licenses(test_spark)
 
-    test_pipeline.run(test_spark, {QUARANTINE})
+    # Execute dependency path:
+    #
+    # landing
+    #   -> bronze
+    #   -> classified
+    #   -> quarantine
+    test_pipeline.run(
+        test_spark,
+        {
+            BRONZE,
+            CLASSIFIED,
+            QUARANTINE,
+        },
+    )
 
     result = test_spark.table(QUARANTINE)
-    rows = {row["id"]: row for row in result.collect()}
 
-    assert set(rows) == {"BAD_STATUS", "BAD_ZIP", "BAD_DATES"}
+    rows = {
+        row["id"]: row
+        for row in result.collect()
+    }
 
-    assert "INVALID_LICENSE_STATUS" in rows["BAD_STATUS"]["_dq_quarantine_reasons"]
-    assert "INVALID_ZIP" in rows["BAD_ZIP"]["_dq_quarantine_reasons"]
-    assert "EXPIRATION_BEFORE_START" in rows["BAD_DATES"]["_dq_quarantine_reasons"]
+    assert set(rows) == {
+        "BAD_STATUS",
+        "BAD_ZIP",
+        "BAD_DATES",
+    }
 
-    assert all(row["_dq_status"] == "QUARANTINE" for row in rows.values())
+    # ---------------------------------------------------------
+    # Invalid license status
+    # ---------------------------------------------------------
+    assert (
+        "INVALID_LICENSE_STATUS"
+        in rows["BAD_STATUS"]["_dq_quarantine_reasons"]
+    )
+
+    # ---------------------------------------------------------
+    # Invalid ZIP
+    # ---------------------------------------------------------
+    assert (
+        "INVALID_ZIP"
+        in rows["BAD_ZIP"]["_dq_quarantine_reasons"]
+    )
+
+    # ---------------------------------------------------------
+    # Expiration before start date
+    # ---------------------------------------------------------
+    assert (
+        "EXPIRATION_BEFORE_START"
+        in rows["BAD_DATES"]["_dq_quarantine_reasons"]
+    )
+
+    # Every returned row must be quarantined.
+    assert all(
+        row["_dq_status"] == "QUARANTINE"
+        for row in rows.values()
+    )
+
+    assert result.count() == 3
