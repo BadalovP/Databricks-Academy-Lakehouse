@@ -39,7 +39,7 @@ def run_suite(df, spec):
         expectation_type = expectation["expectation_type"]
 
         if expectation_type not in expectation_map:
-            raise ValueError("Unsupported expectation type: " f"{expectation_type}")
+            raise ValueError(f"Unsupported expectation type: {expectation_type}")
 
         suite.add_expectation(expectation_map[expectation_type](**expectation.get("kwargs", {})))
 

@@ -2,9 +2,18 @@ repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.12.11
     hooks:
-      - {id: ruff-check, args: [--fix]}
-      - {id: ruff-format}
+      - id: ruff-check
+        args: [--fix]
+        files: ^labs/lab_07_data_quality_testing/(src|tests|tools)/.*\.py$
+      - id: ruff-check
+        name: ruff-check-pipeline
+        args: [--fix, --ignore, F821]
+        files: ^labs/lab_07_data_quality_testing/pipeline/.*\.py$
+      - id: ruff-format
+        files: ^labs/lab_07_data_quality_testing/(pipeline|src|tests|tools)/.*\.py$
   - repo: https://github.com/psf/black-pre-commit-mirror
     rev: 25.1.0
     hooks:
-      - {id: black, language_version: python3.11}
+      - id: black
+        language_version: python3.11
+        files: ^labs/lab_07_data_quality_testing/(pipeline|src|tests|tools)/.*\.py$

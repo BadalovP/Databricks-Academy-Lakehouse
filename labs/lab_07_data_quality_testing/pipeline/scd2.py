@@ -7,7 +7,7 @@ catalog = spark.conf.get("lab07.catalog", "dbr_dev")
 schema = spark.conf.get("lab07.schema", "parvinbadalov")
 snapshot_count = int(spark.conf.get("lab07.snapshot_count", "3"))
 
-feed = f"{catalog}.{schema}." "business_license_snapshot_feed"
+feed = f"{catalog}.{schema}.business_license_snapshot_feed"
 
 
 def next_snapshot_and_version(latest_snapshot_version):
