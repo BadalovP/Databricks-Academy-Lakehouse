@@ -6,23 +6,23 @@ CATALOG = "dbr_dev"
 SCHEMA = "parvinbadalov"
 
 LANDING = f"{CATALOG}.{SCHEMA}.business_license_landing"
-VALIDATED = f"{CATALOG}.{SCHEMA}.business_license_validated"
+QUARANTINE = f"{CATALOG}.{SCHEMA}.business_license_quarantine"
 
 
-def mock_business_licenses(test_spark):
-    """Create isolated landing data for expectation behavior."""
+def mock_invalid_business_licenses(test_spark):
+    """Create three rows that each violate a different quarantine rule."""
     test_spark.sql(
         f"""
         CREATE TABLE {LANDING} AS
         SELECT * FROM VALUES
             (
-                'GOOD_001',
-                'GOOD COMPANY LLC',
-                'GOOD COMPANY',
+                'BAD_STATUS',
+                'BAD STATUS LLC',
+                'BAD STATUS',
                 '60601',
-                '700001',
+                '710001',
                 'ISSUE',
-                'AAI',
+                'INVALID',
                 CAST(NULL AS STRING),
                 '2024-01-01',
                 '2025-12-31',
@@ -33,11 +33,11 @@ def mock_business_licenses(test_spark):
                 '2026-08-28 00:00:00'
             ),
             (
-                'WARN_001',
-                'WARN COMPANY LLC',
-                CAST(NULL AS STRING),
-                '60602',
-                '700002',
+                'BAD_ZIP',
+                'BAD ZIP LLC',
+                'BAD ZIP',
+                'ABC',
+                '710002',
                 'ISSUE',
                 'AAI',
                 CAST(NULL AS STRING),
@@ -50,16 +50,16 @@ def mock_business_licenses(test_spark):
                 '2026-08-28 00:00:00'
             ),
             (
-                'BAD_001',
-                'BAD COMPANY LLC',
-                'BAD COMPANY',
+                'BAD_DATES',
+                'BAD DATES LLC',
+                'BAD DATES',
                 '60603',
-                '700003',
+                '710003',
                 'ISSUE',
-                'INVALID',
+                'AAI',
                 CAST(NULL AS STRING),
-                '2024-01-01',
-                '2025-12-31',
+                '2026-12-31',
+                '2026-01-01',
                 '41.88',
                 '-87.64',
                 'test_batch',
@@ -87,25 +87,18 @@ def mock_business_licenses(test_spark):
     )
 
 
-def test_business_license_validated_expectations(test_spark):
-    mock_business_licenses(test_spark)
+def test_business_license_quarantine_reasons(test_spark):
+    mock_invalid_business_licenses(test_spark)
 
-    # Selecting the final target also executes its required pipeline dependencies.
-    test_pipeline.run(test_spark, {VALIDATED})
+    test_pipeline.run(test_spark, {QUARANTINE})
 
-    result = test_spark.table(VALIDATED)
+    result = test_spark.table(QUARANTINE)
     rows = {row["id"]: row for row in result.collect()}
 
-    # Valid row survives.
-    assert "GOOD_001" in rows
-    assert rows["GOOD_001"]["_dq_status"] == "VALID"
+    assert set(rows) == {"BAD_STATUS", "BAD_ZIP", "BAD_DATES"}
 
-    # Missing DBA violates the monitoring expectation, but the row is retained.
-    assert "WARN_001" in rows
-    assert rows["WARN_001"]["_dq_status"] == "WARN"
-    assert rows["WARN_001"]["doing_business_as_name"] is None
+    assert "INVALID_LICENSE_STATUS" in rows["BAD_STATUS"]["_dq_quarantine_reasons"]
+    assert "INVALID_ZIP" in rows["BAD_ZIP"]["_dq_quarantine_reasons"]
+    assert "EXPIRATION_BEFORE_START" in rows["BAD_DATES"]["_dq_quarantine_reasons"]
 
-    # Invalid license status is classified as QUARANTINE and trusted_only drops it.
-    assert "BAD_001" not in rows
-
-    assert result.count() == 2
+    assert all(row["_dq_status"] == "QUARANTINE" for row in rows.values())

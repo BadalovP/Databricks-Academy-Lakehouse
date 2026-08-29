@@ -6,21 +6,21 @@ CATALOG = "dbr_dev"
 SCHEMA = "parvinbadalov"
 
 LANDING = f"{CATALOG}.{SCHEMA}.business_license_landing"
-VALIDATED = f"{CATALOG}.{SCHEMA}.business_license_validated"
+QUALITY_DAILY = f"{CATALOG}.{SCHEMA}.license_quality_daily"
 
 
-def mock_business_licenses(test_spark):
-    """Create isolated landing data for expectation behavior."""
+def mock_quality_mix(test_spark):
+    """Create 1 VALID, 1 WARN, and 2 QUARANTINE records for one day."""
     test_spark.sql(
         f"""
         CREATE TABLE {LANDING} AS
         SELECT * FROM VALUES
             (
-                'GOOD_001',
-                'GOOD COMPANY LLC',
-                'GOOD COMPANY',
+                'VALID_001',
+                'VALID LLC',
+                'VALID DBA',
                 '60601',
-                '700001',
+                '720001',
                 'ISSUE',
                 'AAI',
                 CAST(NULL AS STRING),
@@ -34,11 +34,11 @@ def mock_business_licenses(test_spark):
             ),
             (
                 'WARN_001',
-                'WARN COMPANY LLC',
+                'WARN LLC',
                 CAST(NULL AS STRING),
                 '60602',
-                '700002',
-                'ISSUE',
+                '720002',
+                'RENEW',
                 'AAI',
                 CAST(NULL AS STRING),
                 '2024-01-01',
@@ -46,15 +46,15 @@ def mock_business_licenses(test_spark):
                 '41.88',
                 '-87.63',
                 'test_batch',
-                '2026-08-29 12:00:00',
+                '2026-08-29 12:05:00',
                 '2026-08-28 00:00:00'
             ),
             (
-                'BAD_001',
-                'BAD COMPANY LLC',
-                'BAD COMPANY',
+                'BAD_STATUS',
+                'BAD STATUS LLC',
+                'BAD STATUS',
                 '60603',
-                '700003',
+                '720003',
                 'ISSUE',
                 'INVALID',
                 CAST(NULL AS STRING),
@@ -63,7 +63,24 @@ def mock_business_licenses(test_spark):
                 '41.88',
                 '-87.64',
                 'test_batch',
-                '2026-08-29 12:00:00',
+                '2026-08-29 12:10:00',
+                '2026-08-28 00:00:00'
+            ),
+            (
+                'BAD_ZIP',
+                'BAD ZIP LLC',
+                'BAD ZIP',
+                'ABCDE',
+                '720004',
+                'ISSUE',
+                'AAI',
+                CAST(NULL AS STRING),
+                '2024-01-01',
+                '2025-12-31',
+                '41.88',
+                '-87.65',
+                'test_batch',
+                '2026-08-29 12:15:00',
                 '2026-08-28 00:00:00'
             )
         AS t(
@@ -87,25 +104,21 @@ def mock_business_licenses(test_spark):
     )
 
 
-def test_business_license_validated_expectations(test_spark):
-    mock_business_licenses(test_spark)
+def test_license_quality_daily_reconciles(test_spark):
+    mock_quality_mix(test_spark)
 
-    # Selecting the final target also executes its required pipeline dependencies.
-    test_pipeline.run(test_spark, {VALIDATED})
+    test_pipeline.run(test_spark, {QUALITY_DAILY})
 
-    result = test_spark.table(VALIDATED)
-    rows = {row["id"]: row for row in result.collect()}
+    result = test_spark.table(QUALITY_DAILY)
+    assert result.count() == 1
 
-    # Valid row survives.
-    assert "GOOD_001" in rows
-    assert rows["GOOD_001"]["_dq_status"] == "VALID"
+    row = result.first()
 
-    # Missing DBA violates the monitoring expectation, but the row is retained.
-    assert "WARN_001" in rows
-    assert rows["WARN_001"]["_dq_status"] == "WARN"
-    assert rows["WARN_001"]["doing_business_as_name"] is None
+    assert row["total_rows"] == 4
+    assert row["trusted_rows"] == 2
+    assert row["quarantined_rows"] == 2
+    assert row["warning_rows"] == 1
 
-    # Invalid license status is classified as QUARANTINE and trusted_only drops it.
-    assert "BAD_001" not in rows
-
-    assert result.count() == 2
+    assert row["total_rows"] == row["trusted_rows"] + row["quarantined_rows"]
+    assert float(row["quality_score_pct"]) == 50.0
+    assert str(row["quality_date"]) == "2026-08-29"
