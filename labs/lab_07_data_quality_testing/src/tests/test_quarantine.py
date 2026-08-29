@@ -2,7 +2,6 @@
 
 from pyspark.pipelines.testing import TestPipeline, test_spark
 
-
 test_pipeline = TestPipeline.active()
 
 CATALOG = "dbr_dev"
@@ -115,10 +114,7 @@ def test_business_license_quarantine_reasons(test_spark):
 
     result = test_spark.table(QUARANTINE)
 
-    rows = {
-        row["id"]: row
-        for row in result.collect()
-    }
+    rows = {row["id"]: row for row in result.collect()}
 
     assert set(rows) == {
         "BAD_STATUS",
@@ -129,31 +125,19 @@ def test_business_license_quarantine_reasons(test_spark):
     # ---------------------------------------------------------
     # Invalid license status
     # ---------------------------------------------------------
-    assert (
-        "INVALID_LICENSE_STATUS"
-        in rows["BAD_STATUS"]["_dq_quarantine_reasons"]
-    )
+    assert "INVALID_LICENSE_STATUS" in rows["BAD_STATUS"]["_dq_quarantine_reasons"]
 
     # ---------------------------------------------------------
     # Invalid ZIP
     # ---------------------------------------------------------
-    assert (
-        "INVALID_ZIP"
-        in rows["BAD_ZIP"]["_dq_quarantine_reasons"]
-    )
+    assert "INVALID_ZIP" in rows["BAD_ZIP"]["_dq_quarantine_reasons"]
 
     # ---------------------------------------------------------
     # Expiration before start date
     # ---------------------------------------------------------
-    assert (
-        "EXPIRATION_BEFORE_START"
-        in rows["BAD_DATES"]["_dq_quarantine_reasons"]
-    )
+    assert "EXPIRATION_BEFORE_START" in rows["BAD_DATES"]["_dq_quarantine_reasons"]
 
     # Every returned row must be quarantined.
-    assert all(
-        row["_dq_status"] == "QUARANTINE"
-        for row in rows.values()
-    )
+    assert all(row["_dq_status"] == "QUARANTINE" for row in rows.values())
 
     assert result.count() == 3

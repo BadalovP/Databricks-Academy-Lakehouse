@@ -2,15 +2,12 @@
 
 from pyspark.pipelines.testing import TestPipeline, test_spark
 
-
 test_pipeline = TestPipeline.active()
 
 CATALOG = "dbr_dev"
 SCHEMA = "parvinbadalov"
 
-SNAPSHOT_FEED = (
-    f"{CATALOG}.{SCHEMA}.business_license_snapshot_feed"
-)
+SNAPSHOT_FEED = f"{CATALOG}.{SCHEMA}.business_license_snapshot_feed"
 
 SCD2 = f"{CATALOG}.{SCHEMA}.dim_license_scd2"
 
@@ -225,13 +222,9 @@ def test_scd2_preserves_snapshot_history(test_spark):
     assert "__START_AT" in result.columns
     assert "__END_AT" in result.columns
 
-    alpha = result.filter(
-        "license_number = 730001"
-    )
+    alpha = result.filter("license_number = 730001")
 
-    beta = result.filter(
-        "license_number = 730002"
-    )
+    beta = result.filter("license_number = 730002")
 
     # ---------------------------------------------------------
     # ALPHA
@@ -241,10 +234,7 @@ def test_scd2_preserves_snapshot_history(test_spark):
     # ---------------------------------------------------------
     assert alpha.count() == 3
 
-    alpha_addresses = {
-        row["address"]
-        for row in alpha.select("address").collect()
-    }
+    alpha_addresses = {row["address"] for row in alpha.select("address").collect()}
 
     assert alpha_addresses == {
         "100 STATE ST",
@@ -253,16 +243,11 @@ def test_scd2_preserves_snapshot_history(test_spark):
     }
 
     # Exactly one current ALPHA row.
-    alpha_current = alpha.filter(
-        "__END_AT IS NULL"
-    )
+    alpha_current = alpha.filter("__END_AT IS NULL")
 
     assert alpha_current.count() == 1
 
-    assert (
-        alpha_current.first()["address"]
-        == "120 STATE ST"
-    )
+    assert alpha_current.first()["address"] == "120 STATE ST"
 
     # ---------------------------------------------------------
     # BETA
@@ -272,16 +257,11 @@ def test_scd2_preserves_snapshot_history(test_spark):
     # ---------------------------------------------------------
     assert beta.count() == 1
 
-    beta_current = beta.filter(
-        "__END_AT IS NULL"
-    )
+    beta_current = beta.filter("__END_AT IS NULL")
 
     assert beta_current.count() == 1
 
-    assert (
-        beta_current.first()["address"]
-        == "200 MADISON ST"
-    )
+    assert beta_current.first()["address"] == "200 MADISON ST"
 
     # 3 ALPHA historical versions + 1 BETA version.
     assert result.count() == 4

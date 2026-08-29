@@ -2,7 +2,6 @@
 
 from pyspark.pipelines.testing import TestPipeline, test_spark
 
-
 test_pipeline = TestPipeline.active()
 
 CATALOG = "dbr_dev"
@@ -151,10 +150,7 @@ def test_license_quality_daily_reconciles(test_spark):
     # Missing DBA
     assert row["warning_rows"] == 1
 
-    assert (
-        row["total_rows"]
-        == row["trusted_rows"] + row["quarantined_rows"]
-    )
+    assert row["total_rows"] == row["trusted_rows"] + row["quarantined_rows"]
 
     assert float(row["quality_score_pct"]) == 50.0
 

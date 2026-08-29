@@ -3,7 +3,6 @@
 import pytest
 from pyspark.pipelines.testing import TestPipeline, test_spark
 
-
 test_pipeline = TestPipeline.active()
 
 CATALOG = "dbr_dev"
@@ -127,10 +126,7 @@ def test_business_license_validated_expectations(test_spark):
     # ---------------------------------------------------------
     result = test_spark.table(VALIDATED)
 
-    rows = {
-        row["id"]: row
-        for row in result.collect()
-    }
+    rows = {row["id"]: row for row in result.collect()}
 
     # ---------------------------------------------------------
     # 4. VALID
@@ -149,10 +145,7 @@ def test_business_license_validated_expectations(test_spark):
     assert rows["WARN_001"]["_dq_status"] == "WARN"
     assert rows["WARN_001"]["doing_business_as_name"] is None
 
-    assert (
-        "DBA_NAME_MISSING"
-        in rows["WARN_001"]["_dq_warn_reasons"]
-    )
+    assert "DBA_NAME_MISSING" in rows["WARN_001"]["_dq_warn_reasons"]
 
     # ---------------------------------------------------------
     # 6. QUARANTINE
