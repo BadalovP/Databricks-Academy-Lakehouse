@@ -1,15 +1,18 @@
 # Demo 2 Azure Dev Validation Evidence
 
-Captured on 2026-08-30 after the final successful execution. All identifiers below
-belong to `azure_dev`; no `azure_prod` action was performed.
+Captured after the final successful Azure Dev execution on **2026-08-30**, with
+viewer-specific governance validation completed on **2026-08-31**.
+
+All resource identifiers below belong to `azure_dev`. No `azure_prod` execution was
+performed.
 
 ## Deployment
 
 | Resource | Identifier | Status |
 |---|---|---|
-| External volume | `7b564391-e467-4eb0-ba2a-b33ae102ee52` | Reused external Azure storage location |
+| External volume | `7b564391-e467-4eb0-ba2a-b33ae102ee52` | Active external Azure storage |
 | Volume name | `dbr_dev.parvinbadalov.demo2_ecommerce` | Active |
-| Lakeflow pipeline | `63c982e0-4c02-4b13-a949-3c6e227718c0` | Successful |
+| Lakeflow pipeline | `63c982e0-4c02-4b13-a949-3c6e227718c0` | COMPLETED |
 | Validation job | `302596415744074` | Active |
 | Final job run | `38050791281035` | SUCCESS |
 | SQL alert | `4215558586839739` | Deployed, schedule PAUSED |
@@ -17,11 +20,19 @@ belong to `azure_dev`; no `azure_prod` action was performed.
 | Existing notebook compute | GP2 / `0702-171207-xo9bbc0y` | Used without touching GP1 |
 | Existing SQL warehouse | `3ed106620db591d9` | Assigned to alert/dashboard |
 
-Final selective bundle plan: `0 to add, 0 to change, 0 to delete, 4 unchanged`.
+Final selective Demo 2 bundle plan:
+
+```text
+0 to add, 0 to change, 0 to delete, 4 unchanged
+```
 
 ## Workflow
 
-All tasks in run `38050791281035` completed successfully:
+All 11 tasks in run `38050791281035` completed successfully.
+
+![Successful workflow timeline](screenshots/01_job_success_timeline.png)
+
+![Successful workflow DAG](screenshots/02_job_success_dag.png)
 
 ```text
 00_setup
@@ -39,15 +50,21 @@ All tasks in run `38050791281035` completed successfully:
 
 The final gate found no missing or failed required checks.
 
-## Schema Evolution And DQ
+## Schema Evolution and DQ
 
-V1 Bronze did not contain `sales_channel` or `coupon_code`. After V2, both columns
-were present and non-null for all 100 V2 physical rows.
+V1 Bronze did not contain `sales_channel` or `coupon_code`. After the controlled V2
+batch, both fields were present and non-null for V2 rows.
 
-| Batch | Total | VALID | WARN | QUARANTINE | Rate |
+| Batch | Total | VALID | WARN | QUARANTINE | Quarantine rate |
 |---|---:|---:|---:|---:|---:|
 | `DEMO2_V1_INITIAL` | 24 | 24 | 0 | 0 | 0% |
 | `DEMO2_V2_SCHEMA_EVOLUTION` | 100 | 92 | 2 | 6 | 6% |
+
+![Initial pipeline state](screenshots/03_pipeline_initial_success.png)
+
+![V2 schema evolution evidence](screenshots/04_v2_schema_evolution.png)
+
+![Successful pipeline refresh](screenshots/05_pipeline_refresh_success.png)
 
 V2 quarantine reasons each affected one row:
 
@@ -60,57 +77,139 @@ INVALID_DISCOUNT
 FUTURE_ORDER_TIMESTAMP
 ```
 
-`HIGH_DISCOUNT` produced the two WARN rows.
+`HIGH_DISCOUNT` produced the two warning rows.
 
-## SCD2 And Facts
+## SCD2 and Facts
 
-- `C001`, `C003`, and `C006`: 2 versions, exactly 1 current version each.
-- `C002`, `C004`, `C005`, `C007`, and `C008`: 1 current version each.
-- SCD2 tracked columns: customer name, email, country, city, loyalty tier.
-- Technical ingestion columns were absent from the SCD2 target.
-- Total trusted facts: 118 (24 V1 + 94 V2).
+- `C001`, `C003`, and `C006`: two versions each.
+- Every customer: exactly one current version.
+- Tracked columns: customer name, email, country, city, loyalty tier.
+- Technical ingestion metadata: excluded from SCD2 history.
+- Total trusted facts: 118.
+- V2 trusted facts: 94.
 - Null customer/product/date keys: 0.
 - Duplicate fact keys: 0.
+
+![SCD2 and temporal-fact validation](screenshots/06_scd2_validation.png)
+
+## Governance
+
+The primary serving object is the fail-closed dynamic view
+`demo2_sales_governed`, backed by `demo2_user_country_access`.
+
+Initial workflow validation proved:
+
+- 118 base business rows,
+- 118 visible rows for the explicitly mapped administrative session,
+- no unmapped-user access rows,
+- cleanup probe successfully removed.
+
+![Governance validation](screenshots/07_governance_validation.png)
+
+![Governance cleanup](screenshots/08_governance_cleanup.png)
+
+### Viewer-Specific RLS / CLS Follow-Up
+
+A second authenticated Databricks workspace identity was used to validate actual
+viewer-specific behavior. The user's real email is intentionally omitted from this
+evidence package.
+
+| Test | Expected | Result |
+|---|---|---|
+| Authenticated user with no mapping | 0 rows | **PASS** |
+| Restricted mapping country | `PL` only | **PASS** |
+| `all_access = false` | no unrestricted row access | **PASS** |
+| `can_view_pii = false` | customer name masked | **PASS** |
+| `can_view_pii = false` | email masked | **PASS** |
+| Distinct visible country count | 1 | **PASS** |
+
+The restricted mapping was:
+
+```text
+country          = PL
+all_access       = false
+can_view_pii     = false
+is_cleanup_probe = false
+```
+
+![Sanitized restricted-viewer mapping](screenshots/15_governance_mapping_sanitized.png)
+
+The SQL validation showed that an unmapped authenticated user received zero rows.
+After the PL mapping was inserted, the same user received only PL rows, while
+`customer_name` and `email` were returned as `***MASKED***`.
+
+This verifies fail-closed viewer-specific RLS/CLS semantics using `SESSION_USER()`.
 
 ## Reconciliation
 
 ```text
 V2 Bronze physical rows: 100
-V2 trusted rows:         94
-V2 quarantine rows:       6
-V2 fact rows:             94
-Trusted duplicates:       0
-Fact duplicates:          0
-Customer orphans:         0
-Product orphans:          0
-Date orphans:             0
+V2 trusted rows:          94
+V2 quarantine rows:        6
+V2 fact rows:              94
+Trusted duplicates:        0
+Fact duplicates:           0
+Customer orphans:          0
+Product orphans:           0
+Date orphans:              0
 ```
 
-## Governance
+![Reconciliation result](screenshots/09_reconciliation.png)
 
-The dynamic-view fallback passed with 118 base rows and 118 visible rows for the
-explicitly mapped session user. There were no unmapped-user access rows. The temporary
-cleanup probe was removed (`remaining_probes = 0`).
+## Alert Validation
 
-The dashboard is published with `embed_credentials=false`, so it is configured for
-individual data permissions. A second authenticated identity is still required to
-capture viewer-specific row/mask behavior.
+The alert evaluates the latest logical batch by `_batch_loaded_at DESC` with a
+deterministic batch ID tiebreaker.
 
-## Alert And Dashboard
+```text
+quarantine_rate_pct = 6.0
+threshold            = 5.0
+condition            = TRUE
+```
 
-The alert source is `quarantine_rate_pct`, operator is `GREATER_THAN`, and threshold is
-`5`. The final logical batch returned `6`, so the deterministic condition is true.
+![Alert validation result](screenshots/10_alert_validation.png)
+
 The recurring schedule remains paused.
 
-The dashboard is active and published. Its four datasets query:
+## Final Gate
 
-- `demo2_sales_governed`
-- `demo2_dq_summary_gold` (full trend and latest batch)
-- `demo2_dq_failures_by_rule_gold`
+The final quality gate passed after all required workflow validation results were
+persisted.
 
-The checked-in dashboard JSON matches the normalized Azure draft exactly after export.
-Live business KPI query results were 118 trusted lines, 59 orders, 8 customers, 236
-items, gross revenue 16,360.83, net revenue 15,962.40, and average order value 270.55.
+![Final gate passed](screenshots/11_final_gate.png)
+
+## Dashboard
+
+The published dashboard reads business metrics from `demo2_sales_governed` and DQ
+metrics from Gold DQ aggregates.
+
+Validated business KPIs:
+
+```text
+Trusted lines:       118
+Orders:               59
+Customers:             8
+Items sold:          236
+Gross revenue:  16,360.83
+Net revenue:    15,962.40
+Average order value: 270.55
+```
+
+![Business overview](screenshots/12_dashboard_overview.png)
+
+![Business breakdown](screenshots/13_dashboard_business_breakdown.png)
+
+The DQ page shows the controlled V2 result:
+
+```text
+Physical rows:        100
+Valid rows:            92
+Warnings:               2
+Quarantined rows:       6
+Quarantine rate:        6%
+```
+
+![Data Quality dashboard](screenshots/14_dashboard_dq.png)
 
 ## Tests
 
@@ -125,17 +224,21 @@ Bundle validation:   Validation OK
 
 ## Resolved Execution Issues
 
-During implementation, two early job runs were canceled after their pipeline task
-entered service retry loops; only the Demo 2 job/pipeline was stopped:
+During implementation, early Demo 2 validation exposed three issues that were fixed
+before the final clean run:
 
-- `896745229978036`: the snapshot callback depended on a pipeline-managed table before
-  graph materialization; it was changed to read the deterministic snapshot files.
-- `1014376273684324`: Unity Catalog rejected `input_file_name()`; Bronze now uses
-  `_metadata.file_path`.
+1. the SCD2 snapshot callback attempted premature access to a pipeline-managed table;
+   it was changed to read deterministic snapshot inputs,
+2. Unity Catalog rejected `input_file_name()`; Bronze was changed to use
+   `_metadata.file_path`,
+3. a Gold query had an ambiguous `customer_id`; fact/customer aliases were qualified.
 
-Validate-only update `8de30732-72fa-470b-acde-d7b6e09157bc` then exposed an ambiguous
-`customer_id` reference in a Gold aggregate. Qualifying the fact/customer aliases
-resolved it. Later validate-only updates completed successfully, and the final clean
-workflow passed without retries.
+The final workflow completed successfully without retries.
 
-No commit, push, pull, merge, force operation, or Git history rewrite was performed.
+## Git / Promotion Evidence
+
+Demo 2 was merged into `main` through GitHub PR #2 after repository checks passed.
+The local repository and Azure Databricks Workspace Git folder were then synchronized
+with `main`.
+
+No Azure Prod execution was performed.
