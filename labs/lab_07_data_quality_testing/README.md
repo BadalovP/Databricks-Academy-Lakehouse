@@ -1,27 +1,4 @@
-<h1 align="center">Lab 07 · Data Quality Testing on Databricks</h1>
-
-<p align="center"><strong>Production-style data quality engineering for Chicago Business License data</strong></p>
-
-<p align="center">
-  <img alt="Status" src="https://img.shields.io/badge/Status-Complete-2ea44f">
-  <img alt="Databricks" src="https://img.shields.io/badge/Databricks-Lakeflow-EF3E42?logo=databricks&logoColor=white">
-  <img alt="PySpark" src="https://img.shields.io/badge/PySpark-Data%20Quality-orange">
-  <img alt="Delta Lake" src="https://img.shields.io/badge/Delta%20Lake-SCD2-00ADD8">
-  <img alt="Tests" src="https://img.shields.io/badge/Tests-4%2F4%20Lakeflow%20%7C%2016%20Pytest-success">
-</p>
-
-> [!NOTE]
-> This lab demonstrates an end-to-end quality gate with trusted, warning, and quarantine paths; SCD Type 2 history; automated testing; monitoring; dashboards; and controlled Dev/Prod promotion.
-
-### Project Snapshot
-
-| Quality score | Native Lakeflow tests | Local pytest | Chispa | Azure Dev | Azure Prod |
-|---:|---:|---:|---:|---|---|
-| **99.56%** | **4/4 passed** | **16 passed, 1 deselected** | **3 passed** | ✅ Full run passed | ✅ Deploy-only passed |
-
-**Navigate:** [Architecture](#4-architecture) · [Testing](#11-native-lakeflow-testpipeline---44-passed) · [Monitoring](#15-data-quality-monitoring) · [Dashboard](#16-lakeview-dashboard) · [Deployment](#17-asset-bundle-devprod-deployment) · [Evidence](#19-evidence)
-
----
+# Lab 07 - Data Quality Testing on Databricks
 
 ## 1. Project Summary
 
@@ -71,24 +48,32 @@ The Socrata loader can optionally use `CHICAGO_APP_TOKEN`.
 
 ## 4. Architecture
 
-```mermaid
-flowchart TD
-    A[City of Chicago API] --> B[Landing]
-    B --> C[Bronze]
-    B --> D[Snapshot Feed]
-    C --> E[Classified]
-    D --> F[SCD2 History]
-    E --> G[Validated<br/>VALID + WARN]
-    E --> H[Quarantine]
-    G --> I[Gold Metrics]
-    H --> I
-    F --> I
-    I --> J[Monitoring + Scorecard / Dashboard]
-    J --> K[Final Quality Gate]
+```text
+City of Chicago API
+        |
+        v
+      Landing
+      /     \
+     v       v
+ Bronze   Snapshot Feed
+    |          |
+    v          v
+Classified   SCD2 History
+  /     \
+ v       v
+Validated  Quarantine
+  \       /
+   v     v
+ Gold Metrics
+      |
+      v
+Monitoring + Scorecard / Dashboard
+      |
+      v
+Final Quality Gate
 ```
 
-> [!IMPORTANT]
-> `VALID` and `WARN` records are trusted. `QUARANTINE` records remain available for diagnosis but are excluded from trusted outputs.
+`VALID` and `WARN` records are trusted. `QUARANTINE` records remain available for diagnosis but are excluded from trusted outputs.
 
 ---
 
@@ -112,10 +97,7 @@ External ADLS Gen2 location:
 abfss://parvinbadalov@dlspl21databricks.dfs.core.windows.net/lab07_data_quality
 ```
 
-The source-preparation notebook verifies that the object is an **EXTERNAL Volume** before loading data.
-
-> [!NOTE]
-> Azure Dev and Azure Prod intentionally reuse this volume for the academy project. The existing volume is bound to Azure Prod deployment state rather than recreated.
+The source-preparation notebook verifies that the object is an **EXTERNAL Volume** before loading data. Azure Dev and Azure Prod intentionally reuse this volume for the academy project; the existing volume is bound to Azure Prod deployment state rather than recreated.
 
 ---
 
@@ -407,10 +389,7 @@ Bundle validation, deployment, the full `00`-`11` orchestration, monitoring vali
 
 ### Azure Prod
 
-> [!IMPORTANT]
-> Azure Prod was **validated and deployed only**. The production job was intentionally **not executed**.
-
-The existing shared external volume was bound to Azure Prod bundle state, and the final selective pipeline plan reported:
+Azure Prod was validated and deployed only. The production job was intentionally **not executed**. The existing shared external volume was bound to Azure Prod bundle state, and the final selective pipeline plan reported:
 
 ```text
 Plan: 0 to add, 0 to change, 0 to delete, 2 unchanged
@@ -422,60 +401,96 @@ Plan: 0 to add, 0 to change, 0 to delete, 2 unchanged
 
 ## 18. Repository Structure
 
-This tree is derived from the tracked Lab 07 files after cleanup. Repetitive test modules, notebooks, and evidence images are grouped for readability.
-
-<details>
-<summary><strong>View repository tree</strong></summary>
+The Lab 07 implementation spans both the lab-specific project folder and the shared Databricks Asset Bundle resources at the repository root.
 
 ```text
-labs/lab_07_data_quality_testing/
-|-- .gitignore
-|-- README.md
-|-- pre-commit-config.yaml
-|-- pyproject.toml
-|-- requirements.txt
-|-- requirements-dev.txt
-|-- config/
-|   `-- quality_rules.yml
-|-- contracts/
-|   `-- business_license_silver_v1.yml
-|-- dashboards/
-|   `-- lab07_dq_scorecard.lvdash.json
-|-- dq/great_expectations/
-|   |-- bronze_license_suite.json
-|   |-- silver_license_suite.json
-|   `-- gold_license_suite.json
-|-- evidence/
-|   |-- pytest/generated_static_validation.txt
-|   `-- screenshots/ (14 successful validation images, 01 through 14)
-|-- notebooks/
-|   |-- lab07_00_source_preparation.ipynb
-|   |-- lab07_01_source_profile.ipynb
-|   `-- lab07_02_scd2_validation.ipynb through lab07_11_final_gate.ipynb
-|-- pipeline/
-|   |-- bronze.py
-|   |-- quality.py
-|   |-- scd2.py
-|   `-- gold.py
-|-- sql/
-|   |-- delta_constraints.sql
-|   |-- monitoring_queries.sql
-|   |-- quarantine_analysis.sql
-|   `-- reconciliation_queries.sql
-|-- src/
-|   |-- lab07/ (10 package modules)
-|   `-- tests/ (4 native Lakeflow TestPipeline tests)
-|-- tests/
-|   |-- conftest.py
-|   |-- fixtures/ (valid, snapshot, duplicate, and late-arrival datasets)
-|   |-- integration/test_deployed_medallion_e2e.py
-|   |-- quality/ (6 quality-rule tests)
-|   `-- unit/ (6 unit/chispa test modules)
-`-- tools/
-    `-- license_batch_loader.py
+Databricks-Academy-Lakehouse/
+├── databricks.yml
+│
+├── labs/
+│   └── lab_07_data_quality_testing/
+│       ├── .gitignore
+│       ├── README.md
+│       ├── pre-commit-config.yaml
+│       ├── pyproject.toml
+│       ├── requirements.txt
+│       ├── requirements-dev.txt
+│       │
+│       ├── config/
+│       │   └── quality_rules.yml
+│       │
+│       ├── contracts/
+│       │   └── business_license_silver_v1.yml
+│       │
+│       ├── dashboards/
+│       │   └── lab07_dq_scorecard.lvdash.json
+│       │
+│       ├── dq/
+│       │   └── great_expectations/
+│       │       ├── bronze_license_suite.json
+│       │       ├── silver_license_suite.json
+│       │       └── gold_license_suite.json
+│       │
+│       ├── evidence/
+│       │   ├── pytest/
+│       │   │   └── generated_static_validation.txt
+│       │   └── screenshots/
+│       │       └── 14 successful validation images (01-14)
+│       │
+│       ├── notebooks/
+│       │   ├── lab07_00_source_preparation.ipynb
+│       │   ├── lab07_01_source_profile.ipynb
+│       │   ├── lab07_02_scd2_validation.ipynb
+│       │   ├── lab07_03_quarantine_review.ipynb
+│       │   ├── lab07_04_delta_constraints.ipynb
+│       │   ├── lab07_05_gx_validation.ipynb
+│       │   ├── lab07_06_reconciliation.ipynb
+│       │   ├── lab07_07_freshness_volume.ipynb
+│       │   ├── lab07_08_schema_contract.ipynb
+│       │   ├── lab07_09_monitoring_validation.ipynb
+│       │   ├── lab07_10_quality_scorecard.ipynb
+│       │   └── lab07_11_final_gate.ipynb
+│       │
+│       ├── pipeline/
+│       │   ├── bronze.py
+│       │   ├── quality.py
+│       │   ├── scd2.py
+│       │   └── gold.py
+│       │
+│       ├── sql/
+│       │   ├── delta_constraints.sql
+│       │   ├── monitoring_queries.sql
+│       │   ├── quarantine_analysis.sql
+│       │   └── reconciliation_queries.sql
+│       │
+│       ├── src/
+│       │   ├── lab07/                       # reusable Lab 07 Python package
+│       │   └── tests/
+│       │       ├── test_expectations.py
+│       │       ├── test_quarantine.py
+│       │       ├── test_gold_quality_flow.py
+│       │       └── test_scd2_snapshot_flow.py
+│       │
+│       ├── tests/
+│       │   ├── conftest.py
+│       │   ├── fixtures/
+│       │   ├── integration/
+│       │   │   └── test_deployed_medallion_e2e.py
+│       │   ├── quality/
+│       │   └── unit/
+│       │
+│       └── tools/
+│           └── license_batch_loader.py
+│
+└── resources/
+    ├── lab07_dashboard.yml
+    ├── lab07_data_quality_job.yml
+    ├── lab07_infrastructure.yml
+    ├── lab07_monitoring.yml
+    └── lab07_quality_pipeline.yml
 ```
 
-</details>
+`databricks.yml` provides shared bundle variables and target overrides, while `resources/lab07_*.yml` defines the deployable Lab 07 infrastructure, pipeline, monitoring, dashboard, and orchestration job.
 
 ---
 
@@ -508,15 +523,15 @@ labs/lab_07_data_quality_testing/
 
 | Area | Result |
 |---|---|
-| Native Lakeflow `TestPipeline` | ✅ `4/4 passed` |
-| Local pytest | ✅ `16 passed, 1 deselected` |
-| Chispa | ✅ `3 passed` |
-| Ruff and Black | ✅ Passed |
-| Azure Dev validation/deployment | ✅ Passed |
-| Azure Dev full run | ✅ Passed |
-| Monitoring and dashboard | ✅ Passed |
-| Azure Prod validation/deployment | ✅ Passed |
-| Azure Prod execution | ⏭️ Intentionally not run |
+| Native Lakeflow `TestPipeline` | `4/4 passed` |
+| Local pytest | `16 passed, 1 deselected` |
+| Chispa | `3 passed` |
+| Ruff and Black | Passed |
+| Azure Dev validation/deployment | Passed |
+| Azure Dev full run | Passed |
+| Monitoring and dashboard | Passed |
+| Azure Prod validation/deployment | Passed |
+| Azure Prod execution | Intentionally not run |
 
 ---
 
@@ -540,7 +555,4 @@ Lab 07 demonstrates:
 
 ## 22. Conclusion
 
-> [!TIP]
-> **Lab 07 is complete for the agreed academy scope.** It has end-to-end proof across source ingestion, transformation, quality controls, historical tracking, automated tests, monitoring, reporting, and deployment.
-
-Azure Dev has been executed successfully; Azure Prod remains intentionally deploy-only.
+Lab 07 has end-to-end proof across source ingestion, transformation, quality controls, historical tracking, automated tests, monitoring, reporting, and deployment. Azure Dev has been executed successfully; Azure Prod remains intentionally deploy-only.
