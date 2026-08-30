@@ -1,0 +1,9 @@
+resources:
+  dashboards:
+    demo2_retailpulse_dashboard:
+      display_name: "Demo 2 - RetailPulse E-Commerce Operations"
+      file_path: ../dashboard/demo2_dashboard.lvdash.json
+      warehouse_id: ${var.demo2_warehouse_id}
+      dataset_catalog: ${var.demo2_catalog}
+      dataset_schema: ${var.demo2_schema}
+      embed_credentials: false

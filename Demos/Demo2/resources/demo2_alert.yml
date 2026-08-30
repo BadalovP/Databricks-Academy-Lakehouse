@@ -1,0 +1,38 @@
+resources:
+  alerts:
+    demo2_quarantine_rate_alert:
+      display_name: "Demo 2 - RetailPulse Quarantine Rate Above 5 Percent"
+      parent_path: ${workspace.root_path}
+      query_text: |
+        SELECT
+          _source_batch_id,
+          _batch_loaded_at,
+          total_rows,
+          valid_rows,
+          warning_rows,
+          quarantined_rows,
+          quarantine_rate_pct
+        FROM ${var.demo2_catalog}.${var.demo2_schema}.demo2_dq_summary_gold
+        ORDER BY _batch_loaded_at DESC, _source_batch_id DESC
+        LIMIT 1
+      warehouse_id: ${var.demo2_warehouse_id}
+      evaluation:
+        comparison_operator: GREATER_THAN
+        empty_result_state: ERROR
+        source:
+          name: quarantine_rate_pct
+          display: quarantine_rate_pct
+        threshold:
+          value:
+            double_value: 5
+        notification:
+          notify_on_ok: false
+          retrigger_seconds: 0
+      schedule:
+        quartz_cron_schedule: "0 0 * * * ?"
+        timezone_id: "Europe/Warsaw"
+        pause_status: PAUSED
+      custom_summary: "Demo 2 quarantine rate exceeded 5 percent"
+      custom_description: >
+        Evaluates the latest logical ingestion batch by load timestamp. The
+        deterministic V2 batch contains 6 quarantined rows out of 100 (6%).

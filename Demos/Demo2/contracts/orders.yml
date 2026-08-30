@@ -1,0 +1,16 @@
+name: demo2_orders
+key: order_line_id
+v1_business_columns:
+  - order_line_id
+  - order_id
+  - customer_id
+  - product_id
+  - quantity
+  - unit_price
+  - discount_pct
+  - order_timestamp
+  - order_status
+v2_added_columns:
+  - sales_channel
+  - coupon_code
+schema_evolution_mode: addNewColumns

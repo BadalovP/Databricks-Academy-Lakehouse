@@ -1,0 +1,16 @@
+name: demo2_customers
+snapshot_versions: [20260801, 20260830]
+key: customer_id
+columns:
+  customer_id: string
+  customer_name: string
+  email: string
+  country: string
+  city: string
+  loyalty_tier: string
+scd2_track_history_columns:
+  - customer_name
+  - email
+  - country
+  - city
+  - loyalty_tier
