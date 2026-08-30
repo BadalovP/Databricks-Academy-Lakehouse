@@ -13,8 +13,8 @@
 
 | Item | Value |
 |---|---|
-| Host | https://dbc-1750318a-76a9.cloud.databricks.com |
-| User | parvinbadalov@yahoo.com |
+| Host | `<personal-workspace-host>.cloud.databricks.com` |
+| User | *(redacted — personal account)* |
 | CLI profile | `personal-yahoo` |
 | Bundle targets | `personal`, `personal_dev`, `personal_prod` |
 | Purpose | Independent experimentation, development, and bundle validation outside the Academy workspace |
@@ -23,8 +23,8 @@
 
 | Item | Value |
 |---|---|
-| Workspace | https://adb-7405604503619901.1.azuredatabricks.net |
-| User | parvinbadalov@softserve.academy |
+| Workspace | `<academy-workspace-host>.azuredatabricks.net` |
+| User | *(redacted — academy account)* |
 | CLI profile | `dev` |
 | SQL Warehouse ID | `3ed106620db591d9` |
 | Bundle targets | `azure_dev`, `azure_prod` (same physical workspace, logically separated) |
@@ -44,9 +44,9 @@
 
 | Item | Value |
 |---|---|
-| Job | [`1120028109458030`](https://adb-7405604503619901.1.azuredatabricks.net/jobs/1120028109458030) |
-| Pipeline | [`01bc9500-242e-4a9c-afef-2e8ba26611d8`](https://adb-7405604503619901.1.azuredatabricks.net/pipelines/01bc9500-242e-4a9c-afef-2e8ba26611d8) |
-| Dashboard | [`01f1a4180c7515cbb67c460f5cfe1bbe`](https://adb-7405604503619901.1.azuredatabricks.net/dashboardsv3/01f1a4180c7515cbb67c460f5cfe1bbe/published) |
+| Job | `1120028109458030` |
+| Pipeline | `01bc9500-242e-4a9c-afef-2e8ba26611d8` |
+| Dashboard | `01f1a4180c7515cbb67c460f5cfe1bbe` |
 | Status | **Deployed only — job intentionally not executed** |
 
 **Unity Catalog / Storage**
@@ -55,7 +55,7 @@
 |---|---|
 | Catalog | `dbr_dev` |
 | Schema | `parvinbadalov` |
-| Volume | `dbr_dev.parvinbadalov.lab07_data_quality` ([UI](https://adb-7405604503619901.1.azuredatabricks.net/explore/data/volumes/dbr_dev/parvinbadalov/lab07_data_quality)) |
+| Volume | `dbr_dev.parvinbadalov.lab07_data_quality` |
 | External ADLS location | `abfss://parvinbadalov@dlspl21databricks.dfs.core.windows.net/lab07_data_quality` |
 
 > Azure Dev and Azure Prod intentionally reuse the same Unity Catalog schema and external volume for this academy project. This is a logical, not physical, Dev/Prod separation — see below.
@@ -113,7 +113,7 @@ Databricks workspace repository
 
 ## 4. Physical vs. logical separation — an important clarification
 
-`azure_dev` and `azure_prod` are **not** two separate Azure Databricks workspaces. They point at the **same physical workspace** (`adb-7405604503619901.1.azuredatabricks.net`). The separation between them is entirely logical, coming from:
+`azure_dev` and `azure_prod` are **not** two separate Azure Databricks workspaces. They point at the **same physical workspace**. The separation between them is entirely logical, coming from:
 
 - separate Databricks Asset Bundle targets
 - separate bundle deployment state
