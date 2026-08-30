@@ -242,6 +242,10 @@ targets:
       lab07_warehouse_id: "3ed106620db591d9"
 
     resources:
+      pipelines:
+        lab07_quality_pipeline:
+          channel: CURRENT
+
       jobs:
         lab05_lakeflow_job:
           tasks:
