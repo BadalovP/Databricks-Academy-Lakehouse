@@ -119,26 +119,18 @@ updated record counts:
 Silver performs deterministic duplicate ranking rather than silently calling
 `dropDuplicates()`. Every physical order row receives one final quality status.
 
-The controlled V2 result is:
+The controlled batch results are:
 
-| Status | Rows | Trusted? |
-|---|---:|---|
-| VALID | 92 | Yes |
-| WARN | 2 | Yes |
-| QUARANTINE | 6 | No |
-| **Total** | **100** | **94 trusted** |
+| Batch | Physical rows | VALID | WARN | QUARANTINE | Trusted |
+|---|---:|---:|---:|---:|---:|
+| V1 initial | 24 | 24 | 0 | 0 | 24 |
+| V2 schema evolution | 100 | 92 | 2 | 6 | 94 |
 
-The six quarantined rows intentionally demonstrate:
+The six quarantined rows intentionally demonstrate one occurrence each of
+`DUPLICATE_ORDER_LINE_ID`, `CUSTOMER_ID_MISSING`, `UNKNOWN_PRODUCT_ID`,
+`NON_POSITIVE_QUANTITY`, `INVALID_DISCOUNT`, and `FUTURE_ORDER_TIMESTAMP`.
 
-- duplicate order-line ID,
-- missing customer ID,
-- unknown product ID,
-- non-positive quantity,
-- discount above the quarantine threshold,
-- future order timestamp.
-
-The two warning rows demonstrate high-discount warnings while remaining in the trusted
-business layer.
+The two `HIGH_DISCOUNT` warning rows remain in the trusted business layer.
 
 Discount classification is deterministic:
 
@@ -206,6 +198,10 @@ The pipeline governance validation and cleanup both passed:
 ![Governance validation](docs/evidence/screenshots/07_governance_validation.png)
 
 ![Governance cleanup](docs/evidence/screenshots/08_governance_cleanup.png)
+
+The workflow governance probe recorded 118 base rows and 118 visible rows for the
+explicitly mapped administrative session. Cleanup completed with zero probe mappings
+remaining.
 
 ### Viewer-Specific Validation
 
@@ -323,27 +319,21 @@ expectations. Chispa validation runs through Databricks Connect.
 
 ## Azure Dev Validation
 
-Final Azure Dev resources:
-
-| Resource | Identifier / Status |
+| Resource | Final result |
 |---|---|
-| External volume | `dbr_dev.parvinbadalov.demo2_ecommerce` |
-| Lakeflow pipeline | `63c982e0-4c02-4b13-a949-3c6e227718c0` — COMPLETED |
+| End-to-end workflow | Run `38050791281035` SUCCESS; 11/11 tasks passed |
 | Validation job | `302596415744074` |
-| Final job run | `38050791281035` — SUCCESS |
-| SQL alert | `4215558586839739` — deployed, schedule PAUSED |
-| AI/BI dashboard | `01f1a4a6833a1f10967638a44a6486de` — active and published |
-| Notebook compute | GP2 |
-| SQL warehouse | `3ed106620db591d9` |
+| External volume | `dbr_dev.parvinbadalov.demo2_ecommerce` active |
+| Lakeflow pipeline | `63c982e0-4c02-4b13-a949-3c6e227718c0` COMPLETED |
+| SQL alert | `4215558586839739` deployed; schedule PAUSED |
+| AI/BI dashboard | `01f1a4a6833a1f10967638a44a6486de` active and published |
+| Azure Prod | Untouched |
 
 Final Demo 2 scoped bundle plan:
 
 ```text
 0 add, 0 change, 0 delete, 4 unchanged
 ```
-
-Full execution evidence is documented in
-[`docs/evidence/AZURE_DEV_VALIDATION.md`](docs/evidence/AZURE_DEV_VALIDATION.md).
 
 ## Repository Structure
 
@@ -361,7 +351,6 @@ Demos/Demo2/
 |   `-- demo2_dashboard.lvdash.json
 |-- docs/
 |   `-- evidence/
-|       |-- AZURE_DEV_VALIDATION.md
 |       `-- screenshots/
 |-- notebooks/
 |   |-- 01_generate_reference_and_v1.py
@@ -418,6 +407,15 @@ checks passed. The local repository and Azure Databricks Workspace Git folder we
 synchronized with `main`.
 
 No Azure Prod execution was performed as part of Demo 2.
+
+## Implementation Notes
+
+The final clean run includes three fixes discovered during Azure Dev validation:
+
+- SCD2 snapshot processing reads deterministic snapshot inputs instead of accessing a
+  pipeline-managed table prematurely.
+- Bronze uses `_metadata.file_path` because Unity Catalog rejects `input_file_name()`.
+- Gold fact/customer aliases qualify `customer_id` to avoid an ambiguous reference.
 
 ## Known Limitations
 
