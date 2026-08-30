@@ -12,24 +12,19 @@ variables:
   # Demo 2
   # -------------------------------------------------------------------
   demo2_catalog:
-    description: Existing Unity Catalog catalog used by Demo 2
-    default: "dbr_dev"
+    description: Explicit target-specific Unity Catalog catalog used by Demo 2
 
   demo2_schema:
-    description: Existing Unity Catalog schema reused by Demo 2
-    default: "parvinbadalov"
+    description: Explicit target-specific Unity Catalog schema used by Demo 2
 
   demo2_volume_name:
-    description: External Unity Catalog volume used by Demo 2
-    default: "demo2_ecommerce"
+    description: Explicit target-specific external Unity Catalog volume used by Demo 2
 
   demo2_cluster_id:
-    description: Existing shared Azure cluster selected safely for Demo 2 notebook tasks
-    default: "0702-171207-xo9bbc0y"
+    description: Explicit target-specific cluster used by Demo 2 notebook tasks
 
   demo2_warehouse_id:
-    description: SQL warehouse used by Demo 2 dashboard and alert
-    default: "3ed106620db591d9"
+    description: Explicit target-specific SQL warehouse used by Demo 2 dashboard and alert
 
   # -------------------------------------------------------------------
   # Lab 03
@@ -140,8 +135,15 @@ targets:
 
     workspace:
       host: https://adb-7405604503619901.1.azuredatabricks.net
+      profile: AZURE_DEV
 
     variables:
+      demo2_catalog: "dbr_dev"
+      demo2_schema: "parvinbadalov"
+      demo2_volume_name: "demo2_ecommerce"
+      demo2_cluster_id: "0702-171207-xo9bbc0y"
+      demo2_warehouse_id: "3ed106620db591d9"
+
       lab05_catalog: "dbr_dev"
       lab05_schema: "parvinbadalov"
       lab05_cluster_id: "0702-132442-toro5spu"
@@ -253,6 +255,12 @@ targets:
         user_name: parvinbadalov@softserve.academy
 
     variables:
+      # Demo 2 has no production defaults. Supply all five values together via
+      # BUNDLE_VAR_demo2_catalog, BUNDLE_VAR_demo2_schema,
+      # BUNDLE_VAR_demo2_volume_name, BUNDLE_VAR_demo2_cluster_id, and
+      # BUNDLE_VAR_demo2_warehouse_id. Use an explicitly approved production
+      # --profile when validating or deploying this target.
+
       lab05_catalog: "dbr_dev"
       lab05_schema: "parvinbadalov_lab05_prod"
       lab05_cluster_id: "0702-132442-toro5spu"

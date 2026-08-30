@@ -8,44 +8,36 @@
         "          order_date, country, city, loyalty_tier, category, product_name,\n",
         "          sales_channel, order_status, customer_key, order_id, quantity,\n",
         "          gross_amount, discount_amount, net_amount\n",
-        "        FROM dbr_dev.parvinbadalov.demo2_sales_governed\n"
-      ],
-      "catalog": "dbr_dev",
-      "schema": "parvinbadalov"
+        "        FROM demo2_sales_governed\n"
+      ]
     },
     {
       "name": "dq_summary",
       "displayName": "DQ Batch Summary",
       "queryLines": [
         "SELECT *\n",
-        "        FROM dbr_dev.parvinbadalov.demo2_dq_summary_gold\n",
+        "        FROM demo2_dq_summary_gold\n",
         "        ORDER BY _batch_loaded_at, _source_batch_id\n"
-      ],
-      "catalog": "dbr_dev",
-      "schema": "parvinbadalov"
+      ]
     },
     {
       "name": "dq_latest",
       "displayName": "Latest DQ Batch",
       "queryLines": [
         "SELECT *\n",
-        "        FROM dbr_dev.parvinbadalov.demo2_dq_summary_gold\n",
+        "        FROM demo2_dq_summary_gold\n",
         "        ORDER BY _batch_loaded_at DESC, _source_batch_id DESC\n",
         "        LIMIT 1\n"
-      ],
-      "catalog": "dbr_dev",
-      "schema": "parvinbadalov"
+      ]
     },
     {
       "name": "dq_rules",
       "displayName": "DQ Failures by Rule",
       "queryLines": [
         "SELECT *\n",
-        "        FROM dbr_dev.parvinbadalov.demo2_dq_failures_by_rule_gold\n",
+        "        FROM demo2_dq_failures_by_rule_gold\n",
         "        ORDER BY _batch_loaded_at, rule_name\n"
-      ],
-      "catalog": "dbr_dev",
-      "schema": "parvinbadalov"
+      ]
     }
   ],
   "pages": [

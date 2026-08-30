@@ -5,9 +5,9 @@ from pyspark import pipelines as dp
 from demo2.config import SCD2_TRACKED_COLUMNS
 
 SNAPSHOT_VERSIONS = (20260801, 20260830)
-catalog = spark.conf.get("demo2.catalog", "dbr_dev")
-schema = spark.conf.get("demo2.schema", "parvinbadalov")
-volume_name = spark.conf.get("demo2.volume_name", "demo2_ecommerce")
+catalog = spark.conf.get("demo2.catalog")
+schema = spark.conf.get("demo2.schema")
+volume_name = spark.conf.get("demo2.volume_name")
 runtime_root = f"/Volumes/{catalog}/{schema}/{volume_name}/runtime"
 
 
