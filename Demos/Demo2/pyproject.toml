@@ -1,0 +1,23 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+  "spark: tests that require a Spark session (run through Databricks Connect in this environment)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/notebooks/*.py" = ["F821"]
+"**/pipeline/*.py" = ["F821"]
+"**/setup/*.py" = ["F821"]
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]

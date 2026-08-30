@@ -1,0 +1,123 @@
+resources:
+  jobs:
+    demo2_retailpulse_job:
+      name: "Demo 2 - RetailPulse End-to-End Validation"
+      max_concurrent_runs: 1
+      queue:
+        enabled: true
+      parameters:
+        - {name: catalog, default: "${var.demo2_catalog}"}
+        - {name: schema, default: "${var.demo2_schema}"}
+        - {name: volume_name, default: "${var.demo2_volume_name}"}
+      tasks:
+        - task_key: 00_setup
+          notebook_task:
+            notebook_path: ../setup/00_setup.py
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume_name: "{{job.parameters.volume_name}}"
+              pipeline_id: ${resources.pipelines.demo2_pipeline.id}
+              run_id: "{{job.run_id}}"
+          existing_cluster_id: ${var.demo2_cluster_id}
+
+        - task_key: 01_generate_reference_and_v1
+          depends_on: [{task_key: 00_setup}]
+          notebook_task:
+            notebook_path: ../notebooks/01_generate_reference_and_v1.py
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume_name: "{{job.parameters.volume_name}}"
+          existing_cluster_id: ${var.demo2_cluster_id}
+
+        - task_key: 02_pipeline_initial
+          depends_on: [{task_key: 01_generate_reference_and_v1}]
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.demo2_pipeline.id}
+            full_refresh: true
+
+        - task_key: 03_write_v2_schema_evolution_and_dq
+          depends_on: [{task_key: 02_pipeline_initial}]
+          notebook_task:
+            notebook_path: ../notebooks/03_write_v2_schema_evolution_and_dq.py
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume_name: "{{job.parameters.volume_name}}"
+              run_id: "{{job.run_id}}"
+          existing_cluster_id: ${var.demo2_cluster_id}
+
+        - task_key: 04_pipeline_refresh
+          depends_on: [{task_key: 03_write_v2_schema_evolution_and_dq}]
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.demo2_pipeline.id}
+            full_refresh: false
+          max_retries: 1
+          min_retry_interval_millis: 60000
+
+        - task_key: 05_scd2_validation
+          depends_on: [{task_key: 04_pipeline_refresh}]
+          notebook_task:
+            notebook_path: ../notebooks/05_scd2_validation.py
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              run_id: "{{job.run_id}}"
+          existing_cluster_id: ${var.demo2_cluster_id}
+
+        - task_key: 06_governance_validation
+          depends_on: [{task_key: 04_pipeline_refresh}]
+          notebook_task:
+            notebook_path: ../notebooks/06_governance_validation.py
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              run_id: "{{job.run_id}}"
+          existing_cluster_id: ${var.demo2_cluster_id}
+
+        - task_key: 06b_governance_cleanup
+          depends_on: [{task_key: 06_governance_validation}]
+          run_if: ALL_DONE
+          notebook_task:
+            notebook_path: ../notebooks/06b_governance_cleanup.py
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              run_id: "{{job.run_id}}"
+          existing_cluster_id: ${var.demo2_cluster_id}
+
+        - task_key: 07_reconciliation
+          depends_on:
+            - {task_key: 05_scd2_validation}
+            - {task_key: 06b_governance_cleanup}
+          notebook_task:
+            notebook_path: ../notebooks/07_reconciliation.py
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              run_id: "{{job.run_id}}"
+          existing_cluster_id: ${var.demo2_cluster_id}
+
+        - task_key: 08_alert_validation
+          depends_on: [{task_key: 07_reconciliation}]
+          notebook_task:
+            notebook_path: ../notebooks/08_alert_validation.py
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              run_id: "{{job.run_id}}"
+          existing_cluster_id: ${var.demo2_cluster_id}
+
+        - task_key: 09_final_gate
+          depends_on: [{task_key: 08_alert_validation}]
+          notebook_task:
+            notebook_path: ../notebooks/09_final_gate.py
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              run_id: "{{job.run_id}}"
+          existing_cluster_id: ${var.demo2_cluster_id}
+      tags:
+        project: retailpulse_demo2
+        environment: azure_dev

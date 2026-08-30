@@ -1,0 +1,14 @@
+project: retailpulse_demo2
+as_of_timestamp: "2026-09-01T12:00:00Z"
+status_precedence: [QUARANTINE, WARN, VALID]
+discount:
+  valid_max: 0.30
+  warn_max: 0.50
+rules:
+  - {name: duplicate_order_line_id, severity: QUARANTINE, dimension: uniqueness}
+  - {name: customer_reference, severity: QUARANTINE, dimension: referential_integrity}
+  - {name: product_reference, severity: QUARANTINE, dimension: referential_integrity}
+  - {name: positive_quantity, severity: QUARANTINE, dimension: validity}
+  - {name: discount_above_050, severity: QUARANTINE, dimension: validity}
+  - {name: future_order, severity: QUARANTINE, dimension: timeliness}
+  - {name: discount_above_030, severity: WARN, dimension: validity}

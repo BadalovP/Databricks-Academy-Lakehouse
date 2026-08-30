@@ -5,8 +5,32 @@ bundle:
 include:
   - resources/*.yml
   - Demos/Demo1/resources/*.yml
+  - Demos/Demo2/resources/*.yml
 
 variables:
+  # -------------------------------------------------------------------
+  # Demo 2
+  # -------------------------------------------------------------------
+  demo2_catalog:
+    description: Existing Unity Catalog catalog used by Demo 2
+    default: "dbr_dev"
+
+  demo2_schema:
+    description: Existing Unity Catalog schema reused by Demo 2
+    default: "parvinbadalov"
+
+  demo2_volume_name:
+    description: External Unity Catalog volume used by Demo 2
+    default: "demo2_ecommerce"
+
+  demo2_cluster_id:
+    description: Existing shared Azure cluster selected safely for Demo 2 notebook tasks
+    default: "0702-171207-xo9bbc0y"
+
+  demo2_warehouse_id:
+    description: SQL warehouse used by Demo 2 dashboard and alert
+    default: "3ed106620db591d9"
+
   # -------------------------------------------------------------------
   # Lab 03
   # -------------------------------------------------------------------

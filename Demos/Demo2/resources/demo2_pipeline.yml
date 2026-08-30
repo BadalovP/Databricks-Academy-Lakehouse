@@ -1,0 +1,26 @@
+resources:
+  pipelines:
+    demo2_pipeline:
+      name: "Demo 2 - RetailPulse E-Commerce Medallion Pipeline"
+      catalog: ${var.demo2_catalog}
+      schema: ${var.demo2_schema}
+      root_path: ../src
+      serverless: true
+      continuous: false
+      channel: CURRENT
+      edition: ADVANCED
+      configuration:
+        demo2.catalog: ${var.demo2_catalog}
+        demo2.schema: ${var.demo2_schema}
+        demo2.volume_name: ${var.demo2_volume_name}
+      libraries:
+        - file:
+            path: ../pipeline/bronze.py
+        - file:
+            path: ../pipeline/silver.py
+        - file:
+            path: ../pipeline/scd2.py
+        - file:
+            path: ../pipeline/gold.py
+        - file:
+            path: ../pipeline/governance.py
