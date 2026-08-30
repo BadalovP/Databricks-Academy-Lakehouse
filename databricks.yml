@@ -204,6 +204,10 @@ targets:
             - task_key: 11_final_gate
               existing_cluster_id: ${var.lab07_cluster_id}
 
+      pipelines:
+        lab07_quality_pipeline:
+          channel: CURRENT
+
   # ===================================================================
   # AZURE - PRODUCTION TEST
   # ===================================================================
