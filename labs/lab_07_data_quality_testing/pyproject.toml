@@ -3,9 +3,12 @@ markers=["remote: requires Databricks Connect/deployed resources"]
 [tool.ruff]
 line-length=100
 target-version="py311"
+builtins=["spark"]
 [tool.ruff.lint]
 select=["E","F","I","B"]
 ignore=["E501"]
+[tool.ruff.lint.isort]
+known-first-party=["lab07","tests"]
 [tool.black]
 line-length=100
 target-version=["py311"]
