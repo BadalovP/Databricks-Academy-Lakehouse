@@ -14,9 +14,13 @@ resources:
           notebook_task:
             notebook_path: ../setup/00_setup.py
             base_parameters:
+              bundle_target: ${bundle.target}
               catalog: "{{job.parameters.catalog}}"
               schema: "{{job.parameters.schema}}"
               volume_name: "{{job.parameters.volume_name}}"
+              expected_catalog: ${var.demo2_catalog}
+              expected_schema: ${var.demo2_schema}
+              expected_volume_name: ${var.demo2_volume_name}
               pipeline_id: ${resources.pipelines.demo2_pipeline.id}
               run_id: "{{job.run_id}}"
           existing_cluster_id: ${var.demo2_cluster_id}
@@ -26,9 +30,13 @@ resources:
           notebook_task:
             notebook_path: ../notebooks/01_generate_reference_and_v1.py
             base_parameters:
+              bundle_target: ${bundle.target}
               catalog: "{{job.parameters.catalog}}"
               schema: "{{job.parameters.schema}}"
               volume_name: "{{job.parameters.volume_name}}"
+              expected_catalog: ${var.demo2_catalog}
+              expected_schema: ${var.demo2_schema}
+              expected_volume_name: ${var.demo2_volume_name}
           existing_cluster_id: ${var.demo2_cluster_id}
 
         - task_key: 02_pipeline_initial
@@ -120,4 +128,4 @@ resources:
           existing_cluster_id: ${var.demo2_cluster_id}
       tags:
         project: retailpulse_demo2
-        environment: azure_dev
+        environment: ${bundle.target}

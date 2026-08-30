@@ -120,22 +120,22 @@ def dashboard():
           order_date, country, city, loyalty_tier, category, product_name,
           sales_channel, order_status, customer_key, order_id, quantity,
           gross_amount, discount_amount, net_amount
-        FROM dbr_dev.parvinbadalov.demo2_sales_governed
+        FROM demo2_sales_governed
     """
     dq_sql = """
         SELECT *
-        FROM dbr_dev.parvinbadalov.demo2_dq_summary_gold
+        FROM demo2_dq_summary_gold
         ORDER BY _batch_loaded_at, _source_batch_id
     """
     dq_latest_sql = """
         SELECT *
-        FROM dbr_dev.parvinbadalov.demo2_dq_summary_gold
+        FROM demo2_dq_summary_gold
         ORDER BY _batch_loaded_at DESC, _source_batch_id DESC
         LIMIT 1
     """
     dq_rules_sql = """
         SELECT *
-        FROM dbr_dev.parvinbadalov.demo2_dq_failures_by_rule_gold
+        FROM demo2_dq_failures_by_rule_gold
         ORDER BY _batch_loaded_at, rule_name
     """
 
@@ -340,29 +340,21 @@ def dashboard():
                 "name": "business",
                 "displayName": "Governed Business Sales",
                 "queryLines": sql_lines(business_sql),
-                "catalog": "dbr_dev",
-                "schema": "parvinbadalov",
             },
             {
                 "name": "dq_summary",
                 "displayName": "DQ Batch Summary",
                 "queryLines": sql_lines(dq_sql),
-                "catalog": "dbr_dev",
-                "schema": "parvinbadalov",
             },
             {
                 "name": "dq_latest",
                 "displayName": "Latest DQ Batch",
                 "queryLines": sql_lines(dq_latest_sql),
-                "catalog": "dbr_dev",
-                "schema": "parvinbadalov",
             },
             {
                 "name": "dq_rules",
                 "displayName": "DQ Failures by Rule",
                 "queryLines": sql_lines(dq_rules_sql),
-                "catalog": "dbr_dev",
-                "schema": "parvinbadalov",
             },
         ],
         "pages": [

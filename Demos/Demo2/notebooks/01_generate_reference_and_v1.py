@@ -6,17 +6,37 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path.cwd().parent / "src"))
 
+from demo2.config import validate_runtime_configuration
 from demo2.data_generation import generate_v1_orders, write_json_lines, write_reference_data
 
-dbutils.widgets.text("catalog", "dbr_dev")
-dbutils.widgets.text("schema", "parvinbadalov")
-dbutils.widgets.text("volume_name", "demo2_ecommerce")
+for name in (
+    "bundle_target",
+    "catalog",
+    "schema",
+    "volume_name",
+    "expected_catalog",
+    "expected_schema",
+    "expected_volume_name",
+):
+    dbutils.widgets.text(name, "")
 
+bundle_target = dbutils.widgets.get("bundle_target")
 catalog = dbutils.widgets.get("catalog")
 schema = dbutils.widgets.get("schema")
 volume_name = dbutils.widgets.get("volume_name")
-if (catalog, schema, volume_name) != ("dbr_dev", "parvinbadalov", "demo2_ecommerce"):
-    raise RuntimeError("Unexpected Demo 2 target configuration")
+expected_catalog = dbutils.widgets.get("expected_catalog")
+expected_schema = dbutils.widgets.get("expected_schema")
+expected_volume_name = dbutils.widgets.get("expected_volume_name")
+
+validate_runtime_configuration(
+    bundle_target=bundle_target,
+    catalog=catalog,
+    schema=schema,
+    volume_name=volume_name,
+    expected_catalog=expected_catalog,
+    expected_schema=expected_schema,
+    expected_volume_name=expected_volume_name,
+)
 
 root = Path(f"/Volumes/{catalog}/{schema}/{volume_name}/runtime")
 reference_paths = write_reference_data(root)

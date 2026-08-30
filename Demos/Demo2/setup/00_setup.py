@@ -8,27 +8,47 @@ from databricks.sdk import WorkspaceClient
 
 sys.path.insert(0, str(Path.cwd().parent / "src"))
 
-dbutils.widgets.text("catalog", "dbr_dev")
-dbutils.widgets.text("schema", "parvinbadalov")
-dbutils.widgets.text("volume_name", "demo2_ecommerce")
+from demo2.config import validate_runtime_configuration
+
+for name in (
+    "bundle_target",
+    "catalog",
+    "schema",
+    "volume_name",
+    "expected_catalog",
+    "expected_schema",
+    "expected_volume_name",
+):
+    dbutils.widgets.text(name, "")
 dbutils.widgets.text("pipeline_id", "")
 dbutils.widgets.text("run_id", "manual")
 
+bundle_target = dbutils.widgets.get("bundle_target")
 catalog = dbutils.widgets.get("catalog")
 schema = dbutils.widgets.get("schema")
 volume_name = dbutils.widgets.get("volume_name")
+expected_catalog = dbutils.widgets.get("expected_catalog")
+expected_schema = dbutils.widgets.get("expected_schema")
+expected_volume_name = dbutils.widgets.get("expected_volume_name")
 pipeline_id = dbutils.widgets.get("pipeline_id")
 
-if (catalog, schema, volume_name) != ("dbr_dev", "parvinbadalov", "demo2_ecommerce"):
-    raise RuntimeError("Demo 2 setup refuses any catalog, schema, or volume override")
+validate_runtime_configuration(
+    bundle_target=bundle_target,
+    catalog=catalog,
+    schema=schema,
+    volume_name=volume_name,
+    expected_catalog=expected_catalog,
+    expected_schema=expected_schema,
+    expected_volume_name=expected_volume_name,
+)
 
 runtime_root = f"/Volumes/{catalog}/{schema}/{volume_name}/runtime"
 expected_parts = (
     "/",
     "Volumes",
-    "dbr_dev",
-    "parvinbadalov",
-    "demo2_ecommerce",
+    expected_catalog,
+    expected_schema,
+    expected_volume_name,
     "runtime",
 )
 if PurePosixPath(runtime_root).parts != expected_parts:
@@ -46,8 +66,6 @@ volume_rows = spark.sql(
 if len(volume_rows) != 1 or volume_rows[0]["volume_type"] != "EXTERNAL":
     raise RuntimeError("The required Demo 2 external volume is missing or not external")
 storage_location = str(volume_rows[0]["storage_location"]).rstrip("/")
-if not storage_location.endswith("/demo2_ecommerce"):
-    raise RuntimeError(f"Unexpected Demo 2 storage location: {storage_location}")
 
 if pipeline_id:
     details = WorkspaceClient().pipelines.get(pipeline_id=pipeline_id)
