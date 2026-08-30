@@ -82,7 +82,6 @@ flowchart TD
     E --> H[Quarantine]
     G --> I[Gold Metrics]
     H --> I
-    F --> I
     I --> J[Monitoring + Scorecard / Dashboard]
     J --> K[Final Quality Gate]
 ```
@@ -430,6 +429,7 @@ This tree is derived from the tracked Lab 07 files after cleanup. Repetitive tes
 ```text
 labs/lab_07_data_quality_testing/
 |-- .gitignore
+|-- ENVIRONMENT_STRATEGY.md
 |-- README.md
 |-- pre-commit-config.yaml
 |-- pyproject.toml
