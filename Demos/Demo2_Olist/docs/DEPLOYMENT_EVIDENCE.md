@@ -1,6 +1,6 @@
 # Demo2 Olist Deployment Evidence
 
-This file records observed results only. It must be updated after the isolated development bundle is actually deployed and the comprehensive Job completes.
+This file records the observed results of the completed isolated development deployment and Job run.
 
 ## Scope
 
