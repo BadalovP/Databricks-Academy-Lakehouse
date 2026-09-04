@@ -1,8 +1,27 @@
 # Databricks notebook source
-# MAGIC %run ./00_setup
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 11 Gold Fact Order Items: stage 1
+# MAGIC **Purpose:** Execute stage 1 of the 11 Gold Fact Order Items workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
+# MAGIC %run ./00_setup
+# COMMAND ----------
+# MAGIC %md
+# MAGIC ### 11 Gold Fact Order Items: stage 2
+# MAGIC **Purpose:** Execute stage 2 of the 11 Gold Fact Order Items workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 from pyspark.sql import functions as F
 
 # One source row per order item
@@ -60,18 +79,17 @@ date_dimension_lookup_df = (
     )
     .alias("d")
 )
-
 # COMMAND ----------
-
 # MAGIC %md
-# MAGIC display(customer_dimension_df)
-# MAGIC display(product_dimension_df)
-# MAGIC display(seller_dimension_df)
-# MAGIC display(date_dimension_lookup_df)
-# MAGIC display(fact_source_df)
-
+# MAGIC ### 11 Gold Fact Order Items: stage 3
+# MAGIC **Purpose:** Execute stage 3 of the 11 Gold Fact Order Items workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
 # COMMAND ----------
-
 source_rows = fact_source_df.count()
 
 unique_fact_keys = (
@@ -106,9 +124,17 @@ print(
     "Dates:",
     date_dimension_lookup_df.count()
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 11 Gold Fact Order Items: stage 4
+# MAGIC **Purpose:** Execute stage 4 of the 11 Gold Fact Order Items workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 fact_with_dimension_keys_df = (
     fact_source_df
 
@@ -146,9 +172,17 @@ fact_with_dimension_keys_df = (
         "left"
     )
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 11 Gold Fact Order Items: stage 5
+# MAGIC **Purpose:** Execute stage 5 of the 11 Gold Fact Order Items workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 fact_join_validation_df = (
     fact_with_dimension_keys_df
     .agg(
@@ -185,9 +219,17 @@ fact_join_validation_df = (
 )
 
 display(fact_join_validation_df)
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 11 Gold Fact Order Items: stage 6
+# MAGIC **Purpose:** Execute stage 6 of the 11 Gold Fact Order Items workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 gold_fact_order_items_df = (
     fact_with_dimension_keys_df
 
@@ -237,9 +279,17 @@ gold_fact_order_items_df = (
         .alias("_gold_processed_at")
     )
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 11 Gold Fact Order Items: stage 7
+# MAGIC **Purpose:** Execute stage 7 of the 11 Gold Fact Order Items workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 print(
     "Gold fact rows:",
     gold_fact_order_items_df.count()
@@ -248,9 +298,17 @@ print(
 display(
     gold_fact_order_items_df.limit(10)
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 11 Gold Fact Order Items: stage 8
+# MAGIC **Purpose:** Execute stage 8 of the 11 Gold Fact Order Items workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 expected_fact_rows = fact_source_df.count()
 
 fact_validation_df = (
@@ -341,9 +399,17 @@ fact_validation_df = (
 )
 
 display(fact_validation_df)
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 11 Gold Fact Order Items: stage 9
+# MAGIC **Purpose:** Execute stage 9 of the 11 Gold Fact Order Items workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 (
     gold_fact_order_items_df.write
     .format("delta")
@@ -353,9 +419,17 @@ display(fact_validation_df)
         f"{catalog}.{schema}.gold_fact_order_items"
     )
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 11 Gold Fact Order Items: stage 10
+# MAGIC **Purpose:** Execute stage 10 of the 11 Gold Fact Order Items workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 saved_gold_fact_df = spark.table(
     f"{catalog}.{schema}.gold_fact_order_items"
 )

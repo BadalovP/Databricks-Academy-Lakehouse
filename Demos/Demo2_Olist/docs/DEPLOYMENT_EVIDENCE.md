@@ -41,36 +41,58 @@ This file records the observed results of the completed isolated development dep
 - Overall lifecycle: `TERMINATED`
 - Overall result: `SUCCESS`
 
+This is the previously verified successful baseline run. The documentation-verification run below re-executed the same 26-task workflow after the documentation-only changes.
+
+## Documentation verification
+
+- Coverage checker: `tools/check_documentation_coverage.py`
+- JSON notebooks: 11 notebooks, 40 documented code cells, 0 missing
+- Databricks source-format notebooks: 16 notebooks, 120 documented executable cells, 0 missing
+- Test files: 4 files, 5 documented test functions, 0 missing
+- Overall documentation coverage: `100%`
+- New verification deployment: completed successfully from `Demos/Demo2_Olist`.
+- New verification run ID: `1841243362075`
+- New verification run URL: https://adb-7405604503619901.1.azuredatabricks.net/?o=7405604503619901#job/135818015304158/run/1841243362075
+- New verification start time: `2026-09-04 13:46:44` local workspace time
+
+### Final verification task results
+
+Run `1841243362075` reported `TERMINATED/SUCCESS` for every expected task:
+
+`setup`, `source_exploration`, `validate_landing_files`, `bronze_reference_tables`, `bronze_autoloader`, `bronze_validation`, `silver_data_quality`, `silver_deduplication`, `silver_business_transformations`, `customer_scd2`, `gold_dimensions`, `gold_fact_order_items`, `gold_reconciliation`, `governance_rls_cls`, `dashboard_validation`, `alert_validation`, `dqx_quality_monitoring`, `automated_tests`, `parallel_learning_start`, `customer_check`, `order_check`, `parallel_learning_summary`, `run_olist_pipeline`, `validate_pipeline_outputs`, `refresh_olist_dashboard`, and `final_validation`.
+
+The final verification output validator observed `order_item_rows=112650`, `distinct_orders=98666`, `total_price=13591643.70`, `total_freight=2251909.54`, `total_value=15843553.24`, `7` status rows, and `quality_status=PASS`.
+
 ### Task status
 
 | Task | Final status | Run evidence |
 | --- | --- | --- |
-| `setup` | `TERMINATED/SUCCESS` | Run `107916031830226` |
-| `source_exploration` | `TERMINATED/SUCCESS` | Run `107916031830226` |
-| `validate_landing_files` | `TERMINATED/SUCCESS` | Run `107916031830226` |
-| `bronze_reference_tables` | `TERMINATED/SUCCESS` | Run `107916031830226` |
-| `bronze_autoloader` | `TERMINATED/SUCCESS` | Run `107916031830226` |
-| `bronze_validation` | `TERMINATED/SUCCESS` | Run `107916031830226` |
-| `silver_data_quality` | `TERMINATED/SUCCESS` | Run `107916031830226` |
-| `silver_deduplication` | `TERMINATED/SUCCESS` | Run `107916031830226` |
-| `silver_business_transformations` | `TERMINATED/SUCCESS` | Run `107916031830226` |
-| `customer_scd2` | `TERMINATED/SUCCESS` | Run `107916031830226` |
-| `gold_dimensions` | `TERMINATED/SUCCESS` | Run `107916031830226` |
-| `gold_fact_order_items` | `TERMINATED/SUCCESS` | Run `107916031830226` |
-| `gold_reconciliation` | `TERMINATED/SUCCESS` | Run `107916031830226` |
-| `governance_rls_cls` | `TERMINATED/SUCCESS` | Run `107916031830226` |
-| `dashboard_validation` | `TERMINATED/SUCCESS` | Run `107916031830226` |
-| `alert_validation` | `TERMINATED/SUCCESS` | Run `107916031830226` |
-| `dqx_quality_monitoring` | `TERMINATED/SUCCESS` | Run `107916031830226` |
-| `automated_tests` | `TERMINATED/SUCCESS` | Run `107916031830226` |
-| `parallel_learning_start` | `TERMINATED/SUCCESS` | Run `107916031830226` |
-| `customer_check` | `TERMINATED/SUCCESS` | Run `107916031830226` |
-| `order_check` | `TERMINATED/SUCCESS` | Run `107916031830226` |
-| `parallel_learning_summary` | `TERMINATED/SUCCESS` | Run `107916031830226` |
-| `run_olist_pipeline` | `TERMINATED/SUCCESS` | Run `107916031830226` |
-| `validate_pipeline_outputs` | `TERMINATED/SUCCESS` | Run `107916031830226` |
-| `refresh_olist_dashboard` | `TERMINATED/SUCCESS` | Run `107916031830226` |
-| `final_validation` | `TERMINATED/SUCCESS` | Run `107916031830226` |
+| `setup` | `TERMINATED/SUCCESS` | Run `1841243362075` |
+| `source_exploration` | `TERMINATED/SUCCESS` | Run `1841243362075` |
+| `validate_landing_files` | `TERMINATED/SUCCESS` | Run `1841243362075` |
+| `bronze_reference_tables` | `TERMINATED/SUCCESS` | Run `1841243362075` |
+| `bronze_autoloader` | `TERMINATED/SUCCESS` | Run `1841243362075` |
+| `bronze_validation` | `TERMINATED/SUCCESS` | Run `1841243362075` |
+| `silver_data_quality` | `TERMINATED/SUCCESS` | Run `1841243362075` |
+| `silver_deduplication` | `TERMINATED/SUCCESS` | Run `1841243362075` |
+| `silver_business_transformations` | `TERMINATED/SUCCESS` | Run `1841243362075` |
+| `customer_scd2` | `TERMINATED/SUCCESS` | Run `1841243362075` |
+| `gold_dimensions` | `TERMINATED/SUCCESS` | Run `1841243362075` |
+| `gold_fact_order_items` | `TERMINATED/SUCCESS` | Run `1841243362075` |
+| `gold_reconciliation` | `TERMINATED/SUCCESS` | Run `1841243362075` |
+| `governance_rls_cls` | `TERMINATED/SUCCESS` | Run `1841243362075` |
+| `dashboard_validation` | `TERMINATED/SUCCESS` | Run `1841243362075` |
+| `alert_validation` | `TERMINATED/SUCCESS` | Run `1841243362075` |
+| `dqx_quality_monitoring` | `TERMINATED/SUCCESS` | Run `1841243362075` |
+| `automated_tests` | `TERMINATED/SUCCESS` | Run `1841243362075` |
+| `parallel_learning_start` | `TERMINATED/SUCCESS` | Run `1841243362075` |
+| `customer_check` | `TERMINATED/SUCCESS` | Run `1841243362075` |
+| `order_check` | `TERMINATED/SUCCESS` | Run `1841243362075` |
+| `parallel_learning_summary` | `TERMINATED/SUCCESS` | Run `1841243362075` |
+| `run_olist_pipeline` | `TERMINATED/SUCCESS` | Run `1841243362075` |
+| `validate_pipeline_outputs` | `TERMINATED/SUCCESS` | Run `1841243362075` |
+| `refresh_olist_dashboard` | `TERMINATED/SUCCESS` | Run `1841243362075` |
+| `final_validation` | `TERMINATED/SUCCESS` | Run `1841243362075` |
 
 ## Final metrics
 
@@ -84,7 +106,9 @@ This file records the observed results of the completed isolated development dep
 | `quality_status` | PASS | PASS |
 | status aggregation rows | 7 | 7 |
 
-Dashboard refresh status: `TERMINATED/SUCCESS` in Run `107916031830226`.
+Dashboard refresh status: `TERMINATED/SUCCESS` in Run `1841243362075`.
+
+The new verification run reported `TERMINATED SUCCESS` for every task listed above, with no skipped or failed tasks.
 
 ## Warnings
 

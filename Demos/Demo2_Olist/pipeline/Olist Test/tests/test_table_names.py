@@ -17,18 +17,21 @@ from table_names import qualified_table_name
 def test_qualified_table_name():
     """Protect construction of three-level Unity Catalog table names."""
 
+    # Arrange: provide a valid catalog, schema, and table identifier.
     result = qualified_table_name(
         "dbr_dev",
         "parvinbadalov",
         "gold_fact_order_items",
     )
 
+    # Assert: the helper returns the exact Unity Catalog identifier.
     assert result == "dbr_dev.parvinbadalov.gold_fact_order_items"
 
 
 def test_qualified_table_name_rejects_empty_value():
     """Reject incomplete identifiers before a table query is attempted."""
 
+    # Act and assert: incomplete identifiers fail before a query is built.
     with pytest.raises(ValueError):
         qualified_table_name(
             "dbr_dev",

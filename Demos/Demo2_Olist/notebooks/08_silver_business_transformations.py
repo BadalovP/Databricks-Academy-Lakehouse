@@ -1,13 +1,33 @@
 # Databricks notebook source
+
 # /// script
 # [tool.databricks.environment]
 # base_environment = "databricks_ai_v5"
 # environment_version = "5"
 # ///
-# MAGIC %run ./00_setup
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 08 Silver Business Transformations: stage 1
+# MAGIC **Purpose:** Execute stage 1 of the 08 Silver Business Transformations workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
+# MAGIC %run ./00_setup
+# COMMAND ----------
+# MAGIC %md
+# MAGIC ### 08 Silver Business Transformations: stage 2
+# MAGIC **Purpose:** Execute stage 2 of the 08 Silver Business Transformations workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 from pyspark.sql import functions as F
 
 customers_silver_df = (
@@ -60,9 +80,17 @@ print(
 )
 
 display(customers_silver_df.limit(10))
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 08 Silver Business Transformations: stage 3
+# MAGIC **Purpose:** Execute stage 3 of the 08 Silver Business Transformations workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Clean and enrich Products
 
 products_source_df = spark.table(
@@ -156,9 +184,17 @@ print(
 )
 
 display(products_silver_df.limit(10))
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 08 Silver Business Transformations: stage 4
+# MAGIC **Purpose:** Execute stage 4 of the 08 Silver Business Transformations workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Clean and standardize Sellers
 
 sellers_silver_df = (
@@ -210,9 +246,17 @@ print(
 )
 
 display(sellers_silver_df.limit(10))
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 08 Silver Business Transformations: stage 5
+# MAGIC **Purpose:** Execute stage 5 of the 08 Silver Business Transformations workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Clean and aggregate Geolocations
 
 geolocations_clean_df = (
@@ -298,9 +342,17 @@ print(
 )
 
 display(geolocations_silver_df.limit(10))
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 08 Silver Business Transformations: stage 6
+# MAGIC **Purpose:** Execute stage 6 of the 08 Silver Business Transformations workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Aggregate payments by order
 
 payments_summary_df = (
@@ -328,9 +380,17 @@ payments_summary_df = (
         ).alias("payment_types")
     )
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 08 Silver Business Transformations: stage 7
+# MAGIC **Purpose:** Execute stage 7 of the 08 Silver Business Transformations workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Aggregate reviews by order
 
 reviews_summary_df = (
@@ -353,9 +413,17 @@ reviews_summary_df = (
         .alias("last_review_answer_timestamp")
     )
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 08 Silver Business Transformations: stage 8
+# MAGIC **Purpose:** Execute stage 8 of the 08 Silver Business Transformations workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Enrich Orders
 
 orders_enriched_df = (
@@ -465,9 +533,17 @@ display(
         "is_late_delivery"
     ).limit(10)
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 08 Silver Business Transformations: stage 9
+# MAGIC **Purpose:** Execute stage 9 of the 08 Silver Business Transformations workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Enrich Order Items
 
 order_items_enriched_df = (
@@ -569,9 +645,17 @@ display(
         "is_late_delivery"
     ).limit(10)
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 08 Silver Business Transformations: stage 10
+# MAGIC **Purpose:** Execute stage 10 of the 08 Silver Business Transformations workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 business_validation_df = spark.sql(f"""
 WITH validation AS (
 
@@ -634,9 +718,17 @@ ORDER BY table_name
 """)
 
 display(business_validation_df)
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 08 Silver Business Transformations: stage 11
+# MAGIC **Purpose:** Execute stage 11 of the 08 Silver Business Transformations workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 join_validation_df = spark.sql(f"""
 SELECT
     COUNT(*) AS total_items,

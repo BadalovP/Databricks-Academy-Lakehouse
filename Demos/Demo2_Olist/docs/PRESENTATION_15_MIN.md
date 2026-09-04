@@ -38,6 +38,8 @@ Mention that the validator uses `parse_known_args()` because Databricks can inje
 
 "Testing happens at several levels. Local unit tests protect utilities and rule definitions. Integration tests query published outputs. Reconciliation checks protect known business totals. Runtime notebook tasks cover governance, alerts, dashboard readiness, and final validation. The output validator checks counts, monetary totals within one cent, and PASS quality status."
 
+The documentation audit is also repeatable: all 11 JSON notebooks, all 16 Databricks source-format notebooks, and all 4 test files reached 100% coverage with zero missing explanations or test docstrings.
+
 ### 9:00-10:30 - Dashboard and Genie
 
 "The dashboard is refreshed only after the Olist Test pipeline and output validator succeed. Its KPIs show order-item volume, distinct orders, price, freight, total value, status distribution, and quality status. Genie can answer governed questions over the Gold and learning tables after the refresh."
@@ -60,7 +62,7 @@ databricks bundle run -t azure_dev demo2_olist_pipeline
 1. Open the isolated bundle and run `databricks bundle summary -t azure_dev`.
 2. Open the large Job and show the two Bronze branches and the post-Gold fan-out.
 3. Show the Olist Test pipeline task, output validation parameters, and dashboard refresh dependency.
-4. Open completed Run `107916031830226` and show the final task statuses and validation metrics.
+4. Open verification Run `1841243362075` and compare it with baseline Run `107916031830226`, then show the final task statuses and validation metrics.
 5. Open the dashboard and point out total value, order count, status distribution, and PASS quality status.
 
 The expected values are 112650 order items, 98666 distinct orders, 13591643.70 total price, 2251909.54 freight, 15843553.24 total value, 7 status rows, and `PASS`.

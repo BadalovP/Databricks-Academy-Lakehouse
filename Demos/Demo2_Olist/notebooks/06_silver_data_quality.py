@@ -1,16 +1,32 @@
 # Databricks notebook source
+
 # /// script
 # [tool.databricks.environment]
 # environment_version = "5"
 # ///
+# COMMAND ----------
+# MAGIC %md
+# MAGIC ### 06 Silver Data Quality: stage 1
+# MAGIC **Purpose:** Execute stage 1 of the 06 Silver Data Quality workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # MAGIC %run ./00_setup
-
 # COMMAND ----------
-
-
-
+# MAGIC %md
+# MAGIC ### 06 Silver Data Quality: stage 2
+# MAGIC **Purpose:** Execute stage 2 of the 06 Silver Data Quality workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
 # COMMAND ----------
-
 from pyspark.sql import functions as F
 
 orders_quality_df = (
@@ -88,9 +104,17 @@ display(
     .groupBy("_quality_status")
     .count()
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 06 Silver Data Quality: stage 3
+# MAGIC **Purpose:** Execute stage 3 of the 06 Silver Data Quality workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Order Items quality
 
 order_items_quality_df = (
@@ -184,9 +208,17 @@ display(
     .groupBy("_quality_status")
     .count()
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 06 Silver Data Quality: stage 4
+# MAGIC **Purpose:** Execute stage 4 of the 06 Silver Data Quality workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Order Payments quality
 
 payments_quality_df = (
@@ -269,9 +301,17 @@ display(
     .groupBy("_quality_status")
     .count()
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 06 Silver Data Quality: stage 5
+# MAGIC **Purpose:** Execute stage 5 of the 06 Silver Data Quality workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Order Reviews quality
 
 reviews_quality_df = (

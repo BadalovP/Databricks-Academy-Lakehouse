@@ -1,8 +1,27 @@
 # Databricks notebook source
-# MAGIC %run ./00_setup
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 05 Bronze Validation: stage 1
+# MAGIC **Purpose:** Execute stage 1 of the 05 Bronze Validation workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
+# MAGIC %run ./00_setup
+# COMMAND ----------
+# MAGIC %md
+# MAGIC ### 05 Bronze Validation: stage 2
+# MAGIC **Purpose:** Execute stage 2 of the 05 Bronze Validation workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 validation_df = spark.sql(f"""
 WITH validation AS (
 
@@ -100,9 +119,17 @@ ORDER BY table_name
 """)
 
 display(validation_df)
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 05 Bronze Validation: stage 3
+# MAGIC **Purpose:** Execute stage 3 of the 05 Bronze Validation workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 key_validation_df = spark.sql(f"""
 WITH key_validation AS (
 

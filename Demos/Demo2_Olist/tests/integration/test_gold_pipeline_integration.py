@@ -31,6 +31,7 @@ def test_gold_fact_matches_latest_reconciliation_audit(
 ):
     """Gold fact count must match the latest successful audit."""
 
+    # Arrange: resolve the Gold fact and reconciliation audit tables.
     fact_table = (
         f"{CATALOG}.{SCHEMA}.gold_fact_order_items"
     )
@@ -39,6 +40,7 @@ def test_gold_fact_matches_latest_reconciliation_audit(
         f"{CATALOG}.{SCHEMA}.gold_reconciliation_audit"
     )
 
+    # Assert: both published contract surfaces must exist.
     assert spark_session.catalog.tableExists(fact_table)
     assert spark_session.catalog.tableExists(audit_table)
 
@@ -57,6 +59,7 @@ def test_gold_fact_matches_latest_reconciliation_audit(
         .first()
     )
 
+    # Assert: the latest audit agrees with the current Gold fact.
     assert latest_audit is not None
     assert actual_gold_rows == latest_audit["gold_rows"]
     assert latest_audit["integrity_status"] == "PASS"

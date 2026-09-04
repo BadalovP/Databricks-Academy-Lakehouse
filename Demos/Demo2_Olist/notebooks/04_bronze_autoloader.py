@@ -1,12 +1,32 @@
 # Databricks notebook source
+
 # /// script
 # [tool.databricks.environment]
 # environment_version = "5"
 # ///
-# MAGIC %run ./00_setup
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 04 Bronze Autoloader: stage 1
+# MAGIC **Purpose:** Execute stage 1 of the 04 Bronze Autoloader workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
+# MAGIC %run ./00_setup
+# COMMAND ----------
+# MAGIC %md
+# MAGIC ### 04 Bronze Autoloader: stage 2
+# MAGIC **Purpose:** Execute stage 2 of the 04 Bronze Autoloader workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 orders_schema = """
 order_id STRING,
 customer_id STRING,
@@ -45,9 +65,17 @@ review_comment_message STRING,
 review_creation_date STRING,
 review_answer_timestamp STRING
 """
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 04 Bronze Autoloader: stage 3
+# MAGIC **Purpose:** Execute stage 3 of the 04 Bronze Autoloader workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 print("=== ORDERS ===")
 print(orders_schema)
 
@@ -59,9 +87,17 @@ print(order_payments_schema)
 
 print("=== REVIEWS ===")
 print(order_reviews_schema)
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 04 Bronze Autoloader: stage 4
+# MAGIC **Purpose:** Execute stage 4 of the 04 Bronze Autoloader workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Orders Auto Loader
 from pyspark.sql import functions as F
 
@@ -96,9 +132,17 @@ print(
         f"{catalog}.{schema}.bronze_orders"
     ).count()
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 04 Bronze Autoloader: stage 5
+# MAGIC **Purpose:** Execute stage 5 of the 04 Bronze Autoloader workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 order_items_df=(
     spark.readStream
     .format("cloudFiles")
@@ -130,12 +174,17 @@ print(
         f"{catalog}.{schema}.bronze_order_items"
     ).count()
 )
-
-
-
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 04 Bronze Autoloader: stage 6
+# MAGIC **Purpose:** Execute stage 6 of the 04 Bronze Autoloader workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 payments_df=(
     spark.readStream
     .format("cloudFiles")
@@ -167,9 +216,17 @@ print(
         f"{catalog}.{schema}.bronze_order_payments"
     ).count()
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 04 Bronze Autoloader: stage 7
+# MAGIC **Purpose:** Execute stage 7 of the 04 Bronze Autoloader workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 from pyspark.sql import functions as F
 
 order_reviews_df = (

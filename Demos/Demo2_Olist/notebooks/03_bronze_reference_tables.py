@@ -1,12 +1,32 @@
 # Databricks notebook source
+
 # /// script
 # [tool.databricks.environment]
 # environment_version = "5"
 # ///
-# MAGIC %run ./00_setup
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 03 Bronze Reference Tables: stage 1
+# MAGIC **Purpose:** Execute stage 1 of the 03 Bronze Reference Tables workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
+# MAGIC %run ./00_setup
+# COMMAND ----------
+# MAGIC %md
+# MAGIC ### 03 Bronze Reference Tables: stage 2
+# MAGIC **Purpose:** Execute stage 2 of the 03 Bronze Reference Tables workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 customers_schema = """
 customer_id STRING,
 customer_unique_id STRING,
@@ -48,10 +68,17 @@ geolocation_lng STRING,
 geolocation_city STRING,
 geolocation_state STRING
 """
-
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 03 Bronze Reference Tables: stage 3
+# MAGIC **Purpose:** Execute stage 3 of the 03 Bronze Reference Tables workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # DBTITLE 1,Cell 3
 print("=== CUSTOMERS ===")
 print(customers_schema)
@@ -69,9 +96,17 @@ print(sellers_schema)
 
 print("=== GEOLOCATIONS ===")
 print(geolocations_schema)
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 03 Bronze Reference Tables: stage 4
+# MAGIC **Purpose:** Execute stage 4 of the 03 Bronze Reference Tables workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Customers
 from pyspark.sql import functions as F
 
@@ -93,9 +128,17 @@ customers_df = (
 
 print("bronze_customers:", customers_df.count())
 display(customers_df)
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 03 Bronze Reference Tables: stage 5
+# MAGIC **Purpose:** Execute stage 5 of the 03 Bronze Reference Tables workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 from pyspark.sql import functions as F
 
 # Products
@@ -117,9 +160,17 @@ products_df = (
 
 print("bronze_products:", products_df.count())
 display(products_df)
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 03 Bronze Reference Tables: stage 6
+# MAGIC **Purpose:** Execute stage 6 of the 03 Bronze Reference Tables workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Sellers
 sellers_df = (
     spark.read
@@ -139,11 +190,17 @@ sellers_df = (
 
 print("bronze_sellers:", sellers_df.count())
 display(sellers_df)
-
 # COMMAND ----------
-
-
-
+# MAGIC %md
+# MAGIC ### 03 Bronze Reference Tables: stage 7
+# MAGIC **Purpose:** Execute stage 7 of the 03 Bronze Reference Tables workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Category Translation
 category_translation_df = (
     spark.read
@@ -163,11 +220,17 @@ category_translation_df = (
 
 print("bronze_category_translation:", category_translation_df.count())
 display(category_translation_df)
-
-
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 03 Bronze Reference Tables: stage 8
+# MAGIC **Purpose:** Execute stage 8 of the 03 Bronze Reference Tables workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Geolocations
 geolocations_df = (
     spark.read

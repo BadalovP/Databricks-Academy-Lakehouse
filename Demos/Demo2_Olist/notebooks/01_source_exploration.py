@@ -1,8 +1,27 @@
 # Databricks notebook source
-# MAGIC %run ./00_setup
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 01 Source Exploration: stage 1
+# MAGIC **Purpose:** Execute stage 1 of the 01 Source Exploration workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
+# MAGIC %run ./00_setup
+# COMMAND ----------
+# MAGIC %md
+# MAGIC ### 01 Source Exploration: stage 2
+# MAGIC **Purpose:** Execute stage 2 of the 01 Source Exploration workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 customers = spark.read.csv(f"{landing_path}/customers",header=True,inferSchema=True)
 products = spark.read.csv(f"{landing_path}/products",header=True,inferSchema=True)
 orders = spark.read.csv(f"{landing_path}/orders",header=True,inferSchema=True)
@@ -12,11 +31,17 @@ reviews = spark.read.csv(f"{landing_path}/reviews",header=True,inferSchema=True,
 category_translation = spark.read.csv(f"{landing_path}/category_translation",header=True,inferSchema=True)
 sellers = spark.read.csv(f"{landing_path}/sellers",header=True,inferSchema=True)
 geolocations = spark.read.csv(f"{landing_path}/geolocations",header=True,inferSchema=True)
-
-
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 01 Source Exploration: stage 3
+# MAGIC **Purpose:** Execute stage 3 of the 01 Source Exploration workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 display(customers.limit(10))
 display(products.limit(10))
 display(orders.limit(10))
@@ -26,23 +51,29 @@ display(reviews.limit(10))
 display(sellers.limit(10))
 display(category_translation.limit(10))
 display(geolocations.limit(10))
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 01 Source Exploration: stage 4
+# MAGIC **Purpose:** Execute stage 4 of the 01 Source Exploration workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 display(dbutils.fs.ls(landing_path))
-
 # COMMAND ----------
-
 # MAGIC %md
-# MAGIC display(customers.schema)
-
+# MAGIC ### 01 Source Exploration: stage 5
+# MAGIC **Purpose:** Execute stage 5 of the 01 Source Exploration workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
 # COMMAND ----------
-
-# MAGIC %md
-# MAGIC print(customers.schema)
-
-# COMMAND ----------
-
 customers.printSchema()
 category_translation.printSchema()
 products.printSchema()
@@ -52,9 +83,17 @@ payments.printSchema()
 reviews.printSchema()
 sellers.printSchema()
 geolocations.printSchema()
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 01 Source Exploration: stage 6
+# MAGIC **Purpose:** Execute stage 6 of the 01 Source Exploration workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 display(customers.count())
 display(products.count())
 display(category_translation.count())
@@ -64,11 +103,17 @@ display(reviews.count())
 display(sellers.count())
 display(category_translation.count())
 display(geolocations.count())   
-
-
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 01 Source Exploration: stage 7
+# MAGIC **Purpose:** Execute stage 7 of the 01 Source Exploration workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 print(customers.count())
 print(products.count())
 print(category_translation.count())
@@ -78,9 +123,17 @@ print(orders.count())
 print(reviews.count())
 print(sellers.count())
 print(geolocations.count())
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 01 Source Exploration: stage 8
+# MAGIC **Purpose:** Execute stage 8 of the 01 Source Exploration workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 from pyspark.sql.functions import col
 
 # customers
@@ -127,10 +180,17 @@ print("Null product_category_name", category_translation.filter(col("product_cat
 print("Rows", geolocations.count())
 print("Distinct geolocation_zip_code_prefix", geolocations.select("geolocation_zip_code_prefix").distinct().count())
 print("Null geolocation_zip_code_prefix", geolocations.filter(col("geolocation_zip_code_prefix").isNull()).count())
-
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 01 Source Exploration: stage 9
+# MAGIC **Purpose:** Execute stage 9 of the 01 Source Exploration workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # order_items
 print("Rows", order_items.count())
 print("Distinct order_item_id", order_items.select("order_item_id","order_id").distinct().count())
@@ -145,17 +205,33 @@ print("Null (order_id, payment_sequential)", payments.filter((col("order_id").is
 print("Rows", reviews.count())
 print("Distinct (review_id, order_id)", reviews.select("review_id", "order_id").distinct().count())
 print("Null (review_id, order_id)", reviews.filter((col("review_id").isNull()) | (col("order_id").isNull())).count())
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 01 Source Exploration: stage 10
+# MAGIC **Purpose:** Execute stage 10 of the 01 Source Exploration workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 print("Rows:", customers.count())
 print(
     "Distinct customer_unique_id:",
     customers.select("customer_unique_id").distinct().count()
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 01 Source Exploration: stage 11
+# MAGIC **Purpose:** Execute stage 11 of the 01 Source Exploration workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # orders.customer_id -> customers.customer_id
 missing_customers = orders.join(
     customers,
@@ -203,9 +279,17 @@ missing_reviews_orders = reviews.join(
     "left_anti"
 )
 print("Reviews with missing order:", missing_reviews_orders.count())
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 01 Source Exploration: stage 12
+# MAGIC **Purpose:** Execute stage 12 of the 01 Source Exploration workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # DBTITLE 1,Cell 15
 import pandas as pd
 
@@ -236,13 +320,17 @@ print(products.select("product_id","product_category_name").toPandas().isnull().
 # sellers
 print("\nsellers:")
 print(sellers.select("seller_id","seller_state").toPandas().isnull().sum())
-
-
-
-
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 01 Source Exploration: stage 13
+# MAGIC **Purpose:** Execute stage 13 of the 01 Source Exploration workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 from pyspark.sql.functions import col, count, when
 
 # orders → order_status counts

@@ -1,12 +1,32 @@
 # Databricks notebook source
+
 # /// script
 # [tool.databricks.environment]
 # environment_version = "5"
 # ///
-# MAGIC %run ./00_setup
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 07 Silver Deduplication: stage 1
+# MAGIC **Purpose:** Execute stage 1 of the 07 Silver Deduplication workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
+# MAGIC %run ./00_setup
+# COMMAND ----------
+# MAGIC %md
+# MAGIC ### 07 Silver Deduplication: stage 2
+# MAGIC **Purpose:** Execute stage 2 of the 07 Silver Deduplication workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 duplicate_summary_df = spark.sql(f"""
 SELECT
     'orders' AS table_name,
@@ -75,9 +95,17 @@ FROM (
 """)
 
 display(duplicate_summary_df)
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 07 Silver Deduplication: stage 3
+# MAGIC **Purpose:** Execute stage 3 of the 07 Silver Deduplication workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Deduplicate Orders and create quarantine table
 import pyspark.sql.functions as F
 
@@ -125,9 +153,17 @@ orders_silver_df = (
 print("Source rows:", orders_source_df.count())
 print("Silver rows:", orders_silver_df.count())
 print("Quarantine rows:", orders_quarantine_df.count())
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 07 Silver Deduplication: stage 4
+# MAGIC **Purpose:** Execute stage 4 of the 07 Silver Deduplication workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Deduplicate Order Items and create quarantine table
 
 order_items_source_df = spark.table(
@@ -178,9 +214,17 @@ print(
     "Quarantine rows:",
     order_items_quarantine_df.count()
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 07 Silver Deduplication: stage 5
+# MAGIC **Purpose:** Execute stage 5 of the 07 Silver Deduplication workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Deduplicate Order Payments and create quarantine table
 
 payments_source_df = spark.table(
@@ -231,9 +275,17 @@ print(
     "Quarantine rows:",
     payments_quarantine_df.count()
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 07 Silver Deduplication: stage 6
+# MAGIC **Purpose:** Execute stage 6 of the 07 Silver Deduplication workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Deduplicate Order Reviews and create quarantine table
 
 reviews_source_df = spark.table(
@@ -284,9 +336,17 @@ print(
     "Quarantine rows:",
     reviews_quarantine_df.count()
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 07 Silver Deduplication: stage 7
+# MAGIC **Purpose:** Execute stage 7 of the 07 Silver Deduplication workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 dedup_validation_df = spark.sql(f"""
 WITH validation AS (
 

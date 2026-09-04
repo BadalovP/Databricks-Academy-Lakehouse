@@ -1,12 +1,32 @@
 # Databricks notebook source
+
 # /// script
 # [tool.databricks.environment]
 # environment_version = "5"
 # ///
-# MAGIC %run ./00_setup
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 16 Final Validation: stage 1
+# MAGIC **Purpose:** Execute stage 1 of the 16 Final Validation workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
+# MAGIC %run ./00_setup
+# COMMAND ----------
+# MAGIC %md
+# MAGIC ### 16 Final Validation: stage 2
+# MAGIC **Purpose:** Execute stage 2 of the 16 Final Validation workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Purpose: select and verify the catalog, schema, and current user.
 
 spark.sql(f"USE CATALOG `{catalog}`")
@@ -21,9 +41,17 @@ execution_context_df = spark.sql("""
 """)
 
 display(execution_context_df)
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 16 Final Validation: stage 3
+# MAGIC **Purpose:** Execute stage 3 of the 16 Final Validation workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Purpose: verify that all required Gold, governance, dashboard,
 # audit, and alert objects exist before final validation.
 
@@ -81,9 +109,17 @@ if missing_objects:
     )
 
 print("PASS: all required project objects exist")
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 16 Final Validation: stage 4
+# MAGIC **Purpose:** Execute stage 4 of the 16 Final Validation workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Purpose: read the latest Gold reconciliation audit result
 # and confirm that reconciliation and referential integrity passed.
 
@@ -139,9 +175,17 @@ print(
     "Referential integrity:",
     "PASS" if referential_integrity_pass else "FAIL",
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 16 Final Validation: stage 5
+# MAGIC **Purpose:** Execute stage 5 of the 16 Final Validation workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Purpose: confirm that the secure dashboard contains only authorized
 # states and applies the correct PII masking for the current user.
 
@@ -281,9 +325,17 @@ print(
     "Dashboard security:",
     "PASS" if security_pass else "FAIL",
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 16 Final Validation: stage 6
+# MAGIC **Purpose:** Execute stage 6 of the 16 Final Validation workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Purpose: confirm that the pipeline alert currently reports
 # a healthy status and would not trigger a notification.
 
@@ -312,9 +364,17 @@ print(
     "Pipeline alert:",
     "PASS" if alert_pass else "FAIL",
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 16 Final Validation: stage 7
+# MAGIC **Purpose:** Execute stage 7 of the 16 Final Validation workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Purpose: combine all project validation results into one
 # readable end-to-end summary.
 
@@ -401,9 +461,17 @@ print(
     "FINAL PROJECT STATUS:",
     overall_final_status,
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 16 Final Validation: stage 8
+# MAGIC **Purpose:** Execute stage 8 of the 16 Final Validation workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Purpose: persist the final end-to-end validation result
 # so previous project validations remain auditable.
 

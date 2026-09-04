@@ -1,12 +1,32 @@
 # Databricks notebook source
+
 # /// script
 # [tool.databricks.environment]
 # environment_version = "5"
 # ///
-# MAGIC %run ./00_setup
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 12 Gold Reconciliation: stage 1
+# MAGIC **Purpose:** Execute stage 1 of the 12 Gold Reconciliation workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
+# MAGIC %run ./00_setup
+# COMMAND ----------
+# MAGIC %md
+# MAGIC ### 12 Gold Reconciliation: stage 2
+# MAGIC **Purpose:** Execute stage 2 of the 12 Gold Reconciliation workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 from pyspark.sql import functions as F
 
 silver_fact_source_df = spark.table(
@@ -16,9 +36,17 @@ silver_fact_source_df = spark.table(
 gold_fact_df = spark.table(
     f"{catalog}.{schema}.gold_fact_order_items"
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 12 Gold Reconciliation: stage 3
+# MAGIC **Purpose:** Execute stage 3 of the 12 Gold Reconciliation workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 silver_summary_df = (
     silver_fact_source_df
     .agg(
@@ -70,9 +98,17 @@ gold_summary_df = (
         ).alias("gold_total_item_value")
     )
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 12 Gold Reconciliation: stage 4
+# MAGIC **Purpose:** Execute stage 4 of the 12 Gold Reconciliation workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 gold_reconciliation_df = (
     silver_summary_df
     .crossJoin(gold_summary_df)
@@ -134,9 +170,17 @@ gold_reconciliation_df = (
 )
 
 display(gold_reconciliation_df)
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 12 Gold Reconciliation: stage 5
+# MAGIC **Purpose:** Execute stage 5 of the 12 Gold Reconciliation workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 customer_key_df = (
     spark.table(
         f"{catalog}.{schema}.gold_dim_customer"
@@ -164,9 +208,17 @@ date_key_df = (
     )
     .select("date_sk")
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 12 Gold Reconciliation: stage 6
+# MAGIC **Purpose:** Execute stage 6 of the 12 Gold Reconciliation workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 invalid_item_value_rows = (
     gold_fact_df
 
@@ -245,9 +297,17 @@ invalid_date_rows = (
 
     .count()
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 12 Gold Reconciliation: stage 7
+# MAGIC **Purpose:** Execute stage 7 of the 12 Gold Reconciliation workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 gold_integrity_validation_df = (
     spark.createDataFrame(
         [
@@ -285,9 +345,17 @@ gold_integrity_validation_df = (
 )
 
 display(gold_integrity_validation_df)
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 12 Gold Reconciliation: stage 8
+# MAGIC **Purpose:** Execute stage 8 of the 12 Gold Reconciliation workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 gold_reconciliation_audit_df = (
     gold_reconciliation_df
 
@@ -324,13 +392,29 @@ gold_reconciliation_audit_df = (
         F.current_timestamp()
     )
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 12 Gold Reconciliation: stage 9
+# MAGIC **Purpose:** Execute stage 9 of the 12 Gold Reconciliation workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 display(gold_reconciliation_audit_df)
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 12 Gold Reconciliation: stage 10
+# MAGIC **Purpose:** Execute stage 10 of the 12 Gold Reconciliation workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 (
     gold_reconciliation_audit_df.write
     .format("delta")

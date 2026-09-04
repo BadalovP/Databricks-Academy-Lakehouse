@@ -1,12 +1,32 @@
 # Databricks notebook source
+
 # /// script
 # [tool.databricks.environment]
 # environment_version = "5"
 # ///
-# MAGIC %run ./00_setup
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 09 Customer Scd2: stage 1
+# MAGIC **Purpose:** Execute stage 1 of the 09 Customer Scd2 workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
+# MAGIC %run ./00_setup
+# COMMAND ----------
+# MAGIC %md
+# MAGIC ### 09 Customer Scd2: stage 2
+# MAGIC **Purpose:** Execute stage 2 of the 09 Customer Scd2 workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 from pyspark.sql import functions as F
 
 run_timestamp = (
@@ -71,9 +91,17 @@ print(
 )
 
 display(customer_scd_source_df.limit(10))
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 09 Customer Scd2: stage 3
+# MAGIC **Purpose:** Execute stage 3 of the 09 Customer Scd2 workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 scd_table_name = (
     f"{catalog}.{schema}.silver_customer_scd2"
 )
@@ -133,9 +161,17 @@ else:
         "SCD2 table already exists; "
         "initial load was skipped"
     )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 09 Customer Scd2: stage 4
+# MAGIC **Purpose:** Execute stage 4 of the 09 Customer Scd2 workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 customer_scd_df = spark.table(
     scd_table_name
 )
@@ -172,9 +208,17 @@ print(
 )
 
 display(customer_scd_df.limit(10))
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 09 Customer Scd2: stage 5
+# MAGIC **Purpose:** Execute stage 5 of the 09 Customer Scd2 workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Read only the current SCD2 versions
 
 current_customer_scd_df = (
@@ -189,9 +233,17 @@ current_customer_scd_df = (
         "record_hash"
     )
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 09 Customer Scd2: stage 6
+# MAGIC **Purpose:** Execute stage 6 of the 09 Customer Scd2 workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Compare the latest source against current SCD2 records
 
 customer_comparison_df = (
@@ -216,9 +268,17 @@ customer_comparison_df = (
         .alias("_target_record_hash")
     )
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 09 Customer Scd2: stage 7
+# MAGIC **Purpose:** Execute stage 7 of the 09 Customer Scd2 workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Find new or changed customers
 
 customer_changes_df = (
@@ -237,9 +297,17 @@ customer_changes_df = (
         *customer_scd_source_df.columns
     )
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 09 Customer Scd2: stage 8
+# MAGIC **Purpose:** Execute stage 8 of the 09 Customer Scd2 workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 new_customer_count = (
     customer_comparison_df
 
@@ -271,9 +339,17 @@ print(
     "Versions to insert:",
     customer_changes_df.count()
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 09 Customer Scd2: stage 9
+# MAGIC **Purpose:** Execute stage 9 of the 09 Customer Scd2 workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Count detected changes before modifying the target table.
 versions_to_process = customer_changes_df.count()
 
@@ -357,9 +433,17 @@ else:
         "No new or changed customers. "
         "SCD2 table was not modified."
     )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 09 Customer Scd2: stage 10
+# MAGIC **Purpose:** Execute stage 10 of the 09 Customer Scd2 workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 scd_validation_df = spark.sql(f"""
 WITH scd_metrics AS (
     SELECT

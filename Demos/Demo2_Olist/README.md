@@ -149,6 +149,10 @@ Expected development validation values:
 - Runtime checks cover governance, alerts, DQX, dashboard readiness, and final validation.
 - The large Job's final gate requires all terminal branches to succeed.
 
+### Documentation coverage
+
+`tools/check_documentation_coverage.py` provides a repeatable read-only audit. The final audit found 100% coverage: all 11 JSON notebooks, all 16 Databricks source-format notebooks, and all 4 test files are documented. Missing notebook explanations: `0`. Missing test docstrings: `0`.
+
 ## Parameters and prerequisites
 
 The Job parameters are `expected_order_item_rows`, `expected_distinct_orders`, `expected_status_count`, `expected_total_price`, `expected_total_freight`, `expected_total_value`, and `expected_quality_status`. Bundle variables provide catalog `dbr_dev`, schema `parvinbadalov`, cluster `0702-171207-xo9bbc0y`, warehouse `3ed106620db591d9`, pipeline `a54606ca-9067-44da-8ce9-e24c70f180f4`, and dashboard `01f1a7f2e75d17f8bbc359d20695d8e3`.
@@ -190,6 +194,8 @@ The published dashboard uses the existing dashboard and SQL warehouse. Its KPIs 
 
 ## Development evidence and limitations
 
-The successful development run completed on 2026-09-04. The comprehensive Job is `135818015304158`, Run `107916031830226`, and its [run evidence](https://adb-7405604503619901.1.azuredatabricks.net/?o=7405604503619901#job/135818015304158/run/107916031830226) reports `TERMINATED SUCCESS`. All 26 tasks succeeded, including DQX, parallel learning, the Olist Test pipeline, output validation, dashboard refresh, and final validation. Observed metrics were 112650 order items, 98666 distinct orders, 13591643.70 price, 2251909.54 freight, 15843553.24 total value, 7 status rows, and `PASS`. Full task-by-task evidence is in [docs/DEPLOYMENT_EVIDENCE.md](docs/DEPLOYMENT_EVIDENCE.md).
+The documentation-verification run completed successfully on 2026-09-04. The comprehensive Job is `135818015304158`, Run `1841243362075`, and its [run evidence](https://adb-7405604503619901.1.azuredatabricks.net/?o=7405604503619901#job/135818015304158/run/1841243362075) reports `TERMINATED SUCCESS`. All 26 tasks succeeded, including DQX, parallel learning, the Olist Test pipeline, output validation, dashboard refresh, and final validation. Observed metrics were 112650 order items, 98666 distinct orders, 13591643.70 price, 2251909.54 freight, 15843553.24 total value, 7 status rows, and `PASS`. The previous successful Run `107916031830226` remains recorded as the baseline. Full task-by-task evidence is in [docs/DEPLOYMENT_EVIDENCE.md](docs/DEPLOYMENT_EVIDENCE.md).
+
+This documentation verification preserves that baseline workflow. No business statements, expected metrics, task keys, or dependencies were changed.
 
 No screenshots or results are inferred. The workflow depends on existing shared workspace resources, fixed development data, and the published dashboard. Future improvements could parameterize all notebook table names, add a dedicated job cluster policy, publish richer lineage, and move expected metrics into a versioned contract.

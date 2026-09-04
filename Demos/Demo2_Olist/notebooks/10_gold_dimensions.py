@@ -1,12 +1,32 @@
 # Databricks notebook source
+
 # /// script
 # [tool.databricks.environment]
 # environment_version = "5"
 # ///
-# MAGIC %run ./00_setup
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 10 Gold Dimensions: stage 1
+# MAGIC **Purpose:** Execute stage 1 of the 10 Gold Dimensions workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
+# MAGIC %run ./00_setup
+# COMMAND ----------
+# MAGIC %md
+# MAGIC ### 10 Gold Dimensions: stage 2
+# MAGIC **Purpose:** Execute stage 2 of the 10 Gold Dimensions workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 from pyspark.sql import functions as F
 
 customer_dimension_df = (
@@ -74,9 +94,17 @@ print(
 )
 
 display(customer_dimension_df.limit(10))
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 10 Gold Dimensions: stage 3
+# MAGIC **Purpose:** Execute stage 3 of the 10 Gold Dimensions workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Create Gold Product Dimension
 
 product_dimension_df = (
@@ -134,9 +162,17 @@ print(
 )
 
 display(product_dimension_df.limit(10))
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 10 Gold Dimensions: stage 4
+# MAGIC **Purpose:** Execute stage 4 of the 10 Gold Dimensions workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Create Gold Seller Dimension
 
 seller_dimension_df = (
@@ -211,9 +247,17 @@ print(
 )
 
 display(seller_dimension_df.limit(10))
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 10 Gold Dimensions: stage 5
+# MAGIC **Purpose:** Execute stage 5 of the 10 Gold Dimensions workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Create the complete date range from Orders
 
 date_dimension_df = spark.sql(f"""
@@ -241,9 +285,17 @@ SELECT
 
 FROM date_boundaries
 """)
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 10 Gold Dimensions: stage 6
+# MAGIC **Purpose:** Execute stage 6 of the 10 Gold Dimensions workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Add Date dimension attributes
 
 date_dimension_df = (
@@ -334,9 +386,17 @@ date_dimension_df = (
         "_gold_processed_at"
     )
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 10 Gold Dimensions: stage 7
+# MAGIC **Purpose:** Execute stage 7 of the 10 Gold Dimensions workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Write Gold Date dimension
 
 (
@@ -359,9 +419,17 @@ display(
         "calendar_date"
     ).limit(10)
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 10 Gold Dimensions: stage 8
+# MAGIC **Purpose:** Execute stage 8 of the 10 Gold Dimensions workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Validate all Gold dimensions
 
 dimension_checks = [
@@ -440,9 +508,17 @@ for gold_table, source_table, surrogate_key in dimension_checks:
             status
         )
     )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 10 Gold Dimensions: stage 9
+# MAGIC **Purpose:** Execute stage 9 of the 10 Gold Dimensions workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 expected_date_rows = (
     spark.sql(f"""
         SELECT
@@ -503,9 +579,17 @@ validation_rows.append(
         date_status
     )
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 10 Gold Dimensions: stage 10
+# MAGIC **Purpose:** Execute stage 10 of the 10 Gold Dimensions workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 gold_dimension_validation_df = spark.createDataFrame(
     validation_rows,
     [

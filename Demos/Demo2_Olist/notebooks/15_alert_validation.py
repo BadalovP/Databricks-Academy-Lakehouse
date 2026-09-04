@@ -1,12 +1,32 @@
 # Databricks notebook source
+
 # /// script
 # [tool.databricks.environment]
 # environment_version = "5"
 # ///
-# MAGIC %run ./00_setup
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 15 Alert Validation: stage 1
+# MAGIC **Purpose:** Execute stage 1 of the 15 Alert Validation workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
+# MAGIC %run ./00_setup
+# COMMAND ----------
+# MAGIC %md
+# MAGIC ### 15 Alert Validation: stage 2
+# MAGIC **Purpose:** Execute stage 2 of the 15 Alert Validation workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Purpose: select the project catalog and schema.
 
 spark.sql(f"USE CATALOG `{catalog}`")
@@ -20,9 +40,17 @@ display(
             session_user() AS current_user
     """)
 )
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 15 Alert Validation: stage 3
+# MAGIC **Purpose:** Execute stage 3 of the 15 Alert Validation workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Purpose: confirm that the Gold reconciliation audit table exists
 # and contains the status columns required by the alert.
 
@@ -59,9 +87,17 @@ print(", ".join(audit_df.columns))
 
 print("Current Gold reconciliation result:")
 display(audit_df.limit(1))
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 15 Alert Validation: stage 4
+# MAGIC **Purpose:** Execute stage 4 of the 15 Alert Validation workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Purpose: convert the pipeline validation result into a numeric
 # value that a Databricks SQL alert can evaluate.
 
@@ -133,9 +169,17 @@ spark.sql(f"""
 """)
 
 print("Alert-status view created")
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 15 Alert Validation: stage 5
+# MAGIC **Purpose:** Execute stage 5 of the 15 Alert Validation workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Purpose: convert the latest pipeline validation result into a
 # numeric alert value that Databricks SQL Alerts can evaluate.
 
@@ -212,9 +256,17 @@ spark.sql(f"""
 """)
 
 print("Alert-status view created")
-
 # COMMAND ----------
-
+# MAGIC %md
+# MAGIC ### 15 Alert Validation: stage 6
+# MAGIC **Purpose:** Execute stage 6 of the 15 Alert Validation workflow.
+# MAGIC
+# MAGIC **Inputs:** Upstream tables, DataFrames, files, parameters, or the configured runtime context.
+# MAGIC
+# MAGIC **Outputs:** Stage-specific tables, views, metrics, or validation state used by downstream cells.
+# MAGIC
+# MAGIC **Why it matters:** This explanation makes the stage side effects and dependency contract reviewable.
+# COMMAND ----------
 # Purpose: verify that the current pipeline result does not trigger an alert.
 
 alert_validation_df = spark.table(
