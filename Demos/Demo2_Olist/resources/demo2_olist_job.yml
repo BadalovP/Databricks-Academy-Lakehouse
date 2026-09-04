@@ -18,6 +18,28 @@ resources:
         on_failure:
           - parvinbadalov@softserve.academy
 
+      parameters:
+        - name: expected_order_item_rows
+          default: "112650"
+
+        - name: expected_distinct_orders
+          default: "98666"
+
+        - name: expected_status_count
+          default: "7"
+
+        - name: expected_total_price
+          default: "13591643.70"
+
+        - name: expected_total_freight
+          default: "2251909.54"
+
+        - name: expected_total_value
+          default: "15843553.24"
+
+        - name: expected_quality_status
+          default: "PASS"
+
       tasks:
         - task_key: setup
           notebook_task:
@@ -148,6 +170,71 @@ resources:
             source: WORKSPACE
           environment_key: default
 
+        - task_key: parallel_learning_start
+          depends_on:
+            - task_key: gold_reconciliation
+          notebook_task:
+            notebook_path: ../pipeline/parallel_learning/00_parallel_start.ipynb
+            source: WORKSPACE
+          environment_key: default
+
+        - task_key: customer_check
+          depends_on:
+            - task_key: parallel_learning_start
+          notebook_task:
+            notebook_path: ../pipeline/parallel_learning/01_customer_check.ipynb
+            source: WORKSPACE
+          environment_key: default
+
+        - task_key: order_check
+          depends_on:
+            - task_key: parallel_learning_start
+          notebook_task:
+            notebook_path: ../pipeline/parallel_learning/02_order_check.ipynb
+            source: WORKSPACE
+          environment_key: default
+
+        - task_key: parallel_learning_summary
+          depends_on:
+            - task_key: customer_check
+            - task_key: order_check
+          notebook_task:
+            notebook_path: ../pipeline/parallel_learning/03_parallel_summary.ipynb
+            source: WORKSPACE
+          environment_key: default
+
+        - task_key: run_olist_pipeline
+          depends_on:
+            - task_key: gold_reconciliation
+          pipeline_task:
+            pipeline_id: ${var.demo2_pipeline_id}
+            full_refresh: false
+
+        - task_key: validate_pipeline_outputs
+          depends_on:
+            - task_key: run_olist_pipeline
+          spark_python_task:
+            python_file: ../pipeline/Olist Test/tests/validate_pipeline_outputs.py
+            parameters:
+              - "--catalog=${var.demo2_catalog}"
+              - "--schema=${var.demo2_schema}"
+              - "--expected-order-item-rows={{job.parameters.expected_order_item_rows}}"
+              - "--expected-distinct-orders={{job.parameters.expected_distinct_orders}}"
+              - "--expected-status-count={{job.parameters.expected_status_count}}"
+              - "--expected-total-price={{job.parameters.expected_total_price}}"
+              - "--expected-total-freight={{job.parameters.expected_total_freight}}"
+              - "--expected-total-value={{job.parameters.expected_total_value}}"
+              - "--expected-quality-status={{job.parameters.expected_quality_status}}"
+          existing_cluster_id: ${var.demo2_cluster_id}
+
+        - task_key: refresh_olist_dashboard
+          depends_on:
+            - task_key: validate_pipeline_outputs
+          dashboard_task:
+            dashboard_id: ${var.demo2_dashboard_id}
+            warehouse_id: ${var.demo2_warehouse_id}
+            subscription: {}
+
         - task_key: automated_tests
           depends_on:
             - task_key: gold_reconciliation
@@ -171,6 +258,8 @@ resources:
             - task_key: alert_validation
             - task_key: dqx_quality_monitoring
             - task_key: automated_tests
+            - task_key: parallel_learning_summary
+            - task_key: refresh_olist_dashboard
           notebook_task:
             notebook_path: ../notebooks/16_final_validation.py
             source: WORKSPACE

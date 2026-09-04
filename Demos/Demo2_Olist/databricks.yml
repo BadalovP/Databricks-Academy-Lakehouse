@@ -4,6 +4,7 @@ bundle:
 
 include:
   - resources/demo2_olist_end_to_end.job.yml
+  - resources/demo2_olist_job.yml
 
 variables:
   demo2_catalog:

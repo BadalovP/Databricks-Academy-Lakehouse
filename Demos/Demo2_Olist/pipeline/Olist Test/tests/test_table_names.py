@@ -15,6 +15,8 @@ from table_names import qualified_table_name
 
 
 def test_qualified_table_name():
+    """Protect construction of three-level Unity Catalog table names."""
+
     result = qualified_table_name(
         "dbr_dev",
         "parvinbadalov",
@@ -25,6 +27,8 @@ def test_qualified_table_name():
 
 
 def test_qualified_table_name_rejects_empty_value():
+    """Reject incomplete identifiers before a table query is attempted."""
+
     with pytest.raises(ValueError):
         qualified_table_name(
             "dbr_dev",

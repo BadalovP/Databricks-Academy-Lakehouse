@@ -6,7 +6,7 @@ from src.dqx_rules import (
 
 
 def test_gold_order_item_dqx_rules():
-    """The Gold fact must have 14 valid rule definitions."""
+    """Protect the Gold contract from missing or non-critical DQX rules."""
 
     checks = build_gold_order_item_dqx_checks()
 

@@ -1,4 +1,8 @@
-# Purpose: integration-test the published ETL pipeline outputs.
+"""Integration-test the published ETL pipeline outputs.
+
+The assertions protect the learning summary and quality status consumed by
+the output-validation Job task and dashboard refresh.
+"""
 
 import pytest
 from pyspark.sql import SparkSession
@@ -6,10 +10,14 @@ from pyspark.sql import SparkSession
 
 @pytest.fixture(scope="module")
 def spark_session():
+    """Provide the active Databricks Spark session for table assertions."""
+
     return SparkSession.builder.getOrCreate()
 
 
 def test_learning_pipeline_outputs(spark_session):
+    """Verify the published learning metrics and PASS quality outcome."""
+
     summary = (
         spark_session.table(
             "dbr_dev.parvinbadalov.learning_pipeline_summary"

@@ -1,4 +1,11 @@
-# Purpose: Validate the published outputs after the Olist pipeline finishes.
+"""Validate published Olist outputs before allowing dashboard refresh.
+
+Arguments carry the target catalog, schema, expected counts, expected
+monetary totals, and expected quality status. Monetary comparisons use a
+one-cent tolerance to account for Spark numeric representation. Assertions
+fail the Spark task on any mismatch. ``parse_known_args`` deliberately keeps
+Databricks-injected arguments such as ``-f`` from breaking the validator.
+"""
 
 import argparse
 
@@ -72,7 +79,7 @@ table_prefix = f"{args.catalog}.{args.schema}"
 print(f"Validating pipeline tables in: {table_prefix}")
 
 
-# Validate the base table.
+# The base row count protects the pipeline's complete order-item output.
 base_count = spark.table(
     f"{table_prefix}.learning_orders_base"
 ).count()
@@ -83,7 +90,7 @@ assert base_count == args.expected_order_item_rows, (
 )
 
 
-# Validate the status aggregation.
+# The status count protects the expected set of order-status groups.
 status_count = spark.table(
     f"{table_prefix}.learning_orders_by_status"
 ).count()
@@ -94,7 +101,7 @@ assert status_count == args.expected_status_count, (
 )
 
 
-# Validate the pipeline summary.
+# The single summary row and KPI values protect dashboard inputs.
 summary_df = spark.table(
     f"{table_prefix}.learning_pipeline_summary"
 )
@@ -135,7 +142,7 @@ assert abs(
 )
 
 
-# Validate the final quality status.
+# The quality status is the final contract check for the pipeline update.
 quality_df = spark.table(
     f"{table_prefix}.learning_quality_status"
 )

@@ -274,10 +274,7 @@ print(
 
 # COMMAND ----------
 
-# Materialize the detected changes before modifying the target table
-
-customer_changes_df = customer_changes_df.cache()
-
+# Count detected changes before modifying the target table.
 versions_to_process = customer_changes_df.count()
 
 if versions_to_process > 0:
@@ -360,8 +357,6 @@ else:
         "No new or changed customers. "
         "SCD2 table was not modified."
     )
-
-customer_changes_df.unpersist()
 
 # COMMAND ----------
 

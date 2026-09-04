@@ -1,4 +1,8 @@
-"""Integration tests for the deployed Olist Gold pipeline."""
+"""Integration tests for the deployed Olist Gold pipeline.
+
+These checks protect the reconciliation contract and ensure the published
+Gold fact agrees with the latest successful audit.
+"""
 
 import pytest
 
