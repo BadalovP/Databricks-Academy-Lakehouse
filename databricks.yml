@@ -6,7 +6,6 @@ include:
   - resources/*.yml
   - Demos/Demo1/resources/*.yml
   - Demos/Demo2/resources/*.yml
-  - Demos/Demo2_Olist/resources/*.yml
 variables:
   # -------------------------------------------------------------------
   # Demo 2

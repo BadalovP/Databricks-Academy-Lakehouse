@@ -1,0 +1,43 @@
+bundle:
+  name: demo2-olist-end-to-end
+  engine: direct
+
+include:
+  - resources/demo2_olist_end_to_end.job.yml
+
+variables:
+  demo2_catalog:
+    description: Demo2 Olist target catalog
+
+  demo2_schema:
+    description: Demo2 Olist target schema
+
+  demo2_cluster_id:
+    description: Existing cluster used by the validation task
+
+  demo2_warehouse_id:
+    description: SQL warehouse used by the dashboard refresh task
+
+  demo2_pipeline_id:
+    description: Existing Olist Test pipeline ID
+
+  demo2_dashboard_id:
+    description: Published Demo2 Olist dashboard ID
+
+targets:
+  azure_dev:
+    mode: development
+    default: true
+
+    workspace:
+      host: https://adb-7405604503619901.1.azuredatabricks.net
+      profile: AZURE_DEV
+      root_path: /Workspace/Users/parvinbadalov@softserve.academy/.bundle/${bundle.name}/azure_dev
+
+    variables:
+      demo2_catalog: "dbr_dev"
+      demo2_schema: "parvinbadalov"
+      demo2_cluster_id: "0702-171207-xo9bbc0y"
+      demo2_warehouse_id: "3ed106620db591d9"
+      demo2_pipeline_id: "a54606ca-9067-44da-8ce9-e24c70f180f4"
+      demo2_dashboard_id: "01f1a7f2e75d17f8bbc359d20695d8e3"
