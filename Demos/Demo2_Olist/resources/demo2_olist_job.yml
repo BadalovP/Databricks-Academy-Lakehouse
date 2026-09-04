@@ -128,7 +128,7 @@ resources:
           depends_on:
             - task_key: gold_reconciliation
           notebook_task:
-            notebook_path: ../notebooks/13_governance_rls_cls.py
+            notebook_path: ../notebooks/13_governance_rls_cls.ipynb
             source: WORKSPACE
           environment_key: default
 
@@ -144,7 +144,7 @@ resources:
           depends_on:
             - task_key: gold_reconciliation
           notebook_task:
-            notebook_path: ../notebooks/17_dqx_quality_monitoring.py
+            notebook_path: ../notebooks/17_dqx_quality_monitoring.ipynb
             source: WORKSPACE
           environment_key: default
 
@@ -152,7 +152,7 @@ resources:
           depends_on:
             - task_key: gold_reconciliation
           notebook_task:
-            notebook_path: ../tools/run_tests.py
+            notebook_path: ../tools/run_tests.ipynb
             source: WORKSPACE
           environment_key: default
 
@@ -160,7 +160,7 @@ resources:
           depends_on:
             - task_key: governance_rls_cls
           notebook_task:
-            notebook_path: ../notebooks/14_dashboard_validation.py
+            notebook_path: ../notebooks/14_dashboard_validation.ipynb
             source: WORKSPACE
           environment_key: default
 
