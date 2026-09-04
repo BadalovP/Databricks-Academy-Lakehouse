@@ -1,0 +1,103 @@
+# Data contract for the Gold order-item fact table.
+
+contract:
+  name: gold_fact_order_items_contract
+  version: 1
+  owner: parvinbadalov@softserve.academy
+
+dataset:
+  catalog: dbr_dev
+  schema: parvinbadalov
+  table: gold_fact_order_items
+  layer: gold
+  allow_additional_columns: true
+
+primary_key:
+  columns:
+    - order_item_sk
+  unique: true
+  nullable: false
+
+required_columns:
+  - name: order_item_sk
+    accepted_types: [string]
+    nullable: false
+
+  - name: order_id
+    accepted_types: [string]
+    nullable: false
+
+  - name: order_item_id
+    accepted_types: [integer, long, bigint]
+    nullable: false
+
+  - name: customer_sk
+    accepted_types: [string]
+    nullable: false
+
+  - name: product_sk
+    accepted_types: [string]
+    nullable: false
+
+  - name: seller_sk
+    accepted_types: [string]
+    nullable: false
+
+  - name: date_sk
+    accepted_types: [integer, long, bigint]
+    nullable: false
+
+  - name: customer_id
+    accepted_types: [string]
+    nullable: false
+
+  - name: product_id
+    accepted_types: [string]
+    nullable: false
+
+  - name: seller_id
+    accepted_types: [string]
+    nullable: false
+
+  - name: order_status
+    accepted_types: [string]
+    nullable: false
+
+  - name: price
+    accepted_types: [double, float, decimal]
+    nullable: false
+
+  - name: freight_value
+    accepted_types: [double, float, decimal]
+    nullable: false
+
+  - name: item_total_value
+    accepted_types: [double, float, decimal]
+    nullable: false
+
+quality_constraints:
+  - name: unique_order_item_key
+    column: order_item_sk
+    rule: unique
+    criticality: error
+
+  - name: valid_price_range
+    column: price
+    rule: between
+    minimum: 0
+    maximum: 100000
+    criticality: error
+
+  - name: valid_freight_range
+    column: freight_value
+    rule: between
+    minimum: 0
+    maximum: 100000
+    criticality: error
+
+  - name: valid_item_total_range
+    column: item_total_value
+    rule: between
+    minimum: 0
+    maximum: 200000
+    criticality: error

@@ -1,0 +1,92 @@
+# Functional specification for the Olist Databricks AI/BI dashboard.
+
+dashboard:
+  name: Olist Lakehouse Dashboard
+  description: Secure analysis of Olist orders, revenue and customer states
+  catalog: dbr_dev
+  schema: parvinbadalov
+
+dataset:
+  name: secure_order_items
+  source: dbr_dev.parvinbadalov.secure_gold_order_items_dashboard
+  security:
+    row_level_security: true
+    column_level_security: true
+    state_access_table: dbr_dev.parvinbadalov.governance_customer_state_access
+    pii_reader_group: olist_pii_readers
+
+filters:
+  - name: Customer State
+    column: customer_state
+    type: multi_select
+
+  - name: Order Status
+    column: order_status
+    type: multi_select
+
+  - name: Order Date
+    column: date_sk
+    type: date_range
+
+pages:
+  - name: Executive Overview
+    visuals:
+      - title: Total Order Items
+        type: counter
+        calculation: COUNT(*)
+
+      - title: Distinct Orders
+        type: counter
+        calculation: COUNT(DISTINCT order_id)
+
+      - title: Total Product Revenue
+        type: counter
+        calculation: SUM(price)
+
+      - title: Total Freight
+        type: counter
+        calculation: SUM(freight_value)
+
+      - title: Total Order Value
+        type: counter
+        calculation: SUM(item_total_value)
+
+      - title: Order Value by Customer State
+        type: bar_chart
+        category: customer_state
+        measure: SUM(item_total_value)
+
+      - title: Orders by Status
+        type: bar_chart
+        category: order_status
+        measure: COUNT(DISTINCT order_id)
+
+  - name: Data Quality
+    visuals:
+      - title: Pipeline Status
+        type: table
+        source: dbr_dev.parvinbadalov.olist_pipeline_alert_status
+
+      - title: DQX Monitoring History
+        type: table
+        source: dbr_dev.parvinbadalov.dqx_gold_fact_order_items_audit
+
+validation_baseline:
+  full_dataset:
+    expected_rows: 112650
+    expected_orders: 98666
+    expected_total_price: 13591643.70
+    expected_total_freight: 2251909.54
+    expected_total_value: 15843553.24
+
+  current_restricted_user:
+    configured_states:
+      - RJ
+      - SP
+    expected_visible_rows: 62028
+    expected_unauthorized_rows: 0
+    expected_cls_violations: 0
+
+refresh:
+  strategy: after_pipeline_completion
+  alert_on_failure: Olist Pipeline Validation Alert

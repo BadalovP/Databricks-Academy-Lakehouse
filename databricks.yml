@@ -6,7 +6,7 @@ include:
   - resources/*.yml
   - Demos/Demo1/resources/*.yml
   - Demos/Demo2/resources/*.yml
-
+  - Demos/Demo2_Olist/resources/*.yml
 variables:
   # -------------------------------------------------------------------
   # Demo 2
@@ -25,6 +25,12 @@ variables:
 
   demo2_warehouse_id:
     description: Explicit target-specific SQL warehouse used by Demo 2 dashboard and alert
+
+  demo2_pipeline_id:
+    description: Existing Olist Test pipeline ID used by the Demo 2 end-to-end Job
+
+  demo2_dashboard_id:
+    description: Published Olist dashboard ID used by the Demo 2 end-to-end Job
 
   # -------------------------------------------------------------------
   # Lab 03
@@ -143,6 +149,8 @@ targets:
       demo2_volume_name: "demo2_ecommerce"
       demo2_cluster_id: "0702-171207-xo9bbc0y"
       demo2_warehouse_id: "3ed106620db591d9"
+      demo2_pipeline_id: "a54606ca-9067-44da-8ce9-e24c70f180f4"
+      demo2_dashboard_id: "01f1a7f2e75d17f8bbc359d20695d8e3"
 
       lab05_catalog: "dbr_dev"
       lab05_schema: "parvinbadalov"
@@ -255,10 +263,11 @@ targets:
         user_name: parvinbadalov@softserve.academy
 
     variables:
-      # Demo 2 has no production defaults. Supply all five values together via
+      # Demo 2 has no production defaults. Supply all seven values together via
       # BUNDLE_VAR_demo2_catalog, BUNDLE_VAR_demo2_schema,
       # BUNDLE_VAR_demo2_volume_name, BUNDLE_VAR_demo2_cluster_id, and
-      # BUNDLE_VAR_demo2_warehouse_id. Use an explicitly approved production
+      # BUNDLE_VAR_demo2_warehouse_id, BUNDLE_VAR_demo2_pipeline_id, and
+      # BUNDLE_VAR_demo2_dashboard_id. Use an explicitly approved production
       # --profile when validating or deploying this target.
 
       lab05_catalog: "dbr_dev"

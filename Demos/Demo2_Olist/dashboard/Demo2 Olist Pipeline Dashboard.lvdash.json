@@ -1,0 +1,768 @@
+{
+  "datasets": [
+    {
+      "name": "f4ff306c",
+      "displayName": "pipeline_kpis",
+      "queryLines": [
+        "SELECT\r\n",
+        "    order_item_rows,\r\n",
+        "    distinct_orders,\r\n",
+        "    total_price,\r\n",
+        "    total_freight,\r\n",
+        "    total_value,\r\n",
+        "    quality_status\r\n",
+        "FROM dbr_dev.parvinbadalov.learning_quality_status;"
+      ]
+    },
+    {
+      "name": "7c458d5c",
+      "displayName": "orders_by_status",
+      "queryLines": [
+        "SELECT\r\n",
+        "    INITCAP(order_status) AS order_status,\r\n",
+        "    order_item_rows,\r\n",
+        "    distinct_orders,\r\n",
+        "    total_price,\r\n",
+        "    total_freight,\r\n",
+        "    total_value\r\n",
+        "FROM dbr_dev.parvinbadalov.learning_orders_by_status\r\n",
+        "ORDER BY order_item_rows DESC;"
+      ]
+    }
+  ],
+  "relationshipGraphs": [
+    {
+      "sources": [
+        {
+          "name": "Untitled_dataset",
+          "datasetName": "f4ff306c"
+        },
+        {
+          "name": "Untitled_dataset_1",
+          "datasetName": "7c458d5c"
+        }
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "8fbd2483",
+      "displayName": "Overview",
+      "layout": [
+        {
+          "widget": {
+            "name": "pipeline_quality_status",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "fields": [
+                    {
+                      "name": "quality_status",
+                      "expression": "`Untitled_dataset`.`quality_status`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Pipeline Quality Status"
+              },
+              "version": 1,
+              "jsonSpec": {
+                "type": "vega-lite",
+                "spec": "{\"$schema\":\"https://vega.github.io/schema/vega-lite/v6.json\",\"data\":{\"name\":\"databricks_query\"},\"width\":\"container\",\"height\":\"container\",\"config\":{\"autosize\":{\"type\":\"fit\",\"contains\":\"padding\"},\"view\":{\"stroke\":null}},\"mark\":{\"type\":\"text\",\"align\":\"center\",\"baseline\":\"middle\",\"fontWeight\":\"bold\",\"fontSize\":28},\"encoding\":{\"text\":{\"field\":\"quality_status\",\"type\":\"nominal\"},\"color\":{\"condition\":{\"test\":\"datum.quality_status === 'PASS'\",\"value\":\"#1B8A5A\"},\"value\":\"#C23B3B\"}},\"view\":{\"stroke\":null}}"
+              },
+              "widgetType": "custom-vega-viz",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "quality_status"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 3,
+            "width": 4,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "order_items_by_status",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "fields": [
+                    {
+                      "name": "order_status",
+                      "expression": "`Untitled_dataset_1`.`order_status`"
+                    },
+                    {
+                      "name": "order_item_rows",
+                      "expression": "SUM(`Untitled_dataset_1`.`order_item_rows`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Order Items by Status"
+              },
+              "version": 1,
+              "jsonSpec": {
+                "type": "vega-lite",
+                "spec": "{\"$schema\":\"https://vega.github.io/schema/vega-lite/v6.json\",\"data\":{\"name\":\"databricks_query\"},\"width\":\"container\",\"height\":\"container\",\"config\":{\"autosize\":{\"type\":\"fit\",\"contains\":\"padding\"},\"axis\":{\"labelFontSize\":11,\"titleFontSize\":12},\"view\":{\"stroke\":null}},\"layer\":[{\"mark\":{\"type\":\"bar\",\"cornerRadiusTopLeft\":4,\"cornerRadiusTopRight\":4,\"color\":\"#2375A8\"},\"encoding\":{\"x\":{\"field\":\"order_status\",\"type\":\"nominal\",\"sort\":\"-y\",\"axis\":{\"title\":\"Order Status\",\"labelAngle\":0}},\"y\":{\"field\":\"order_item_rows\",\"type\":\"quantitative\",\"axis\":{\"title\":\"Order Items\",\"format\":\",.0f\"}},\"tooltip\":[{\"field\":\"order_status\",\"type\":\"nominal\",\"title\":\"Order Status\"},{\"field\":\"order_item_rows\",\"type\":\"quantitative\",\"title\":\"Order Items\",\"format\":\",.0f\"}]}},{\"mark\":{\"type\":\"text\",\"dy\":-10,\"fontSize\":11,\"color\":\"#0E3A4C\"},\"encoding\":{\"x\":{\"field\":\"order_status\",\"type\":\"nominal\",\"sort\":\"-y\"},\"y\":{\"field\":\"order_item_rows\",\"type\":\"quantitative\"},\"text\":{\"field\":\"order_item_rows\",\"type\":\"quantitative\",\"format\":\",.0f\"}}}]}"
+              },
+              "widgetType": "custom-vega-viz",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "order_status"
+                  },
+                  {
+                    "fieldName": "order_item_rows"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 7,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "order_items_counter",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "fields": [
+                    {
+                      "name": "sum(Untitled_dataset__order_item_rows)",
+                      "expression": "SUM(`Untitled_dataset`.`order_item_rows`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Order Items"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(Untitled_dataset__order_item_rows)",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 0
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "distinct_orders_counter",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "fields": [
+                    {
+                      "name": "sum(Untitled_dataset__distinct_orders)",
+                      "expression": "SUM(`Untitled_dataset`.`distinct_orders`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Distinct Orders"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(Untitled_dataset__distinct_orders)",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 0
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 0,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "total_price_counter",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "fields": [
+                    {
+                      "name": "sum(Untitled_dataset__total_price)",
+                      "expression": "SUM(`Untitled_dataset`.`total_price`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Total Price",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(Untitled_dataset__total_price)",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 0,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "total_freight_counter",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "fields": [
+                    {
+                      "name": "sum(Untitled_dataset__total_freight)",
+                      "expression": "SUM(`Untitled_dataset`.`total_freight`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Total Freight",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(Untitled_dataset__total_freight)",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 2
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 0,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "total_order_value_counter",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "fields": [
+                    {
+                      "name": "sum(Untitled_dataset__total_value)",
+                      "expression": "SUM(`Untitled_dataset`.`total_value`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Total Order Value",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(Untitled_dataset__total_value)",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 2
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 0,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "order_value_by_status",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "fields": [
+                    {
+                      "name": "order_status",
+                      "expression": "`Untitled_dataset_1`.`order_status`"
+                    },
+                    {
+                      "name": "total_value",
+                      "expression": "SUM(`Untitled_dataset_1`.`total_value`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Order Value by Status"
+              },
+              "version": 1,
+              "jsonSpec": {
+                "type": "vega-lite",
+                "spec": "{\"$schema\":\"https://vega.github.io/schema/vega-lite/v6.json\",\"data\":{\"name\":\"databricks_query\"},\"width\":\"container\",\"height\":\"container\",\"transform\":[{\"calculate\":\"'R$ ' + format(datum.total_value / 1000000, '.2f') + 'M'\",\"as\":\"value_label\"}],\"config\":{\"autosize\":{\"type\":\"fit\",\"contains\":\"padding\"},\"axis\":{\"labelFontSize\":11,\"titleFontSize\":12},\"legend\":{\"title\":null},\"view\":{\"stroke\":null}},\"layer\":[{\"mark\":{\"type\":\"bar\",\"cornerRadiusEnd\":4},\"encoding\":{\"y\":{\"field\":\"order_status\",\"type\":\"nominal\",\"sort\":\"-x\",\"axis\":{\"title\":\"Order Status\"}},\"x\":{\"field\":\"total_value\",\"type\":\"quantitative\",\"axis\":{\"title\":\"Order Value\",\"format\":\"~s\"}},\"color\":{\"field\":\"order_status\",\"type\":\"nominal\",\"legend\":{\"orient\":\"bottom\"},\"scale\":{\"range\":[\"#15AFDD\",\"#2375A8\",\"#52A870\",\"#1F8A70\",\"#7AC9C0\",\"#0E5A6F\"]}},\"tooltip\":[{\"field\":\"order_status\",\"type\":\"nominal\",\"title\":\"Order Status\"},{\"field\":\"total_value\",\"type\":\"quantitative\",\"title\":\"Order Value\",\"format\":\",.2f\"}]}},{\"mark\":{\"type\":\"text\",\"align\":\"left\",\"baseline\":\"middle\",\"dx\":6,\"fontSize\":10,\"color\":\"#0E3A4C\"},\"encoding\":{\"y\":{\"field\":\"order_status\",\"type\":\"nominal\",\"sort\":\"-x\"},\"x\":{\"field\":\"total_value\",\"type\":\"quantitative\"},\"text\":{\"field\":\"value_label\",\"type\":\"nominal\"}}}]}"
+              },
+              "widgetType": "custom-vega-viz",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "order_status"
+                  },
+                  {
+                    "fieldName": "total_value"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 7,
+            "y": 5,
+            "width": 5,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "order_status_details",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "fields": [
+                    {
+                      "name": "Untitled_dataset_1__order_status",
+                      "expression": "`Untitled_dataset_1`.`order_status`"
+                    },
+                    {
+                      "name": "sum(Untitled_dataset_1__order_item_rows)",
+                      "expression": "SUM(`Untitled_dataset_1`.`order_item_rows`)"
+                    },
+                    {
+                      "name": "sum(Untitled_dataset_1__distinct_orders)",
+                      "expression": "SUM(`Untitled_dataset_1`.`distinct_orders`)"
+                    },
+                    {
+                      "name": "sum(Untitled_dataset_1__total_price)",
+                      "expression": "SUM(`Untitled_dataset_1`.`total_price`)"
+                    },
+                    {
+                      "name": "sum(Untitled_dataset_1__total_freight)",
+                      "expression": "SUM(`Untitled_dataset_1`.`total_freight`)"
+                    },
+                    {
+                      "name": "sum(Untitled_dataset_1__total_value)",
+                      "expression": "SUM(`Untitled_dataset_1`.`total_value`)"
+                    }
+                  ],
+                  "disaggregated": false,
+                  "orders": [
+                    {
+                      "direction": "DESC",
+                      "expression": "SUM(`Untitled_dataset_1`.`order_item_rows`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Order Status Details"
+              },
+              "version": 2,
+              "displayRowNumbers": false,
+              "rowsPerPage": 10,
+              "bandedRows": {
+                "enabled": true,
+                "backgroundColor": "#F7FBFD"
+              },
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "Untitled_dataset_1__order_status",
+                    "useForSearch": true,
+                    "contentAlignment": "left",
+                    "headerAlignment": "left",
+                    "displayName": "Order Status"
+                  },
+                  {
+                    "fieldName": "sum(Untitled_dataset_1__order_item_rows)",
+                    "useForSearch": false,
+                    "contentAlignment": "right",
+                    "headerAlignment": "right",
+                    "format": {
+                      "type": "number-plain",
+                      "abbreviation": "none",
+                      "decimalPlaces": {
+                        "type": "exact",
+                        "places": 0
+                      }
+                    },
+                    "displayName": "Order Items"
+                  },
+                  {
+                    "fieldName": "sum(Untitled_dataset_1__distinct_orders)",
+                    "useForSearch": false,
+                    "contentAlignment": "right",
+                    "headerAlignment": "right",
+                    "format": {
+                      "type": "number-plain",
+                      "abbreviation": "none",
+                      "decimalPlaces": {
+                        "type": "exact",
+                        "places": 0
+                      }
+                    },
+                    "displayName": "Distinct Orders"
+                  },
+                  {
+                    "fieldName": "sum(Untitled_dataset_1__total_price)",
+                    "useForSearch": false,
+                    "contentAlignment": "right",
+                    "headerAlignment": "right",
+                    "format": {
+                      "type": "number-currency",
+                      "currencyCode": "BRL",
+                      "abbreviation": "none",
+                      "decimalPlaces": {
+                        "type": "exact",
+                        "places": 2
+                      }
+                    },
+                    "displayName": "Total Price"
+                  },
+                  {
+                    "fieldName": "sum(Untitled_dataset_1__total_freight)",
+                    "useForSearch": false,
+                    "contentAlignment": "right",
+                    "headerAlignment": "right",
+                    "format": {
+                      "type": "number-currency",
+                      "currencyCode": "BRL",
+                      "abbreviation": "none",
+                      "decimalPlaces": {
+                        "type": "exact",
+                        "places": 2
+                      }
+                    },
+                    "displayName": "Total Freight"
+                  },
+                  {
+                    "fieldName": "sum(Untitled_dataset_1__total_value)",
+                    "useForSearch": false,
+                    "contentAlignment": "right",
+                    "headerAlignment": "right",
+                    "format": {
+                      "type": "number-currency",
+                      "currencyCode": "BRL",
+                      "abbreviation": "none",
+                      "decimalPlaces": {
+                        "type": "exact",
+                        "places": 2
+                      }
+                    },
+                    "displayName": "Total Order Value"
+                  }
+                ],
+                "rowOrder": [
+                  {
+                    "by": "column-reversed",
+                    "field": {
+                      "index": 1
+                    }
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 11,
+            "width": 12,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "order_status_filter",
+            "queries": [
+              {
+                "name": "dashboards/01f1a7f2e75d17f8bbc359d20695d8e3/datasets/8a67bbd88a624943b7cbf5b8cb8b8a7f_order_status",
+                "query": {
+                  "datasetName": "7c458d5c",
+                  "fields": [
+                    {
+                      "name": "order_status",
+                      "expression": "`order_status`"
+                    },
+                    {
+                      "name": "order_status_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "showDescription": false,
+                "title": {
+                  "value": "Order Status",
+                  "fields": []
+                }
+              },
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "order_status",
+                    "queryName": "dashboards/01f1a7f2e75d17f8bbc359d20695d8e3/datasets/8a67bbd88a624943b7cbf5b8cb8b8a7f_order_status"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 3,
+            "width": 8,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "canvasBackgroundColor": {
+        "light": "#EEF5F8",
+        "dark": "#0F1D24"
+      },
+      "widgetBackgroundColor": {
+        "light": "#FCFDFE",
+        "dark": "#132730"
+      },
+      "widgetBorderColor": {
+        "light": "#D7E7EE",
+        "dark": "#1F3C46"
+      },
+      "fontColor": {
+        "light": "#123B4A",
+        "dark": "#E8F4F7"
+      },
+      "selectionColor": {
+        "light": "#2272B4",
+        "dark": "#4FA3D9"
+      },
+      "visualizationColors": [
+        "#15AFDD",
+        "#2375A8",
+        "#52A870",
+        "#1F8A70",
+        "#7AC9C0",
+        "#0E5A6F"
+      ],
+      "widgetHeaderAlignment": "LEFT",
+      "fontFamily": "Inter",
+      "widgetPadding": 16,
+      "widgetMargin": 8,
+      "widgetCornerRadius": 12,
+      "widgetShadow": 10,
+      "fontSettings": {
+        "base": {
+          "fontFamily": "Inter",
+          "fontColor": {
+            "light": "#123B4A",
+            "dark": "#E8F4F7"
+          },
+          "fontSize": 12
+        },
+        "widgetTitle": {
+          "fontFamily": "Inter",
+          "fontColor": {
+            "light": "#0E3A4C",
+            "dark": "#F2FAFC"
+          },
+          "fontSize": 14,
+          "fontWeight": 700
+        },
+        "fieldTitle": {
+          "fontFamily": "Inter",
+          "fontColor": {
+            "light": "#0E3A4C",
+            "dark": "#D8EDF2"
+          },
+          "fontSize": 12,
+          "fontWeight": 600
+        },
+        "fieldValue": {
+          "fontFamily": "Inter",
+          "fontColor": {
+            "light": "#123B4A",
+            "dark": "#F2FAFC"
+          },
+          "fontSize": 13,
+          "fontWeight": 600
+        }
+      },
+      "gridLineColor": {
+        "light": "#D7E7EE",
+        "dark": "#2A4A55"
+      },
+      "axisLineColor": {
+        "light": "#A8C7D3",
+        "dark": "#3A6270"
+      }
+    },
+    "applyModeEnabled": false
+  }
+}

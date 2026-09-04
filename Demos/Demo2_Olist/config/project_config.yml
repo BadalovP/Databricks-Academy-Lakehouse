@@ -1,0 +1,33 @@
+project:
+  name: Demo2_Olist
+  environment: dev
+
+unity_catalog:
+  catalog: dbr_dev
+  schema: parvinbadalov
+
+tables:
+  gold_fact_order_items: gold_fact_order_items
+  gold_reconciliation_audit: gold_reconciliation_audit
+  final_validation_audit: olist_final_validation_audit
+  dqx_quarantine: dqx_gold_fact_order_items_quarantine
+  dqx_audit: dqx_gold_fact_order_items_audit
+
+views:
+  secure_customer: secure_gold_dim_customer
+  secure_dashboard: secure_gold_order_items_dashboard
+  pipeline_alert_status: olist_pipeline_alert_status
+
+governance:
+  state_access_table: governance_customer_state_access
+  pii_reader_group: olist_pii_readers
+
+quality:
+  expected_dqx_rules: 14
+  fail_on_dqx_errors: true
+
+alerts:
+  alert_name: Olist Pipeline Validation Alert
+  trigger_column: alert_value
+  trigger_operator: greater_than
+  trigger_value: 0

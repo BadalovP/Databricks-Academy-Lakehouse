@@ -1,0 +1,104 @@
+# Logical execution order for the Demo2_Olist notebook pipeline.
+# The executable Databricks Workflow will be created later in resources/.
+
+pipeline:
+  name: Demo2_Olist
+  description: End-to-end Olist lakehouse pipeline
+  catalog: dbr_dev
+  schema: parvinbadalov
+
+tasks:
+  - task_key: setup
+    notebook_path: ../notebooks/00_setup
+    depends_on: []
+
+  - task_key: source_exploration
+    notebook_path: ../notebooks/01_source_exploration
+    depends_on:
+      - setup
+
+  - task_key: validate_landing_files
+    notebook_path: ../notebooks/02_validate_landing_files
+    depends_on:
+      - source_exploration
+
+  # These two Bronze tasks can run in parallel.
+  - task_key: bronze_reference_tables
+    notebook_path: ../notebooks/03_bronze_reference_tables
+    depends_on:
+      - validate_landing_files
+
+  - task_key: bronze_autoloader
+    notebook_path: ../notebooks/04_bronze_autoloader
+    depends_on:
+      - validate_landing_files
+
+  - task_key: bronze_validation
+    notebook_path: ../notebooks/05_bronze_validation
+    depends_on:
+      - bronze_reference_tables
+      - bronze_autoloader
+
+  - task_key: silver_data_quality
+    notebook_path: ../notebooks/06_silver_data_quality
+    depends_on:
+      - bronze_validation
+
+  - task_key: silver_deduplication
+    notebook_path: ../notebooks/07_silver_deduplication
+    depends_on:
+      - silver_data_quality
+
+  - task_key: silver_business_transformations
+    notebook_path: ../notebooks/08_silver_business_transformations
+    depends_on:
+      - silver_deduplication
+
+  - task_key: customer_scd2
+    notebook_path: ../notebooks/09_customer_scd2
+    depends_on:
+      - silver_business_transformations
+
+  - task_key: gold_dimensions
+    notebook_path: ../notebooks/10_gold_dimensions
+    depends_on:
+      - customer_scd2
+
+  - task_key: gold_fact_order_items
+    notebook_path: ../notebooks/11_gold_fact_order_items
+    depends_on:
+      - gold_dimensions
+
+  - task_key: gold_reconciliation
+    notebook_path: ../notebooks/12_gold_reconciliation
+    depends_on:
+      - gold_fact_order_items
+
+  # Governance and DQX can run independently after Gold is validated.
+  - task_key: governance_rls_cls
+    notebook_path: ../notebooks/13_governance_rls_cls
+    depends_on:
+      - gold_reconciliation
+
+  - task_key: dqx_quality_monitoring
+    notebook_path: ../notebooks/17_dqx_quality_monitoring
+    depends_on:
+      - gold_reconciliation
+
+  - task_key: dashboard_validation
+    notebook_path: ../notebooks/14_dashboard_validation
+    depends_on:
+      - governance_rls_cls
+
+  - task_key: alert_validation
+    notebook_path: ../notebooks/15_alert_validation
+    depends_on:
+      - gold_reconciliation
+
+  # Final validation waits for dashboard, alert, and DQX processing.
+  - task_key: final_validation
+    notebook_path: ../notebooks/16_final_validation
+    depends_on:
+      - dashboard_validation
+      - alert_validation
+      - dqx_quality_monitoring

@@ -1,0 +1,186 @@
+# Databricks Workflow for the complete Demo2 Olist lakehouse pipeline.
+
+resources:
+  jobs:
+    demo2_olist_pipeline:
+      name: "[${bundle.target}] Demo2 Olist Lakehouse Pipeline"
+
+      description: >
+        End-to-end Olist lakehouse workflow covering Bronze, Silver,
+        Gold, reconciliation, governance, DQX, alerts and automated tests.
+
+      max_concurrent_runs: 1
+
+      queue:
+        enabled: true
+
+      email_notifications:
+        on_failure:
+          - parvinbadalov@softserve.academy
+
+      tasks:
+        - task_key: setup
+          notebook_task:
+            notebook_path: ../notebooks/00_setup.py
+            source: WORKSPACE
+          environment_key: default
+
+        - task_key: source_exploration
+          depends_on:
+            - task_key: setup
+          notebook_task:
+            notebook_path: ../notebooks/01_source_exploration.py
+            source: WORKSPACE
+          environment_key: default
+
+        - task_key: validate_landing_files
+          depends_on:
+            - task_key: source_exploration
+          notebook_task:
+            notebook_path: ../notebooks/02_validate_landing_files.py
+            source: WORKSPACE
+          environment_key: default
+
+        # These two Bronze tasks run in parallel.
+        - task_key: bronze_reference_tables
+          depends_on:
+            - task_key: validate_landing_files
+          notebook_task:
+            notebook_path: ../notebooks/03_bronze_reference_tables.py
+            source: WORKSPACE
+          environment_key: default
+
+        - task_key: bronze_autoloader
+          depends_on:
+            - task_key: validate_landing_files
+          notebook_task:
+            notebook_path: ../notebooks/04_bronze_autoloader.py
+            source: WORKSPACE
+          environment_key: default
+
+        - task_key: bronze_validation
+          depends_on:
+            - task_key: bronze_reference_tables
+            - task_key: bronze_autoloader
+          notebook_task:
+            notebook_path: ../notebooks/05_bronze_validation.py
+            source: WORKSPACE
+          environment_key: default
+
+        - task_key: silver_data_quality
+          depends_on:
+            - task_key: bronze_validation
+          notebook_task:
+            notebook_path: ../notebooks/06_silver_data_quality.py
+            source: WORKSPACE
+          environment_key: default
+
+        - task_key: silver_deduplication
+          depends_on:
+            - task_key: silver_data_quality
+          notebook_task:
+            notebook_path: ../notebooks/07_silver_deduplication.py
+            source: WORKSPACE
+          environment_key: default
+
+        - task_key: silver_business_transformations
+          depends_on:
+            - task_key: silver_deduplication
+          notebook_task:
+            notebook_path: ../notebooks/08_silver_business_transformations.py
+            source: WORKSPACE
+          environment_key: default
+
+        - task_key: customer_scd2
+          depends_on:
+            - task_key: silver_business_transformations
+          notebook_task:
+            notebook_path: ../notebooks/09_customer_scd2.py
+            source: WORKSPACE
+          environment_key: default
+
+        - task_key: gold_dimensions
+          depends_on:
+            - task_key: customer_scd2
+          notebook_task:
+            notebook_path: ../notebooks/10_gold_dimensions.py
+            source: WORKSPACE
+          environment_key: default
+
+        - task_key: gold_fact_order_items
+          depends_on:
+            - task_key: gold_dimensions
+          notebook_task:
+            notebook_path: ../notebooks/11_gold_fact_order_items.py
+            source: WORKSPACE
+          environment_key: default
+
+        - task_key: gold_reconciliation
+          depends_on:
+            - task_key: gold_fact_order_items
+          notebook_task:
+            notebook_path: ../notebooks/12_gold_reconciliation.py
+            source: WORKSPACE
+          environment_key: default
+
+        # These tasks run in parallel after Gold reconciliation.
+        - task_key: governance_rls_cls
+          depends_on:
+            - task_key: gold_reconciliation
+          notebook_task:
+            notebook_path: ../notebooks/13_governance_rls_cls.py
+            source: WORKSPACE
+          environment_key: default
+
+        - task_key: alert_validation
+          depends_on:
+            - task_key: gold_reconciliation
+          notebook_task:
+            notebook_path: ../notebooks/15_alert_validation.py
+            source: WORKSPACE
+          environment_key: default
+
+        - task_key: dqx_quality_monitoring
+          depends_on:
+            - task_key: gold_reconciliation
+          notebook_task:
+            notebook_path: ../notebooks/17_dqx_quality_monitoring.py
+            source: WORKSPACE
+          environment_key: default
+
+        - task_key: automated_tests
+          depends_on:
+            - task_key: gold_reconciliation
+          notebook_task:
+            notebook_path: ../tools/run_tests.py
+            source: WORKSPACE
+          environment_key: default
+
+        - task_key: dashboard_validation
+          depends_on:
+            - task_key: governance_rls_cls
+          notebook_task:
+            notebook_path: ../notebooks/14_dashboard_validation.py
+            source: WORKSPACE
+          environment_key: default
+
+        # Final validation runs only after every required check succeeds.
+        - task_key: final_validation
+          depends_on:
+            - task_key: dashboard_validation
+            - task_key: alert_validation
+            - task_key: dqx_quality_monitoring
+            - task_key: automated_tests
+          notebook_task:
+            notebook_path: ../notebooks/16_final_validation.py
+            source: WORKSPACE
+          environment_key: default
+
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "2"
+            dependencies:
+              - "databricks-labs-dqx==0.16.0"
+              - "pytest>=8.3,<9"
+              - "PyYAML>=6,<7"
