@@ -1,0 +1,19 @@
+{
+    "checked_scope":  "/subscriptions/419d681c-4d7e-48a1-ba31-24afe1f4e486/resourceGroups/PL_24_Databricks/providers/Microsoft.Storage/storageAccounts/lab08travelops63e621",
+    "target_action":  "Microsoft.Authorization/roleAssignments/write",
+    "can_create_role_assignments":  false,
+    "matching_permission_entries":  [
+                                        {
+                                            "allowed_patterns":  [
+                                                                     "*"
+                                                                 ],
+                                            "denied_patterns":  [
+                                                                    "Microsoft.Authorization/*/Write"
+                                                                ],
+                                            "effective":  false
+                                        }
+                                    ],
+    "existing_connector_role_assignments_at_scope":  [
+
+                                                     ]
+}

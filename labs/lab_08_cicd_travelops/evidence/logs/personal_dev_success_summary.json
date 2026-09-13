@@ -1,0 +1,10 @@
+{
+  "environment": "personal_dev",
+  "deployment_state": "bundle_bound_and_unchanged",
+  "pipeline_id": "99f54e11-d6b2-4361-b0eb-da12b91a31dc",
+  "pipeline_target": "dbr_dev.parvinbadalov_lab08_dev",
+  "raw_volume": "dbr_dev.parvinbadalov.lab08_dev_travelops_raw",
+  "raw_volume_owner": "terraform/personal",
+  "promotion_run_id": 444944253637947,
+  "promotion_result": "SUCCESS"
+}

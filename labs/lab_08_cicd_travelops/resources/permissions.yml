@@ -1,0 +1,22 @@
+# LAB 08 - TravelOps
+#
+# File:
+# resources/permissions.yml
+#
+# Purpose:
+# Documents the permissions-as-code strategy for resources whose permissions are
+# declared inline in their owning resource files.
+#
+# Ownership:
+# DAB resource files own job, pipeline, dashboard and alert permissions.
+# Terraform owns raw Volume grants, Azure RBAC and Databricks storage access
+# primitives.
+#
+# Environment behavior:
+# Least-privilege viewer/run grants resolve to the deploying identity in each
+# workspace. CI identity bootstrap remains an explicit workspace prerequisite.
+#
+# Note:
+# Databricks Asset Bundles apply permissions within each resource definition.
+# This file intentionally contains documentation comments only to avoid defining
+# duplicate resource ownership.

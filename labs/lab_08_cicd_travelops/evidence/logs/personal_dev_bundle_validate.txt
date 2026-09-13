@@ -1,0 +1,8 @@
+Name: lab08-travelops-cicd
+Target: personal_dev
+Workspace:
+  Host: https://dbc-1750318a-76a9.cloud.databricks.com
+  User: parvinbadalov@yahoo.com
+  Path: /Workspace/Users/parvinbadalov@yahoo.com/.bundle/lab08-travelops-cicd/personal_dev
+
+Validation OK!

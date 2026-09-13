@@ -1,0 +1,45 @@
+# LAB 08 - TravelOps
+#
+# File:
+# resources/pipeline.yml
+#
+# Purpose:
+# Defines the Lakeflow Spark Declarative Pipeline that promotes deterministic raw
+# Volume files into Bronze, Silver and Gold managed tables.
+#
+# Ownership:
+# DAB owns this pipeline. Terraform must not manage it.
+#
+# Environment behavior:
+# The Lakeflow target catalog/schema and raw Volume catalog/schema are supplied
+# separately because the raw landing Volumes are Terraform-owned in
+# dbr_dev.parvinbadalov while Personal application outputs use dedicated schemas.
+resources:
+  pipelines:
+    travelops_pipeline:
+      name: ${var.pipeline_name}
+      catalog: ${var.target_catalog}
+      target: ${var.target_schema}
+      serverless: true
+      continuous: false
+      photon: true
+      channel: CURRENT
+      root_path: ../pipeline
+      libraries:
+        - file:
+            path: ../pipeline/bronze.py
+        - file:
+            path: ../pipeline/silver.py
+        - file:
+            path: ../pipeline/gold.py
+      configuration:
+        travelops.target_catalog: ${var.target_catalog}
+        travelops.target_schema: ${var.target_schema}
+        travelops.raw_volume_catalog: ${var.raw_volume_catalog}
+        travelops.raw_volume_schema: ${var.raw_volume_schema}
+        travelops.raw_volume_name: ${var.raw_volume_name}
+        travelops.private_bronze: ${var.private_bronze}
+        travelops.private_silver: ${var.private_silver}
+      permissions:
+        - level: CAN_VIEW
+          user_name: ${workspace.current_user.userName}

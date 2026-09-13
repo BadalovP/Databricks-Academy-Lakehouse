@@ -1,0 +1,39 @@
+Checked: 2026-09-13 UTC
+
+Expected principal:
+dbb45359-22b9-4744-8467-2ea8633bd999
+
+Expected role definition:
+Storage Blob Data Contributor
+ba92f5b4-2d11-453d-a403-e96b0029c9fe
+
+Expected scope:
+/subscriptions/419d681c-4d7e-48a1-ba31-24afe1f4e486/resourceGroups/PL_24_Databricks/providers/Microsoft.Storage/storageAccounts/lab08travelops63e621
+
+The live access connector identity was verified through ARM and matches the
+expected principal.
+
+Read-only ARM role-assignment checks returned zero exact matches at:
+- 2026-09-13T18:30:19Z
+- 2026-09-13T18:30:58Z
+- 2026-09-13T18:31:12Z
+- 2026-09-13T18:31:54Z
+- 2026-09-13T18:32:35Z
+- 2026-09-13T18:33:16Z
+- 2026-09-13T18:33:57Z
+- 2026-09-13T18:34:38Z
+
+A final scope-wide lookup also returned zero Storage Blob Data Contributor
+assignments for any principal.
+
+The final local-review lookup for principal
+dbb45359-22b9-4744-8467-2ea8633bd999 also returned zero matching assignments.
+
+Safety decision:
+- No role-assignment resource ID is currently visible.
+- Terraform import was not attempted.
+- A fresh read-only Terraform plan was generated; it remains 4 add, 0 change,
+  0 destroy with no replacement.
+- Terraform apply was not run.
+- Azure DAB validation/deployment was not run.
+- Azure PROD application job was not run.

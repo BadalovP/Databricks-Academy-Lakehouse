@@ -1,0 +1,479 @@
+# LAB 08 - TravelOps
+#
+# Pull requests stop after quality, bundle validation, and read-only Terraform
+# plans. Pushes to main promote Personal DEV and Personal PROD, apply Azure PROD
+# Terraform, and deploy Azure PROD bundle resources. The Azure application run
+# stays disabled unless LAB08_RUN_AZURE_PROD_JOB is explicitly set to "true".
+name: LAB 08 TravelOps CI/CD
+
+on:
+  pull_request:
+    paths:
+      - "labs/lab_08_cicd_travelops/**"
+      - ".github/workflows/lab08_cicd.yml"
+      - ".github/terraform/**"
+  push:
+    branches: [main]
+    paths:
+      - "labs/lab_08_cicd_travelops/**"
+      - ".github/workflows/lab08_cicd.yml"
+      - ".github/terraform/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lab08-travelops-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  LAB08_ROOT: labs/lab_08_cicd_travelops
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: labs/lab_08_cicd_travelops
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install development dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . -r requirements-dev.txt
+      - name: Ruff
+        run: ruff check .
+      - name: Black
+        run: black --check .
+      - name: Pytest
+        run: pytest
+
+  bundle-validate:
+    name: Bundle Validate
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: labs/lab_08_cicd_travelops
+    steps:
+      - uses: actions/checkout@v4
+      - uses: databricks/setup-cli@main
+      - name: Validate Personal DEV and PROD
+        env:
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_PERSONAL_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_PERSONAL_TOKEN }}
+        run: |
+          databricks bundle validate --strict -t personal_dev
+          databricks bundle validate --strict -t personal_prod
+
+  deploy-personal-dev:
+    name: Deploy DEV
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: bundle-validate
+    runs-on: ubuntu-latest
+    environment: personal-dev
+    defaults:
+      run:
+        working-directory: labs/lab_08_cicd_travelops
+    steps:
+      - uses: actions/checkout@v4
+      - uses: databricks/setup-cli@main
+      - name: Deploy and run Personal DEV
+        env:
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_PERSONAL_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_PERSONAL_TOKEN }}
+        run: |
+          databricks bundle deploy -t personal_dev
+          databricks bundle run travelops_promotion_job -t personal_dev
+
+  validate-personal-dev:
+    name: Validate DEV
+    needs: deploy-personal-dev
+    runs-on: ubuntu-latest
+    environment: personal-dev
+    defaults:
+      run:
+        working-directory: labs/lab_08_cicd_travelops
+    steps:
+      - uses: actions/checkout@v4
+      - uses: databricks/setup-cli@main
+      - name: Require unchanged Personal DEV bundle
+        env:
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_PERSONAL_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_PERSONAL_TOKEN }}
+        run: |
+          databricks bundle plan -t personal_dev | tee personal-dev-plan.txt
+          grep -Fq "Plan: 0 to add, 0 to change, 0 to delete" personal-dev-plan.txt
+
+  deploy-personal-prod:
+    name: Deploy Personal PROD
+    needs: validate-personal-dev
+    runs-on: ubuntu-latest
+    environment: personal-prod
+    defaults:
+      run:
+        working-directory: labs/lab_08_cicd_travelops
+    steps:
+      - uses: actions/checkout@v4
+      - uses: databricks/setup-cli@main
+      - name: Deploy and run Personal PROD
+        env:
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_PERSONAL_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_PERSONAL_TOKEN }}
+        run: |
+          databricks bundle deploy -t personal_prod
+          databricks bundle run travelops_promotion_job -t personal_prod
+
+  validate-personal-prod:
+    name: Validate Personal PROD
+    needs: deploy-personal-prod
+    runs-on: ubuntu-latest
+    environment: personal-prod
+    defaults:
+      run:
+        working-directory: labs/lab_08_cicd_travelops
+    steps:
+      - uses: actions/checkout@v4
+      - uses: databricks/setup-cli@main
+      - name: Require unchanged Personal PROD bundle
+        env:
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_PERSONAL_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_PERSONAL_TOKEN }}
+        run: |
+          databricks bundle plan -t personal_prod | tee personal-prod-plan.txt
+          grep -Fq "Plan: 0 to add, 0 to change, 0 to delete" personal-prod-plan.txt
+
+  terraform-plan:
+    name: Terraform Plan
+    if: >-
+      always() &&
+      needs.bundle-validate.result == 'success' &&
+      (github.event_name == 'pull_request' || needs.validate-personal-prod.result == 'success')
+    needs: [bundle-validate, validate-personal-prod]
+    runs-on: ubuntu-latest
+    environment: azure-prod
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      ARM_USE_AZUREAD: "true"
+      ARM_USE_OIDC: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - name: Stage roots with Azure Blob remote state
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/lab08-personal" "$RUNNER_TEMP/lab08-azure-prod"
+          cp "$LAB08_ROOT"/terraform/personal/{main,outputs,variables,versions}.tf "$RUNNER_TEMP/lab08-personal/"
+          cp "$LAB08_ROOT"/terraform/azure-prod/{main,outputs,variables,versions}.tf "$RUNNER_TEMP/lab08-azure-prod/"
+          cp .github/terraform/lab08-azurerm-backend.tf "$RUNNER_TEMP/lab08-personal/backend.tf"
+          cp .github/terraform/lab08-azurerm-backend.tf "$RUNNER_TEMP/lab08-azure-prod/backend.tf"
+      - name: Personal Terraform validate and no-change plan
+        env:
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_PERSONAL_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_PERSONAL_TOKEN }}
+          TF_VAR_databricks_profile: ""
+        shell: bash
+        run: |
+          terraform -chdir="$LAB08_ROOT/terraform/personal" fmt -check
+          terraform -chdir="$RUNNER_TEMP/lab08-personal" init -input=false \
+            -backend-config="resource_group_name=${{ vars.TF_STATE_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ vars.TF_STATE_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ vars.TF_STATE_CONTAINER }}" \
+            -backend-config="key=lab08/personal.tfstate"
+          terraform -chdir="$RUNNER_TEMP/lab08-personal" validate
+          personal_state="$(terraform -chdir="$RUNNER_TEMP/lab08-personal" state list)"
+          for address in \
+            databricks_volume.personal_dev_raw \
+            databricks_volume.personal_prod_raw \
+            databricks_grants.personal_dev_raw \
+            databricks_grants.personal_prod_raw; do
+            grep -Fxq "$address" <<<"$personal_state" || {
+              echo "Remote Personal state is missing $address; refusing an unsafe plan."
+              exit 1
+            }
+          done
+          set +e
+          terraform -chdir="$RUNNER_TEMP/lab08-personal" plan -no-color -detailed-exitcode \
+            -out="$RUNNER_TEMP/lab08-personal.tfplan" | tee "$RUNNER_TEMP/personal-plan.txt"
+          plan_code=${PIPESTATUS[0]}
+          set -e
+          if [[ $plan_code -ne 0 ]]; then
+            echo "Personal Terraform must remain unchanged; exit code was $plan_code."
+            exit 1
+          fi
+      - name: Azure PROD Terraform validate and safe plan
+        env:
+          DATABRICKS_AUTH_TYPE: azure-cli
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
+          TF_VAR_databricks_profile: ""
+        shell: bash
+        run: |
+          terraform -chdir="$LAB08_ROOT/terraform/azure-prod" fmt -check
+          terraform -chdir="$RUNNER_TEMP/lab08-azure-prod" init -input=false \
+            -backend-config="resource_group_name=${{ vars.TF_STATE_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ vars.TF_STATE_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ vars.TF_STATE_CONTAINER }}" \
+            -backend-config="key=lab08/azure-prod.tfstate"
+          terraform -chdir="$RUNNER_TEMP/lab08-azure-prod" validate
+          azure_state="$(terraform -chdir="$RUNNER_TEMP/lab08-azure-prod" state list)"
+          for address in \
+            azurerm_storage_account.raw \
+            azurerm_storage_data_lake_gen2_filesystem.raw \
+            azurerm_databricks_access_connector.uc \
+            databricks_storage_credential.raw; do
+            grep -Fxq "$address" <<<"$azure_state" || {
+              echo "Remote Azure PROD state is missing $address; refusing an unsafe plan."
+              exit 1
+            }
+          done
+          set +e
+          terraform -chdir="$RUNNER_TEMP/lab08-azure-prod" plan -no-color -detailed-exitcode \
+            -out="$RUNNER_TEMP/azure-prod.tfplan" | tee "$RUNNER_TEMP/azure-prod-plan.txt"
+          plan_code=${PIPESTATUS[0]}
+          set -e
+          [[ $plan_code -eq 0 || $plan_code -eq 2 ]] || exit "$plan_code"
+          terraform -chdir="$RUNNER_TEMP/lab08-azure-prod" show -json \
+            "$RUNNER_TEMP/azure-prod.tfplan" > "$RUNNER_TEMP/azure-prod-plan.json"
+          while IFS=$'\t' read -r address actions; do
+            case "$address:$actions" in
+              azurerm_role_assignment.uc_storage_blob_data_contributor:create) ;;
+              databricks_external_location.raw:create) ;;
+              databricks_volume.azure_prod_raw:create) ;;
+              databricks_grant.azure_prod_raw_volume_rw:create) ;;
+              *) echo "Unsafe or unintended Azure PROD change: $address [$actions]"; exit 1 ;;
+            esac
+          done < <(jq -r '.resource_changes[]? | select(.change.actions != ["no-op"]) | [.address, (.change.actions | join(","))] | @tsv' "$RUNNER_TEMP/azure-prod-plan.json")
+      - name: Upload sanitized plan evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lab08-terraform-plans-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/personal-plan.txt
+            ${{ runner.temp }}/azure-prod-plan.txt
+          if-no-files-found: warn
+
+  terraform-apply:
+    name: Terraform Apply
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: terraform-plan
+    runs-on: ubuntu-latest
+    environment: azure-prod
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      storage_account_name: ${{ steps.tf-output.outputs.storage_account_name }}
+    env:
+      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      ARM_USE_AZUREAD: "true"
+      ARM_USE_OIDC: "true"
+      DATABRICKS_AUTH_TYPE: azure-cli
+      DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
+      TF_VAR_databricks_profile: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - name: Require roleAssignments/write
+        shell: bash
+        run: |
+          scope="/subscriptions/${{ vars.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ vars.LAB08_RESOURCE_GROUP_NAME }}/providers/Microsoft.Storage/storageAccounts/${{ vars.LAB08_AZURE_STORAGE_ACCOUNT_NAME }}"
+          permissions="$(az rest --method get --url "https://management.azure.com${scope}/providers/Microsoft.Authorization/permissions?api-version=2022-04-01")"
+          target="microsoft.authorization/roleassignments/write"
+          can_write=false
+          while IFS= read -r entry; do
+            allowed=false
+            denied=false
+            while IFS= read -r pattern; do
+              pattern="${pattern,,}"
+              [[ $target == $pattern ]] && allowed=true
+            done < <(jq -r '.actions[]?' <<<"$entry")
+            while IFS= read -r pattern; do
+              pattern="${pattern,,}"
+              [[ $target == $pattern ]] && denied=true
+            done < <(jq -r '.notActions[]?' <<<"$entry")
+            [[ $allowed == true && $denied == false ]] && can_write=true
+          done < <(jq -c '.value[]' <<<"$permissions")
+          [[ $can_write == true ]] || {
+            echo "Microsoft.Authorization/roleAssignments/write is unavailable at $scope; refusing Terraform apply."
+            exit 1
+          }
+      - name: Fresh safe plan, apply, and idempotency
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/lab08-azure-prod"
+          cp "$LAB08_ROOT"/terraform/azure-prod/{main,outputs,variables,versions}.tf "$RUNNER_TEMP/lab08-azure-prod/"
+          cp .github/terraform/lab08-azurerm-backend.tf "$RUNNER_TEMP/lab08-azure-prod/backend.tf"
+          terraform -chdir="$RUNNER_TEMP/lab08-azure-prod" init -input=false \
+            -backend-config="resource_group_name=${{ vars.TF_STATE_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ vars.TF_STATE_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ vars.TF_STATE_CONTAINER }}" \
+            -backend-config="key=lab08/azure-prod.tfstate"
+          azure_state="$(terraform -chdir="$RUNNER_TEMP/lab08-azure-prod" state list)"
+          for address in \
+            azurerm_storage_account.raw \
+            azurerm_storage_data_lake_gen2_filesystem.raw \
+            azurerm_databricks_access_connector.uc \
+            databricks_storage_credential.raw; do
+            grep -Fxq "$address" <<<"$azure_state" || {
+              echo "Remote Azure PROD state is missing $address; refusing apply."
+              exit 1
+            }
+          done
+          terraform -chdir="$RUNNER_TEMP/lab08-azure-prod" plan -no-color \
+            -out="$RUNNER_TEMP/azure-prod-fresh.tfplan" | tee "$RUNNER_TEMP/azure-prod-fresh-plan.txt"
+          terraform -chdir="$RUNNER_TEMP/lab08-azure-prod" show -json \
+            "$RUNNER_TEMP/azure-prod-fresh.tfplan" > "$RUNNER_TEMP/azure-prod-fresh-plan.json"
+          while IFS=$'\t' read -r address actions; do
+            case "$address:$actions" in
+              azurerm_role_assignment.uc_storage_blob_data_contributor:create) ;;
+              databricks_external_location.raw:create) ;;
+              databricks_volume.azure_prod_raw:create) ;;
+              databricks_grant.azure_prod_raw_volume_rw:create) ;;
+              *) echo "Unsafe or unintended Azure PROD change: $address [$actions]"; exit 1 ;;
+            esac
+          done < <(jq -r '.resource_changes[]? | select(.change.actions != ["no-op"]) | [.address, (.change.actions | join(","))] | @tsv' "$RUNNER_TEMP/azure-prod-fresh-plan.json")
+          terraform -chdir="$RUNNER_TEMP/lab08-azure-prod" apply -auto-approve "$RUNNER_TEMP/azure-prod-fresh.tfplan"
+          set +e
+          terraform -chdir="$RUNNER_TEMP/lab08-azure-prod" plan -no-color -detailed-exitcode | tee "$RUNNER_TEMP/azure-prod-idempotency.txt"
+          idempotency_code=${PIPESTATUS[0]}
+          set -e
+          if [[ $idempotency_code -ne 0 ]]; then
+            echo "Azure PROD Terraform is not idempotent; exit code was $idempotency_code."
+            exit 1
+          fi
+      - name: Export Terraform output
+        id: tf-output
+        shell: bash
+        run: |
+          value="$(terraform -chdir="$RUNNER_TEMP/lab08-azure-prod" output -raw storage_account_name)"
+          echo "storage_account_name=$value" >> "$GITHUB_OUTPUT"
+      - name: Upload apply evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lab08-terraform-apply-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/azure-prod-fresh-plan.txt
+            ${{ runner.temp }}/azure-prod-idempotency.txt
+          if-no-files-found: warn
+
+  deploy-azure-prod:
+    name: Deploy Azure PROD
+    needs: terraform-apply
+    runs-on: ubuntu-latest
+    environment: azure-prod
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: labs/lab_08_cicd_travelops
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - uses: databricks/setup-cli@main
+      - name: Plan and deploy Azure PROD bundle
+        env:
+          DATABRICKS_AUTH_TYPE: azure-cli
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
+        shell: bash
+        run: |
+          storage_account="${{ needs.terraform-apply.outputs.storage_account_name }}"
+          databricks bundle validate --strict -t azure_prod --var azure_storage_account_name="$storage_account"
+          databricks bundle plan -t azure_prod --var azure_storage_account_name="$storage_account" | tee azure-prod-bundle-plan.txt
+          grep -Eq "Plan: [0-9]+ to add, [0-9]+ to change, 0 to delete" azure-prod-bundle-plan.txt
+          databricks bundle deploy -t azure_prod --var azure_storage_account_name="$storage_account"
+
+  validate-azure-prod:
+    name: Validate Azure PROD
+    needs: [terraform-apply, deploy-azure-prod]
+    runs-on: ubuntu-latest
+    environment: azure-prod
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: labs/lab_08_cicd_travelops
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - uses: databricks/setup-cli@main
+      - name: Verify external storage objects and unchanged bundle
+        env:
+          DATABRICKS_AUTH_TYPE: azure-cli
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
+        shell: bash
+        run: |
+          storage_account="${{ needs.terraform-apply.outputs.storage_account_name }}"
+          databricks external-locations get lab08_travelops_raw_external_location --output json
+          databricks volumes read dbr_dev.parvinbadalov.lab08_prod_travelops_raw --output json
+          databricks bundle plan -t azure_prod --var azure_storage_account_name="$storage_account" | tee azure-prod-final-plan.txt
+          grep -Fq "Plan: 0 to add, 0 to change, 0 to delete" azure-prod-final-plan.txt
+
+  run-azure-prod:
+    name: Run Azure PROD (Explicitly Disabled)
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      vars.LAB08_RUN_AZURE_PROD_JOB == 'true'
+    needs: [terraform-apply, validate-azure-prod]
+    runs-on: ubuntu-latest
+    environment: azure-prod
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: labs/lab_08_cicd_travelops
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - uses: databricks/setup-cli@main
+      - name: Run Azure PROD application job after explicit authorization
+        env:
+          DATABRICKS_AUTH_TYPE: azure-cli
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
+        run: >-
+          databricks bundle run travelops_promotion_job -t azure_prod
+          --var azure_storage_account_name=${{ needs.terraform-apply.outputs.storage_account_name }}

@@ -1,0 +1,43 @@
+# LAB 08 - TravelOps
+#
+# File:
+# resources/alert.yml
+#
+# Purpose:
+# Defines a SQL alert that evaluates the Gold production health table.
+#
+# Ownership:
+# DAB owns this alert. Terraform owns no SQL alert resources.
+#
+# Environment behavior:
+# Query text references the application target catalog and schema via bundle
+# variables. The alert exists in Azure PROD but the application job is not run
+# there initially.
+resources:
+  alerts:
+    travelops_health_alert:
+      display_name: "[${bundle.target}] LAB 08 TravelOps Health Alert"
+      warehouse_id: ${var.warehouse_id}
+      query_text: |
+        SELECT
+          CASE WHEN MIN(health_passed) THEN 0 ELSE 1 END AS failing_health_checks
+        FROM ${var.target_catalog}.${var.target_schema}.gold_production_health
+      evaluation:
+        comparison_operator: GREATER_THAN
+        source:
+          name: failing_health_checks
+          display: failing_health_checks
+        threshold:
+          value:
+            double_value: 0
+        notification:
+          notify_on_ok: false
+          subscriptions:
+            - user_email: ${var.alert_subscriber_email}
+      schedule:
+        pause_status: PAUSED
+        quartz_cron_schedule: "0 0 8 * * ?"
+        timezone_id: Europe/Warsaw
+      permissions:
+        - level: CAN_RUN
+          user_name: ${workspace.current_user.userName}

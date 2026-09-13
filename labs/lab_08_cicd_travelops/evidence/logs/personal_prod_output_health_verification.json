@@ -1,0 +1,30 @@
+[
+  {
+    "object_name": "gold_payment_reconciliation_mismatches",
+    "row_count": "25000"
+  },
+  {
+    "object_name": "health_failed_checks",
+    "row_count": "0"
+  },
+  {
+    "object_name": "bookings_bronze",
+    "row_count": "50000"
+  },
+  {
+    "object_name": "booking_updates_bronze",
+    "row_count": "50000"
+  },
+  {
+    "object_name": "users_bronze",
+    "row_count": "50000"
+  },
+  {
+    "object_name": "payments_bronze",
+    "row_count": "50000"
+  },
+  {
+    "object_name": "gold_production_health",
+    "row_count": "1"
+  }
+]

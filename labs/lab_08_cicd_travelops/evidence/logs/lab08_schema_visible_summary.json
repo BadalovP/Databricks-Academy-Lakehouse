@@ -1,0 +1,20 @@
+[
+    {
+        "schema":  "parvinbadalov_lab08_dev",
+        "owner":  "parvinbadalov@yahoo.com",
+        "visible_table_count":  0,
+        "volume_count":  1,
+        "function_count":  0,
+        "table_summary":  "",
+        "volumes":  "lab08_travelops_raw:MANAGED"
+    },
+    {
+        "schema":  "parvinbadalov_lab08_prod",
+        "owner":  "parvinbadalov@yahoo.com",
+        "visible_table_count":  20,
+        "volume_count":  1,
+        "function_count":  0,
+        "table_summary":  "booking_updates_bronze:STREAMING_TABLE:pipeline=4d36399f-2f34-46f8-a2d1-b9340fd1556a; bookings_bronze:STREAMING_TABLE:pipeline=4d36399f-2f34-46f8-a2d1-b9340fd1556a; bookings_silver:MATERIALIZED_VIEW:pipeline=4d36399f-2f34-46f8-a2d1-b9340fd1556a; current_bookings_silver:MATERIALIZED_VIEW:pipeline=4d36399f-2f34-46f8-a2d1-b9340fd1556a; destinations_bronze:STREAMING_TABLE:pipeline=4d36399f-2f34-46f8-a2d1-b9340fd1556a; destinations_silver:MATERIALIZED_VIEW:pipeline=4d36399f-2f34-46f8-a2d1-b9340fd1556a; gold_daily_booking_revenue:MATERIALIZED_VIEW:pipeline=4d36399f-2f34-46f8-a2d1-b9340fd1556a; gold_destination_performance:MATERIALIZED_VIEW:pipeline=4d36399f-2f34-46f8-a2d1-b9340fd1556a; gold_payment_reconciliation:MATERIALIZED_VIEW:pipeline=4d36399f-2f34-46f8-a2d1-b9340fd1556a; gold_production_health:MATERIALIZED_VIEW:pipeline=4d36399f-2f34-46f8-a2d1-b9340fd1556a; gold_property_performance:MATERIALIZED_VIEW:pipeline=4d36399f-2f34-46f8-a2d1-b9340fd1556a; gold_review_score:MATERIALIZED_VIEW:pipeline=4d36399f-2f34-46f8-a2d1-b9340fd1556a; payments_bronze:STREAMING_TABLE:pipeline=4d36399f-2f34-46f8-a2d1-b9340fd1556a; payments_silver:MATERIALIZED_VIEW:pipeline=4d36399f-2f34-46f8-a2d1-b9340fd1556a; properties_bronze:STREAMING_TABLE:pipeline=4d36399f-2f34-46f8-a2d1-b9340fd1556a; properties_silver:MATERIALIZED_VIEW:pipeline=4d36399f-2f34-46f8-a2d1-b9340fd1556a; reviews_bronze:STREAMING_TABLE:pipeline=4d36399f-2f34-46f8-a2d1-b9340fd1556a; reviews_silver:MATERIALIZED_VIEW:pipeline=4d36399f-2f34-46f8-a2d1-b9340fd1556a; users_bronze:STREAMING_TABLE:pipeline=4d36399f-2f34-46f8-a2d1-b9340fd1556a; users_silver:MATERIALIZED_VIEW:pipeline=4d36399f-2f34-46f8-a2d1-b9340fd1556a",
+        "volumes":  "lab08_travelops_raw:MANAGED"
+    }
+]

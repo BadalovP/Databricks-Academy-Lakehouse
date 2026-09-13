@@ -1,0 +1,13 @@
+{
+  "environment": "personal_prod",
+  "deployment_state": "bundle_bound_and_unchanged",
+  "pipeline_id": "4d36399f-2f34-46f8-a2d1-b9340fd1556a",
+  "pipeline_target": "dbr_dev.parvinbadalov_lab08_prod",
+  "raw_volume": "dbr_dev.parvinbadalov.lab08_prod_travelops_raw",
+  "raw_volume_owner": "terraform/personal",
+  "full_refresh_update_id": "4d984b05-502d-4a78-a632-9236da12d80f",
+  "full_refresh_result": "COMPLETED",
+  "promotion_run_id": 123636626922236,
+  "promotion_result": "SUCCESS",
+  "failed_health_checks": 0
+}

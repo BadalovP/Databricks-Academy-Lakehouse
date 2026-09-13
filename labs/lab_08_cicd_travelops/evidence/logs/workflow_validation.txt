@@ -1,0 +1,17 @@
+Checked: 2026-09-13
+
+- Workflow YAML parsed successfully: 11 jobs.
+- Job dependency policy assertions passed.
+- No DATABRICKS_AZURE_TOKEN reference exists; Azure jobs use OIDC plus Azure CLI authentication.
+- PR path contains no Terraform apply, Azure PROD deploy, or Personal PROD run.
+- Main path is split into Unit Tests, Bundle Validate, Deploy DEV, Validate DEV, Deploy Personal PROD, Validate Personal PROD, Terraform Plan, Terraform Apply, Deploy Azure PROD, and Validate Azure PROD jobs.
+- Azure PROD application run is gated by explicit LAB08_RUN_AZURE_PROD_JOB=true authorization.
+- Terraform formatting passed for Personal, Azure PROD, and the CI backend template.
+- Ruff passed.
+- Black passed.
+- Pytest passed: 9 tests.
+- Personal DEV strict validation passed; plan is 0 add, 0 change, 0 delete, 8 unchanged.
+- Personal PROD strict validation passed; plan is 0 add, 0 change, 0 delete, 8 unchanged.
+- Personal Terraform detailed-exit-code plan returned 0 and No changes.
+- Azure PROD Terraform validation passed; its fresh plan is 4 add, 0 change,
+  0 destroy with no replacement.

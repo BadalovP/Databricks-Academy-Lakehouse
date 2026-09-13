@@ -1,0 +1,10 @@
+Full-refresh safety decision for Personal PROD rehearsal pipeline
+pipeline=4d36399f-2f34-46f8-a2d1-b9340fd1556a
+command=databricks bundle run travelops_pipeline -t personal_prod --full-refresh-all
+scope=full Lakeflow graph: Bronze streaming tables and dependent Silver/Gold materialized views
+reason=historical Auto Loader offset state records previous_last_input_path in /Volumes/dbr_dev/parvinbadalov_lab08_prod/lab08_travelops_raw while current CloudFilesSource is /Volumes/dbr_dev/parvinbadalov/lab08_prod_travelops_raw
+expected reset=streaming table data and flow checkpoints are reset/recomputed by supported Lakeflow full-refresh semantics
+source replayable=yes; current raw volume contains all seven source folders and matches historical row counts
+azure_involved=no
+manual_checkpoint_delete=no
+manual_drop=no

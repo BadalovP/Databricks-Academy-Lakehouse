@@ -1,0 +1,329 @@
+{
+  "datasets": [
+    {
+      "name": "ds_daily",
+      "displayName": "Daily booking revenue",
+      "queryLines": [
+        "SELECT booking_date, status, booking_count, booking_value, avg_stay_nights ",
+        "FROM gold_daily_booking_revenue"
+      ]
+    },
+    {
+      "name": "ds_destinations",
+      "displayName": "Destination performance",
+      "queryLines": [
+        "SELECT destination, country, state_or_province, booking_count, booking_value, active_property_count, avg_rating ",
+        "FROM gold_destination_performance"
+      ]
+    },
+    {
+      "name": "ds_reconciliation",
+      "displayName": "Payment reconciliation",
+      "queryLines": [
+        "SELECT reconciliation_status, COUNT(*) AS booking_count, SUM(booking_amount) AS booking_value, SUM(completed_payment_amount) AS paid_value ",
+        "FROM gold_payment_reconciliation ",
+        "GROUP BY reconciliation_status"
+      ]
+    },
+    {
+      "name": "ds_reviews",
+      "displayName": "Review score",
+      "queryLines": [
+        "SELECT destination, country, property_type, avg_rating, review_count ",
+        "FROM gold_review_score"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "overview",
+      "displayName": "Overview",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1",
+      "layout": [
+        {
+          "widget": {
+            "name": "header",
+            "multilineTextboxSpec": {
+              "lines": [
+                "# TravelOps Operations\n",
+                "\n",
+                "Booking value, demand mix, payment reconciliation and destination health for the active deployment target."
+              ]
+            }
+          },
+          "position": {"x": 0, "y": 0, "width": 12, "height": 2}
+        },
+        {
+          "widget": {
+            "name": "kpi-bookings",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_daily",
+                  "fields": [
+                    {"name": "sum(booking_count)", "expression": "SUM(`booking_count`)"},
+                    {"name": "daily(booking_date)", "expression": "DATE_TRUNC(\"DAY\", `booking_date`)"}
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "sum(booking_count)", "displayName": "Bookings", "format": {"type": "number", "abbreviation": "compact", "decimalPlaces": {"type": "max", "places": 1}}},
+                "period": {"fieldName": "daily(booking_date)"}
+              },
+              "frame": {"showTitle": true, "title": "Bookings"}
+            }
+          },
+          "position": {"x": 0, "y": 2, "width": 4, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "kpi-booking-value",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_daily",
+                  "fields": [
+                    {"name": "sum(booking_value)", "expression": "SUM(`booking_value`)"},
+                    {"name": "daily(booking_date)", "expression": "DATE_TRUNC(\"DAY\", `booking_date`)"}
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "sum(booking_value)", "displayName": "Booking Value", "format": {"type": "number-currency", "currencyCode": "USD", "abbreviation": "compact", "decimalPlaces": {"type": "max", "places": 2}}},
+                "period": {"fieldName": "daily(booking_date)"}
+              },
+              "frame": {"showTitle": true, "title": "Booking Value"}
+            }
+          },
+          "position": {"x": 4, "y": 2, "width": 4, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "kpi-payment-gaps",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_reconciliation",
+                  "fields": [{"name": "sum(booking_count)", "expression": "SUM(`booking_count`)"}],
+                  "filters": [{"expression": "`reconciliation_status` <> 'matched'"}],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "sum(booking_count)", "displayName": "Payment Gaps", "format": {"type": "number", "abbreviation": "compact", "decimalPlaces": {"type": "max", "places": 1}}}
+              },
+              "frame": {"showTitle": true, "title": "Payment Gaps"}
+            }
+          },
+          "position": {"x": 8, "y": 2, "width": 4, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "booking-trend",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_daily",
+                  "fields": [
+                    {"name": "booking_date", "expression": "`booking_date`"},
+                    {"name": "status", "expression": "`status`"},
+                    {"name": "sum(booking_value)", "expression": "SUM(`booking_value`)"}
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {"fieldName": "booking_date", "scale": {"type": "temporal"}},
+                "y": {"fieldName": "sum(booking_value)", "displayName": "Booking Value", "scale": {"type": "quantitative"}, "format": {"type": "number-currency", "currencyCode": "USD", "abbreviation": "compact", "decimalPlaces": {"type": "max", "places": 2}}},
+                "color": {"fieldName": "status", "scale": {"type": "categorical"}}
+              },
+              "frame": {"showTitle": true, "title": "Daily Booking Value by Status"}
+            }
+          },
+          "position": {"x": 0, "y": 5, "width": 8, "height": 6}
+        },
+        {
+          "widget": {
+            "name": "reconciliation-bars",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_reconciliation",
+                  "fields": [
+                    {"name": "reconciliation_status", "expression": "`reconciliation_status`"},
+                    {"name": "booking_count", "expression": "`booking_count`"}
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {"fieldName": "reconciliation_status", "scale": {"type": "categorical"}},
+                "y": {"fieldName": "booking_count", "scale": {"type": "quantitative"}},
+                "color": {"fieldName": "reconciliation_status", "scale": {"type": "categorical", "mappings": [{"value": "matched", "color": "#009E73"}, {"value": "missing_payment", "color": "#D55E00"}, {"value": "underpaid", "color": "#E69F00"}, {"value": "overpaid", "color": "#CC79A7"}]}}
+              },
+              "frame": {"showTitle": true, "title": "Payment Reconciliation"}
+            }
+          },
+          "position": {"x": 8, "y": 5, "width": 4, "height": 6}
+        },
+        {
+          "widget": {
+            "name": "destination-table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_destinations",
+                  "fields": [
+                    {"name": "destination", "expression": "`destination`"},
+                    {"name": "country", "expression": "`country`"},
+                    {"name": "booking_count", "expression": "`booking_count`"},
+                    {"name": "booking_value", "expression": "`booking_value`"},
+                    {"name": "avg_rating", "expression": "`avg_rating`"}
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {"fieldName": "destination", "displayName": "Destination"},
+                  {"fieldName": "country", "displayName": "Country"},
+                  {"fieldName": "booking_count", "displayName": "Bookings", "format": {"type": "number", "abbreviation": "compact", "decimalPlaces": {"type": "max", "places": 1}}},
+                  {"fieldName": "booking_value", "displayName": "Booking Value", "format": {"type": "number-currency", "currencyCode": "USD", "abbreviation": "compact", "decimalPlaces": {"type": "max", "places": 2}}},
+                  {"fieldName": "avg_rating", "displayName": "Avg Rating", "format": {"type": "number", "decimalPlaces": {"type": "max", "places": 2}}}
+                ]
+              },
+              "frame": {"showTitle": true, "title": "Destination Performance"}
+            }
+          },
+          "position": {"x": 0, "y": 11, "width": 12, "height": 6}
+        }
+      ]
+    },
+    {
+      "name": "filters",
+      "displayName": "Filters",
+      "pageType": "PAGE_TYPE_GLOBAL_FILTERS",
+      "layoutVersion": "GRID_V1",
+      "layout": [
+        {
+          "widget": {
+            "name": "filter-date",
+            "queries": [
+              {
+                "name": "daily_date",
+                "query": {
+                  "datasetName": "ds_daily",
+                  "fields": [{"name": "booking_date", "expression": "`booking_date`"}],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-date-range-picker",
+              "encodings": {"fields": [{"fieldName": "booking_date", "queryName": "daily_date", "displayName": "Booking Date"}]},
+              "frame": {"showTitle": true, "title": "Booking Date"}
+            }
+          },
+          "position": {"x": 0, "y": 0, "width": 4, "height": 2}
+        },
+        {
+          "widget": {
+            "name": "filter-status",
+            "queries": [
+              {
+                "name": "daily_status",
+                "query": {
+                  "datasetName": "ds_daily",
+                  "fields": [{"name": "status", "expression": "`status`"}],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {"fields": [{"fieldName": "status", "queryName": "daily_status", "displayName": "Status"}]},
+              "frame": {"showTitle": true, "title": "Status"}
+            }
+          },
+          "position": {"x": 4, "y": 0, "width": 4, "height": 2}
+        },
+        {
+          "widget": {
+            "name": "filter-country",
+            "queries": [
+              {
+                "name": "destination_country",
+                "query": {
+                  "datasetName": "ds_destinations",
+                  "fields": [{"name": "country", "expression": "`country`"}],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "review_country",
+                "query": {
+                  "datasetName": "ds_reviews",
+                  "fields": [{"name": "country", "expression": "`country`"}],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {"fields": [{"fieldName": "country", "queryName": "destination_country", "displayName": "Destination Country"}, {"fieldName": "country", "queryName": "review_country", "displayName": "Review Country"}]},
+              "frame": {"showTitle": true, "title": "Country"}
+            }
+          },
+          "position": {"x": 8, "y": 0, "width": 4, "height": 2}
+        }
+      ]
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "canvasBackgroundColor": {"light": "#FCFCFC", "dark": "#1F272D"},
+      "widgetBackgroundColor": {"light": "#FFFFFF", "dark": "#11171C"},
+      "widgetBorderColor": {"light": "#FFFFFF", "dark": "#11171C"},
+      "fontColor": {"light": "#11171C", "dark": "#E8ECF0"},
+      "selectionColor": {"light": "#2272B4", "dark": "#8ACAFF"},
+      "visualizationColors": ["#0072B2", "#E69F00", "#009E73", "#CC79A7", "#D55E00", "#56B4E9", "#F0E442"],
+      "widgetHeaderAlignment": "LEFT"
+    }
+  }
+}

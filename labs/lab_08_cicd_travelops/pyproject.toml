@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "travelops"
+version = "0.1.0"
+description = "LAB 08 TravelOps CI/CD lakehouse package"
+requires-python = ">=3.11"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+  "remote: requires deployed Databricks resources",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+builtins = ["dbutils", "display", "spark"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["travelops"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]

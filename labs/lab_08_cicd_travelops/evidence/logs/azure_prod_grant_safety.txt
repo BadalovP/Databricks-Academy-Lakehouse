@@ -1,0 +1,10 @@
+Checked: 2026-09-13
+
+Resource: databricks_grant.azure_prod_raw_volume_rw
+Principal: parvinbadalov@softserve.academy
+Securable: dbr_dev.parvinbadalov.lab08_prod_travelops_raw
+Privileges: READ_VOLUME, WRITE_VOLUME
+MANAGE: not granted
+
+The obsolete authoritative address databricks_grants.azure_prod_raw is absent from configuration and state.
+The singular databricks_grant manages only this principal's required raw Volume access.

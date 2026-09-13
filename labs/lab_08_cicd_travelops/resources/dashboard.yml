@@ -1,0 +1,26 @@
+# LAB 08 - TravelOps
+#
+# File:
+# resources/dashboard.yml
+#
+# Purpose:
+# Deploys the AI/BI dashboard for target-specific TravelOps Gold tables.
+#
+# Ownership:
+# DAB owns the dashboard resource and serialized dashboard file. The JSON file is
+# documented here and in project Markdown because JSON does not allow comments.
+#
+# Environment behavior:
+# Dataset catalog/schema are injected per target, so dashboard queries use bare
+# table names and stay portable across personal_dev, personal_prod and azure_prod.
+resources:
+  dashboards:
+    travelops_dashboard:
+      display_name: "[${bundle.target}] LAB 08 TravelOps Operations"
+      file_path: ../dashboards/travelops_operations.lvdash.json
+      warehouse_id: ${var.warehouse_id}
+      dataset_catalog: ${var.target_catalog}
+      dataset_schema: ${var.target_schema}
+      permissions:
+        - level: CAN_READ
+          user_name: ${workspace.current_user.userName}

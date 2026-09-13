@@ -1,0 +1,4 @@
+Error class: QUOTA_EXCEEDED.UC_RESOURCE_QUOTA_EXCEEDED
+Observed message: Cannot create 1 table in the shared schema; estimated count exceeded the limit of 100.
+Affected design: prefixed DEV/PROD tables in dbr_dev.parvinbadalov.
+Resolution: publish unprefixed application datasets to dedicated dbr_dev.parvinbadalov_lab08_dev and dbr_dev.parvinbadalov_lab08_prod schemas while retaining Terraform-owned raw Volumes in dbr_dev.parvinbadalov.
