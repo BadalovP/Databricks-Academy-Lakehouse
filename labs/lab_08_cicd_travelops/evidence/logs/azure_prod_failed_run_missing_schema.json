@@ -1,0 +1,12 @@
+{
+  "run_id": 234618529385350,
+  "run_url": "https://adb-7405604503619901.1.azuredatabricks.net/jobs/941995669563439/runs/234618529385350?o=7405604503619901",
+  "result": "FAILED",
+  "root_cause": "Required DAB target schema does not exist: dbr_dev.parvinbadalov_lab08_prod",
+  "task_results": {
+    "seed_raw_data": "FAILED",
+    "run_lakeflow_pipeline": "SKIPPED_UPSTREAM_FAILED",
+    "validate_gold_health": "SKIPPED_UPSTREAM_FAILED"
+  },
+  "safety": "No schema, data, volume, table, pipeline, or infrastructure resource was deleted or replaced."
+}

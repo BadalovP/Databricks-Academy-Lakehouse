@@ -1,0 +1,7 @@
+Terraform address: databricks_schema.travelops_prod
+Target: dbr_dev.parvinbadalov_lab08_prod
+Fresh plan: 1 to add, 0 to change, 0 to destroy
+Only planned addition: databricks_schema.travelops_prod
+Apply: 1 added, 0 changed, 0 destroyed
+Final detailed-exit-code plan: 0 / No changes
+Safety: no existing resource was changed, destroyed, or replaced.

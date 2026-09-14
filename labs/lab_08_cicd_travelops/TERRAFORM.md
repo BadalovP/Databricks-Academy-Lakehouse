@@ -3,7 +3,7 @@
 Terraform is split into independent roots:
 
 - `terraform/personal` owns Personal DEV and Personal PROD raw managed Volumes.
-- `terraform/azure-prod` owns Azure PROD storage, filesystem, access connector, RBAC, storage credential, external location, and the Azure PROD external raw Volume.
+- `terraform/azure-prod` owns Azure PROD storage, filesystem, access connector, RBAC, storage credential, external location, the Azure PROD external raw Volume, and application schema `dbr_dev.parvinbadalov_lab08_prod`.
 
 Neither root creates, imports, renames, replaces, or manages the existing `dbr_dev.parvinbadalov` schema. Both roots reference it read-only through `data.databricks_schema`.
 
@@ -48,16 +48,23 @@ Personal Terraform apply created:
 
 The second Personal Terraform plan returned `No changes`.
 
-Azure PROD remains blocked on Azure RBAC permission `Microsoft.Authorization/roleAssignments/write`, required to assign `Storage Blob Data Contributor` to the access connector managed identity. A read-only effective-permissions query confirmed that `Microsoft.Authorization/*/Write` is excluded and that no connector role assignment currently exists at the storage-account scope.
+The Azure administrator created the required `Storage Blob Data Contributor` assignment for access connector principal `dbb45359-22b9-4744-8467-2ea8633bd999`. Its full resource ID ends in `roleAssignments/c0e24625-edc3-444a-8112-a7327380a96a`, and it was imported into `azurerm_role_assignment.uc_storage_blob_data_contributor`. Terraform did not recreate the assignment.
 
 The current Azure state owns exactly:
 
 - `azurerm_storage_account.raw`
 - `azurerm_storage_data_lake_gen2_filesystem.raw`
 - `azurerm_databricks_access_connector.uc`
+- `azurerm_role_assignment.uc_storage_blob_data_contributor`
 - `databricks_storage_credential.raw`
+- `databricks_external_location.raw`
+- `databricks_volume.azure_prod_raw`
+- `databricks_grant.azure_prod_raw_volume_rw`
+- `databricks_schema.travelops_prod`
 
-The fresh plan is `4 to add, 0 to change, 0 to destroy`. Its only additions are `azurerm_role_assignment.uc_storage_blob_data_contributor`, `databricks_external_location.raw`, `databricks_volume.azure_prod_raw`, and `databricks_grant.azure_prod_raw_volume_rw`. Direct read-only checks confirmed the role assignment, external location, and external Volume do not yet exist, so these are genuinely new rather than unmanaged existing resources.
+After the RBAC import, the fresh plan was `3 to add, 0 to change, 0 to destroy`. Terraform added only `databricks_external_location.raw`, `databricks_volume.azure_prod_raw`, and `databricks_grant.azure_prod_raw_volume_rw`. The immediate detailed-exit-code plan returned `0` and `No changes`.
+
+The first Azure PROD application run failed safely because its required target schema did not exist. A subsequent fresh Terraform plan proposed only `databricks_schema.travelops_prod` with `1 to add, 0 to change, 0 to destroy`. Terraform created `dbr_dev.parvinbadalov_lab08_prod` with `prevent_destroy`; the immediate and post-run detailed-exit-code plans both returned `0` and `No changes`. The existing `dbr_dev.parvinbadalov` raw schema remains a read-only data source and is not managed.
 
 The Azure PROD raw Volume grant is modeled with singular `databricks_grant.azure_prod_raw_volume_rw` instead of authoritative `databricks_grants`, so Terraform manages only the Lab 8 principal's `READ_VOLUME` and `WRITE_VOLUME` privileges.
 

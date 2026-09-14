@@ -67,6 +67,12 @@ variable "databricks_schema" {
   default     = "parvinbadalov"
 }
 
+variable "azure_prod_application_schema" {
+  description = "Azure PROD application schema owned by Terraform and used by DAB-owned datasets."
+  type        = string
+  default     = "parvinbadalov_lab08_prod"
+}
+
 variable "storage_credential_name" {
   description = "Databricks storage credential name created for Lab 8."
   type        = string

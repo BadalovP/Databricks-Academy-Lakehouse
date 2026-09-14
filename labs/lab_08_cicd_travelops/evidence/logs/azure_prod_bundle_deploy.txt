@@ -1,0 +1,4 @@
+Command: databricks bundle deploy -t azure_prod --profile AZURE_DEV --var azure_storage_account_name=lab08travelops63e621
+Files uploaded to: /Workspace/Users/parvinbadalov@softserve.academy/.bundle/lab08-travelops-cicd/azure_prod/files
+Result: Deployment complete!
+Application job was not run as part of deployment; later grading runs are recorded separately.

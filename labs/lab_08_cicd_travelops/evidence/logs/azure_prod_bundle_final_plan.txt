@@ -1,0 +1,3 @@
+Command: databricks bundle plan -t azure_prod --profile AZURE_DEV --var azure_storage_account_name=lab08travelops63e621
+Plan: 0 to add, 0 to change, 0 to delete, 8 unchanged
+Checked after successful application run: 829850820027662

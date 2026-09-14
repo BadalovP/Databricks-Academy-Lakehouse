@@ -1,0 +1,6 @@
+Command: databricks bundle plan -t azure_prod --profile AZURE_DEV --var azure_storage_account_name=lab08travelops63e621
+Create: alerts.travelops_health_alert and permissions
+Create: dashboards.travelops_dashboard and permissions
+Create: jobs.travelops_promotion_job and permissions
+Create: pipelines.travelops_pipeline and permissions
+Plan: 8 to add, 0 to change, 0 to delete, 0 unchanged

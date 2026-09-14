@@ -1,0 +1,22 @@
+{
+  "job_id": 941995669563439,
+  "run_id": 829850820027662,
+  "run_url": "https://adb-7405604503619901.1.azuredatabricks.net/jobs/941995669563439/runs/829850820027662?o=7405604503619901",
+  "result": "SUCCESS",
+  "duration_ms": 224432,
+  "task_results": {
+    "seed_raw_data": {
+      "run_id": 531494652455521,
+      "result": "SUCCESS"
+    },
+    "run_lakeflow_pipeline": {
+      "run_id": 609729054712938,
+      "pipeline_id": "85c888ba-d801-4c0d-896d-ec73330e4ee6",
+      "result": "SUCCESS"
+    },
+    "validate_gold_health": {
+      "run_id": 568151841605224,
+      "result": "SUCCESS"
+    }
+  }
+}

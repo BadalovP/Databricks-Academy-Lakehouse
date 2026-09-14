@@ -1,0 +1,20 @@
+{
+  "external_location": {
+    "name": "lab08_travelops_raw_external_location",
+    "credential_name": "lab08_travelops_storage_credential",
+    "url": "abfss://lab08-travelops@lab08travelops63e621.dfs.core.windows.net/raw"
+  },
+  "volume": {
+    "full_name": "dbr_dev.parvinbadalov.lab08_prod_travelops_raw",
+    "volume_type": "EXTERNAL",
+    "storage_location": "abfss://lab08-travelops@lab08travelops63e621.dfs.core.windows.net/raw"
+  },
+  "grant": {
+    "terraform_address": "databricks_grant.azure_prod_raw_volume_rw",
+    "principal": "parvinbadalov@softserve.academy",
+    "privileges": [
+      "READ_VOLUME",
+      "WRITE_VOLUME"
+    ]
+  }
+}

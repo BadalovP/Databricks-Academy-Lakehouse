@@ -8,11 +8,12 @@
 # Databricks Asset Bundle.
 #
 # Ownership:
-# Terraform owns raw Volume registrations. DAB must not create, rename, replace
-# or own the existing dbr_dev.parvinbadalov schema.
+# Terraform owns raw Volume registrations and the Azure PROD application schema.
+# DAB must not create, rename, replace or own either Terraform-managed resource,
+# and neither tool owns the existing dbr_dev.parvinbadalov raw schema.
 #
 # Environment behavior:
 # personal_dev and personal_prod raw managed volumes live in the personal
-# Terraform root. azure_prod raw external volume lives in the azure-prod
-# Terraform root.
+# Terraform root. The azure-prod Terraform root owns its raw external volume and
+# dbr_dev.parvinbadalov_lab08_prod application schema.
 resources: {}

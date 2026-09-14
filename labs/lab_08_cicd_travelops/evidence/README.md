@@ -24,13 +24,26 @@ Terraform state, and saved plan files.
 | Historical source root cause | Personal PROD | Resolved by full refresh | `logs/location_overlap_prod_flow_path_extract.json` shows current and retained historical Auto Loader paths. |
 | Terraform ownership | Personal | No changes | `logs/personal_terraform_plan.txt` proves both managed raw Volumes remain in state with an idempotent plan. |
 | Terraform validation | Azure PROD | Pass | `logs/azure_prod_validate.txt` records the current configuration validation. |
-| Terraform plan | Azure PROD | 4 add, 0 change, 0 destroy | `logs/azure_prod_plan.txt` identifies the exact remaining additions and shows no replacement. |
-| Existing-resource safety | Azure PROD | Four resources already tracked | `logs/azure_prod_state_and_remote_inventory.txt` distinguishes existing state from genuinely pending resources. |
-| Grant safety | Azure PROD | Singular least privilege | `logs/azure_prod_grant_safety.txt` confirms `databricks_grant` with only `READ_VOLUME` and `WRITE_VOLUME`. |
-| RBAC prerequisite | Azure PROD | Blocked at last check | `logs/azure_prod_rbac_status.json` and `logs/azure_prod_role_assignment_check.txt` record effective permission and assignment visibility without applying infrastructure. |
-| Workflow policy | GitHub Actions | Pass | `logs/workflow_validation.txt` records YAML parsing, dependency, PR safety, OIDC, and Azure-run gating checks. |
+| Imported RBAC state | Azure PROD | Verified | `logs/azure_prod_rbac_import_state.txt` records the imported role-assignment ID, principal, role, and storage-account scope. |
+| Pre-apply Terraform plan | Azure PROD | 3 add, 0 change, 0 destroy | `logs/azure_prod_terraform_plan.txt` identifies only the external location, external Volume, and singular grant, with no replacement. |
+| Terraform apply | Azure PROD | 3 added, 0 changed, 0 destroyed | `logs/azure_prod_terraform_apply.txt` records the safe fresh apply result. |
+| Final Terraform plan | Azure PROD | No changes | `logs/azure_prod_terraform_final_plan.txt` records detailed exit code 0 and the final idempotent state. |
+| UC storage verification | Azure PROD | Pass | `logs/azure_prod_uc_storage_verification.json` records the ADLS-backed external location, EXTERNAL Volume, and singular `READ_VOLUME`/`WRITE_VOLUME` grant. |
+| Strict bundle validation | Azure PROD | Pass | `logs/azure_prod_bundle_validate.txt` records strict DAB validation against the Azure workspace. |
+| Pre-deploy bundle plan | Azure PROD | 8 add, 0 change, 0 delete | `logs/azure_prod_bundle_plan_before_deploy.txt` records the four DAB-owned resources and their permissions with no deletion or replacement. |
+| Bundle deployment | Azure PROD | Success | `logs/azure_prod_bundle_deploy.txt` records the deployment-only result. |
+| First application run | Azure PROD | Failed safely | `logs/azure_prod_failed_run_missing_schema.json` records run `234618529385350`, the missing target-schema precondition, and skipped downstream tasks. |
+| Application schema migration | Azure PROD | 1 added, 0 changed, 0 destroyed | `logs/azure_prod_schema_terraform_migration.txt` records the single-resource plan/apply and final no-change plan. |
+| Application schema verification | Azure PROD | Terraform-managed | `logs/azure_prod_schema_verification.json` records `dbr_dev.parvinbadalov_lab08_prod` and its Terraform state address. |
+| Authorized application rerun | Azure PROD | Success | `logs/azure_prod_successful_run.json` records run `829850820027662` and all three successful tasks. |
+| Production outputs and health | Azure PROD | 20 tables; health passed | `logs/azure_prod_health_verification.json` records the Bronze/Silver/Gold inventory and the single green health row. |
+| Post-run inventory | Azure PROD | Verified | `logs/azure_prod_bundle_inventory.json` records deployed resource IDs, runtime configuration, synchronized files, application schema, and both grading runs. |
+| Final bundle plan | Azure PROD | 0 add, 0 change, 0 delete | `logs/azure_prod_bundle_final_plan.txt` records eight unchanged resources. |
+| Workflow policy | GitHub Actions | Pass | `logs/workflow_validation.txt` records YAML parsing, dependency, PR safety, temporary PAT mode, advanced OIDC mode, and Azure-run gating checks. |
 
-Azure Terraform apply, Azure DAB deployment, and the Azure application job have
-not run. Screenshots of GitHub Actions, Lakeflow, dashboards, expectations, and
-Azure resources must be captured manually only after the corresponding remote
-operation succeeds.
+Azure Terraform, DAB deployment, and the authorized Azure PROD application run
+are complete and idempotent. The first run failed safely before downstream work
+because the application schema was absent; Terraform now owns that schema, and
+the successful rerun produced a green health result. Screenshots of GitHub
+Actions, Lakeflow, dashboards, expectations, and Azure resources remain a manual
+evidence step.

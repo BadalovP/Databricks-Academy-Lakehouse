@@ -46,3 +46,8 @@ output "azure_prod_raw_volume_full_name" {
   description = "Azure PROD raw external Volume full name."
   value       = "${var.databricks_catalog}.${var.databricks_schema}.${databricks_volume.azure_prod_raw.name}"
 }
+
+output "azure_prod_application_schema_full_name" {
+  description = "Azure PROD application schema created before the DAB promotion job runs."
+  value       = databricks_schema.travelops_prod.id
+}

@@ -1,0 +1,11 @@
+{
+  "terraform_address": "databricks_schema.travelops_prod",
+  "full_name": "dbr_dev.parvinbadalov_lab08_prod",
+  "catalog_name": "dbr_dev",
+  "name": "parvinbadalov_lab08_prod",
+  "schema_id": "5758e06f-a8b9-45da-949f-3bbaa1ce5d44",
+  "owner": "parvinbadalov@softserve.academy",
+  "comment": "LAB 08 TravelOps Azure PROD application schema managed by Terraform.",
+  "created_by": "terraform apply",
+  "manual_creation_used": false
+}

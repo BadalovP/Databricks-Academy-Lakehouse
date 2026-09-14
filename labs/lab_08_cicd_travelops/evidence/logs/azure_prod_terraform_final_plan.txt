@@ -1,0 +1,4 @@
+Command: terraform plan -no-color -detailed-exitcode
+Result: No changes. Your infrastructure matches the configuration.
+Detailed exit code: 0
+Tracked application schema: databricks_schema.travelops_prod [id=dbr_dev.parvinbadalov_lab08_prod]

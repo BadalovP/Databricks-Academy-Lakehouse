@@ -1,8 +1,8 @@
 # LAB 08 - TravelOps
 
-TravelOps is a standalone Lab 8 project that demonstrates CI/CD promotion for a Databricks lakehouse. Pull requests run quality gates, bundle validation, and read-only Terraform plans. Merges to main promote Personal DEV and Personal PROD before applying Azure infrastructure and deploying the same bundle to Azure PROD.
+TravelOps is a standalone Lab 8 project that demonstrates CI/CD promotion for a Databricks lakehouse. Pull requests run quality gates and bundle validation, with read-only Terraform plans added when advanced OIDC mode is enabled. Merges to main promote Personal DEV and Personal PROD before selecting either the advanced Terraform deployment or temporary PAT deployment for Azure PROD.
 
-Azure PROD is not deployed yet because the current Azure identity still lacks `Microsoft.Authorization/roleAssignments/write`. Its application job remains intentionally disabled until explicitly authorized.
+Azure PROD infrastructure, DAB resources, and the application workload are complete and idempotent. The first grading run failed safely because the required application schema was absent; Terraform now owns that schema, and the authorized rerun succeeded with a green production-health result.
 
 ## Requirement Matrix
 
@@ -12,7 +12,7 @@ Azure PROD is not deployed yet because the current Azure identity still lacks `M
 | DEV and PROD targets | `personal_dev`, `personal_prod`, `azure_prod` |
 | PR tests/lint/validate | `.github/workflows/lab08_cicd.yml` |
 | Personal PROD rehearsal | `personal_prod` target and post-run zero-change plan |
-| Azure PROD deploy on main | Terraform plus `databricks bundle deploy -t azure_prod` |
+| Azure PROD deploy on main | Advanced Terraform/OIDC path or temporary Databricks PAT path |
 | Assets as code | `resources/`, `pipeline/`, `notebooks/`, `dashboards/`, `sql/`, `terraform/personal`, `terraform/azure-prod` |
 | Idempotency | deterministic raw overwrite, DAB state, Terraform `prevent_destroy` |
 | No duplicate root ownership | root `databricks.yml` is not modified for Lab 8 |
@@ -64,23 +64,23 @@ Gold: `gold_daily_booking_revenue`, `gold_property_performance`, `gold_destinati
 
 During the ownership migration, the adopted Personal PROD pipeline initially failed with `INVALID_PARAMETER_VALUE.LOCATION_OVERLAP`. Detailed Lakeflow events showed the active Auto Loader source pointed at the new Terraform-owned raw Volume, while retained streaming offsets still referenced the previous raw Volume path in `dbr_dev.parvinbadalov_lab08_prod.lab08_travelops_raw`. The code does not configure explicit `cloudFiles.schemaLocation` or `checkpointLocation`; Lakeflow owns checkpoint metadata under target table `_dlt_metadata`. Because the new raw Volume contained a complete replayable seed and ordinary batch reads succeeded, a supported Personal PROD full refresh was used to rebuild the rehearsal pipeline without deleting schemas, volumes, pipelines, or checkpoints manually.
 
-`azure_prod` uses the paid Azure workspace `https://adb-7405604503619901.1.azuredatabricks.net` in production mode. DAB-owned application outputs target `dbr_dev.parvinbadalov_lab08_prod`, while the Terraform-owned external raw Volume remains `dbr_dev.parvinbadalov.lab08_prod_travelops_raw`. The identical Personal PROD and Azure PROD logical volume name is intentional because they live in different physical workspaces. The bundle can be deployed after the Azure RBAC blocker is resolved, but the application job is not run in the initial build.
+`azure_prod` uses the paid Azure workspace `https://adb-7405604503619901.1.azuredatabricks.net` in production mode. Terraform owns the application schema `dbr_dev.parvinbadalov_lab08_prod`, while DAB owns the Bronze/Silver/Gold datasets created within it. The Terraform-owned external raw Volume remains `dbr_dev.parvinbadalov.lab08_prod_travelops_raw`. The identical Personal PROD and Azure PROD logical volume name is intentional because they live in different physical workspaces. The authorized Azure PROD rerun completed successfully.
 
 ## Ownership
 
-Terraform owns raw Volumes in every environment. `terraform/personal` owns the two Personal managed raw Volumes. `terraform/azure-prod` owns Azure storage, raw filesystem, access connector, RBAC, storage credential, external location and the Azure PROD external raw Volume. DAB owns the Lakeflow pipeline, job, notebooks, dashboard, alert, application configuration and Bronze/Silver/Gold datasets. Neither Terraform nor DAB owns the existing `dbr_dev.parvinbadalov` schema. The root bundle remains available for Labs 1-7 and does not own Lab 8 resources.
+Terraform owns raw Volumes in every environment. `terraform/personal` owns the two Personal managed raw Volumes. `terraform/azure-prod` owns Azure storage, raw filesystem, access connector, RBAC, storage credential, external location, the Azure PROD external raw Volume, and the Azure PROD application schema. DAB owns the Lakeflow pipeline, job, notebooks, dashboard, alert, application configuration and Bronze/Silver/Gold datasets. Neither Terraform nor DAB owns the existing `dbr_dev.parvinbadalov` raw schema. The root bundle remains available for Labs 1-7 and does not own Lab 8 resources.
 
 ## CI/CD Graph
 
-Pull requests run Unit Tests -> Bundle Validate -> Terraform Plan. They do not apply Terraform, deploy Azure PROD, or run Personal PROD. Pushes to `main` run Unit Tests -> Bundle Validate -> Deploy DEV -> Validate DEV -> Deploy Personal PROD -> Validate Personal PROD -> Terraform Plan -> Terraform Apply -> Deploy Azure PROD -> Validate Azure PROD. The optional Azure PROD application-run job is disabled unless `LAB08_RUN_AZURE_PROD_JOB=true` is explicitly configured.
+Pull requests run Unit Tests -> Bundle Validate and, only when `LAB08_ENABLE_AZURE_OIDC=true`, read-only Terraform plans. They never apply, deploy, or run PROD. Pushes to `main` first promote Personal DEV and Personal PROD, then select one explicit Azure mode: `true` preserves the advanced OIDC/Terraform/deploy path; `false` uses a temporary Azure Databricks PAT to validate, deploy, run, and verify Azure PROD without running Terraform. The advanced application-run job also requires `LAB08_RUN_AZURE_PROD_JOB=true`.
 
 ## Current Status
 
-Personal DEV and Personal PROD are complete and their final bundle plans are unchanged. Personal Terraform is also unchanged. Personal PROD required one intentional supported full refresh because retained streaming state referenced the historical managed Volume after raw ownership moved to Terraform. Azure state currently tracks the storage account, filesystem, access connector, and storage credential; its fresh plan is `4 to add, 0 to change, 0 to destroy`. The remaining additions are the narrow RBAC assignment, external location, external raw Volume, and singular read/write Volume grant. Azure apply and DAB deployment have not run because `roleAssignments/write` remains unavailable. Evidence logs live in `evidence/logs/`.
+Personal DEV and Personal PROD are complete and their final bundle plans are unchanged. Personal Terraform is also unchanged. The first Azure PROD grading run `234618529385350` stopped safely in `seed_raw_data` because `dbr_dev.parvinbadalov_lab08_prod` did not exist; its pipeline and health tasks were skipped. Terraform then added only `databricks_schema.travelops_prod`. Rerun `829850820027662` completed all three tasks successfully and produced 20 Bronze/Silver/Gold tables with `health_passed = true`. Final Azure Terraform and DAB plans are unchanged. Evidence logs live in `evidence/logs/`.
 
 ## One-Time Configuration
 
-GitHub repository variables, secrets, OIDC federation, and remote-state migration required by the workflow are documented in `CICD.md`. Do not commit secret values. Azure PROD job execution remains blocked until explicitly authorized.
+GitHub repository variables, secrets, OIDC federation, PAT fallback, and remote-state migration required by the workflow are documented in `CICD.md`. Do not commit secret values. Set `LAB08_ENABLE_AZURE_OIDC` explicitly; an unset value activates neither Azure deployment path.
 
 ## Documentation Convention
 

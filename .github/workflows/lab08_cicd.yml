@@ -1,9 +1,9 @@
 # LAB 08 - TravelOps
 #
-# Pull requests stop after quality, bundle validation, and read-only Terraform
-# plans. Pushes to main promote Personal DEV and Personal PROD, apply Azure PROD
-# Terraform, and deploy Azure PROD bundle resources. The Azure application run
-# stays disabled unless LAB08_RUN_AZURE_PROD_JOB is explicitly set to "true".
+# Pull requests stop after quality and bundle validation, plus read-only
+# Terraform plans when advanced OIDC mode is enabled. Pushes to main promote
+# Personal DEV and Personal PROD, then select the advanced OIDC/Terraform Azure
+# path or a temporary PAT-only Azure deployment path.
 name: LAB 08 TravelOps CI/CD
 
 on:
@@ -66,7 +66,7 @@ jobs:
       - uses: databricks/setup-cli@main
       - name: Validate Personal DEV and PROD
         env:
-          DATABRICKS_HOST: ${{ vars.DATABRICKS_PERSONAL_HOST }}
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_PERSONAL_HOST || 'https://dbc-1750318a-76a9.cloud.databricks.com' }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_PERSONAL_TOKEN }}
         run: |
           databricks bundle validate --strict -t personal_dev
@@ -86,7 +86,7 @@ jobs:
       - uses: databricks/setup-cli@main
       - name: Deploy and run Personal DEV
         env:
-          DATABRICKS_HOST: ${{ vars.DATABRICKS_PERSONAL_HOST }}
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_PERSONAL_HOST || 'https://dbc-1750318a-76a9.cloud.databricks.com' }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_PERSONAL_TOKEN }}
         run: |
           databricks bundle deploy -t personal_dev
@@ -105,7 +105,7 @@ jobs:
       - uses: databricks/setup-cli@main
       - name: Require unchanged Personal DEV bundle
         env:
-          DATABRICKS_HOST: ${{ vars.DATABRICKS_PERSONAL_HOST }}
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_PERSONAL_HOST || 'https://dbc-1750318a-76a9.cloud.databricks.com' }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_PERSONAL_TOKEN }}
         run: |
           databricks bundle plan -t personal_dev | tee personal-dev-plan.txt
@@ -124,7 +124,7 @@ jobs:
       - uses: databricks/setup-cli@main
       - name: Deploy and run Personal PROD
         env:
-          DATABRICKS_HOST: ${{ vars.DATABRICKS_PERSONAL_HOST }}
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_PERSONAL_HOST || 'https://dbc-1750318a-76a9.cloud.databricks.com' }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_PERSONAL_TOKEN }}
         run: |
           databricks bundle deploy -t personal_prod
@@ -143,7 +143,7 @@ jobs:
       - uses: databricks/setup-cli@main
       - name: Require unchanged Personal PROD bundle
         env:
-          DATABRICKS_HOST: ${{ vars.DATABRICKS_PERSONAL_HOST }}
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_PERSONAL_HOST || 'https://dbc-1750318a-76a9.cloud.databricks.com' }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_PERSONAL_TOKEN }}
         run: |
           databricks bundle plan -t personal_prod | tee personal-prod-plan.txt
@@ -153,6 +153,7 @@ jobs:
     name: Terraform Plan
     if: >-
       always() &&
+      vars.LAB08_ENABLE_AZURE_OIDC == 'true' &&
       needs.bundle-validate.result == 'success' &&
       (github.event_name == 'pull_request' || needs.validate-personal-prod.result == 'success')
     needs: [bundle-validate, validate-personal-prod]
@@ -187,7 +188,7 @@ jobs:
           cp .github/terraform/lab08-azurerm-backend.tf "$RUNNER_TEMP/lab08-azure-prod/backend.tf"
       - name: Personal Terraform validate and no-change plan
         env:
-          DATABRICKS_HOST: ${{ vars.DATABRICKS_PERSONAL_HOST }}
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_PERSONAL_HOST || 'https://dbc-1750318a-76a9.cloud.databricks.com' }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_PERSONAL_TOKEN }}
           TF_VAR_databricks_profile: ""
         shell: bash
@@ -238,7 +239,12 @@ jobs:
             azurerm_storage_account.raw \
             azurerm_storage_data_lake_gen2_filesystem.raw \
             azurerm_databricks_access_connector.uc \
-            databricks_storage_credential.raw; do
+            azurerm_role_assignment.uc_storage_blob_data_contributor \
+            databricks_storage_credential.raw \
+            databricks_external_location.raw \
+            databricks_volume.azure_prod_raw \
+            databricks_grant.azure_prod_raw_volume_rw \
+            databricks_schema.travelops_prod; do
             grep -Fxq "$address" <<<"$azure_state" || {
               echo "Remote Azure PROD state is missing $address; refusing an unsafe plan."
               exit 1
@@ -273,7 +279,10 @@ jobs:
 
   terraform-apply:
     name: Terraform Apply
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      vars.LAB08_ENABLE_AZURE_OIDC == 'true'
     needs: terraform-plan
     runs-on: ubuntu-latest
     environment: azure-prod
@@ -341,7 +350,12 @@ jobs:
             azurerm_storage_account.raw \
             azurerm_storage_data_lake_gen2_filesystem.raw \
             azurerm_databricks_access_connector.uc \
-            databricks_storage_credential.raw; do
+            azurerm_role_assignment.uc_storage_blob_data_contributor \
+            databricks_storage_credential.raw \
+            databricks_external_location.raw \
+            databricks_volume.azure_prod_raw \
+            databricks_grant.azure_prod_raw_volume_rw \
+            databricks_schema.travelops_prod; do
             grep -Fxq "$address" <<<"$azure_state" || {
               echo "Remote Azure PROD state is missing $address; refusing apply."
               exit 1
@@ -351,15 +365,11 @@ jobs:
             -out="$RUNNER_TEMP/azure-prod-fresh.tfplan" | tee "$RUNNER_TEMP/azure-prod-fresh-plan.txt"
           terraform -chdir="$RUNNER_TEMP/lab08-azure-prod" show -json \
             "$RUNNER_TEMP/azure-prod-fresh.tfplan" > "$RUNNER_TEMP/azure-prod-fresh-plan.json"
-          while IFS=$'\t' read -r address actions; do
-            case "$address:$actions" in
-              azurerm_role_assignment.uc_storage_blob_data_contributor:create) ;;
-              databricks_external_location.raw:create) ;;
-              databricks_volume.azure_prod_raw:create) ;;
-              databricks_grant.azure_prod_raw_volume_rw:create) ;;
-              *) echo "Unsafe or unintended Azure PROD change: $address [$actions]"; exit 1 ;;
-            esac
-          done < <(jq -r '.resource_changes[]? | select(.change.actions != ["no-op"]) | [.address, (.change.actions | join(","))] | @tsv' "$RUNNER_TEMP/azure-prod-fresh-plan.json")
+          change_count="$(jq '[.resource_changes[]? | select(.change.actions != ["no-op"])] | length' "$RUNNER_TEMP/azure-prod-fresh-plan.json")"
+          [[ $change_count -eq 0 ]] || {
+            echo "Azure PROD state must be fully migrated and unchanged before apply; found $change_count change(s)."
+            exit 1
+          }
           terraform -chdir="$RUNNER_TEMP/lab08-azure-prod" apply -auto-approve "$RUNNER_TEMP/azure-prod-fresh.tfplan"
           set +e
           terraform -chdir="$RUNNER_TEMP/lab08-azure-prod" plan -no-color -detailed-exitcode | tee "$RUNNER_TEMP/azure-prod-idempotency.txt"
@@ -387,6 +397,7 @@ jobs:
 
   deploy-azure-prod:
     name: Deploy Azure PROD
+    if: vars.LAB08_ENABLE_AZURE_OIDC == 'true'
     needs: terraform-apply
     runs-on: ubuntu-latest
     environment: azure-prod
@@ -418,6 +429,7 @@ jobs:
 
   validate-azure-prod:
     name: Validate Azure PROD
+    if: vars.LAB08_ENABLE_AZURE_OIDC == 'true'
     needs: [terraform-apply, deploy-azure-prod]
     runs-on: ubuntu-latest
     environment: azure-prod
@@ -447,11 +459,49 @@ jobs:
           databricks bundle plan -t azure_prod --var azure_storage_account_name="$storage_account" | tee azure-prod-final-plan.txt
           grep -Fq "Plan: 0 to add, 0 to change, 0 to delete" azure-prod-final-plan.txt
 
-  run-azure-prod:
-    name: Run Azure PROD (Explicitly Disabled)
+  deploy-run-azure-prod-pat:
+    name: Deploy and Run Azure PROD (Temporary PAT)
     if: >-
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
+      vars.LAB08_ENABLE_AZURE_OIDC == 'false'
+    needs: validate-personal-prod
+    runs-on: ubuntu-latest
+    environment: azure-prod
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: labs/lab_08_cicd_travelops
+    steps:
+      - uses: actions/checkout@v4
+      - uses: databricks/setup-cli@main
+      - name: Validate, deploy, run, and verify Azure PROD with PAT
+        env:
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_AZURE_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          storage_account="${{ vars.LAB08_AZURE_STORAGE_ACCOUNT_NAME || 'lab08travelops63e621' }}"
+          [[ -n "$DATABRICKS_HOST" ]] || { echo "DATABRICKS_AZURE_HOST is required."; exit 1; }
+          [[ -n "$DATABRICKS_TOKEN" ]] || { echo "DATABRICKS_AZURE_TOKEN is required."; exit 1; }
+          [[ -n "$storage_account" ]] || { echo "LAB08_AZURE_STORAGE_ACCOUNT_NAME is required."; exit 1; }
+          databricks bundle validate --strict -t azure_prod --var azure_storage_account_name="$storage_account"
+          databricks bundle plan -t azure_prod --var azure_storage_account_name="$storage_account" | tee azure-prod-pat-plan.txt
+          grep -Eq "Plan: [0-9]+ to add, [0-9]+ to change, 0 to delete" azure-prod-pat-plan.txt
+          databricks bundle deploy -t azure_prod --var azure_storage_account_name="$storage_account"
+          databricks bundle run -t azure_prod travelops_promotion_job --var azure_storage_account_name="$storage_account"
+          databricks bundle validate --strict -t azure_prod --var azure_storage_account_name="$storage_account"
+          databricks bundle plan -t azure_prod --var azure_storage_account_name="$storage_account" | tee azure-prod-pat-final-plan.txt
+          grep -Fq "Plan: 0 to add, 0 to change, 0 to delete" azure-prod-pat-final-plan.txt
+
+  run-azure-prod:
+    name: Run Azure PROD (OIDC, Explicitly Gated)
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      vars.LAB08_ENABLE_AZURE_OIDC == 'true' &&
       vars.LAB08_RUN_AZURE_PROD_JOB == 'true'
     needs: [terraform-apply, validate-azure-prod]
     runs-on: ubuntu-latest

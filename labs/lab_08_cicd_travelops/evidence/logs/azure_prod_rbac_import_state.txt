@@ -1,0 +1,7 @@
+Terraform address: azurerm_role_assignment.uc_storage_blob_data_contributor
+Assignment ID: /subscriptions/419d681c-4d7e-48a1-ba31-24afe1f4e486/resourceGroups/PL_24_Databricks/providers/Microsoft.Storage/storageAccounts/lab08travelops63e621/providers/Microsoft.Authorization/roleAssignments/c0e24625-edc3-444a-8112-a7327380a96a
+Principal ID: dbb45359-22b9-4744-8467-2ea8633bd999
+Principal type: ServicePrincipal
+Role: Storage Blob Data Contributor
+Scope: /subscriptions/419d681c-4d7e-48a1-ba31-24afe1f4e486/resourceGroups/PL_24_Databricks/providers/Microsoft.Storage/storageAccounts/lab08travelops63e621
+Result: imported state matches the administrator-created assignment; no duplicate was created.

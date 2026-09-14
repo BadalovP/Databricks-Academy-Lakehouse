@@ -1,0 +1,66 @@
+{
+  "workspace": "https://adb-7405604503619901.1.azuredatabricks.net",
+  "target_catalog": "dbr_dev",
+  "target_schema": "parvinbadalov_lab08_prod",
+  "application_schema": {
+    "full_name": "dbr_dev.parvinbadalov_lab08_prod",
+    "terraform_address": "databricks_schema.travelops_prod",
+    "schema_id": "5758e06f-a8b9-45da-949f-3bbaa1ce5d44"
+  },
+  "raw_volume": "dbr_dev.parvinbadalov.lab08_prod_travelops_raw",
+  "raw_volume_type": "EXTERNAL",
+  "pipeline": {
+    "id": "85c888ba-d801-4c0d-896d-ec73330e4ee6",
+    "name": "lab08_azure_prod_travelops_pipeline",
+    "state": "IDLE",
+    "library_count": 3
+  },
+  "job": {
+    "id": 941995669563439,
+    "name": "[azure_prod] LAB 08 TravelOps Promotion Job",
+    "task_keys": [
+      "seed_raw_data",
+      "run_lakeflow_pipeline",
+      "validate_gold_health"
+    ],
+    "grading_runs": [
+      {
+        "run_id": 234618529385350,
+        "result": "FAILED",
+        "root_cause": "Required DAB target schema does not exist: dbr_dev.parvinbadalov_lab08_prod"
+      },
+      {
+        "run_id": 829850820027662,
+        "result": "SUCCESS"
+      }
+    ]
+  },
+  "dashboard": {
+    "id": "01f1afaccf3219fb8ab7eb9dd8302104",
+    "name": "[azure_prod] LAB 08 TravelOps Operations"
+  },
+  "alert": {
+    "id": "1969906894019065",
+    "name": "[azure_prod] LAB 08 TravelOps Health Alert"
+  },
+  "deployed_files": {
+    "notebooks": [
+      "00_seed_raw_data",
+      "01_validate_gold_health"
+    ],
+    "pipeline_sources": [
+      "bronze.py",
+      "silver.py",
+      "gold.py"
+    ],
+    "dashboard": "travelops_operations.lvdash.json",
+    "sql": "production_health.sql"
+  },
+  "application_outputs": {
+    "bronze_table_count": 7,
+    "silver_table_count": 7,
+    "gold_table_count": 6,
+    "total_table_count": 20,
+    "health_passed": true
+  }
+}

@@ -10,13 +10,15 @@
 # Ownership:
 # This bundle owns Lab 8 Lakeflow pipeline, jobs, notebooks, dashboards, SQL
 # health assets, application configuration and managed Bronze/Silver/Gold tables.
-# Terraform owns raw Volumes. The repository root bundle continues to own Labs
-# 1-7 and must not define these Lab 8 resources.
+# Terraform owns raw Volumes and the Azure PROD application schema. The
+# repository root bundle continues to own Labs 1-7 and must not define these
+# Lab 8 resources.
 #
 # Environment behavior:
 # Personal DEV and PROD publish application datasets to dedicated Lab 8 schemas.
-# Terraform-owned raw Volumes stay in the existing dbr_dev.parvinbadalov schema.
-# The raw Volume schema and Lakeflow target schema intentionally differ.
+# Azure Terraform creates its application schema before DAB runs. Terraform-owned
+# raw Volumes stay in the existing dbr_dev.parvinbadalov schema, so the raw Volume
+# schema and Lakeflow target schema intentionally differ.
 bundle:
   name: lab08-travelops-cicd
   engine: direct

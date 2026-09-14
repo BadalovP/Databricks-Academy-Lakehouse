@@ -13,6 +13,7 @@
 # - RBAC from the access connector to the Lab 8 storage account
 # - UC storage credential and external location
 # - dbr_dev.parvinbadalov.lab08_prod_travelops_raw external Volume
+# - dbr_dev.parvinbadalov_lab08_prod application schema
 #
 # Terraform DOES NOT own:
 # - existing Azure Databricks workspace
@@ -24,7 +25,8 @@
 #
 # Safety:
 # Existing resources are never imported or recreated automatically. `prevent_destroy`
-# protects stateful storage, identity, external location and raw Volume metadata.
+# protects stateful storage, identity, external location, raw Volume metadata,
+# and the application schema.
 # ---------------------------------------------------------------------
 
 locals {
@@ -33,6 +35,18 @@ locals {
 
 data "databricks_schema" "travelops_existing_schema" {
   name = "${var.databricks_catalog}.${var.databricks_schema}"
+}
+
+# The Azure PROD application schema must exist before DAB-owned jobs and the
+# Lakeflow pipeline can create Bronze, Silver and Gold managed datasets.
+resource "databricks_schema" "travelops_prod" {
+  catalog_name = var.databricks_catalog
+  name         = var.azure_prod_application_schema
+  comment      = "LAB 08 TravelOps Azure PROD application schema managed by Terraform."
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # Storage keeps raw Azure PROD files outside the workspace-managed UC storage
@@ -80,8 +94,8 @@ resource "azurerm_databricks_access_connector" "uc" {
   }
 }
 
-# RBAC is limited to the new Lab 8 storage account. This is currently blocked
-# until the Azure principal can write role assignments at this scope.
+# RBAC is limited to the Lab 8 storage account. The administrator-created
+# assignment is imported into state and must not be recreated or replaced.
 resource "azurerm_role_assignment" "uc_storage_blob_data_contributor" {
   scope                = azurerm_storage_account.raw.id
   role_definition_name = "Storage Blob Data Contributor"

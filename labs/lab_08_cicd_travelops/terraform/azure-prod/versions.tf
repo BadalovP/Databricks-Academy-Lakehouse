@@ -4,7 +4,7 @@
 #
 # Purpose:
 # Pins Terraform and provider versions for Azure PROD infrastructure and Unity
-# Catalog external raw Volume registration.
+# Catalog resource management.
 #
 # Terraform owns:
 # - provider version constraints for the Azure PROD Terraform root
