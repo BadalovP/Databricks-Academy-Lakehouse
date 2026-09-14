@@ -1,0 +1,7 @@
+Command: terraform plan -no-color
+Plan: 3 to add, 0 to change, 0 to destroy.
+Additions:
+- databricks_external_location.raw
+- databricks_volume.azure_prod_raw
+- databricks_grant.azure_prod_raw_volume_rw
+Safety: no replacement, no RBAC change, and no change to the storage account, filesystem, access connector, or storage credential.

@@ -1,0 +1,19 @@
+# LAB 08 - TravelOps
+#
+# File:
+# resources/infrastructure.yml
+#
+# Purpose:
+# Documents Unity Catalog infrastructure intentionally not owned by the
+# Databricks Asset Bundle.
+#
+# Ownership:
+# Terraform owns raw Volume registrations and the Azure PROD application schema.
+# DAB must not create, rename, replace or own either Terraform-managed resource,
+# and neither tool owns the existing dbr_dev.parvinbadalov raw schema.
+#
+# Environment behavior:
+# personal_dev and personal_prod raw managed volumes live in the personal
+# Terraform root. The azure-prod Terraform root owns its raw external volume and
+# dbr_dev.parvinbadalov_lab08_prod application schema.
+resources: {}

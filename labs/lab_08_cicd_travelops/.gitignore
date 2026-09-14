@@ -1,0 +1,32 @@
+# LAB 08 - TravelOps
+#
+# File:
+# .gitignore
+#
+# Purpose:
+# Keeps local Lab 8 build, test and Terraform runtime artifacts out of Git.
+#
+# Ownership:
+# This ignore file applies only to the standalone Lab 8 project directory.
+#
+# Safety:
+# Terraform state and plan files can contain sensitive infrastructure metadata
+# and must never be committed.
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+__pycache__/
+*.pyc
+**/.databricks/
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+terraform.tfvars
+.env
+.env.*
+!terraform.tfvars.example
+!*.tfvars.example
+!.env.example
+!backend.hcl.example
+evidence/logs/*.tmp

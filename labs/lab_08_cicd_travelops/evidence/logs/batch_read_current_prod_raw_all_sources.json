@@ -1,0 +1,30 @@
+[
+  {
+    "row_count": "25000",
+    "source_name": "bookings"
+  },
+  {
+    "row_count": "25000",
+    "source_name": "booking_updates"
+  },
+  {
+    "row_count": "42",
+    "source_name": "destinations"
+  },
+  {
+    "row_count": "25000",
+    "source_name": "payments"
+  },
+  {
+    "row_count": "18163",
+    "source_name": "properties"
+  },
+  {
+    "row_count": "25000",
+    "source_name": "reviews"
+  },
+  {
+    "row_count": "25000",
+    "source_name": "users"
+  }
+]

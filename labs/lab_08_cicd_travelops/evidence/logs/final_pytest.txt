@@ -1,0 +1,12 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.4, pytest-9.1.1, pluggy-1.6.0
+rootdir: C:\Users\User\Desktop\databricks-academy-lakehouse\labs\lab_08_cicd_travelops
+configfile: pyproject.toml
+testpaths: tests
+collected 9 items
+
+tests\test_quality_rules.py ...                                          [ 33%]
+tests\test_reconciliation.py ..                                          [ 55%]
+tests\test_transformations.py ....                                       [100%]
+
+============================== 9 passed in 0.03s ==============================

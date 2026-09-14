@@ -1,0 +1,4 @@
+Command: black --check .
+Result: PASS
+Details: 11 Python files would be left unchanged.
+Note: Black reported that optional Jupyter dependencies are not installed, so notebook code cells were not reformatted by Black.

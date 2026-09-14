@@ -1,0 +1,24 @@
+{
+  "schema": "dbr_dev.parvinbadalov_lab08_prod",
+  "table_counts": {
+    "bronze": 7,
+    "silver": 7,
+    "gold": 6,
+    "total": 20
+  },
+  "gold_production_health": {
+    "row_count": 1,
+    "current_booking_count": 25000,
+    "duplicate_current_booking_count": 0,
+    "payment_mismatch_count": 16076,
+    "health_passed": true,
+    "failed_health_checks": 0,
+    "payment_mismatch_policy": "Informational under the current health rule, which requires a nonnegative count.",
+    "evaluated_at": "2026-09-14T12:42:22.769Z"
+  },
+  "raw_volume": {
+    "full_name": "dbr_dev.parvinbadalov.lab08_prod_travelops_raw",
+    "volume_type": "EXTERNAL",
+    "storage_location": "abfss://lab08-travelops@lab08travelops63e621.dfs.core.windows.net/raw"
+  }
+}

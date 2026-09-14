@@ -1,0 +1,74 @@
+[
+    {
+        "timestamp":  "2026-09-13T09:46:14.569Z",
+        "update_id":  "00ebcf97-ff4f-4e01-8b42-e6e94f9c31b9",
+        "flow_name":  null,
+        "cloud_files_source":  "/Volumes/dbr_dev/parvinbadalov/lab08_prod_travelops_raw/raw/users",
+        "previous_last_input_path":  "/Volumes/dbr_dev/parvinbadalov_lab08_prod/lab08_travelops_raw/raw/users",
+        "offending_input_url":  "s3://dbstorage-prod-zdna2/uc/0b137a9c-32f9-468d-b471-ccb8ae58a649/b6d74fb6-2de2-4d06-9172-701113d35445/__unitystorage/catalogs/b4af60fc-193f-4a42-b91b-a8493d3b8ab3/volumes/95b4f9f6-8943-46c5-becc-51410fd6930f/raw/users/part-00000-tid-6878054474000449725-94834ef6-f9ed-46fb-9a24-18f8d2db5029-186-1.c000.snappy.parquet",
+        "checkpoint_location":  "*********(redacted)"
+    },
+    {
+        "timestamp":  "2026-09-13T09:54:40.052Z",
+        "update_id":  "cae437b7-ef72-4cbb-8e23-254e5006c10e",
+        "flow_name":  "dbr_dev.parvinbadalov_lab08_prod.booking_updates_bronze",
+        "cloud_files_source":  "/Volumes/dbr_dev/parvinbadalov/lab08_prod_travelops_raw/raw/booking_updates",
+        "previous_last_input_path":  "/Volumes/dbr_dev/parvinbadalov_lab08_prod/lab08_travelops_raw/raw/booking_updates",
+        "offending_input_url":  "s3://dbstorage-prod-zdna2/uc/0b137a9c-32f9-468d-b471-ccb8ae58a649/b6d74fb6-2de2-4d06-9172-701113d35445/__unitystorage/catalogs/b4af60fc-193f-4a42-b91b-a8493d3b8ab3/volumes/95b4f9f6-8943-46c5-becc-51410fd6930f/raw/booking_updates/part-00000-tid-7647935505006023775-434dc5f4-3461-46d5-b93c-e938a49af6c4-180-1.c000.snappy.parquet",
+        "checkpoint_location":  "s3://dbstorage-prod-zdna2/uc/0b137a9c-32f9-468d-b471-ccb8ae58a649/b6d74fb6-2de2-4d06-9172-701113d35445/__unitystorage/catalogs/b4af60fc-193f-4a42-b91b-a8493d3b8ab3/tables/68e1eeaf-38d3-48c1-83e8-6cdacc8676c3/_dlt_metadata/checkpoints/dbr_dev.parvinbadalov_lab08_prod.booking_updates_bronze/0"
+    },
+    {
+        "timestamp":  "2026-09-13T09:47:13.047Z",
+        "update_id":  "74bc4fec-89ce-4382-b646-c7a91083c8af",
+        "flow_name":  "dbr_dev.parvinbadalov_lab08_prod.bookings_bronze",
+        "cloud_files_source":  "/Volumes/dbr_dev/parvinbadalov/lab08_prod_travelops_raw/raw/bookings",
+        "previous_last_input_path":  "/Volumes/dbr_dev/parvinbadalov_lab08_prod/lab08_travelops_raw/raw/bookings",
+        "offending_input_url":  "s3://dbstorage-prod-zdna2/uc/0b137a9c-32f9-468d-b471-ccb8ae58a649/b6d74fb6-2de2-4d06-9172-701113d35445/__unitystorage/catalogs/b4af60fc-193f-4a42-b91b-a8493d3b8ab3/volumes/95b4f9f6-8943-46c5-becc-51410fd6930f/raw/bookings/part-00000-tid-8417252178441862727-0427b13b-a3a0-4b15-b043-caa54ac2c34e-177-1.c000.snappy.parquet",
+        "checkpoint_location":  "s3://dbstorage-prod-zdna2/uc/0b137a9c-32f9-468d-b471-ccb8ae58a649/b6d74fb6-2de2-4d06-9172-701113d35445/__unitystorage/catalogs/b4af60fc-193f-4a42-b91b-a8493d3b8ab3/tables/97da51b9-1203-4c34-9cb9-618611dffd8d/_dlt_metadata/checkpoints/dbr_dev.parvinbadalov_lab08_prod.bookings_bronze/0"
+    },
+    {
+        "timestamp":  "2026-09-13T09:46:09.981Z",
+        "update_id":  "00ebcf97-ff4f-4e01-8b42-e6e94f9c31b9",
+        "flow_name":  "dbr_dev.parvinbadalov_lab08_prod.destinations_bronze",
+        "cloud_files_source":  "/Volumes/dbr_dev/parvinbadalov/lab08_prod_travelops_raw/raw/destinations",
+        "previous_last_input_path":  "/Volumes/dbr_dev/parvinbadalov_lab08_prod/lab08_travelops_raw/raw/destinations",
+        "offending_input_url":  "s3://dbstorage-prod-zdna2/uc/0b137a9c-32f9-468d-b471-ccb8ae58a649/b6d74fb6-2de2-4d06-9172-701113d35445/__unitystorage/catalogs/b4af60fc-193f-4a42-b91b-a8493d3b8ab3/volumes/95b4f9f6-8943-46c5-becc-51410fd6930f/raw/destinations/part-00000-tid-3177302682480316370-ebde27a3-e3c3-4eda-9bc8-6ba9ff51e7f2-195-1.c000.snappy.parquet",
+        "checkpoint_location":  "s3://dbstorage-prod-zdna2/uc/0b137a9c-32f9-468d-b471-ccb8ae58a649/b6d74fb6-2de2-4d06-9172-701113d35445/__unitystorage/catalogs/b4af60fc-193f-4a42-b91b-a8493d3b8ab3/tables/9179ae3c-a1c0-4d79-a436-ee0bcf8ff3a4/_dlt_metadata/checkpoints/dbr_dev.parvinbadalov_lab08_prod.destinations_bronze/0"
+    },
+    {
+        "timestamp":  "2026-09-13T09:47:37.053Z",
+        "update_id":  "74bc4fec-89ce-4382-b646-c7a91083c8af",
+        "flow_name":  "dbr_dev.parvinbadalov_lab08_prod.payments_bronze",
+        "cloud_files_source":  "/Volumes/dbr_dev/parvinbadalov/lab08_prod_travelops_raw/raw/payments",
+        "previous_last_input_path":  "/Volumes/dbr_dev/parvinbadalov_lab08_prod/lab08_travelops_raw/raw/payments",
+        "offending_input_url":  "s3://dbstorage-prod-zdna2/uc/0b137a9c-32f9-468d-b471-ccb8ae58a649/b6d74fb6-2de2-4d06-9172-701113d35445/__unitystorage/catalogs/b4af60fc-193f-4a42-b91b-a8493d3b8ab3/volumes/95b4f9f6-8943-46c5-becc-51410fd6930f/raw/payments/part-00000-tid-6847666194902448905-8ddfaf1c-0056-40ae-8f22-d00addd7ae3b-183-1.c000.snappy.parquet",
+        "checkpoint_location":  "s3://dbstorage-prod-zdna2/uc/0b137a9c-32f9-468d-b471-ccb8ae58a649/b6d74fb6-2de2-4d06-9172-701113d35445/__unitystorage/catalogs/b4af60fc-193f-4a42-b91b-a8493d3b8ab3/tables/be261bcb-96cb-4bb9-a0ab-c8817df6a643/_dlt_metadata/checkpoints/dbr_dev.parvinbadalov_lab08_prod.payments_bronze/0"
+    },
+    {
+        "timestamp":  "2026-09-13T09:49:04.597Z",
+        "update_id":  "f743478b-e240-476c-bd18-c81b43225714",
+        "flow_name":  "dbr_dev.parvinbadalov_lab08_prod.properties_bronze",
+        "cloud_files_source":  "/Volumes/dbr_dev/parvinbadalov/lab08_prod_travelops_raw/raw/properties",
+        "previous_last_input_path":  "/Volumes/dbr_dev/parvinbadalov_lab08_prod/lab08_travelops_raw/raw/properties",
+        "offending_input_url":  "s3://dbstorage-prod-zdna2/uc/0b137a9c-32f9-468d-b471-ccb8ae58a649/b6d74fb6-2de2-4d06-9172-701113d35445/__unitystorage/catalogs/b4af60fc-193f-4a42-b91b-a8493d3b8ab3/volumes/95b4f9f6-8943-46c5-becc-51410fd6930f/raw/properties/part-00000-tid-2456888777776487814-b18f803f-ab65-4833-90df-b10632580c72-189-1.c000.snappy.parquet",
+        "checkpoint_location":  "s3://dbstorage-prod-zdna2/uc/0b137a9c-32f9-468d-b471-ccb8ae58a649/b6d74fb6-2de2-4d06-9172-701113d35445/__unitystorage/catalogs/b4af60fc-193f-4a42-b91b-a8493d3b8ab3/tables/5c0b6f78-31e9-45ce-8059-b87dfd277775/_dlt_metadata/checkpoints/dbr_dev.parvinbadalov_lab08_prod.properties_bronze/0"
+    },
+    {
+        "timestamp":  "2026-09-13T09:46:09.926Z",
+        "update_id":  "00ebcf97-ff4f-4e01-8b42-e6e94f9c31b9",
+        "flow_name":  "dbr_dev.parvinbadalov_lab08_prod.reviews_bronze",
+        "cloud_files_source":  "/Volumes/dbr_dev/parvinbadalov/lab08_prod_travelops_raw/raw/reviews",
+        "previous_last_input_path":  "/Volumes/dbr_dev/parvinbadalov_lab08_prod/lab08_travelops_raw/raw/reviews",
+        "offending_input_url":  "s3://dbstorage-prod-zdna2/uc/0b137a9c-32f9-468d-b471-ccb8ae58a649/b6d74fb6-2de2-4d06-9172-701113d35445/__unitystorage/catalogs/b4af60fc-193f-4a42-b91b-a8493d3b8ab3/volumes/95b4f9f6-8943-46c5-becc-51410fd6930f/raw/reviews/part-00000-tid-4780195636693130836-213bd2a5-3903-4884-b53b-28b311a5854e-192-1.c000.snappy.parquet",
+        "checkpoint_location":  "s3://dbstorage-prod-zdna2/uc/0b137a9c-32f9-468d-b471-ccb8ae58a649/b6d74fb6-2de2-4d06-9172-701113d35445/__unitystorage/catalogs/b4af60fc-193f-4a42-b91b-a8493d3b8ab3/tables/27a58a8d-374f-4d26-8e79-ae422f21ad02/_dlt_metadata/checkpoints/dbr_dev.parvinbadalov_lab08_prod.reviews_bronze/0"
+    },
+    {
+        "timestamp":  "2026-09-13T09:54:21.380Z",
+        "update_id":  "cae437b7-ef72-4cbb-8e23-254e5006c10e",
+        "flow_name":  "dbr_dev.parvinbadalov_lab08_prod.users_bronze",
+        "cloud_files_source":  "/Volumes/dbr_dev/parvinbadalov/lab08_prod_travelops_raw/raw/users",
+        "previous_last_input_path":  "/Volumes/dbr_dev/parvinbadalov_lab08_prod/lab08_travelops_raw/raw/users",
+        "offending_input_url":  "s3://dbstorage-prod-zdna2/uc/0b137a9c-32f9-468d-b471-ccb8ae58a649/b6d74fb6-2de2-4d06-9172-701113d35445/__unitystorage/catalogs/b4af60fc-193f-4a42-b91b-a8493d3b8ab3/volumes/95b4f9f6-8943-46c5-becc-51410fd6930f/raw/users/part-00000-tid-6878054474000449725-94834ef6-f9ed-46fb-9a24-18f8d2db5029-186-1.c000.snappy.parquet",
+        "checkpoint_location":  "*********(redacted)"
+    }
+]

@@ -1,0 +1,126 @@
+# LAB 08 - TravelOps
+#
+# File:
+# databricks.yml
+#
+# Purpose:
+# Defines the standalone Databricks Asset Bundle for Lab 8. This bundle owns only
+# TravelOps CI/CD resources under labs/lab_08_cicd_travelops.
+#
+# Ownership:
+# This bundle owns Lab 8 Lakeflow pipeline, jobs, notebooks, dashboards, SQL
+# health assets, application configuration and managed Bronze/Silver/Gold tables.
+# Terraform owns raw Volumes and the Azure PROD application schema. The
+# repository root bundle continues to own Labs 1-7 and must not define these
+# Lab 8 resources.
+#
+# Environment behavior:
+# Personal DEV and PROD publish application datasets to dedicated Lab 8 schemas.
+# Azure Terraform creates its application schema before DAB runs. Terraform-owned
+# raw Volumes stay in the existing dbr_dev.parvinbadalov schema, so the raw Volume
+# schema and Lakeflow target schema intentionally differ.
+bundle:
+  name: lab08-travelops-cicd
+  engine: direct
+
+include:
+  - resources/*.yml
+
+variables:
+  target_catalog:
+    description: Unity Catalog catalog for DAB-owned TravelOps application outputs.
+    default: dbr_dev
+  target_schema:
+    description: Target-specific schema for DAB-owned Bronze, Silver and Gold datasets.
+  raw_volume_catalog:
+    description: Unity Catalog catalog containing the Terraform-owned raw landing Volume.
+    default: dbr_dev
+  raw_volume_schema:
+    description: Unity Catalog schema containing the Terraform-owned raw landing Volume.
+    default: parvinbadalov
+  raw_volume_name:
+    description: Target-specific raw landing volume name.
+    default: lab08_dev_travelops_raw
+  raw_volume_type:
+    description: MANAGED for personal targets; EXTERNAL for Azure PROD.
+    default: MANAGED
+  raw_volume_storage_location:
+    description: External ADLS URI for the Azure PROD raw Volume. Blank for managed volumes.
+    default: ""
+  private_bronze:
+    description: Whether Bronze streaming tables are deliberate private pipeline intermediates.
+    default: "false"
+  private_silver:
+    description: Whether Silver materialized views are deliberate private pipeline intermediates.
+    default: "false"
+  pipeline_name:
+    description: Stable target-specific Lakeflow pipeline display name.
+  source_catalog:
+    description: Source catalog discovered during Phase 0.
+    default: samples
+  source_schema:
+    description: Source schema discovered during Phase 0.
+    default: wanderbricks
+  seed_limit:
+    description: Per-table row limit for deterministic training runs.
+    default: "25000"
+  warehouse_id:
+    description: SQL warehouse used by dashboards, SQL validation and alerts.
+  alert_subscriber_email:
+    description: Email principal subscribed to the Lab 8 health alert.
+  service_principal_name:
+    description: Optional CI/CD service principal granted bundle permissions.
+    default: ""
+  azure_storage_account_name:
+    description: Storage account created by Terraform for the Azure PROD raw external volume.
+    default: ""
+
+targets:
+  personal_dev:
+    default: true
+    mode: production
+    workspace:
+      host: https://dbc-1750318a-76a9.cloud.databricks.com
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      target_schema: parvinbadalov_lab08_dev
+      raw_volume_schema: parvinbadalov
+      raw_volume_name: lab08_dev_travelops_raw
+      private_bronze: "false"
+      private_silver: "false"
+      pipeline_name: "[personal_dev] LAB 08 TravelOps Lakeflow Pipeline Dedicated Schema"
+      warehouse_id: 410e5f3b4784e981
+      alert_subscriber_email: parvinbadalov@yahoo.com
+
+  personal_prod:
+    mode: production
+    workspace:
+      host: https://dbc-1750318a-76a9.cloud.databricks.com
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      target_schema: parvinbadalov_lab08_prod
+      raw_volume_schema: parvinbadalov
+      raw_volume_name: lab08_prod_travelops_raw
+      private_bronze: "false"
+      private_silver: "false"
+      pipeline_name: "[personal_prod] LAB 08 TravelOps Lakeflow Pipeline"
+      warehouse_id: 410e5f3b4784e981
+      alert_subscriber_email: parvinbadalov@yahoo.com
+
+  azure_prod:
+    mode: production
+    workspace:
+      host: https://adb-7405604503619901.1.azuredatabricks.net
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      target_schema: parvinbadalov_lab08_prod
+      raw_volume_schema: parvinbadalov
+      raw_volume_name: lab08_prod_travelops_raw
+      raw_volume_type: EXTERNAL
+      raw_volume_storage_location: abfss://lab08-travelops@${var.azure_storage_account_name}.dfs.core.windows.net/raw
+      private_bronze: "false"
+      private_silver: "false"
+      pipeline_name: lab08_azure_prod_travelops_pipeline
+      warehouse_id: 3ed106620db591d9
+      alert_subscriber_email: parvinbadalov@softserve.academy
+      azure_storage_account_name: ""

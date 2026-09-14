@@ -1,0 +1,15 @@
+{
+  "personal_dev": {
+    "historical_pipeline_id": "eb368561-ed02-4a67-a5e2-ee0e8c78360c",
+    "historical_target": "dbr_dev.dev_parvinbadalov_parvinbadalov_lab08_dev",
+    "current_pipeline_id": "99f54e11-d6b2-4361-b0eb-da12b91a31dc",
+    "current_target": "dbr_dev.parvinbadalov_lab08_dev",
+    "migration": "new pipeline required because a Lakeflow target schema is immutable"
+  },
+  "personal_prod": {
+    "adopted_pipeline_id": "4d36399f-2f34-46f8-a2d1-b9340fd1556a",
+    "current_target": "dbr_dev.parvinbadalov_lab08_prod",
+    "migration": "historical pipeline re-adopted because it already owns the target datasets"
+  },
+  "safety": "No historical schema, volume, pipeline, table, or checkpoint was deleted."
+}

@@ -1,0 +1,6 @@
+Command: terraform apply -auto-approve -no-color
+Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
+Created:
+- databricks_external_location.raw [id=lab08_travelops_raw_external_location]
+- databricks_volume.azure_prod_raw [id=dbr_dev.parvinbadalov.lab08_prod_travelops_raw]
+- databricks_grant.azure_prod_raw_volume_rw [id=volume/dbr_dev.parvinbadalov.lab08_prod_travelops_raw/parvinbadalov@softserve.academy]

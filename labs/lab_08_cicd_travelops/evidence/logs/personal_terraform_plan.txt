@@ -1,0 +1,11 @@
+data.databricks_schema.travelops_existing_schema: Reading...
+databricks_volume.personal_dev_raw: Refreshing state... [id=dbr_dev.parvinbadalov.lab08_dev_travelops_raw]
+databricks_volume.personal_prod_raw: Refreshing state... [id=dbr_dev.parvinbadalov.lab08_prod_travelops_raw]
+databricks_grants.personal_prod_raw: Refreshing state... [id=volume/dbr_dev.parvinbadalov.lab08_prod_travelops_raw]
+databricks_grants.personal_dev_raw: Refreshing state... [id=volume/dbr_dev.parvinbadalov.lab08_dev_travelops_raw]
+data.databricks_schema.travelops_existing_schema: Read complete after 2s [id=dbr_dev.parvinbadalov]
+
+No changes. Your infrastructure matches the configuration.
+
+Terraform has compared your real infrastructure against your configuration
+and found no differences, so no changes are needed.

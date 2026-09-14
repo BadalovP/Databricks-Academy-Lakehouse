@@ -1,0 +1,61 @@
+# LAB 08 - TravelOps
+#
+# File:
+# resources/job.yml
+#
+# Purpose:
+# Defines the target-specific TravelOps orchestration job.
+#
+# Ownership:
+# DAB owns the job, tasks and job permissions. Terraform must not manage this job.
+#
+# Environment behavior:
+# The same job definition is deployed to all targets. CI may run it in personal
+# targets, but Azure PROD is intentionally deploy-only until explicitly authorized.
+resources:
+  jobs:
+    travelops_promotion_job:
+      name: "[${bundle.target}] LAB 08 TravelOps Promotion Job"
+      description: "Seeds raw files, runs Lakeflow, and validates TravelOps health."
+      max_concurrent_runs: 1
+      parameters:
+        - name: target_catalog
+          default: ${var.target_catalog}
+        - name: target_schema
+          default: ${var.target_schema}
+        - name: raw_volume_catalog
+          default: ${var.raw_volume_catalog}
+        - name: raw_volume_schema
+          default: ${var.raw_volume_schema}
+        - name: raw_volume_name
+          default: ${var.raw_volume_name}
+        - name: raw_volume_type
+          default: ${var.raw_volume_type}
+        - name: raw_volume_storage_location
+          default: ${var.raw_volume_storage_location}
+        - name: source_catalog
+          default: ${var.source_catalog}
+        - name: source_schema
+          default: ${var.source_schema}
+        - name: seed_limit
+          default: ${var.seed_limit}
+      tasks:
+        - task_key: seed_raw_data
+          notebook_task:
+            notebook_path: ../notebooks/00_seed_raw_data.ipynb
+
+        - task_key: run_lakeflow_pipeline
+          depends_on:
+            - task_key: seed_raw_data
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.travelops_pipeline.id}
+
+        - task_key: validate_gold_health
+          depends_on:
+            - task_key: run_lakeflow_pipeline
+          notebook_task:
+            notebook_path: ../notebooks/01_validate_gold_health.ipynb
+
+      permissions:
+        - level: CAN_VIEW
+          user_name: ${workspace.current_user.userName}
