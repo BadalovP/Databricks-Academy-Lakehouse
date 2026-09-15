@@ -14,7 +14,7 @@ Existing Azure PROD bundle:
 - deployment: state/deployment.json, object ID 1969906894019063
 - direct-engine resource state: state/resources.json, object ID 1969906894019067
 - DAB state lineage: 20e73d19-8b34-46c9-a229-feaf484ee336
-- DAB state serial before any future deployment: 1
+- DAB state serial observed after failed GitHub deployment 35021845707: 2
 - job: 941995669563439
 - pipeline: 85c888ba-d801-4c0d-896d-ec73330e4ee6
 - dashboard resource ID: 01f1afaccf3219fb8ab7eb9dd8302104
@@ -45,22 +45,25 @@ Unity Catalog:
 - job and pipeline continue to run as parvinbadalov@softserve.academy
 
 Permissions as code:
-- Azure target preserves parvinbadalov@softserve.academy at CAN_MANAGE
+- Azure target leaves the existing parvinbadalov@softserve.academy IS_OWNER entry implicit
 - Azure target grants service principal 3ec7e8df-66a2-4102-ab57-e4448b4e0e01 CAN_MANAGE
+- omitting the human owner prevents non-admin OIDC deployment from attempting IS_OWNER to CAN_MANAGE reconciliation
 - Personal target human principals remain explicit and unchanged
 - shared warehouse CAN_USE is a one-time bootstrap because the warehouse is not bundle- or Terraform-owned
 
 Read-only verification:
-- databricks bundle validate --strict -t azure_prod: PASS
-- databricks bundle plan -t azure_prod: 0 add, 3 change, 0 delete, 5 unchanged
-- intended changes: alert permission and dashboard permission record the service principal in DAB state
-- third change: dashboard serialized content only, caused by the Windows CRLF working tree representation
-- normalized LF plan: 0 add, 2 change, 0 delete, 6 unchanged; only the two intended permission updates remain
-- no deploy or application run was performed
+- GitHub OIDC run 35021845707 authenticated, passed strict validation, and reached DAB deployment
+- its plan was 0 add, 2 change, 0 delete, 6 unchanged: job and pipeline permission updates only
+- deployment failed because the explicit human CAN_MANAGE declaration conflicted with the live IS_OWNER entries
+- after omitting that human declaration, the job and pipeline resource and permission nodes are all unchanged
+- local Windows working-tree plan shows only the dashboard serialized-content CRLF difference
+- normalized LF plan: 0 add, 0 change, 0 delete, 8 unchanged
+- the local human PAT strict check reports the expected warning that the current human deployer is intentionally not bundle-managed; OIDC strict validation runs as the declared service principal
+- no deploy or application run was performed while preparing this fix
 - no Terraform state or infrastructure was changed
 - LAB08_ENABLE_AZURE_OIDC remains false
 
 Authentication readiness:
-- managed identity authentication cannot be impersonated safely from this local workstation because no GitHub OIDC assertion is available
-- static identity, federation, registration, entitlement, object ACL, Unity Catalog, and bundle checks pass
-- the first real managed-identity authentication test must run in the federated GitHub azure-prod environment after explicit enablement
+- managed identity authentication was verified by GitHub OIDC run 35021845707
+- identity, federation, registration, entitlement, object ACL, Unity Catalog, and bundle checks pass
+- the next authorized federated run must verify the corrected Azure DAB deployment plan remains unchanged

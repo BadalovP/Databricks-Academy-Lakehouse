@@ -125,8 +125,6 @@ targets:
       root_path: /Workspace/Users/parvinbadalov@softserve.academy/.bundle/${bundle.name}/${bundle.target}
     permissions:
       - level: CAN_MANAGE
-        user_name: ${var.bundle_owner_user_name}
-      - level: CAN_MANAGE
         service_principal_name: ${var.service_principal_name}
     variables:
       target_schema: parvinbadalov_lab08_prod
