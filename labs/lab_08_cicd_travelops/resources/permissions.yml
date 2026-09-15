@@ -13,10 +13,11 @@
 # primitives.
 #
 # Environment behavior:
-# Personal targets preserve their existing human deployer. Azure PROD preserves
-# its existing human owner and grants the registered GitHub service principal
-# CAN_MANAGE. The shared SQL warehouse CAN_USE grant remains a one-time
-# workspace bootstrap because the warehouse is not owned by this bundle.
+# Personal targets preserve their existing human deployer. Azure PROD leaves
+# its existing human IS_OWNER entry implicit and grants only the registered
+# GitHub service principal CAN_MANAGE. The shared SQL warehouse CAN_USE grant
+# remains a one-time workspace bootstrap because the warehouse is not owned by
+# this bundle.
 #
 # Note:
 # Databricks Asset Bundles apply target-level permissions to the bundle root and

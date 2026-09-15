@@ -12,10 +12,12 @@ Checked: 2026-09-15
 - Azure PROD plan/apply guards require all nine final Terraform resource addresses in remote state, including the imported RBAC assignment and application schema.
 - The advanced plan/apply jobs require the imported RBAC assignment to plan exactly no-op and refuse every non-no-op fresh plan; an unchanged plan does not require roleAssignments/write.
 - Both Azure Blob backend keys now contain the complete migrated states, so the workflow's remote-state inventory gates can pass without recreating resources.
-- The Azure target is pinned to the existing PAT deployment root and declares both the existing human principal and GitHub service principal at CAN_MANAGE.
-- Azure PROD strict bundle validation passes after the permission bootstrap.
-- The current Windows plan is 0 add, 3 change, 0 delete, 5 unchanged: alert and dashboard permission state add the service principal, while the third change is the known dashboard CRLF serialization artifact.
-- A normalized LF plan is 0 add, 2 change, 0 delete, 6 unchanged; only the alert and dashboard service-principal permission updates remain until the next authorized deployment.
+- The Azure target is pinned to the existing PAT deployment root, leaves the human IS_OWNER entry implicit, and declares only the GitHub service principal at CAN_MANAGE.
+- OIDC run 35021845707 reached Azure PROD deployment with working authentication and planned only job and pipeline permission updates before the non-admin owner-change checks rejected them.
+- The Azure target now omits the human IS_OWNER entry from bundle-managed permissions and retains only the service-principal CAN_MANAGE declaration.
+- Post-fix job and pipeline permission nodes are unchanged; remote state still reports the human as IS_OWNER and the service principal as CAN_MANAGE.
+- A normalized LF post-fix plan is 0 add, 0 change, 0 delete, 8 unchanged.
+- Strict validation under the human PAT emits the expected current-deployer warning because the human owner is intentionally unmanaged; strict OIDC validation must run as the declared service principal in GitHub Actions.
 - Terraform formatting passed for Personal, Azure PROD, and the CI backend template.
 - Ruff passed.
 - Black passed.
