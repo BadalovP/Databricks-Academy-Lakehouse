@@ -68,8 +68,10 @@ variables:
     description: SQL warehouse used by dashboards, SQL validation and alerts.
   alert_subscriber_email:
     description: Email principal subscribed to the Lab 8 health alert.
+  bundle_owner_user_name:
+    description: Existing human owner whose DAB resource access must remain intact.
   service_principal_name:
-    description: Optional CI/CD service principal granted bundle permissions.
+    description: Optional CI/CD service principal granted Azure PROD bundle permissions.
     default: ""
   azure_storage_account_name:
     description: Storage account created by Terraform for the Azure PROD raw external volume.
@@ -82,6 +84,9 @@ targets:
     workspace:
       host: https://dbc-1750318a-76a9.cloud.databricks.com
       root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+    permissions:
+      - level: CAN_MANAGE
+        user_name: ${var.bundle_owner_user_name}
     variables:
       target_schema: parvinbadalov_lab08_dev
       raw_volume_schema: parvinbadalov
@@ -91,12 +96,16 @@ targets:
       pipeline_name: "[personal_dev] LAB 08 TravelOps Lakeflow Pipeline Dedicated Schema"
       warehouse_id: 410e5f3b4784e981
       alert_subscriber_email: parvinbadalov@yahoo.com
+      bundle_owner_user_name: parvinbadalov@yahoo.com
 
   personal_prod:
     mode: production
     workspace:
       host: https://dbc-1750318a-76a9.cloud.databricks.com
       root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+    permissions:
+      - level: CAN_MANAGE
+        user_name: ${var.bundle_owner_user_name}
     variables:
       target_schema: parvinbadalov_lab08_prod
       raw_volume_schema: parvinbadalov
@@ -106,12 +115,19 @@ targets:
       pipeline_name: "[personal_prod] LAB 08 TravelOps Lakeflow Pipeline"
       warehouse_id: 410e5f3b4784e981
       alert_subscriber_email: parvinbadalov@yahoo.com
+      bundle_owner_user_name: parvinbadalov@yahoo.com
 
   azure_prod:
     mode: production
     workspace:
       host: https://adb-7405604503619901.1.azuredatabricks.net
-      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+      # Keep PAT and future OIDC deployments on the already-adopted DAB state.
+      root_path: /Workspace/Users/parvinbadalov@softserve.academy/.bundle/${bundle.name}/${bundle.target}
+    permissions:
+      - level: CAN_MANAGE
+        user_name: ${var.bundle_owner_user_name}
+      - level: CAN_MANAGE
+        service_principal_name: ${var.service_principal_name}
     variables:
       target_schema: parvinbadalov_lab08_prod
       raw_volume_schema: parvinbadalov
@@ -123,4 +139,6 @@ targets:
       pipeline_name: lab08_azure_prod_travelops_pipeline
       warehouse_id: 3ed106620db591d9
       alert_subscriber_email: parvinbadalov@softserve.academy
+      bundle_owner_user_name: parvinbadalov@softserve.academy
+      service_principal_name: 3ec7e8df-66a2-4102-ab57-e4448b4e0e01
       azure_storage_account_name: ""

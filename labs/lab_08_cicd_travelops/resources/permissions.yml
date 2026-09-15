@@ -4,19 +4,21 @@
 # resources/permissions.yml
 #
 # Purpose:
-# Documents the permissions-as-code strategy for resources whose permissions are
-# declared inline in their owning resource files.
+# Documents the permissions-as-code strategy configured per bundle target.
 #
 # Ownership:
-# DAB resource files own job, pipeline, dashboard and alert permissions.
+# DAB target permissions own job, pipeline, dashboard, alert and bundle-root
+# permissions.
 # Terraform owns raw Volume grants, Azure RBAC and Databricks storage access
 # primitives.
 #
 # Environment behavior:
-# Least-privilege viewer/run grants resolve to the deploying identity in each
-# workspace. CI identity bootstrap remains an explicit workspace prerequisite.
+# Personal targets preserve their existing human deployer. Azure PROD preserves
+# its existing human owner and grants the registered GitHub service principal
+# CAN_MANAGE. The shared SQL warehouse CAN_USE grant remains a one-time
+# workspace bootstrap because the warehouse is not owned by this bundle.
 #
 # Note:
-# Databricks Asset Bundles apply permissions within each resource definition.
-# This file intentionally contains documentation comments only to avoid defining
+# Databricks Asset Bundles apply target-level permissions to the bundle root and
+# supported resources. This file intentionally contains comments only to avoid
 # duplicate resource ownership.

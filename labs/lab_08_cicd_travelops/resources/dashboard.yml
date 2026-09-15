@@ -21,6 +21,3 @@ resources:
       warehouse_id: ${var.warehouse_id}
       dataset_catalog: ${var.target_catalog}
       dataset_schema: ${var.target_schema}
-      permissions:
-        - level: CAN_READ
-          user_name: ${workspace.current_user.userName}

@@ -1,0 +1,50 @@
+Checked: 2026-09-15 UTC
+
+Backend:
+- resource group: PL_24_Databricks
+- storage account: dlspl21databricks
+- container: parvinbadalov
+
+Pre-migration read-only checks:
+- lab08/personal.tfstate: absent
+- lab08/azure-prod.tfstate: absent
+
+Hash-verified backups outside the repository:
+- C:\Users\User\AppData\Local\Temp\lab08-state-backups\20260915T175550Z\terraform-personal.tfstate
+  SHA256: 1889332E18404EDEE4B0B1335CB9A0C0F45A23B1944B56B7EA16EE8832652484
+- C:\Users\User\AppData\Local\Temp\lab08-state-backups\20260915T175550Z\terraform-azure-prod.tfstate
+  SHA256: 8C4DD1142982387894B6EB97CF3F11B5CE80DA7245997F9EF310B2C28583890C
+
+Migration method:
+- standard terraform init -migrate-state in isolated temporary roots
+- destination confirmed empty by Terraform before each copy
+- no force-copy, state push, apply, resource mutation, or state deletion
+
+Personal remote state:
+- key: lab08/personal.tfstate
+- lineage: 1e950f87-d4cd-83dc-4051-291ce661eddf
+- serial: 6
+- managed resources: 4
+- databricks_volume.personal_dev_raw
+- databricks_volume.personal_prod_raw
+- databricks_grants.personal_dev_raw
+- databricks_grants.personal_prod_raw
+- final plan detailed exit code: 0 / No changes
+
+Azure PROD remote state:
+- key: lab08/azure-prod.tfstate
+- lineage: 570b77e0-731c-1ced-407b-f21190629a0e
+- serial: 15
+- managed resources: 9
+- azurerm_storage_account.raw
+- azurerm_storage_data_lake_gen2_filesystem.raw
+- azurerm_databricks_access_connector.uc
+- azurerm_role_assignment.uc_storage_blob_data_contributor
+- databricks_storage_credential.raw
+- databricks_external_location.raw
+- databricks_volume.azure_prod_raw
+- databricks_grant.azure_prod_raw_volume_rw
+- databricks_schema.travelops_prod
+- RBAC planned action: no-op
+- non-no-op resource count: 0
+- final plan detailed exit code: 0 / No changes

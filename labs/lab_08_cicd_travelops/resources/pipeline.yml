@@ -40,6 +40,3 @@ resources:
         travelops.raw_volume_name: ${var.raw_volume_name}
         travelops.private_bronze: ${var.private_bronze}
         travelops.private_silver: ${var.private_silver}
-      permissions:
-        - level: CAN_VIEW
-          user_name: ${workspace.current_user.userName}
