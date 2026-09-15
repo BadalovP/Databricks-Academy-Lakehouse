@@ -188,6 +188,7 @@ jobs:
           cp .github/terraform/lab08-azurerm-backend.tf "$RUNNER_TEMP/lab08-azure-prod/backend.tf"
       - name: Personal Terraform validate and no-change plan
         env:
+          DATABRICKS_AUTH_TYPE: pat
           DATABRICKS_HOST: ${{ vars.DATABRICKS_PERSONAL_HOST || 'https://dbc-1750318a-76a9.cloud.databricks.com' }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_PERSONAL_TOKEN }}
           TF_VAR_databricks_profile: ""
