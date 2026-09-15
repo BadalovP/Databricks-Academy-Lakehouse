@@ -76,7 +76,7 @@ Pull requests run Unit Tests -> Bundle Validate and, only when `LAB08_ENABLE_AZU
 
 ## Current Status
 
-Personal DEV and Personal PROD are complete and their final bundle plans are unchanged. Personal Terraform is also unchanged. The first Azure PROD grading run `234618529385350` stopped safely in `seed_raw_data` because `dbr_dev.parvinbadalov_lab08_prod` did not exist; its pipeline and health tasks were skipped. Terraform then added only `databricks_schema.travelops_prod`. Rerun `829850820027662` completed all three tasks successfully and produced 20 Bronze/Silver/Gold tables with `health_passed = true`. Final Azure Terraform and DAB plans are unchanged. Evidence logs live in `evidence/logs/`.
+Personal DEV and Personal PROD are complete and their final bundle plans are unchanged. Both Terraform states have been migrated to separate Azure Blob keys with preserved lineages, complete resource inventories, and final remote-backed `No changes` plans. The Azure RBAC assignment plans exactly `no-op`. The PAT deployment path remains active with `LAB08_ENABLE_AZURE_OIDC=false`. The registered GitHub managed identity now has minimum access to the pinned Azure bundle root, existing job and pipeline, and referenced SQL warehouse. DAB records the service-principal management grant while preserving the existing human owner; no extra Unity Catalog grant was added because the principal already has effective access through the existing `account users` catalog grant. The advanced GitHub path has not run. Evidence logs live in `evidence/logs/`.
 
 ## One-Time Configuration
 

@@ -68,6 +68,17 @@ The first Azure PROD application run failed safely because its required target s
 
 The Azure PROD raw Volume grant is modeled with singular `databricks_grant.azure_prod_raw_volume_rw` instead of authoritative `databricks_grants`, so Terraform manages only the Lab 8 principal's `READ_VOLUME` and `WRITE_VOLUME` privileges.
 
+The GitHub service principal needs no additional Terraform-managed Volume grant in the current workspace because it already inherits effective access from the existing `account users` `ALL_PRIVILEGES` grant on `dbr_dev`. The bootstrap did not change Terraform code or state and did not alter `databricks_grant.azure_prod_raw_volume_rw`. If the broad inherited catalog grant is tightened later, add a separate singular `databricks_grant` for the service principal rather than converting to authoritative `databricks_grants` or replacing the existing user's grant.
+
+## Remote State
+
+On 2026-09-15, hash-verified copies of both local state files were backed up outside the repository. Standard `terraform init -migrate-state` operations copied them to Azure Blob without force-copying or overwriting state:
+
+- Personal: `dlspl21databricks/parvinbadalov/lab08/personal.tfstate`
+- Azure PROD: `dlspl21databricks/parvinbadalov/lab08/azure-prod.tfstate`
+
+The Personal lineage is preserved with four managed resources. The Azure PROD lineage is preserved with nine managed resources, including the imported RBAC assignment and `databricks_schema.travelops_prod`. Fresh remote-backed plans returned `No changes`, and the RBAC assignment planned exactly `no-op`. These remote states are authoritative for CI; retained ignored local state files and external backups are recovery copies and must not be used for a later apply.
+
 Personal DAB deployment is independent of Azure. Personal DEV and Personal PROD publish to dedicated application schemas while Terraform-owned raw Volumes remain in `dbr_dev.parvinbadalov`, so the previous shared-schema quota workaround is no longer part of the design.
 
 The Personal PROD Lakeflow pipeline needed a one-time supported full refresh after Terraform ownership moved the raw source to `dbr_dev.parvinbadalov.lab08_prod_travelops_raw`. Terraform state did not change: the final Personal plan remained `No changes`, and Terraform still owns only the raw managed Volumes and grants. The full refresh affected DAB-owned Lakeflow data/state only and did not create, delete, import, or replace Terraform resources.

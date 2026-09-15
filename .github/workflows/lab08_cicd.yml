@@ -225,6 +225,8 @@ jobs:
           DATABRICKS_AUTH_TYPE: azure-cli
           DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
           TF_VAR_databricks_profile: ""
+          TF_VAR_resource_group_name: ${{ vars.LAB08_RESOURCE_GROUP_NAME }}
+          LAB08_EXPECTED_AZURE_STORAGE_ACCOUNT_NAME: ${{ vars.LAB08_AZURE_STORAGE_ACCOUNT_NAME }}
         shell: bash
         run: |
           terraform -chdir="$LAB08_ROOT/terraform/azure-prod" fmt -check
@@ -250,6 +252,11 @@ jobs:
               exit 1
             }
           done
+          actual_storage_account="$(terraform -chdir="$RUNNER_TEMP/lab08-azure-prod" output -raw storage_account_name)"
+          [[ $actual_storage_account == "$LAB08_EXPECTED_AZURE_STORAGE_ACCOUNT_NAME" ]] || {
+            echo "Azure PROD remote state points to unexpected storage account: $actual_storage_account"
+            exit 1
+          }
           set +e
           terraform -chdir="$RUNNER_TEMP/lab08-azure-prod" plan -no-color -detailed-exitcode \
             -out="$RUNNER_TEMP/azure-prod.tfplan" | tee "$RUNNER_TEMP/azure-prod-plan.txt"
@@ -258,6 +265,16 @@ jobs:
           [[ $plan_code -eq 0 || $plan_code -eq 2 ]] || exit "$plan_code"
           terraform -chdir="$RUNNER_TEMP/lab08-azure-prod" show -json \
             "$RUNNER_TEMP/azure-prod.tfplan" > "$RUNNER_TEMP/azure-prod-plan.json"
+          rbac_actions="$(jq -r '
+            first(.resource_changes[]? |
+              select(.address == "azurerm_role_assignment.uc_storage_blob_data_contributor") |
+              .change.actions | join(",")) // "missing"
+          ' "$RUNNER_TEMP/azure-prod-plan.json")"
+          if [[ $rbac_actions != "no-op" ]]; then
+            echo "The existing Access Connector RBAC assignment would change, but the GitHub managed identity does not have RBAC administration permission. Refusing apply."
+            echo "Planned RBAC actions: $rbac_actions"
+            exit 1
+          fi
           while IFS=$'\t' read -r address actions; do
             case "$address:$actions" in
               azurerm_role_assignment.uc_storage_blob_data_contributor:create) ;;
@@ -300,6 +317,8 @@ jobs:
       DATABRICKS_AUTH_TYPE: azure-cli
       DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
       TF_VAR_databricks_profile: ""
+      TF_VAR_resource_group_name: ${{ vars.LAB08_RESOURCE_GROUP_NAME }}
+      LAB08_EXPECTED_AZURE_STORAGE_ACCOUNT_NAME: ${{ vars.LAB08_AZURE_STORAGE_ACCOUNT_NAME }}
     steps:
       - uses: actions/checkout@v4
       - uses: azure/login@v2
@@ -310,30 +329,6 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_wrapper: false
-      - name: Require roleAssignments/write
-        shell: bash
-        run: |
-          scope="/subscriptions/${{ vars.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ vars.LAB08_RESOURCE_GROUP_NAME }}/providers/Microsoft.Storage/storageAccounts/${{ vars.LAB08_AZURE_STORAGE_ACCOUNT_NAME }}"
-          permissions="$(az rest --method get --url "https://management.azure.com${scope}/providers/Microsoft.Authorization/permissions?api-version=2022-04-01")"
-          target="microsoft.authorization/roleassignments/write"
-          can_write=false
-          while IFS= read -r entry; do
-            allowed=false
-            denied=false
-            while IFS= read -r pattern; do
-              pattern="${pattern,,}"
-              [[ $target == $pattern ]] && allowed=true
-            done < <(jq -r '.actions[]?' <<<"$entry")
-            while IFS= read -r pattern; do
-              pattern="${pattern,,}"
-              [[ $target == $pattern ]] && denied=true
-            done < <(jq -r '.notActions[]?' <<<"$entry")
-            [[ $allowed == true && $denied == false ]] && can_write=true
-          done < <(jq -c '.value[]' <<<"$permissions")
-          [[ $can_write == true ]] || {
-            echo "Microsoft.Authorization/roleAssignments/write is unavailable at $scope; refusing Terraform apply."
-            exit 1
-          }
       - name: Fresh safe plan, apply, and idempotency
         shell: bash
         run: |
@@ -361,10 +356,25 @@ jobs:
               exit 1
             }
           done
+          actual_storage_account="$(terraform -chdir="$RUNNER_TEMP/lab08-azure-prod" output -raw storage_account_name)"
+          [[ $actual_storage_account == "$LAB08_EXPECTED_AZURE_STORAGE_ACCOUNT_NAME" ]] || {
+            echo "Azure PROD remote state points to unexpected storage account: $actual_storage_account"
+            exit 1
+          }
           terraform -chdir="$RUNNER_TEMP/lab08-azure-prod" plan -no-color \
             -out="$RUNNER_TEMP/azure-prod-fresh.tfplan" | tee "$RUNNER_TEMP/azure-prod-fresh-plan.txt"
           terraform -chdir="$RUNNER_TEMP/lab08-azure-prod" show -json \
             "$RUNNER_TEMP/azure-prod-fresh.tfplan" > "$RUNNER_TEMP/azure-prod-fresh-plan.json"
+          rbac_actions="$(jq -r '
+            first(.resource_changes[]? |
+              select(.address == "azurerm_role_assignment.uc_storage_blob_data_contributor") |
+              .change.actions | join(",")) // "missing"
+          ' "$RUNNER_TEMP/azure-prod-fresh-plan.json")"
+          if [[ $rbac_actions != "no-op" ]]; then
+            echo "The existing Access Connector RBAC assignment would change, but the GitHub managed identity does not have RBAC administration permission. Refusing apply."
+            echo "Planned RBAC actions: $rbac_actions"
+            exit 1
+          fi
           change_count="$(jq '[.resource_changes[]? | select(.change.actions != ["no-op"])] | length' "$RUNNER_TEMP/azure-prod-fresh-plan.json")"
           [[ $change_count -eq 0 ]] || {
             echo "Azure PROD state must be fully migrated and unchanged before apply; found $change_count change(s)."

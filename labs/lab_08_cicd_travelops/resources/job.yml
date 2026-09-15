@@ -55,7 +55,3 @@ resources:
             - task_key: run_lakeflow_pipeline
           notebook_task:
             notebook_path: ../notebooks/01_validate_gold_health.ipynb
-
-      permissions:
-        - level: CAN_VIEW
-          user_name: ${workspace.current_user.userName}

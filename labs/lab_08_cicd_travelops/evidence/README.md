@@ -39,6 +39,9 @@ Terraform state, and saved plan files.
 | Production outputs and health | Azure PROD | 20 tables; health passed | `logs/azure_prod_health_verification.json` records the Bronze/Silver/Gold inventory and the single green health row. |
 | Post-run inventory | Azure PROD | Verified | `logs/azure_prod_bundle_inventory.json` records deployed resource IDs, runtime configuration, synchronized files, application schema, and both grading runs. |
 | Final bundle plan | Azure PROD | 0 add, 0 change, 0 delete | `logs/azure_prod_bundle_final_plan.txt` records eight unchanged resources. |
+| Remote state migration | Personal and Azure PROD | Complete | `logs/terraform_remote_state_migration_20260915.txt` records prechecks, backup hashes, preserved lineages, remote inventories, and final no-change plans. |
+| OIDC identity readiness | GitHub/Azure | Databricks bootstrap complete | `logs/oidc_readiness_20260915.txt` records federation, Azure roles, registration, and the current disabled-mode safety posture. |
+| OIDC Databricks permissions | Azure PROD | Minimum access verified | `logs/oidc_databricks_permissions_20260915.txt` records object IDs, before/after ACLs, inherited UC access, and the delete-free read-only bundle plan. |
 | Workflow policy | GitHub Actions | Pass | `logs/workflow_validation.txt` records YAML parsing, dependency, PR safety, temporary PAT mode, advanced OIDC mode, and Azure-run gating checks. |
 
 Azure Terraform, DAB deployment, and the authorized Azure PROD application run

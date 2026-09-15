@@ -1,0 +1,32 @@
+Checked: 2026-09-15 UTC
+
+GitHub managed identity:
+- name: github-lab08-travelops
+- client ID: 3ec7e8df-66a2-4102-ab57-e4448b4e0e01
+- principal ID: 59591434-97b5-46f8-9739-569abe0fb1fb
+- tenant ID: 1b8b4c43-4a62-45e3-bd37-55ded2a5d965
+
+Federation:
+- issuer: https://token.actions.githubusercontent.com
+- subject: repo:BadalovP/Databricks-Academy-Lakehouse:environment:azure-prod
+- audience: api://AzureADTokenExchange
+
+Azure permissions:
+- Contributor on resource group PL_24_Databricks
+- Storage Blob Data Contributor on backend account dlspl21databricks
+- no RBAC Administrator role
+
+Safety behavior:
+- remote Azure state includes the existing Access Connector role assignment
+- final remote-backed plan reports that assignment as no-op
+- workflow rejects any RBAC create, update, delete, replacement, or missing plan entry before apply
+- GitHub does not attempt to grant itself Azure permissions
+
+Databricks readiness update:
+- service principal github-lab08-travelops is registered and active as SCIM ID 141097843869075
+- workspace-access and databricks-sql-access are enabled
+- Azure target is pinned to the existing PAT deployment root so PAT and OIDC use one DAB state
+- minimum bundle-root, resource, and SQL warehouse permissions were bootstrapped and verified
+- no direct Unity Catalog grant was needed because effective dbr_dev access already exists through account users
+- advanced GitHub Actions mode has not been run
+- current mode remains LAB08_ENABLE_AZURE_OIDC=false; PAT fallback is unchanged

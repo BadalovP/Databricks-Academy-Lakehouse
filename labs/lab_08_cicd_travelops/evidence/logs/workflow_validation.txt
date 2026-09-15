@@ -1,4 +1,4 @@
-Checked: 2026-09-14
+Checked: 2026-09-15
 
 - Workflow YAML parsed successfully: 12 jobs.
 - Job dependency policy assertions passed.
@@ -10,7 +10,12 @@ Checked: 2026-09-14
 - Main first promotes Personal DEV and Personal PROD, then selects either the advanced Terraform/OIDC Azure jobs or the temporary PAT deploy/run/verify job.
 - The advanced Azure PROD application run is gated by explicit LAB08_RUN_AZURE_PROD_JOB=true authorization; PAT mode runs it automatically.
 - Azure PROD plan/apply guards require all nine final Terraform resource addresses in remote state, including the imported RBAC assignment and application schema.
-- The advanced apply job retains its roleAssignments/write guard and refuses any non-no-op fresh plan; only the PAT path bypasses Azure control-plane RBAC by skipping Terraform.
+- The advanced plan/apply jobs require the imported RBAC assignment to plan exactly no-op and refuse every non-no-op fresh plan; an unchanged plan does not require roleAssignments/write.
+- Both Azure Blob backend keys now contain the complete migrated states, so the workflow's remote-state inventory gates can pass without recreating resources.
+- The Azure target is pinned to the existing PAT deployment root and declares both the existing human principal and GitHub service principal at CAN_MANAGE.
+- Azure PROD strict bundle validation passes after the permission bootstrap.
+- The current Windows plan is 0 add, 3 change, 0 delete, 5 unchanged: alert and dashboard permission state add the service principal, while the third change is the known dashboard CRLF serialization artifact.
+- A normalized LF plan is 0 add, 2 change, 0 delete, 6 unchanged; only the alert and dashboard service-principal permission updates remain until the next authorized deployment.
 - Terraform formatting passed for Personal, Azure PROD, and the CI backend template.
 - Ruff passed.
 - Black passed.
@@ -19,6 +24,7 @@ Checked: 2026-09-14
 - Personal PROD strict validation passed; plan is 0 add, 0 change, 0 delete, 8 unchanged.
 - Personal Terraform detailed-exit-code plan returned 0 and No changes.
 - Azure PROD Terraform validation passed; the safe fresh plan was 3 add, 0 change, 0 destroy, and the final detailed-exit-code plan returned 0 and No changes.
-- Azure PROD strict bundle validation and deployment passed; its final plan is 0 add, 0 change, 0 delete, 8 unchanged.
+- The prior Azure PROD deployment passed with a final 0 add, 0 change, 0 delete plan; the current undeployed permission-as-code update remains delete-free.
 - The first Azure PROD run failed safely on the missing-schema precondition. Terraform added only the application schema, and rerun 829850820027662 completed all three tasks successfully.
 - Future advanced-mode Azure PROD application runs remain gated by LAB08_RUN_AZURE_PROD_JOB=true; temporary PAT mode is gated by LAB08_ENABLE_AZURE_OIDC=false.
+- Service principal 141097843869075 is active with workspace and SQL entitlements, minimum DAB ACLs, and warehouse CAN_USE; no Unity Catalog or Terraform state change was required.

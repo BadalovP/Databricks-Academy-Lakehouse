@@ -1,0 +1,66 @@
+Checked: 2026-09-15 UTC
+
+Identity:
+- display name: github-lab08-travelops
+- Databricks SCIM ID: 141097843869075
+- application/client ID: 3ec7e8df-66a2-4102-ab57-e4448b4e0e01
+- active: true
+- entitlements: workspace-access, databricks-sql-access
+
+Existing Azure PROD bundle:
+- root: /Workspace/Users/parvinbadalov@softserve.academy/.bundle/lab08-travelops-cicd/azure_prod
+- root object ID: 1969906894018975
+- metadata: state/metadata.json, object ID 1969906894019068
+- deployment: state/deployment.json, object ID 1969906894019063
+- direct-engine resource state: state/resources.json, object ID 1969906894019067
+- DAB state lineage: 20e73d19-8b34-46c9-a229-feaf484ee336
+- DAB state serial before any future deployment: 1
+- job: 941995669563439
+- pipeline: 85c888ba-d801-4c0d-896d-ec73330e4ee6
+- dashboard resource ID: 01f1afaccf3219fb8ab7eb9dd8302104
+- dashboard ACL object ID: 1969906894019066
+- alert: 1969906894019065
+- SQL warehouse: 3ed106620db591d9
+
+Permissions before bootstrap:
+- service principal had no direct ACL on the bundle root, job, or pipeline
+- dashboard and alert had no service-principal direct or inherited ACL
+- warehouse had no direct service-principal ACL
+- existing user remained job and pipeline owner/run-as identity
+
+Minimum additive bootstrap:
+- bundle root 1969906894018975: direct CAN_MANAGE
+- job 941995669563439: direct CAN_MANAGE
+- pipeline 85c888ba-d801-4c0d-896d-ec73330e4ee6: direct CAN_MANAGE
+- warehouse 3ed106620db591d9: direct CAN_USE
+- dashboard and alert: inherited CAN_MANAGE from bundle root; no redundant direct bootstrap grant
+- state, files, resources, and artifacts subdirectories inherit CAN_MANAGE from the bundle root
+- no owner transfer, revocation, or destructive permission update was performed
+
+Unity Catalog:
+- no Unity Catalog privilege was granted during bootstrap
+- effective access for the service principal includes the existing account users ALL_PRIVILEGES grant on dbr_dev
+- that grant is inherited by dbr_dev.parvinbadalov_lab08_prod, dbr_dev.parvinbadalov, and dbr_dev.parvinbadalov.lab08_prod_travelops_raw
+- Terraform singular Volume grant remains assigned to parvinbadalov@softserve.academy only
+- job and pipeline continue to run as parvinbadalov@softserve.academy
+
+Permissions as code:
+- Azure target preserves parvinbadalov@softserve.academy at CAN_MANAGE
+- Azure target grants service principal 3ec7e8df-66a2-4102-ab57-e4448b4e0e01 CAN_MANAGE
+- Personal target human principals remain explicit and unchanged
+- shared warehouse CAN_USE is a one-time bootstrap because the warehouse is not bundle- or Terraform-owned
+
+Read-only verification:
+- databricks bundle validate --strict -t azure_prod: PASS
+- databricks bundle plan -t azure_prod: 0 add, 3 change, 0 delete, 5 unchanged
+- intended changes: alert permission and dashboard permission record the service principal in DAB state
+- third change: dashboard serialized content only, caused by the Windows CRLF working tree representation
+- normalized LF plan: 0 add, 2 change, 0 delete, 6 unchanged; only the two intended permission updates remain
+- no deploy or application run was performed
+- no Terraform state or infrastructure was changed
+- LAB08_ENABLE_AZURE_OIDC remains false
+
+Authentication readiness:
+- managed identity authentication cannot be impersonated safely from this local workstation because no GitHub OIDC assertion is available
+- static identity, federation, registration, entitlement, object ACL, Unity Catalog, and bundle checks pass
+- the first real managed-identity authentication test must run in the federated GitHub azure-prod environment after explicit enablement

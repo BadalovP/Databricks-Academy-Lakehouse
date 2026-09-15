@@ -58,7 +58,8 @@ Personal DEV deploy/run -> zero-change validation
 Personal PROD deploy/run -> zero-change validation
   |
 LAB08_ENABLE_AZURE_OIDC=true:
-  Terraform plan -> imported-state gate -> fresh plan/apply -> no-change plan
+  Terraform plan -> imported-state gate -> RBAC must be no-op
+  -> fresh no-change plan/apply -> final no-change plan
   -> Azure PROD bundle deploy -> zero-change validation
 
 LAB08_ENABLE_AZURE_OIDC=false:
@@ -75,3 +76,5 @@ Personal DEV and Personal PROD share one Personal workspace but publish to isola
 The Personal PROD raw source changed from the historical managed Volume `dbr_dev.parvinbadalov_lab08_prod.lab08_travelops_raw` to the Terraform-owned managed Volume `dbr_dev.parvinbadalov.lab08_prod_travelops_raw`. Detailed Lakeflow events showed retained Auto Loader offsets with `lastInputPath` in the historical Volume while the active `CloudFilesSource` used the new Volume. This is a historical stream-source change, not an explicit metadata-path problem: the pipeline code lets Lakeflow manage schema/checkpoint state and does not set `cloudFiles.schemaLocation` or `checkpointLocation`. A supported full refresh of the Personal PROD rehearsal pipeline reset streaming state and recomputed downstream Silver/Gold outputs from the complete replayable raw seed.
 
 Azure PROD now has the complete Terraform storage chain, Terraform-owned application schema, and deployed DAB application definition. The first application run proved the seed notebook precondition by failing safely before downstream work when the target schema was absent. Terraform added only `dbr_dev.parvinbadalov_lab08_prod`; the rerun then completed seed, pipeline, and health tasks successfully. The external raw Volume remains at `abfss://lab08-travelops@lab08travelops63e621.dfs.core.windows.net/raw`, and DAB owns the 20 Bronze/Silver/Gold tables created inside the application schema.
+
+PAT and OIDC deployments share the pinned Azure bundle root `/Workspace/Users/parvinbadalov@softserve.academy/.bundle/lab08-travelops-cicd/azure_prod`. The existing human identity remains the job and pipeline run-as identity and owner. The GitHub service principal has `CAN_MANAGE` on that root, job, and pipeline; dashboard and alert management inherit from the root, and the shared warehouse grants only `CAN_USE`. Target-level DAB permissions preserve this split on future deployments without transferring ownership.

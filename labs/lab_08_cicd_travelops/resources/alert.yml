@@ -38,6 +38,3 @@ resources:
         pause_status: PAUSED
         quartz_cron_schedule: "0 0 8 * * ?"
         timezone_id: Europe/Warsaw
-      permissions:
-        - level: CAN_RUN
-          user_name: ${workspace.current_user.userName}
