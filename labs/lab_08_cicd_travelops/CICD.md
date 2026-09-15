@@ -10,7 +10,7 @@ Merges to `main` use separate jobs and `needs:` dependencies. Both modes first r
 
 The advanced Terraform jobs require the complete imported Azure PROD state inventory and generate fresh saved plans. The Access Connector role assignment must have the exact Terraform action `no-op`; any create, update, delete, replacement, or missing plan entry fails before apply because the GitHub identity does not have RBAC administration permission. The apply job then refuses every remaining non-no-op resource change, applies only the verified saved plan, and requires a final detailed-exit-code plan of `0`. A fully unchanged plan does not require `roleAssignments/write`.
 
-The advanced Azure PROD application job runs only when both `LAB08_ENABLE_AZURE_OIDC=true` and `LAB08_RUN_AZURE_PROD_JOB=true`. The temporary PAT path runs the promotion job automatically after a delete-free bundle plan and deployment, then requires strict validation and a final `0 add, 0 change, 0 delete` plan.
+The advanced Azure PROD application job runs only when both `LAB08_ENABLE_AZURE_OIDC=true` and `LAB08_RUN_AZURE_PROD_JOB=true`. The temporary PAT path runs the promotion job automatically after a delete-free bundle plan and deployment, then requires normal validation and a final `0 add, 0 change, 0 delete` plan. Azure PROD intentionally avoids `--strict` because its pinned human-owned workspace root retains a human `CAN_MANAGE` ACL outside bundle management; declaring that ACL in the bundle would conflict with preserving the live job and pipeline `IS_OWNER` ownership.
 
 ## Repository Variables
 

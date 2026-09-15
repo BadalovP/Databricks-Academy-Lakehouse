@@ -433,7 +433,9 @@ jobs:
         shell: bash
         run: |
           storage_account="${{ needs.terraform-apply.outputs.storage_account_name }}"
-          databricks bundle validate --strict -t azure_prod --var azure_storage_account_name="$storage_account"
+          # The pinned human-owned root retains an unmanaged human CAN_MANAGE ACL;
+          # bundle-managing it would conflict with preserving live IS_OWNER ownership.
+          databricks bundle validate -t azure_prod --var azure_storage_account_name="$storage_account"
           databricks bundle plan -t azure_prod --var azure_storage_account_name="$storage_account" | tee azure-prod-bundle-plan.txt
           grep -Eq "Plan: [0-9]+ to add, [0-9]+ to change, 0 to delete" azure-prod-bundle-plan.txt
           databricks bundle deploy -t azure_prod --var azure_storage_account_name="$storage_account"
@@ -498,12 +500,14 @@ jobs:
           [[ -n "$DATABRICKS_HOST" ]] || { echo "DATABRICKS_AZURE_HOST is required."; exit 1; }
           [[ -n "$DATABRICKS_TOKEN" ]] || { echo "DATABRICKS_AZURE_TOKEN is required."; exit 1; }
           [[ -n "$storage_account" ]] || { echo "LAB08_AZURE_STORAGE_ACCOUNT_NAME is required."; exit 1; }
-          databricks bundle validate --strict -t azure_prod --var azure_storage_account_name="$storage_account"
+          # The pinned human-owned root retains an unmanaged human CAN_MANAGE ACL;
+          # bundle-managing it would conflict with preserving live IS_OWNER ownership.
+          databricks bundle validate -t azure_prod --var azure_storage_account_name="$storage_account"
           databricks bundle plan -t azure_prod --var azure_storage_account_name="$storage_account" | tee azure-prod-pat-plan.txt
           grep -Eq "Plan: [0-9]+ to add, [0-9]+ to change, 0 to delete" azure-prod-pat-plan.txt
           databricks bundle deploy -t azure_prod --var azure_storage_account_name="$storage_account"
           databricks bundle run -t azure_prod travelops_promotion_job --var azure_storage_account_name="$storage_account"
-          databricks bundle validate --strict -t azure_prod --var azure_storage_account_name="$storage_account"
+          databricks bundle validate -t azure_prod --var azure_storage_account_name="$storage_account"
           databricks bundle plan -t azure_prod --var azure_storage_account_name="$storage_account" | tee azure-prod-pat-final-plan.txt
           grep -Fq "Plan: 0 to add, 0 to change, 0 to delete" azure-prod-pat-final-plan.txt
 
