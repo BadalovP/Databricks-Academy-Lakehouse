@@ -63,8 +63,8 @@ LAB08_ENABLE_AZURE_OIDC=true:
   -> Azure PROD bundle deploy -> zero-change validation
 
 LAB08_ENABLE_AZURE_OIDC=false:
-  PAT strict validation -> delete-free plan -> Azure PROD deploy/run
-  -> strict validation -> zero-change plan
+  PAT validation -> delete-free plan -> Azure PROD deploy/run
+  -> validation -> zero-change plan
 ```
 
 ## Design Notes
