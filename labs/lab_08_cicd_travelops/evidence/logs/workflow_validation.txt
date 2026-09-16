@@ -12,10 +12,10 @@ Checked: 2026-09-16
 - Azure PROD plan/apply guards require all nine final Terraform resource addresses in remote state, including the imported RBAC assignment and application schema.
 - The advanced plan/apply jobs require the imported RBAC assignment to plan exactly no-op and refuse every non-no-op fresh plan; an unchanged plan does not require roleAssignments/write.
 - Both Azure Blob backend keys now contain the complete migrated states, so the workflow's remote-state inventory gates can pass without recreating resources.
-- The Azure target is pinned to the existing PAT deployment root, leaves the human IS_OWNER entry implicit, and declares only the GitHub service principal at CAN_MANAGE.
+- The Azure target is pinned to the existing PAT deployment root, preserves the human IS_OWNER entry, and restricts the GitHub service principal to direct CAN_MANAGE on the adopted job and pipeline objects instead of target-level propagation.
 - OIDC run 35021845707 reached Azure PROD deployment with working authentication and planned only job and pipeline permission updates before the non-admin owner-change checks rejected them.
-- The Azure target now omits the human IS_OWNER entry from bundle-managed permissions and retains only the service-principal CAN_MANAGE declaration.
-- Post-fix job and pipeline permission nodes are unchanged; remote state still reports the human as IS_OWNER and the service principal as CAN_MANAGE.
+- The Azure target now omits target-level permission propagation and defines resource-scoped ACLs that preserve the human IS_OWNER model while granting the service principal CAN_MANAGE only on the exact adopted resources.
+- Post-fix job and pipeline permission nodes are unchanged; remote state still reports the human as IS_OWNER and the service principal as CAN_MANAGE, without any target-level ownership reconciliation.
 - A normalized LF post-fix plan is 0 add, 0 change, 0 delete, 8 unchanged.
 - Azure PROD normal validation exits 0 while reporting the intentional unmanaged human CAN_MANAGE ACL on the pinned human-owned root; Personal DEV and Personal PROD retain strict validation.
 - Delete-free pre-deploy plans and exact zero-change post-deploy plans remain mandatory in both Azure deployment modes.

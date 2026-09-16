@@ -123,9 +123,6 @@ targets:
       host: https://adb-7405604503619901.1.azuredatabricks.net
       # Keep PAT and future OIDC deployments on the already-adopted DAB state.
       root_path: /Workspace/Users/parvinbadalov@softserve.academy/.bundle/${bundle.name}/${bundle.target}
-    permissions:
-      - level: CAN_MANAGE
-        service_principal_name: ${var.service_principal_name}
     variables:
       target_schema: parvinbadalov_lab08_prod
       raw_volume_schema: parvinbadalov

@@ -15,6 +15,11 @@
 resources:
   jobs:
     travelops_promotion_job:
+      permissions:
+        - level: IS_OWNER
+          user_name: ${var.bundle_owner_user_name}
+        - level: CAN_MANAGE
+          service_principal_name: ${var.service_principal_name}
       name: "[${bundle.target}] LAB 08 TravelOps Promotion Job"
       description: "Seeds raw files, runs Lakeflow, and validates TravelOps health."
       max_concurrent_runs: 1

@@ -16,6 +16,9 @@
 resources:
   dashboards:
     travelops_dashboard:
+      permissions:
+        - level: CAN_MANAGE
+          service_principal_name: ${var.service_principal_name}
       display_name: "[${bundle.target}] LAB 08 TravelOps Operations"
       file_path: ../dashboards/travelops_operations.lvdash.json
       warehouse_id: ${var.warehouse_id}
