@@ -467,8 +467,12 @@ jobs:
         shell: bash
         run: |
           storage_account="${{ needs.terraform-apply.outputs.storage_account_name }}"
-          databricks external-locations get lab08_travelops_raw_external_location --output json
-          databricks volumes read dbr_dev.parvinbadalov.lab08_prod_travelops_raw --output json
+          databricks external-locations get lab08_travelops_raw_external_location \
+            -t azure_prod \
+            --output json
+          databricks volumes read dbr_dev.parvinbadalov.lab08_prod_travelops_raw \
+            -t azure_prod \
+            --output json
           databricks bundle plan -t azure_prod --var azure_storage_account_name="$storage_account" | tee azure-prod-final-plan.txt
           grep -Fq "Plan: 0 to add, 0 to change, 0 to delete" azure-prod-final-plan.txt
 
