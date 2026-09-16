@@ -76,6 +76,9 @@ variables:
   azure_storage_account_name:
     description: Storage account created by Terraform for the Azure PROD raw external volume.
     default: ""
+  azure_job_cluster_id:
+    description: Existing Azure all-purpose cluster ID for Azure PROD job tasks (GP2 by default).
+    default: ""
 
 targets:
   personal_dev:
@@ -131,6 +134,11 @@ targets:
               user_name: ${var.bundle_owner_user_name}
             - level: CAN_MANAGE
               service_principal_name: ${var.service_principal_name}
+          tasks:
+            - task_key: seed_raw_data
+              existing_cluster_id: ${var.azure_job_cluster_id}
+            - task_key: validate_gold_health
+              existing_cluster_id: ${var.azure_job_cluster_id}
       pipelines:
         travelops_pipeline:
           permissions:
@@ -138,6 +146,19 @@ targets:
               user_name: ${var.bundle_owner_user_name}
             - level: CAN_MANAGE
               service_principal_name: ${var.service_principal_name}
+          serverless: false
+          clusters:
+            - label: default
+              node_type_id: Standard_F4
+              driver_node_type_id: Standard_F4
+              azure_attributes:
+                availability: ON_DEMAND_AZURE
+                first_on_demand: 1
+                spot_bid_max_price: -1
+              autoscale:
+                min_workers: 1
+                max_workers: 2
+                mode: ENHANCED
       alerts:
         travelops_health_alert:
           permissions:
@@ -162,3 +183,4 @@ targets:
       bundle_owner_user_name: parvinbadalov@softserve.academy
       service_principal_name: 3ec7e8df-66a2-4102-ab57-e4448b4e0e01
       azure_storage_account_name: ""
+      azure_job_cluster_id: 0702-171207-xo9bbc0y

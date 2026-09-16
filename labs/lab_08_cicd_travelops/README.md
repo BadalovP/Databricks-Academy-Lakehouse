@@ -37,6 +37,17 @@ Phase 0 discovered `samples.wanderbricks` in the personal workspace. Tables used
 
 Bronze, Silver and Gold are DAB-owned Lakeflow datasets because application data lifecycle belongs to Databricks. Raw uses Volumes because it models file landing zones and gives Auto Loader a cloud-file source. Personal DEV and Personal PROD raw volumes are managed volumes owned by `terraform/personal` in `dbr_dev.parvinbadalov`. The Personal application schemas are separate: `dbr_dev.parvinbadalov_lab08_dev` and `dbr_dev.parvinbadalov_lab08_prod`. Azure raw uses an external Volume owned by `terraform/azure-prod` so PROD can land data in ADLS Gen2 created and permissioned by Terraform.
 
+### Compute Architecture
+
+- **Personal DEV and Personal PROD**:
+  - Lakeflow Pipeline: serverless compute (`serverless: true`).
+  - Promotion Job notebook tasks (`seed_raw_data`, `validate_gold_health`): serverless compute.
+- **Azure PROD**:
+  - `seed_raw_data` notebook task: attached to existing all-purpose GP2 cluster (`0702-171207-xo9bbc0y`) via configurable `azure_job_cluster_id`.
+  - `validate_gold_health` notebook task: attached to existing all-purpose GP2 cluster (`0702-171207-xo9bbc0y`) via configurable `azure_job_cluster_id`.
+  - `run_lakeflow_pipeline` pipeline task: runs on **classic pipeline-managed compute** (`serverless: false`, single-label `default` cluster with `Standard_F4` nodes, `ON_DEMAND_AZURE`, and enhanced autoscaling `min_workers: 1`, `max_workers: 2`).
+  - **Important**: GP2 is an existing all-purpose cluster attached strictly to notebook tasks; GP2 is **not** the compute backing the Lakeflow pipeline.
+
 Run bundle commands from this directory:
 
 ```powershell

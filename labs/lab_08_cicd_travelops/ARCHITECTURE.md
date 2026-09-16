@@ -34,6 +34,17 @@ Dashboard      SQL health alert
 
 Auto Loader is used inside Lakeflow, but Auto Loader is not exclusive to Lakeflow. Classic Spark jobs can also use `spark.readStream.format("cloudFiles")`; the important distinction here is that Lakeflow owns declarative dataset lifecycle and orchestration.
 
+## Compute Architecture
+
+- **Personal DEV and Personal PROD**:
+  - Promotion Job notebook tasks (`seed_raw_data`, `validate_gold_health`): serverless compute.
+  - Lakeflow Pipeline (`travelops_pipeline`): serverless compute (`serverless: true`).
+- **Azure PROD**:
+  - `seed_raw_data` notebook task: runs on existing GP2 all-purpose compute (`0702-171207-xo9bbc0y`) via configurable bundle variable `azure_job_cluster_id`.
+  - `validate_gold_health` notebook task: runs on existing GP2 all-purpose compute (`0702-171207-xo9bbc0y`) via configurable bundle variable `azure_job_cluster_id`.
+  - `run_lakeflow_pipeline` pipeline task: executes the Lakeflow pipeline using **classic pipeline-managed compute** (`serverless: false`, single-label `default` cluster with `Standard_F4` nodes, `ON_DEMAND_AZURE`, and enhanced autoscaling `min_workers: 1`, `max_workers: 2`).
+  - **Important**: GP2 is an all-purpose cluster used strictly for notebook tasks; GP2 is **not** the compute backing the Lakeflow pipeline.
+
 ## CI/CD Architecture
 
 ```text
