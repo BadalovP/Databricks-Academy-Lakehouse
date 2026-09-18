@@ -87,7 +87,20 @@ Pull requests run Unit Tests -> Bundle Validate and, only when `LAB08_ENABLE_AZU
 
 ## Current Status
 
-Personal DEV and Personal PROD are complete and their final bundle plans are unchanged. Both Terraform states have been migrated to separate Azure Blob keys with preserved lineages, complete resource inventories, and final remote-backed `No changes` plans. The Azure RBAC assignment plans exactly `no-op`. The PAT deployment path remains active with `LAB08_ENABLE_AZURE_OIDC=false`. The registered GitHub managed identity now has minimum access to the pinned Azure bundle root, existing job and pipeline, and referenced SQL warehouse. DAB records the service-principal management grant while preserving the existing human owner; no extra Unity Catalog grant was added because the principal already has effective access through the existing `account users` catalog grant. Advanced run `35021845707` completed the Terraform stages and exposed an owner-permission reconciliation at Azure DAB deployment; the target now leaves the existing human `IS_OWNER` entry implicit so the next authorized OIDC run can verify the corrected no-op plan. Evidence logs live in `evidence/logs/`.
+**Status as of September 18, 2026: Deployment complete; final Azure PROD runtime verification pending.**
+
+* PR #12 was merged into `main`, introducing GP2 and classic Lakeflow compute for Azure PROD.
+* Unit tests, bundle validation, Personal DEV and Personal PROD deployment and validation passed.
+* GitHub OIDC authentication and Terraform Plan/Apply succeeded.
+* Azure PROD deployment updated exactly two resources: the promotion job and Lakeflow pipeline. No resources were created or deleted.
+* Azure PROD notebook tasks use existing GP2 (`0702-171207-xo9bbc0y`).
+* Azure PROD Lakeflow uses classic pipeline-managed `Standard_F4` compute with enhanced autoscaling (1–2 workers).
+* GitHub Actions run `35048957332` completed successfully on its latest attempt.
+* Post-deployment validation confirmed the external location and Volume. The final Azure bundle plan reported `0 to add, 0 to change, 0 to delete`.
+* `LAB08_ENABLE_AZURE_OIDC=true` is the active deployment mode. The temporary PAT path remains available as a fallback.
+* `LAB08_RUN_AZURE_PROD_JOB=false` intentionally prevents automatic paid Azure application execution.
+
+**Remaining work:** Execute the Azure PROD job once using the new GP2/classic configuration, verify all three tasks and Gold production-health checks, and record the results.
 
 ## One-Time Configuration
 
