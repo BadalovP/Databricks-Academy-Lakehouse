@@ -1,9 +1,17 @@
 # LAB 08 - TravelOps
 #
 # Pull requests stop after quality and bundle validation, plus read-only
-# Terraform plans when advanced OIDC mode is enabled. Pushes to main promote
-# Personal DEV and Personal PROD, then select the advanced OIDC/Terraform Azure
-# path or a temporary PAT-only Azure deployment path.
+# Terraform plans when advanced OIDC mode is enabled (terraform-plan keeps
+# using the unprotected `azure-prod` environment so ordinary PR validation
+# is never blocked). Pushes to main promote Personal DEV automatically, then
+# require manual approval (via a required-reviewers rule on the
+# `personal-prod-approval` environment, configured outside this file) before
+# Personal PROD deploys, then select the advanced OIDC/Terraform Azure path
+# or a temporary PAT-only Azure deployment path -- both of which also
+# require manual approval via a required-reviewers rule on the shared
+# `azure-release-approval` environment before either one deploys or applies
+# Terraform. Existing `personal-prod`/`azure-prod` environment names and the
+# Azure OIDC federated-credential subject are left unchanged by this gating.
 name: LAB 08 TravelOps CI/CD
 
 on:
@@ -113,7 +121,7 @@ jobs:
 
   deploy-personal-prod:
     name: Deploy Personal PROD
-    needs: validate-personal-dev
+    needs: approve-personal-prod
     runs-on: ubuntu-latest
     environment: personal-prod
     defaults:
@@ -148,6 +156,15 @@ jobs:
         run: |
           databricks bundle plan -t personal_prod | tee personal-prod-plan.txt
           grep -Fq "Plan: 0 to add, 0 to change, 0 to delete" personal-prod-plan.txt
+
+  approve-personal-prod:
+    name: Approve Personal PROD Deployment
+    needs: validate-personal-dev
+    runs-on: ubuntu-latest
+    environment: personal-prod-approval
+    steps:
+      - name: Approved
+        run: echo "Personal PROD deployment approved."
 
   terraform-plan:
     name: Terraform Plan
@@ -295,13 +312,28 @@ jobs:
             ${{ runner.temp }}/azure-prod-plan.txt
           if-no-files-found: warn
 
-  terraform-apply:
-    name: Terraform Apply
+  approve-azure-release:
+    name: Approve Azure Release (Terraform Apply)
     if: >-
+      needs.terraform-plan.result == 'success' &&
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
       vars.LAB08_ENABLE_AZURE_OIDC == 'true'
     needs: terraform-plan
+    runs-on: ubuntu-latest
+    environment: azure-release-approval
+    steps:
+      - name: Approved
+        run: echo "Azure PROD Terraform Apply and deployment approved."
+
+  terraform-apply:
+    name: Terraform Apply
+    if: >-
+      needs.approve-azure-release.result == 'success' &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      vars.LAB08_ENABLE_AZURE_OIDC == 'true'
+    needs: approve-azure-release
     runs-on: ubuntu-latest
     environment: azure-prod
     permissions:
@@ -476,13 +508,28 @@ jobs:
           databricks bundle plan -t azure_prod --var azure_storage_account_name="$storage_account" | tee azure-prod-final-plan.txt
           grep -Fq "Plan: 0 to add, 0 to change, 0 to delete" azure-prod-final-plan.txt
 
-  deploy-run-azure-prod-pat:
-    name: Deploy and Run Azure PROD (Temporary PAT)
+  approve-azure-release-pat:
+    name: Approve Azure Release (Temporary PAT)
     if: >-
+      needs.validate-personal-prod.result == 'success' &&
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
       vars.LAB08_ENABLE_AZURE_OIDC == 'false'
     needs: validate-personal-prod
+    runs-on: ubuntu-latest
+    environment: azure-release-approval
+    steps:
+      - name: Approved
+        run: echo "Azure PROD deployment (temporary PAT path) approved."
+
+  deploy-run-azure-prod-pat:
+    name: Deploy and Run Azure PROD (Temporary PAT)
+    if: >-
+      needs.approve-azure-release-pat.result == 'success' &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      vars.LAB08_ENABLE_AZURE_OIDC == 'false'
+    needs: approve-azure-release-pat
     runs-on: ubuntu-latest
     environment: azure-prod
     permissions:

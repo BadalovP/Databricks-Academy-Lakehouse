@@ -80,7 +80,7 @@
               "frame": {"showTitle": true, "title": "Bookings"}
             }
           },
-          "position": {"x": 0, "y": 2, "width": 4, "height": 3}
+          "position": {"x": 0, "y": 2, "width": 3, "height": 3}
         },
         {
           "widget": {
@@ -108,7 +108,7 @@
               "frame": {"showTitle": true, "title": "Booking Value"}
             }
           },
-          "position": {"x": 4, "y": 2, "width": 4, "height": 3}
+          "position": {"x": 3, "y": 2, "width": 3, "height": 3}
         },
         {
           "widget": {
@@ -119,7 +119,7 @@
                 "query": {
                   "datasetName": "ds_reconciliation",
                   "fields": [{"name": "sum(booking_count)", "expression": "SUM(`booking_count`)"}],
-                  "filters": [{"expression": "`reconciliation_status` <> 'matched'"}],
+                  "filters": [{"expression": "`reconciliation_status` IN ('no_payment_record', 'pending_or_failed_payment')"}],
                   "disaggregated": false
                 }
               }
@@ -130,10 +130,35 @@
               "encodings": {
                 "value": {"fieldName": "sum(booking_count)", "displayName": "Payment Gaps", "format": {"type": "number", "abbreviation": "compact", "decimalPlaces": {"type": "max", "places": 1}}}
               },
-              "frame": {"showTitle": true, "title": "Payment Gaps"}
+              "frame": {"showTitle": true, "title": "Payment Gaps (informational)", "description": "Bookings with no payment yet, or only a pending/failed payment. A normal lifecycle state, not a defect."}
             }
           },
-          "position": {"x": 8, "y": 2, "width": 4, "height": 3}
+          "position": {"x": 6, "y": 2, "width": 3, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "kpi-payment-mismatches",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_reconciliation",
+                  "fields": [{"name": "sum(booking_count)", "expression": "SUM(`booking_count`)"}],
+                  "filters": [{"expression": "`reconciliation_status` IN ('underpaid', 'overpaid')"}],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "sum(booking_count)", "displayName": "Payment Mismatches", "format": {"type": "number", "abbreviation": "compact", "decimalPlaces": {"type": "max", "places": 1}}}
+              },
+              "frame": {"showTitle": true, "title": "Payment Mismatches", "description": "Bookings with a completed payment whose total does not match the booking amount. Always a data defect; gates gold_production_health."}
+            }
+          },
+          "position": {"x": 9, "y": 2, "width": 3, "height": 3}
         },
         {
           "widget": {
@@ -187,7 +212,7 @@
               "encodings": {
                 "x": {"fieldName": "reconciliation_status", "scale": {"type": "categorical"}},
                 "y": {"fieldName": "booking_count", "scale": {"type": "quantitative"}},
-                "color": {"fieldName": "reconciliation_status", "scale": {"type": "categorical", "mappings": [{"value": "matched", "color": "#009E73"}, {"value": "missing_payment", "color": "#D55E00"}, {"value": "underpaid", "color": "#E69F00"}, {"value": "overpaid", "color": "#CC79A7"}]}}
+                "color": {"fieldName": "reconciliation_status", "scale": {"type": "categorical", "mappings": [{"value": "matched", "color": "#009E73"}, {"value": "no_payment_record", "color": "#56B4E9"}, {"value": "pending_or_failed_payment", "color": "#0072B2"}, {"value": "underpaid", "color": "#E69F00"}, {"value": "overpaid", "color": "#CC79A7"}]}}
               },
               "frame": {"showTitle": true, "title": "Payment Reconciliation"}
             }
