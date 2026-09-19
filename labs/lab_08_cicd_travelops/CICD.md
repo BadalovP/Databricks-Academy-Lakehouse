@@ -72,15 +72,21 @@ The workflow uses concurrency groups so personal PROD, Terraform PROD, and Azure
 
 The Azure administrator created the `Storage Blob Data Contributor` assignment for connector principal `dbb45359-22b9-4744-8467-2ea8633bd999` at storage account `lab08travelops63e621`. Assignment `c0e24625-edc3-444a-8112-a7327380a96a` is imported as `azurerm_role_assignment.uc_storage_blob_data_contributor`; Terraform must not create a duplicate. The GitHub identity is federated for the `azure-prod` environment, has Contributor on `PL_24_Databricks`, and has Storage Blob Data Contributor on backend account `dlspl21databricks`. It does not have RBAC Administrator, which is safe while the assignment remains unchanged.
 
-The advanced GitHub OIDC/Terraform deployment path is operational. Run `35046633755` established successful OIDC deployment and validation. Following the merge of PR #12, the September 18 rerun (`35048957332`) successfully completed Personal DEV/PROD, Terraform Plan and Apply, Azure PROD deployment, and Azure PROD validation.
+The advanced GitHub OIDC/Terraform deployment path is operational. Run `35046633755` established successful OIDC deployment and validation. Following the merge of PR #12, the September 18 rerun (`35048957332`) successfully completed Personal DEV/PROD, Terraform Plan and Apply, Azure PROD deployment, and Azure PROD validation. A later run, `35404466063`, deployed PR #13's Photon fix through the same pipeline.
 
 The Azure PROD bundle uses resource-specific permissions instead of target-level permission propagation. The existing human user retains `IS_OWNER` on the promotion job and Lakeflow pipeline, while service principal `github-lab08-travelops` (SCIM ID `141097843869075`, client ID `3ec7e8df-66a2-4102-ab57-e4448b4e0e01`) has `CAN_MANAGE`. The dashboard and alert also declare service-principal `CAN_MANAGE`. The pinned bundle root retains its separately managed permissions. The referenced SQL warehouse grants the service principal `CAN_USE`. The job and pipeline run-as identity remains `parvinbadalov@softserve.academy`.
 
-Azure PROD notebook tasks use existing GP2 compute. The Lakeflow pipeline uses classic pipeline-managed `Standard_F4` compute with enhanced autoscaling. The September 18 deployment changed only these two DAB resources, and post-deployment validation returned `0 to add, 0 to change, 0 to delete`.
+Azure PROD notebook tasks use existing GP2 compute. The Lakeflow pipeline uses classic pipeline-managed `Standard_F4` compute with enhanced autoscaling and `photon: false`. The September 18 deployment changed only these two DAB resources, and post-deployment validation returned `0 to add, 0 to change, 0 to delete`.
 
 `LAB08_ENABLE_AZURE_OIDC=true` is the active deployment mode. The temporary PAT path remains available as a fallback. `LAB08_RUN_AZURE_PROD_JOB=false` intentionally prevents automatic Azure application execution.
 
-The previously successful Azure PROD application run predates the GP2/classic-compute change. Final runtime verification on the new compute configuration remains pending. No additional Unity Catalog grant was required because the service principal already had effective access through existing grants.
+### PR #13: Photon/Standard_F4 incompatibility
+
+The first manual execution of Azure PROD job `941995669563439` after the PR #12 GP2/classic-compute change failed during pipeline cluster creation: `BAD_REQUEST: Standard_F4 is not supported for Photon as worker.` `resources/pipeline.yml` defaults `photon: true`; the Azure PROD target override switched to classic `Standard_F4` compute but had not disabled Photon. PR #13 added `photon: false` to the Azure PROD pipeline override only, leaving Personal DEV and Personal PROD (serverless, `photon: true`) unchanged.
+
+After PR #13 deployed, manual job run `388990177883700` retried the promotion job: `run_lakeflow_pipeline` failed on its first attempt with the same Photon error, then succeeded on its second attempt. `seed_raw_data` and `validate_gold_health` both completed successfully, and the job run's overall result is `SUCCESS`. This confirms the fix; no additional Unity Catalog grant was required because the service principal already had effective access through existing grants. As with all Azure PROD executions so far, this run was triggered manually — `LAB08_RUN_AZURE_PROD_JOB=false` keeps GitHub Actions from running the job automatically.
+
+Gold health validation on that run reported `current_booking_count = 25000`, `duplicate_current_booking_count = 0`, `payment_mismatch_count = 25000`, `health_passed = true`. The 100% payment mismatch rate is a separate, unresolved data-reconciliation observation — see `README.md`'s "Known Issue: Payment Reconciliation Mismatch" section for the investigation and root-cause evidence. It is unrelated to the Photon fix and was not introduced by PR #13.
 
 ## Personal Ownership Model
 

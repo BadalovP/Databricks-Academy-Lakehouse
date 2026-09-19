@@ -43,6 +43,8 @@ Terraform state, and saved plan files.
 | OIDC identity readiness | GitHub/Azure | Databricks bootstrap complete | `logs/oidc_readiness_20260915.txt` records federation, Azure roles, registration, and the current disabled-mode safety posture. |
 | OIDC Databricks permissions | Azure PROD | Minimum access verified | `logs/oidc_databricks_permissions_20260915.txt` records object IDs, before/after ACLs, inherited UC access, and the delete-free read-only bundle plan. |
 | Workflow policy | GitHub Actions | Pass | `logs/workflow_validation.txt` records YAML parsing, dependency, PR safety, temporary PAT mode, advanced OIDC mode, and Azure-run gating checks. |
+| Photon/Standard_F4 fix (PR #13) | Azure PROD | Verified fixed | `lab08_photon_fix_and_reconciliation_observation.md` records job run `388990177883700`'s failed-then-succeeded `run_lakeflow_pipeline` attempts. |
+| Payment reconciliation | Azure PROD | Unresolved observation | `lab08_photon_fix_and_reconciliation_observation.md` records the `gold_production_health` snapshot, the `missing_payment`/`overpaid` split, and the duplicate-Bronze-ingestion root-cause investigation. |
 
 Azure Terraform, DAB deployment, and the authorized Azure PROD application run
 are complete and idempotent. The first run failed safely before downstream work
@@ -50,3 +52,8 @@ because the application schema was absent; Terraform now owns that schema, and
 the successful rerun produced a green health result. Screenshots of GitHub
 Actions, Lakeflow, dashboards, expectations, and Azure resources remain a manual
 evidence step.
+
+A subsequent run surfaced a Photon/`Standard_F4` incompatibility that PR #13
+fixed, and an unresolved payment-reconciliation observation unrelated to that
+fix; see `lab08_photon_fix_and_reconciliation_observation.md` and `README.md`'s
+"Known Issue: Payment Reconciliation Mismatch" section.
