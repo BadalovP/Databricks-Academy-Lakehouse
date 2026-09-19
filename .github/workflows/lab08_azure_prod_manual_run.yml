@@ -1,0 +1,400 @@
+# LAB 08 - TravelOps
+#
+# Standalone, manually-triggered workflow to execute the already-deployed
+# Azure PROD TravelOps job exactly once. Gated by the same
+# azure-release-approval environment used by lab08_cicd.yml's Terraform
+# Apply gate (reused, not recreated -- no new environment is declared here).
+# The job-run and verification steps keep the existing azure-prod
+# environment unchanged, so the Azure OIDC federated-credential subject
+# (repo:...:environment:azure-prod) is preserved exactly as configured.
+#
+# This workflow deliberately does not touch Terraform, bundle deployment, or
+# Personal DEV/PROD -- those remain owned by lab08_cicd.yml. It only runs the
+# job that lab08_cicd.yml's own run-azure-prod job would run, as an
+# alternative, approval-gated trigger that does not require setting the
+# LAB08_RUN_AZURE_PROD_JOB repository variable.
+#
+# Run-ID capture note: `databricks bundle run --output json` does not
+# produce parseable JSON (verified against a real captured run: it prints a
+# "Run URL:" line, live progress text, and on failure a raw Python
+# traceback -- none of it valid JSON). This workflow never parses that
+# command's output. Instead it triggers with `--no-wait` (fire-and-forget,
+# a single trigger call, no retry) and independently locates the new run via
+# `jobs list-runs --start-time-from <pre-trigger timestamp> --output json`,
+# then polls `jobs get-run --output json` -- both of which reliably produce
+# clean JSON and were exercised repeatedly against real Databricks runs
+# earlier in this project's history.
+#
+# Additional guarantees: the located run is cross-checked against
+# max_concurrent_runs: 1 plus a start-time floor and fails loudly (never
+# guesses) if more than one candidate is found; the reported pipeline update
+# ID is correlated against the run_lakeflow_pipeline task's own start/end
+# time window rather than assuming the pipeline's most recent update belongs
+# to this run; independent SQL verification is explicitly recorded as
+# PERFORMED or NOT_PERFORMED (never silently omitted) depending on whether
+# the warehouse was already running; and the reconciliation-breakdown query
+# is polled to actual statement completion and fails the job outright if
+# that query itself did not succeed, rather than recording a failed
+# response as if it were evidence of a passing verification.
+name: LAB 08 Azure PROD Manual Run
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lab08-azure-prod-manual-run
+  cancel-in-progress: false
+
+env:
+  LAB08_ROOT: labs/lab_08_cicd_travelops
+  AZURE_PROD_JOB_ID: "941995669563439"
+  AZURE_PROD_PIPELINE_ID: "85c888ba-d801-4c0d-896d-ec73330e4ee6"
+  AZURE_PROD_WAREHOUSE_ID: "3ed106620db591d9"
+  AZURE_PROD_SCHEMA: "dbr_dev.parvinbadalov_lab08_prod"
+
+jobs:
+  approve-azure-run:
+    name: Approve Azure PROD Job Execution
+    runs-on: ubuntu-latest
+    environment: azure-release-approval
+    steps:
+      - name: Approved
+        run: echo "Azure PROD job execution approved."
+
+  run-azure-prod-job:
+    name: Run Azure PROD TravelOps Job
+    needs: approve-azure-run
+    if: needs.approve-azure-run.result == 'success'
+    runs-on: ubuntu-latest
+    environment: azure-prod
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      run_id: ${{ steps.locate-run.outputs.run_id }}
+      run_result: ${{ steps.poll-run.outputs.run_result }}
+    defaults:
+      run:
+        working-directory: labs/lab_08_cicd_travelops
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - uses: databricks/setup-cli@main
+
+      - name: Confirm deployed bundle is unchanged before running (read-only)
+        env:
+          DATABRICKS_AUTH_TYPE: azure-cli
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
+        run: |
+          set -euo pipefail
+          databricks bundle plan -t azure_prod \
+            --var azure_storage_account_name="${{ vars.LAB08_AZURE_STORAGE_ACCOUNT_NAME }}" \
+            | tee azure-prod-pre-run-plan.txt
+          grep -Fq "Plan: 0 to add, 0 to change, 0 to delete" azure-prod-pre-run-plan.txt
+
+      - name: Trigger the job exactly once (no wait, no retry)
+        id: trigger
+        env:
+          DATABRICKS_AUTH_TYPE: azure-cli
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
+        run: |
+          set -euo pipefail
+          echo "pre_trigger_ms=$(($(date +%s%N)/1000000 - 2000))" >> "$GITHUB_OUTPUT"
+          databricks bundle run travelops_promotion_job -t azure_prod \
+            --var azure_storage_account_name="${{ vars.LAB08_AZURE_STORAGE_ACCOUNT_NAME }}" \
+            --no-wait
+
+      - name: Locate the triggered run (must be unambiguous)
+        id: locate-run
+        env:
+          DATABRICKS_AUTH_TYPE: azure-cli
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
+        run: |
+          set -euo pipefail
+          # max_concurrent_runs: 1 is set on this job (resources/job.yml), so
+          # at most one run can be active at a time. Combined with an
+          # explicit start-time floor, this guarantees the run we find is
+          # ours -- and if more than one candidate somehow appears, this
+          # fails loudly instead of silently picking one (e.g. via [0]).
+          candidates="[]"
+          for attempt in $(seq 1 10); do
+            candidates="$(databricks jobs list-runs --job-id "$AZURE_PROD_JOB_ID" \
+              --active-only --start-time-from "${{ steps.trigger.outputs.pre_trigger_ms }}" \
+              --output json | jq -c '(if type=="array" then . else .runs end) // []')"
+            count="$(echo "$candidates" | jq 'length')"
+            if [[ "$count" -ge 1 ]]; then break; fi
+            sleep 5
+          done
+          count="$(echo "$candidates" | jq 'length')"
+          if [[ "$count" -eq 0 ]]; then
+            echo "::error::Could not locate an active run for job $AZURE_PROD_JOB_ID started at or after ${{ steps.trigger.outputs.pre_trigger_ms }} after 10 attempts." >&2
+            exit 1
+          fi
+          if [[ "$count" -gt 1 ]]; then
+            echo "::error::Found $count active runs matching this trigger window; refusing to guess which one is ours. Candidates:" >&2
+            echo "$candidates" >&2
+            exit 1
+          fi
+          run_id="$(echo "$candidates" | jq -r '.[0].run_id')"
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+          echo "Located run: $run_id"
+
+      - name: Poll to terminal state and capture task results (always runs)
+        id: poll-run
+        if: always() && steps.locate-run.outputs.run_id != ''
+        env:
+          DATABRICKS_AUTH_TYPE: azure-cli
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
+        run: |
+          set -uo pipefail
+          run_id="${{ steps.locate-run.outputs.run_id }}"
+          terminal_states="TERMINATED INTERNAL_ERROR SKIPPED"
+          # Poll for up to 60 minutes (120 attempts * 30s). If the run is
+          # still active after that, report an explicit timeout and stop --
+          # never trigger a second run automatically; the run may still be
+          # active on Databricks and requires manual follow-up.
+          max_attempts=120
+          life_cycle_state=""
+          for attempt in $(seq 1 "$max_attempts"); do
+            databricks jobs get-run "$run_id" --output json > run-details.json
+            life_cycle_state="$(jq -r '.state.life_cycle_state // empty' run-details.json)"
+            if [[ " $terminal_states " == *" $life_cycle_state "* ]]; then
+              break
+            fi
+            if [[ "$attempt" -lt "$max_attempts" ]]; then
+              sleep 30
+            fi
+          done
+          if [[ " $terminal_states " != *" $life_cycle_state "* ]]; then
+            echo "run_result=TIMEOUT" >> "$GITHUB_OUTPUT"
+            echo "::error::Polling timed out after 60 minutes; run $run_id is still in state '$life_cycle_state' and has not reached a terminal state. Not retrying or triggering a second run. Check the run directly in the Databricks UI/API: run_id=$run_id."
+            exit 0
+          fi
+          result_state="$(jq -r '.state.result_state // "UNKNOWN"' run-details.json)"
+          echo "run_result=$result_state" >> "$GITHUB_OUTPUT"
+          echo "=== Task results ==="
+          jq -r '.tasks[]? | "\(.task_key): \(.state.life_cycle_state) \(.state.result_state // "") \(.state.state_message // "")"' run-details.json
+          exit 0
+
+      - name: Correlate the pipeline update ID with this job run's own task window
+        if: always() && steps.locate-run.outputs.run_id != ''
+        env:
+          DATABRICKS_AUTH_TYPE: azure-cli
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
+        run: |
+          set -uo pipefail
+          # run-details.json (captured by the previous step) has no direct
+          # update_id field for the pipeline task -- confirmed by inspecting
+          # a real completed pipeline task's JSON, which exposes only
+          # pipeline_id, run_id, start_time and end_time, not the update_id.
+          # Correlate by time window instead of trusting latest_updates[0],
+          # which could belong to an unrelated manual or concurrent trigger.
+          task_start="$(jq -r '.tasks[]? | select(.task_key=="run_lakeflow_pipeline") | .start_time // empty' run-details.json)"
+          task_end="$(jq -r '.tasks[]? | select(.task_key=="run_lakeflow_pipeline") | .end_time // empty' run-details.json)"
+          databricks pipelines get "$AZURE_PROD_PIPELINE_ID" --output json > pipeline-state.json || true
+
+          if [[ -z "$task_start" ]]; then
+            echo "::warning::run_lakeflow_pipeline task not found in run-details.json (job may have failed before that task ran); cannot correlate a pipeline update ID."
+            echo '{"pipeline_update_correlation": "NOT_APPLICABLE", "reason": "run_lakeflow_pipeline task did not run"}' > pipeline-update-correlation.json
+            exit 0
+          fi
+          task_end="${task_end:-9999999999999}"
+
+          # Strip fractional seconds and the trailing "Z" via a literal split
+          # (not a regex, to avoid jq/shell escaping pitfalls), then parse
+          # as UTC with strptime/mktime. This was verified against real
+          # captured data (a real update's creation_time correctly falls
+          # inside its run's task start/end window) before being trusted here.
+          time_filter='.creation_time | split(".")[0] | strptime("%Y-%m-%dT%H:%M:%S") | mktime * 1000'
+          match_count="$(jq --argjson s "$task_start" --argjson e "$task_end" \
+            "[.latest_updates[]? | select(($time_filter) >= \$s and ($time_filter) <= \$e)] | length" \
+            pipeline-state.json 2>/dev/null || echo 0)"
+
+          if [[ "$match_count" == "1" ]]; then
+            update_id="$(jq -r --argjson s "$task_start" --argjson e "$task_end" \
+              "[.latest_updates[]? | select(($time_filter) >= \$s and ($time_filter) <= \$e)][0].update_id" \
+              pipeline-state.json)"
+            echo "Correlated pipeline update: $update_id (task window: $task_start-$task_end)"
+            jq -n --arg id "$update_id" '{"pipeline_update_id": $id, "correlation": "matched_by_task_time_window"}' > pipeline-update-correlation.json
+          else
+            echo "::warning::Could not uniquely correlate a pipeline update to this run's task window ($match_count candidates matched); not reporting an update ID rather than guessing."
+            jq -n --argjson n "$match_count" '{"pipeline_update_correlation": "AMBIGUOUS", "candidate_count": $n}' > pipeline-update-correlation.json
+          fi
+
+      - name: Upload run evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: azure-prod-manual-run-${{ github.run_id }}
+          path: |
+            labs/lab_08_cicd_travelops/azure-prod-pre-run-plan.txt
+            labs/lab_08_cicd_travelops/run-details.json
+            labs/lab_08_cicd_travelops/pipeline-state.json
+            labs/lab_08_cicd_travelops/pipeline-update-correlation.json
+          if-no-files-found: warn
+
+      - name: Fail this job if the triggered run did not succeed
+        if: always()
+        run: |
+          result="${{ steps.poll-run.outputs.run_result }}"
+          echo "Triggered run result: ${result:-UNKNOWN}"
+          if [[ "$result" == "TIMEOUT" ]]; then
+            echo "::error::Polling timed out after 60 minutes waiting on the Azure PROD job run; it may still be active on Databricks. Not retried and no second run was triggered -- check the run directly."
+            exit 1
+          elif [[ "$result" != "SUCCESS" ]]; then
+            echo "::error::Azure PROD job run did not succeed (result: ${result:-UNKNOWN}). See uploaded run-details.json for task-level failure details."
+            exit 1
+          fi
+
+  verify-azure-prod-health:
+    name: Verify Azure PROD Health and Reconciliation (Read-Only)
+    needs: run-azure-prod-job
+    if: always() && needs.run-azure-prod-job.result == 'success'
+    runs-on: ubuntu-latest
+    environment: azure-prod
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: labs/lab_08_cicd_travelops
+    steps:
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - uses: databricks/setup-cli@main
+
+      - name: Check warehouse availability (metadata only, does not start compute)
+        id: warehouse-check
+        env:
+          DATABRICKS_AUTH_TYPE: azure-cli
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
+        run: |
+          set -euo pipefail
+          state="$(databricks warehouses get "$AZURE_PROD_WAREHOUSE_ID" --output json | jq -r '.state')"
+          echo "warehouse_state=$state" >> "$GITHUB_OUTPUT"
+          echo "Warehouse state: $state"
+
+      - name: Query and verify gold_production_health (only if warehouse already running)
+        if: steps.warehouse-check.outputs.warehouse_state == 'RUNNING'
+        env:
+          DATABRICKS_AUTH_TYPE: azure-cli
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
+        run: |
+          set -euo pipefail
+          statement_id="$(databricks api post /api/2.0/sql/statements --json \
+            "{\"warehouse_id\":\"$AZURE_PROD_WAREHOUSE_ID\",\"statement\":\"SELECT * FROM $AZURE_PROD_SCHEMA.gold_production_health\",\"wait_timeout\":\"30s\"}" \
+            | tee health-submit.json | jq -r '.statement_id')"
+
+          state="$(jq -r '.status.state' health-submit.json)"
+          for attempt in $(seq 1 10); do
+            if [[ "$state" == "SUCCEEDED" || "$state" == "FAILED" || "$state" == "CANCELED" || "$state" == "CLOSED" ]]; then
+              break
+            fi
+            sleep 3
+            databricks api get "/api/2.0/sql/statements/$statement_id" --output json > health-poll.json
+            state="$(jq -r '.status.state' health-poll.json)"
+            cp health-poll.json health-final.json
+          done
+          if [[ ! -f health-final.json ]]; then cp health-submit.json health-final.json; fi
+
+          echo "Statement final state: $state"
+          if [[ "$state" != "SUCCEEDED" ]]; then
+            echo "::error::gold_production_health query did not complete successfully (state: $state)."
+            cat health-final.json
+            exit 1
+          fi
+
+          python3 - <<'PYEOF'
+          import json, sys
+          with open("health-final.json") as f:
+              d = json.load(f)
+          cols = [c["name"] for c in d["manifest"]["schema"]["columns"]]
+          rows = d.get("result", {}).get("data_array") or []
+          if not rows:
+              print("::error::gold_production_health returned zero rows.")
+              sys.exit(1)
+          row = dict(zip(cols, rows[0]))
+          print("gold_production_health:", row)
+          health_passed = row.get("health_passed") == "true"
+          mismatch = int(row.get("payment_amount_mismatch_count", "-1"))
+          if not health_passed:
+              print(f"::error::health_passed is not true (got {row.get('health_passed')}).")
+              sys.exit(1)
+          if mismatch != 0:
+              print(f"::error::payment_amount_mismatch_count is not 0 (got {mismatch}).")
+              sys.exit(1)
+          print("Verification passed: health_passed=true, payment_amount_mismatch_count=0")
+          PYEOF
+
+      - name: Query and verify reconciliation breakdown (only if warehouse already running)
+        if: steps.warehouse-check.outputs.warehouse_state == 'RUNNING'
+        env:
+          DATABRICKS_AUTH_TYPE: azure-cli
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
+        run: |
+          set -euo pipefail
+          statement_id="$(databricks api post /api/2.0/sql/statements --json \
+            "{\"warehouse_id\":\"$AZURE_PROD_WAREHOUSE_ID\",\"statement\":\"SELECT reconciliation_status, COUNT(*) AS booking_count FROM $AZURE_PROD_SCHEMA.gold_payment_reconciliation GROUP BY reconciliation_status\",\"wait_timeout\":\"30s\"}" \
+            | tee reconciliation-submit.json | jq -r '.statement_id')"
+
+          state="$(jq -r '.status.state' reconciliation-submit.json)"
+          cp reconciliation-submit.json reconciliation-result.json
+          for attempt in $(seq 1 10); do
+            if [[ "$state" == "SUCCEEDED" || "$state" == "FAILED" || "$state" == "CANCELED" || "$state" == "CLOSED" ]]; then
+              break
+            fi
+            sleep 3
+            databricks api get "/api/2.0/sql/statements/$statement_id" --output json > reconciliation-result.json
+            state="$(jq -r '.status.state' reconciliation-result.json)"
+          done
+
+          echo "Reconciliation statement final state: $state"
+          if [[ "$state" != "SUCCEEDED" ]]; then
+            echo "::error::Reconciliation query did not complete successfully (state: $state). This must not be reported as evidence of a passing verification."
+            cat reconciliation-result.json
+            exit 1
+          fi
+          echo "=== reconciliation_status breakdown ==="
+          jq -r '.result.data_array[]? | @tsv' reconciliation-result.json
+
+      - name: Record verification status explicitly (always runs)
+        if: always()
+        run: |
+          state="${{ steps.warehouse-check.outputs.warehouse_state }}"
+          if [[ "$state" == "RUNNING" ]]; then
+            status="PERFORMED"
+            reason="Warehouse $AZURE_PROD_WAREHOUSE_ID was already running; live SQL verification was executed."
+          else
+            status="NOT_PERFORMED"
+            reason="Warehouse $AZURE_PROD_WAREHOUSE_ID was not running (state: ${state:-UNKNOWN}); independent SQL verification was skipped rather than starting paid compute without separate authorization. Do not treat this run as having full health verification -- only the job's own validate_gold_health task (already-authorized compute) ran for this execution."
+          fi
+          echo "$status: $reason"
+          echo "## Independent SQL verification: $status" >> "$GITHUB_STEP_SUMMARY"
+          echo "$reason" >> "$GITHUB_STEP_SUMMARY"
+          jq -n --arg status "$status" --arg reason "$reason" --arg warehouse_state "${state:-UNKNOWN}" \
+            '{"sql_verification": $status, "reason": $reason, "warehouse_state": $warehouse_state}' \
+            > verification-status.json
+
+      - name: Upload verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: azure-prod-health-verification-${{ github.run_id }}
+          path: |
+            labs/lab_08_cicd_travelops/verification-status.json
+            labs/lab_08_cicd_travelops/health-submit.json
+            labs/lab_08_cicd_travelops/health-poll.json
+            labs/lab_08_cicd_travelops/health-final.json
+            labs/lab_08_cicd_travelops/reconciliation-submit.json
+            labs/lab_08_cicd_travelops/reconciliation-result.json
+          if-no-files-found: ignore
