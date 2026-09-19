@@ -26,21 +26,30 @@ Outputs:
 - destinations_silver
 
 Idempotency:
-Silver materialized views are fully recomputed from Bronze on every run, so
-they self-heal even though Bronze itself is not idempotent: the raw seeding
-notebook overwrites each source Parquet folder with new physical files on
-every run, and Auto Loader has no way to recognize that a newly written file
-carries previously ingested content, so Bronze tables accumulate duplicate
-rows across repeated deployments. `current_bookings_silver` already absorbs
-this for bookings by keeping only the latest row per `booking_id`.
-`payments_silver` explicitly deduplicates on the composite business key
-below for the same reason: `payment_id` alone is not a safe key because the
-source data reuses some `payment_id` values across genuinely different
-events (different `booking_id`, `amount`, `status` or `payment_date`), so
-deduplicating by `payment_id` alone would silently discard distinct events.
-Historical duplicates already accumulated in Bronze before this fix are not
-removed by it; see `evidence/lab08_photon_fix_and_reconciliation_observation.md`
-and the production remediation plan for that separate cleanup decision.
+Silver materialized views are fully recomputed from Bronze on every pipeline
+run. `notebooks/00_seed_raw_data.ipynb` now writes each raw table to a
+single Parquet file at a path derived from `seed_limit`, which Auto Loader's
+default `cloudFiles.allowOverwrites=false` should skip reprocessing on a
+rerun with unchanged `seed_limit` — a genuine ingestion-idempotency fix at
+the source, not merely a downstream mitigation; see that notebook's
+Idempotency note for the reasoning and its residual limitations (not
+empirically validated by an actual run in this repository, and it does not
+cover every possible content change). Deduplication here in Silver remains
+a necessary defense-in-depth backstop, not a claim that it prevents Bronze
+from accumulating duplicates: it does not shrink or stop Bronze row growth
+by itself, it only prevents whatever duplication Bronze does have from
+corrupting Silver/Gold results. `current_bookings_silver` absorbs bookings
+duplication by keeping only the latest row per `booking_id`. `payments_silver`
+explicitly deduplicates on the composite business key below for the same
+reason: `payment_id` alone is not a safe key because the source data reuses
+some `payment_id` values across genuinely different events (different
+`booking_id`, `amount`, `status` or `payment_date`), so deduplicating by
+`payment_id` alone would silently discard distinct events. Historical
+duplicates already accumulated in Bronze before the ingestion fix shipped
+are not removed by either fix; see
+`evidence/lab08_photon_fix_and_reconciliation_observation.md` and
+`evidence/lab08_production_remediation_plan.md` for that separate cleanup
+decision and its validation/recovery procedure.
 `booking_updates_bronze` previously bypassed `BOOKING_EXPECTATIONS` entirely
 because `current_bookings_silver` read it directly instead of through a
 quality-gated Silver table; it now passes through the same expectations as

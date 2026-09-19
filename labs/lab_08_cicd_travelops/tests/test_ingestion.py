@@ -21,18 +21,24 @@ Tests are side-effect free.
 Local unit tests vs Databricks integration:
 These tests exercise the pure-Python mirrors in src/travelops/ingestion.py,
 not the actual PySpark pipeline code in pipeline/silver.py or the Auto
-Loader/notebook seeding behavior. They prove the intended business-key and
-filtering logic in isolation; they cannot exercise Lakeflow's
-@dp.expect_all_or_drop wiring, Auto Loader's file-based ingestion semantics,
-or an actual repeated-deployment scenario against a live Volume. Only a
-Databricks bundle run (not executed as part of this change) can validate the
-end-to-end behavior of the real pipeline.
+Loader/notebook seeding behavior. They prove the intended business-key,
+filtering and file-naming logic in isolation; they cannot exercise
+Lakeflow's @dp.expect_all_or_drop wiring, Auto Loader's actual
+cloudFiles.allowOverwrites file-discovery behavior, or an actual
+repeated-deployment scenario against a live Volume. In particular,
+test_seed_file_name_* below prove only that the notebook's file-naming
+function is deterministic and config-sensitive -- they cannot confirm that
+Auto Loader actually skips re-ingesting a stable path, which requires a
+real Databricks run (see evidence/lab08_production_remediation_plan.md's
+validation procedure). Only a Databricks bundle run (not executed as part
+of this change) can validate the end-to-end behavior of the real pipeline.
 """
 
 from travelops.ingestion import (
     deduplicate_payment_records,
     filter_to_sampled_bookings,
     payment_business_key,
+    seed_file_name,
 )
 
 
@@ -120,3 +126,16 @@ def test_referentially_consistent_sampling_preserves_multiple_events_per_booking
     filtered = filter_to_sampled_bookings(payments, sampled_booking_ids)
 
     assert len(filtered) == 2
+
+
+def test_seed_file_name_is_stable_for_an_unchanged_seed_limit() -> None:
+    # A rerun with the same seed_limit must resolve to the same path so Auto
+    # Loader's default cloudFiles.allowOverwrites=false recognizes it as
+    # already-ingested and skips reprocessing it.
+    assert seed_file_name(25000) == seed_file_name(25000)
+
+
+def test_seed_file_name_changes_when_seed_limit_changes() -> None:
+    # A deliberate configuration change must still be picked up as new
+    # content by Auto Loader, so the path must differ.
+    assert seed_file_name(25000) != seed_file_name(30000)

@@ -14,6 +14,8 @@ Responsibilities:
 - define the payment business key used for deduplication
 - deduplicate payment records on that key without collapsing distinct events
 - filter booking-scoped records to a sampled booking_id set
+- derive the deterministic, seed_limit-based raw file name used for
+  genuine source-level ingestion idempotency
 
 Inputs:
 Plain dictionaries representing rows in local tests; mirrors PySpark
@@ -93,3 +95,29 @@ def filter_to_sampled_bookings(
 
     allowed = set(sampled_booking_ids)
     return [dict(record) for record in records if record.get("booking_id") in allowed]
+
+
+def seed_file_name(seed_limit: int) -> str:
+    """Deterministic Parquet file name for a raw seed at a given seed_limit.
+
+    Mirrors 00_seed_raw_data.ipynb's `_seed_file_name`: encoding seed_limit
+    in the path means a rerun with an unchanged seed_limit writes to the
+    same path every time, while a deliberate seed_limit change produces a
+    new path. Auto Loader's documented default
+    cloudFiles.allowOverwrites=false means it will not reprocess a path it
+    has already ingested, even if that path is later overwritten with new
+    bytes -- so reusing this same path on an unchanged-config rerun is what
+    stops Bronze from accumulating duplicates at the source, rather than
+    only being cleaned up downstream in Silver.
+
+    This is a Spark-free mirror of the notebook's file-naming logic only. It
+    cannot exercise Auto Loader's actual file-discovery behavior, which
+    requires a real Databricks runtime; see
+    evidence/lab08_production_remediation_plan.md for the corresponding
+    integration validation procedure. It also does not address every
+    possible content-change scenario -- for example, the upstream
+    samples.wanderbricks source changing without any local seed_limit
+    change keeps the same path and would not be picked up.
+    """
+
+    return f"seed-{seed_limit}.snappy.parquet"

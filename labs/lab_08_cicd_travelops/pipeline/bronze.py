@@ -32,17 +32,26 @@ Outputs:
 - destinations_bronze
 
 Idempotency:
-Lakeflow manages checkpointing, but Bronze ingestion is NOT idempotent across
-repeated deployments: the seed notebook overwrites each raw Parquet folder
-with new physical file names every run (`df.write.mode("overwrite")`), and
-Auto Loader's checkpoint tracks already-ingested input by file path, not
-content. A rerun therefore re-ingests the same logical rows as apparently-new
-files, and these Bronze tables accumulate duplicate records over repeated
-deployments against a persistent schema. This is deliberately not masked
-here — Bronze intentionally preserves raw ingestion history as-is. Silver
-(`pipeline/silver.py`) is where deduplication happens: `current_bookings_silver`
-keeps only the latest row per `booking_id`, and `payments_silver` deduplicates
-on a composite business key. See that module's docstring for details.
+Lakeflow manages checkpointing. As of the ingestion-idempotency fix in
+`notebooks/00_seed_raw_data.ipynb`, the seed notebook writes each raw table
+to a single Parquet file at a path derived from `seed_limit`, instead of
+letting Spark allocate a fresh, uniquely-named file on every write. Auto
+Loader's default `cloudFiles.allowOverwrites=false` means it will not
+reprocess a path it has already ingested, even if that path is later
+overwritten with new bytes, so a rerun with an unchanged `seed_limit` should
+no longer be re-ingested as new. This is based on Auto Loader's documented
+behavior and has not been empirically validated by an actual run in this
+repository — see the notebook's Idempotency note and
+`evidence/lab08_production_remediation_plan.md` for the validation
+procedure and residual limitations (it does not cover every possible
+content change, and it does not retroactively deduplicate Bronze rows
+already accumulated from runs before this fix shipped). Silver
+(`pipeline/silver.py`) still deduplicates as a defense-in-depth backstop for
+those residual cases — `current_bookings_silver` keeps only the latest row
+per `booking_id`, and `payments_silver` deduplicates on a composite business
+key — but Silver deduplication does not by itself prevent Bronze from
+accumulating duplicate rows; it only prevents those duplicates from
+corrupting Silver/Gold results.
 
 Environment behavior:
 Raw Volume catalog, schema and name are read from pipeline configuration

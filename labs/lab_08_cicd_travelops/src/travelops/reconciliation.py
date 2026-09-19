@@ -31,6 +31,32 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+# Kept in sync by hand with the reconciliation_status values pipeline/gold.py's
+# gold_payment_reconciliation actually produces. Used by
+# tests/test_schema_compatibility.py to catch dashboards/SQL that still
+# reference a removed or renamed category (e.g. the old "missing_payment").
+RECONCILIATION_STATUSES = frozenset(
+    {"no_payment_record", "pending_or_failed_payment", "matched", "underpaid", "overpaid"}
+)
+
+# Kept in sync by hand with the columns pipeline/gold.py's
+# gold_production_health actually produces. Used by
+# tests/test_schema_compatibility.py to catch sql/ files that still select a
+# removed or renamed column (e.g. the old "payment_mismatch_count").
+GOLD_PRODUCTION_HEALTH_COLUMNS = frozenset(
+    {
+        "current_booking_count",
+        "duplicate_current_booking_count",
+        "invalid_booking_amount_count",
+        "no_payment_record_count",
+        "pending_or_failed_payment_count",
+        "matched_payment_count",
+        "payment_amount_mismatch_count",
+        "health_passed",
+        "evaluated_at",
+    }
+)
+
 
 def reconciliation_status(
     booking_amount: object,
