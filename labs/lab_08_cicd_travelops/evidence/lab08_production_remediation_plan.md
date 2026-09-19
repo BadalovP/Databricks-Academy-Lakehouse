@@ -1,15 +1,43 @@
 # LAB 08 - Azure PROD Bronze Duplicate Remediation Plan (NOT EXECUTED)
 
 Prepared 2026-09-19 alongside the payment-idempotency/reconciliation code fix
-(`fix/lab08-payment-idempotency-reconciliation`), and updated the same day
-after further review found the identical duplication pattern in
+(`fix/lab08-payment-idempotency-reconciliation`), updated the same day after
+further review found the identical duplication pattern in
 `properties_bronze`, `destinations_bronze`, `users_bronze` and
-`reviews_bronze`, plus a separate join-cardinality bug in
-`gold_property_performance`/`gold_destination_performance`. This is a plan
-only. No step in this document has been executed. It requires explicit
-separate approval, and even then should be run against Azure PROD only
-after the code fix in this PR has been deployed and verified once with a
-normal (non-refresh) job run.
+`reviews_bronze` plus a separate join-cardinality bug in
+`gold_property_performance`/`gold_destination_performance`, and updated
+again after a further architecture review replaced an XOR-based content
+fingerprint with an immutable, write-once seed design (see "Ingestion
+architecture" below). This is a plan only. No step in this document has
+been executed. It requires explicit separate approval, and even then should
+be run against Azure PROD only after the code fix in this PR has been
+deployed and verified once with a normal (non-refresh) job run.
+
+## Ingestion architecture: immutable, write-once seed
+
+`00_seed_raw_data.ipynb` treats each of the seven raw tables as a fixed,
+immutable snapshot of a static sample dataset (`samples.wanderbricks`), not
+a versioned or append-only feed — see the notebook's own architecture
+decision cell for the full reasoning. An earlier version of this fix used a
+`bit_xor(xxhash64(...))` content fingerprint to decide whether to reseed;
+that was replaced because XOR cancels in pairs (a dataset with one copy of
+a row and a dataset with three copies of that row can hash to the same
+fingerprint, silently missing a multiplicity change) and because it was
+solving a problem — versioned snapshots — this project does not actually
+have. The current design instead uses an explicit, human-controlled
+identity (`SEED_VERSION` and `seed_limit`, both requiring a reviewed
+code/config change to alter) verified by an honest, limited signal: the
+row count encoded in the seed file's own name. A rerun with an unchanged
+identity and an unchanged row count is a true no-op (zero filesystem
+operations); a rerun under the same identity with a *different* row count
+raises an exception rather than silently keeping stale data or silently
+writing an incompatible second snapshot. This does not detect a
+same-row-count in-place value change — an explicitly accepted limitation,
+justified only because the source is a fixed sample dataset. See
+`notebooks/00_seed_raw_data.ipynb`'s introduction cell for the full
+scenario-by-scenario behavior (first execution, unchanged rerun, changed/
+deleted record, legitimate duplicates, interrupted writes, Auto Loader
+checkpoints, historical duplicates).
 
 ## Scope: all seven Bronze tables, not just bookings and payments
 
@@ -105,11 +133,11 @@ A full refresh to shrink Bronze back to its intended size is a cost/hygiene
 decision, not a data-correctness requirement.
 
 **Residual risk this PR reduces but does not fully close:** this PR's
-`notebooks/00_seed_raw_data.ipynb` change now fingerprints each table's
-sampled content and writes it to a path derived from both `seed_limit` and
-that fingerprint, skipping the write entirely when a file at that exact
-path already exists, instead of letting Spark allocate a fresh,
-uniquely-named file on every write. Auto Loader's documented default
+`notebooks/00_seed_raw_data.ipynb` writes each table's seed once, under an
+explicit `(SEED_VERSION, seed_limit)` identity, and skips the write
+entirely on a rerun whose row count matches what was recorded for that
+identity — instead of letting Spark allocate a fresh, uniquely-named file
+on every write. Auto Loader's documented default
 `cloudFiles.allowOverwrites=false` means it should not reprocess a path it
 has already ingested, so a **rerun whose content is unchanged should stop
 adding new duplicate rows to Bronze** going forward — this is a genuine
@@ -118,13 +146,13 @@ documented Auto Loader behavior and has not been empirically confirmed by
 an actual run in this session (see the Validation section below). It does
 not retroactively remove Bronze rows already accumulated from runs before
 this fix shipped — that cleanup is the full-refresh procedure later in this
-document — and by design it never deletes a superseded content-version
-file when content does change (a `seed_limit` change, or an upstream
-`samples.wanderbricks` change), to avoid ever leaving the raw Volume
-without valid input; such a leftover file is a low-urgency cleanup item,
-not a correctness risk, since Silver-layer deduplication absorbs it.
-Silver-layer deduplication remains a defense-in-depth backstop for whatever
-duplication does still reach Bronze; it does not by itself stop Bronze from
+document — and by design it never deletes an existing file: if the row
+count for an identity ever changes, the notebook raises rather than
+deleting the old file or silently adding an incompatible new one, so a
+resolution (bumping `SEED_VERSION` and following the full-refresh procedure
+below) is always a deliberate, reviewed action, not automatic. Silver-layer
+deduplication remains a defense-in-depth backstop for whatever duplication
+does still reach Bronze; it does not by itself stop Bronze from
 accumulating rows.
 
 ## Validating that Silver/Gold pick up this fix without a full refresh
@@ -149,9 +177,11 @@ trusting the "no full refresh needed" claim above for Azure PROD.
 4. Rerun the promotion job a second time with an unchanged `seed_limit` and
    confirm `bookings_bronze`/`payments_bronze`/`properties_bronze`/
    `destinations_bronze`/`users_bronze`/`reviews_bronze` row counts in DEV
-   do **not** grow between the two runs. Growth here would mean the
-   content-fingerprint fix did not achieve idempotency as expected, even
-   though Silver/Gold correctness would still hold via the dedup backstop.
+   do **not** grow between the two runs, and confirm the raw Volume shows
+   exactly one `seed-v1-<seed_limit>-<row_count>rows.snappy.parquet` file
+   per table (not two). Growth here would mean the immutable-seed design
+   did not achieve idempotency as expected, even though Silver/Gold
+   correctness would still hold via the dedup backstop.
 5. Compare `SUM(booking_amount)` from `current_bookings_silver` alone
    against `gold_property_performance`'s and `gold_destination_performance`'s
    summed `booking_value` (grouped totals should reconcile to the same
@@ -163,6 +193,10 @@ trusting the "no full refresh needed" claim above for Azure PROD.
    `review_count` against a manual `SELECT COUNT(*) FROM reviews_silver
    WHERE property_id = ...` for one property, to confirm it is no longer
    using `COUNT(DISTINCT review_id)` (which would undercount).
+7. Confirm that changing `seed_limit` (a deliberate config change) produces
+   a new, additional seed file rather than an error, and that the resulting
+   row counts for booking-scoped tables (`payments`, `booking_updates`,
+   `reviews`) scale with the new sample instead of staying fixed.
 
 ### Recovery if the new logic does not appear after a normal run
 

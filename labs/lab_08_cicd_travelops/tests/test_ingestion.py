@@ -23,19 +23,22 @@ Local unit tests vs Databricks integration:
 These tests exercise the pure-Python mirrors in src/travelops/ingestion.py,
 not the actual PySpark pipeline code in pipeline/silver.py or the Auto
 Loader/notebook seeding behavior. They prove the intended business-key,
-filtering and file-naming logic in isolation; they cannot exercise
-Lakeflow's @dp.expect_all_or_drop wiring, Auto Loader's actual
-cloudFiles.allowOverwrites file-discovery behavior, or an actual
-repeated-deployment scenario against a live Volume. In particular,
-test_seed_file_name_* below prove only that the notebook's file-naming
-function is deterministic and config-sensitive -- they cannot confirm that
-Auto Loader actually skips re-ingesting a stable path, which requires a
-real Databricks run (see evidence/lab08_production_remediation_plan.md's
-validation procedure). Only a Databricks bundle run (not executed as part
-of this change) can validate the end-to-end behavior of the real pipeline.
+filtering and seed-identity decision logic in isolation; they cannot
+exercise Lakeflow's @dp.expect_all_or_drop wiring, Auto Loader's actual
+cloudFiles.allowOverwrites file-discovery behavior, or a genuine
+interrupted write against a live Volume. In particular, the
+decide_seed_action tests below prove only that the notebook's write/skip/
+fail control flow is correct in isolation -- they cannot confirm that Auto
+Loader actually skips re-ingesting a stable path, or that a real
+dbutils.fs.mv sequence behaves as assumed under an interrupted job; see
+tests/test_seed_ingestion_simulation.py for a simulated (not pure-mirror)
+test of the file-operation sequence, and
+evidence/lab08_production_remediation_plan.md's validation procedure for
+what only a real Databricks run can confirm.
 """
 
 from travelops.ingestion import (
+    decide_seed_action,
     deduplicate_by_primary_key,
     deduplicate_payment_records,
     deduplicate_review_records,
@@ -43,6 +46,7 @@ from travelops.ingestion import (
     payment_business_key,
     review_business_key,
     seed_file_name,
+    seed_identity_prefix,
 )
 
 
@@ -132,25 +136,92 @@ def test_referentially_consistent_sampling_preserves_multiple_events_per_booking
     assert len(filtered) == 2
 
 
-def test_seed_file_name_is_stable_for_unchanged_seed_limit_and_fingerprint() -> None:
-    # A rerun with the same seed_limit and the same content fingerprint must
+def test_seed_file_name_is_stable_for_unchanged_identity_and_row_count() -> None:
+    # A rerun with the same SEED_VERSION, seed_limit and row count must
     # resolve to the same path so Auto Loader's default
     # cloudFiles.allowOverwrites=false recognizes it as already-ingested and
     # skips reprocessing it.
-    assert seed_file_name(25000, "abc123") == seed_file_name(25000, "abc123")
+    assert seed_file_name("v1", 25000, 25000) == seed_file_name("v1", 25000, 25000)
 
 
 def test_seed_file_name_changes_when_seed_limit_changes() -> None:
     # A deliberate configuration change must still be picked up as new
     # content by Auto Loader, so the path must differ.
-    assert seed_file_name(25000, "abc123") != seed_file_name(30000, "abc123")
+    assert seed_file_name("v1", 25000, 25000) != seed_file_name("v1", 30000, 25000)
 
 
-def test_seed_file_name_changes_when_content_fingerprint_changes() -> None:
-    # An upstream source change that leaves seed_limit unchanged must still
-    # be picked up as new content -- this is why seed_limit alone is not a
-    # safe content version and the fingerprint is required.
-    assert seed_file_name(25000, "abc123") != seed_file_name(25000, "def456")
+def test_seed_file_name_changes_when_seed_version_changes() -> None:
+    # A deliberate, reviewed sampling-logic change (SEED_VERSION bump) must
+    # also produce a new path.
+    assert seed_file_name("v1", 25000, 25000) != seed_file_name("v2", 25000, 25000)
+
+
+def test_seed_file_name_changes_when_row_count_changes() -> None:
+    # This is the exact case the prior bit_xor(xxhash64(...)) fingerprint
+    # could fail on: one copy vs. three copies of the same row can produce
+    # an identical XOR fingerprint, but they always produce different row
+    # counts, so this naming scheme cannot have that blind spot.
+    assert seed_file_name("v1", 25000, 25000) != seed_file_name("v1", 25000, 25002)
+
+
+def test_decide_seed_action_writes_on_first_execution() -> None:
+    action, file_name = decide_seed_action([], "v1", 25000, 25000)
+
+    assert action == "write"
+    assert file_name == "seed-v1-25000-25000rows.snappy.parquet"
+
+
+def test_decide_seed_action_skips_on_second_execution_with_unchanged_input() -> None:
+    existing = ["seed-v1-25000-25000rows.snappy.parquet"]
+
+    action, file_name = decide_seed_action(existing, "v1", 25000, 25000)
+
+    assert action == "skip"
+    assert file_name == existing[0]
+
+
+def test_decide_seed_action_fails_on_changed_row_count_under_same_identity() -> None:
+    # Mirrors both "changed record" and "deleted record": either can shift
+    # the row count while SEED_VERSION/seed_limit stay the same, and the
+    # design must reject this explicitly rather than silently keeping the
+    # stale file or silently writing an incompatible second snapshot.
+    existing = ["seed-v1-25000-25000rows.snappy.parquet"]
+
+    action, file_name = decide_seed_action(existing, "v1", 25000, 24999)
+
+    assert action == "fail"
+
+
+def test_decide_seed_action_ignores_files_from_a_different_identity() -> None:
+    # A file from a different seed_limit (or, by construction, a different
+    # SEED_VERSION) must not be mistaken for this identity's seed -- this is
+    # what lets a deliberate seed_limit/SEED_VERSION bump write cleanly
+    # without tripping the "unexpected change" failure path.
+    existing = ["seed-v1-30000-30000rows.snappy.parquet"]
+
+    action, file_name = decide_seed_action(existing, "v1", 25000, 25000)
+
+    assert action == "write"
+
+
+def test_decide_seed_action_is_idempotent_after_restarting_execution() -> None:
+    # Simulates: run once (write), persist that file into "existing", then
+    # restart execution and run again with the same inputs -- must skip,
+    # not write again.
+    first_action, first_file = decide_seed_action([], "v1", 25000, 25000)
+    assert first_action == "write"
+
+    second_action, second_file = decide_seed_action([first_file], "v1", 25000, 25000)
+
+    assert second_action == "skip"
+    assert second_file == first_file
+
+
+def test_seed_identity_prefix_is_independent_of_row_count() -> None:
+    # The prefix (used to find "any existing seed for this identity",
+    # regardless of what row count it was written with) must depend only on
+    # the human-controlled identity, not on data content.
+    assert seed_identity_prefix("v1", 25000) == "seed-v1-25000-"
 
 
 def _review(**overrides: object) -> dict:

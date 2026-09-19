@@ -17,8 +17,9 @@ Responsibilities:
 - deduplicate dimension records (properties/destinations/users) on their
   verified-safe primary key
 - filter booking-scoped records to a sampled booking_id set
-- derive the deterministic, seed_limit-and-content-fingerprint-based raw
-  file name used for genuine source-level ingestion idempotency
+- derive the deterministic, (SEED_VERSION, seed_limit, row_count)-based raw
+  file identity used for the immutable, write-once seed design, and mirror
+  the notebook's write/skip/fail decision logic for that design
 
 Inputs:
 Plain dictionaries representing rows in local tests; mirrors PySpark
@@ -175,29 +176,67 @@ def filter_to_sampled_bookings(
     return [dict(record) for record in records if record.get("booking_id") in allowed]
 
 
-def seed_file_name(seed_limit: int, content_fingerprint: str) -> str:
-    """Deterministic Parquet file name for a raw seed's content version.
+def seed_identity_prefix(seed_version: str, seed_limit: int) -> str:
+    """Human-controlled identity prefix mirroring 00_seed_raw_data.ipynb's `_seed_identity_prefix`.
 
-    Mirrors 00_seed_raw_data.ipynb's `_seed_file_name`: encoding both
-    seed_limit and a content fingerprint means the path is stable when the
-    actual sampled rows are unchanged, and changes whenever they are not --
-    whether from a seed_limit config change or from the upstream
-    samples.wanderbricks source itself changing while seed_limit stays the
-    same. seed_limit alone is not a safe content version, since two runs
-    with the same seed_limit could still sample different upstream data;
-    only a fingerprint of the actual content can distinguish that case. Auto
-    Loader's documented default cloudFiles.allowOverwrites=false means it
-    will not reprocess a path it has already ingested, so reusing the same
-    path for unchanged content is what stops Bronze from accumulating
-    duplicates at the source, rather than only being cleaned up downstream
-    in Silver.
-
-    This is a Spark-free mirror of the notebook's file-naming logic only. It
-    cannot compute an actual content fingerprint (that requires hashing a
-    real DataFrame, which requires a Databricks runtime) or exercise Auto
-    Loader's actual file-discovery behavior; see
-    evidence/lab08_production_remediation_plan.md for the corresponding
-    integration validation procedure.
+    seed_version and seed_limit are the only two things allowed to define a
+    new seed identity, and both require a deliberate, reviewed code/config
+    change -- never inferred from data content. This is why the design
+    replaced a content fingerprint (which silently detects some changes and
+    misses others, and cancels under XOR) with an explicit, human-owned
+    identity plus the honest, limited verification in seed_file_name below.
     """
 
-    return f"seed-{seed_limit}-{content_fingerprint}.snappy.parquet"
+    return f"seed-{seed_version}-{seed_limit}-"
+
+
+def seed_file_name(seed_version: str, seed_limit: int, row_count: int) -> str:
+    """Deterministic file name for a seed at a given identity and row count.
+
+    Mirrors 00_seed_raw_data.ipynb's `_seed_file_name`. Encoding row_count
+    directly in the name is the verification signal: unlike a hash-based
+    fingerprint, it cannot cancel out a multiplicity change (one copy vs.
+    three copies of the same row always produce different counts -- the
+    exact case where the prior bit_xor(xxhash64(...)) fingerprint could
+    collide), but it is an explicitly limited signal: a same-row-count
+    in-place value edit is not detected. This is accepted because the
+    source (samples.wanderbricks) is a fixed sample dataset, not a live
+    feed -- see 00_seed_raw_data.ipynb's architecture decision.
+    """
+
+    return f"{seed_identity_prefix(seed_version, seed_limit)}{row_count}rows.snappy.parquet"
+
+
+def decide_seed_action(
+    existing_file_names: Iterable[str], seed_version: str, seed_limit: int, row_count: int
+) -> tuple[str, str]:
+    """Pure-Python mirror of the seed notebook's per-table control flow.
+
+    Returns (action, file_name):
+    - "write": no file exists yet for this identity; write it once.
+    - "skip": a file already exists for this identity with this exact row
+      count; do nothing (the common, fully idempotent case).
+    - "fail": a file exists for this identity but with a different row
+      count -- samples.wanderbricks appears to have changed under an
+      identity declared immutable. The notebook raises rather than
+      silently keeping stale data or silently writing a second,
+      incompatible snapshot.
+
+    This mirrors the notebook's decision logic exactly, but it is a
+    Spark-free simulation: it cannot exercise the actual dbutils.fs/Spark
+    file operations, Auto Loader's real file-discovery and
+    cloudFiles.allowOverwrites behavior, or a genuine interrupted write
+    against a live Volume. See tests/test_seed_ingestion_simulation.py for
+    a simulated (not pure-mirror) test of the file-operation sequence, and
+    evidence/lab08_production_remediation_plan.md for what still requires
+    a real Databricks run.
+    """
+
+    prefix = seed_identity_prefix(seed_version, seed_limit)
+    file_name = seed_file_name(seed_version, seed_limit, row_count)
+    matching = [name for name in existing_file_names if name.startswith(prefix)]
+    if not matching:
+        return ("write", file_name)
+    if file_name in matching:
+        return ("skip", file_name)
+    return ("fail", file_name)

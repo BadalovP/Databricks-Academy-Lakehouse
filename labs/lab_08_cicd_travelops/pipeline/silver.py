@@ -27,14 +27,19 @@ Outputs:
 
 Idempotency:
 Silver materialized views are fully recomputed from Bronze on every pipeline
-run. `notebooks/00_seed_raw_data.ipynb` now writes each raw table to a
-single Parquet file at a path derived from `seed_limit`, which Auto Loader's
-default `cloudFiles.allowOverwrites=false` should skip reprocessing on a
-rerun with unchanged `seed_limit` — a genuine ingestion-idempotency fix at
-the source, not merely a downstream mitigation; see that notebook's
-Idempotency note for the reasoning and its residual limitations (not
-empirically validated by an actual run in this repository, and it does not
-cover every possible content change). Deduplication here in Silver remains
+run. `notebooks/00_seed_raw_data.ipynb` treats each raw table's seed as an
+immutable, write-once snapshot identified by an explicit, human-controlled
+`(SEED_VERSION, seed_limit)` pair plus the sampled row count, rather than
+resampling on every run: it writes once, skips on an unchanged rerun, and
+raises instead of writing if the row count differs under an unchanged
+identity. Auto Loader's default `cloudFiles.allowOverwrites=false` should
+then skip reprocessing a rerun with unchanged content — a genuine
+ingestion-idempotency fix at the source, not merely a downstream
+mitigation; see that notebook's architecture decision for the full
+reasoning and its residual limitations (not empirically validated by an
+actual run in this repository, and row count is multiplicity-aware but not
+a full content check — a same-row-count in-place value edit is not
+detected). Deduplication here in Silver remains
 a necessary defense-in-depth backstop, not a claim that it prevents Bronze
 from accumulating duplicates: it does not shrink or stop Bronze row growth
 by itself, it only prevents whatever duplication Bronze does have from
