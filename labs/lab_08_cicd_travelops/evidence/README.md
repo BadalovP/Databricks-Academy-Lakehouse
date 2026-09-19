@@ -43,6 +43,12 @@ Terraform state, and saved plan files.
 | OIDC identity readiness | GitHub/Azure | Databricks bootstrap complete | `logs/oidc_readiness_20260915.txt` records federation, Azure roles, registration, and the current disabled-mode safety posture. |
 | OIDC Databricks permissions | Azure PROD | Minimum access verified | `logs/oidc_databricks_permissions_20260915.txt` records object IDs, before/after ACLs, inherited UC access, and the delete-free read-only bundle plan. |
 | Workflow policy | GitHub Actions | Pass | `logs/workflow_validation.txt` records YAML parsing, dependency, PR safety, temporary PAT mode, advanced OIDC mode, and Azure-run gating checks. |
+| Payment idempotency root cause | Azure PROD | Proven | `lab08_photon_fix_and_reconciliation_observation.md` records the job-run task attempts, Gold health snapshot, reconciliation split, and Bronze duplicate row counts behind the 100% payment-mismatch finding. |
+| Bronze-to-Silver drop root cause | Azure PROD | Proven: negative amount only | Direct query of `payments_bronze` found exactly 2,723 rows with `amount < 0` and zero rows failing on null `payment_id` or invalid `status`, matching the 175,000 → 172,277 drop exactly. |
+| Negative booking amount root cause | Azure PROD | Proven: booking_updates bypassed BOOKING_EXPECTATIONS | `bookings_silver` (quality-gated) had 0 negative rows; `booking_updates_bronze` (previously ungated) had 84, of which 4 were the "current" state for their booking_id. Statuses spanned pending/cancelled/completed/confirmed, not a clean refund pattern, so this was fixed as a consistency bug, not a business rule. |
+| Referential sampling root cause | Azure PROD | Proven: partially sampling-induced | Of the 15,977 sampled bookings with no payment in Silver, 7,038 (44%) do have a payment record in the full unsampled `samples.wanderbricks.payments` source — proving the independent per-table row-order sampling in `00_seed_raw_data.ipynb` was a material cause, not solely genuine unpaid bookings. |
+| Payment business key verification | Azure PROD | Proven: payment_id alone is unsafe | Of 20,795 distinct `payment_id` values in `payments_silver`, 3,470 map to more than one distinct `(payment_id, booking_id, amount, status, payment_date)` combination (up to 4), confirming `payment_id` alone would wrongly collapse distinct events. |
+| Production remediation plan | Azure PROD | Not executed | `lab08_production_remediation_plan.md` documents whether a Bronze full refresh is necessary (not for correctness — Silver/Gold self-heal on the next normal run once this fix deploys), its scope, backup/rollback via Delta time travel, validation steps, and cost/downtime, without running any of it. |
 
 Azure Terraform, DAB deployment, and the authorized Azure PROD application run
 are complete and idempotent. The first run failed safely before downstream work
@@ -50,3 +56,12 @@ because the application schema was absent; Terraform now owns that schema, and
 the successful rerun produced a green health result. Screenshots of GitHub
 Actions, Lakeflow, dashboards, expectations, and Azure resources remain a manual
 evidence step.
+
+A subsequent run surfaced a Photon/`Standard_F4` incompatibility (fixed by PR #13)
+and a payment-reconciliation defect investigated and fixed by
+`fix/lab08-payment-idempotency-reconciliation`: duplicate raw ingestion via
+Auto Loader re-processing overwritten seed files, an independently-sampled
+payments table breaking referential consistency with sampled bookings, and
+booking_updates bypassing booking quality expectations. See
+`lab08_photon_fix_and_reconciliation_observation.md` and
+`lab08_production_remediation_plan.md`.

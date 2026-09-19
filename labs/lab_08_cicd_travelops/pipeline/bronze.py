@@ -32,8 +32,17 @@ Outputs:
 - destinations_bronze
 
 Idempotency:
-Lakeflow manages checkpointing. The seed notebook writes deterministic source
-paths, so repeated deployments do not create duplicate business records.
+Lakeflow manages checkpointing, but Bronze ingestion is NOT idempotent across
+repeated deployments: the seed notebook overwrites each raw Parquet folder
+with new physical file names every run (`df.write.mode("overwrite")`), and
+Auto Loader's checkpoint tracks already-ingested input by file path, not
+content. A rerun therefore re-ingests the same logical rows as apparently-new
+files, and these Bronze tables accumulate duplicate records over repeated
+deployments against a persistent schema. This is deliberately not masked
+here — Bronze intentionally preserves raw ingestion history as-is. Silver
+(`pipeline/silver.py`) is where deduplication happens: `current_bookings_silver`
+keeps only the latest row per `booking_id`, and `payments_silver` deduplicates
+on a composite business key. See that module's docstring for details.
 
 Environment behavior:
 Raw Volume catalog, schema and name are read from pipeline configuration

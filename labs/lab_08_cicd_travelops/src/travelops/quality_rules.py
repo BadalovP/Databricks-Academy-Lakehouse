@@ -69,3 +69,29 @@ def is_positive_money(value: object) -> bool:
     if value is None:
         return False
     return Decimal(str(value)) >= Decimal("0")
+
+
+def is_valid_booking_row(row: Mapping[str, Any]) -> bool:
+    """Return true when a booking (or booking update) row satisfies BOOKING_EXPECTATIONS.
+
+    Mirrors pipeline/silver.py's `_booking_quality_filter`, which applies the
+    same BOOKING_EXPECTATIONS predicates to booking_updates_bronze that
+    bookings_bronze already receives via @dp.expect_all_or_drop. Before that
+    fix, booking_updates bypassed this contract entirely and could carry
+    negative total_amount values (and other invalid states) straight into
+    current_bookings_silver.
+    """
+
+    if row.get("booking_id") is None:
+        return False
+    if not has_valid_booking_dates(row):
+        return False
+    guests_count = row.get("guests_count")
+    if guests_count is None or not (1 <= guests_count <= 20):
+        return False
+    if not is_positive_money(row.get("total_amount")):
+        return False
+    status = str(row.get("status") or "").strip().lower()
+    if status not in {"pending", "confirmed", "cancelled", "completed"}:
+        return False
+    return True
