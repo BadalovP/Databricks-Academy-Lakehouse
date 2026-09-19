@@ -11,6 +11,33 @@ health-check task; this document captures exactly what happened and why, per
 instruction to stop and capture evidence rather than retry, delete files,
 reset checkpoints, or modify code.
 
+## Root cause correction (added after this document's original publication)
+
+This document originally concluded that booking_id 13594's $43.00
+reconciliation mismatch was a genuine source-data underpayment. A follow-up
+read-only investigation, tracing the original `bookings`, `payments` and
+`booking_updates` source rows plus Bronze, Silver and Gold for this one
+booking, established that conclusion was wrong: the true final source state
+for this booking is $775.56, status confirmed, exactly matching its one
+completed payment. That is a $0 mismatch in the actual business narrative.
+
+The $818.56 amount that `current_bookings_silver` selected as the booking's
+current state was an earlier, superseded update event, picked only because
+it and the true final event happened to share an identical `updated_at`
+timestamp (and, having been ingested in the same batch, an identical
+`_travelops_ingested_at` too), leaving the previous two-column ordering with
+no real tie-break and an arbitrary result. This was a pipeline ordering
+defect inside `current_bookings_silver`'s window function in
+`pipeline/silver.py`, not a source-data or reconciliation-aggregation
+defect. It has been fixed by adding the update event's own
+`booking_update_id`, a monotonically increasing per-event identity that was
+previously dropped before the union, as a tie-break between `updated_at` and
+`_travelops_ingested_at`.
+
+All measured figures below are preserved exactly as originally captured;
+only the root-cause narrative in the "Gold production health" and
+"Assessment" sections has been corrected.
+
 ## Run identifiers
 
 - Job run ID: `922281283343187` (job `373683442065271`, run URL:
@@ -108,14 +135,22 @@ Total AFTER: 25,000 (matches `current_bookings_silver`).
 | payment_amount_mismatch_count | 25,000 (old `payment_mismatch_count`, always-true bug) | **1** |
 | health_passed | true (meaningless — old gate never actually checked anything) | **false** (correctly gated on a genuine mismatch) |
 
-**One genuine data anomaly, not a pipeline defect**: `booking_id 13594` has
-`booking_amount = $818.56`, one completed payment of `$775.56`
-(`completed_payment_count = 1`, `payment_record_count = 1`) —
-an actual $43.00 underpayment in the sampled source data itself. This is
-exactly the kind of real, previously-undetectable defect the new 5-state
-model and `health_passed` gate are designed to surface: the old code could
-never have found this single real anomaly because it was always reporting
-"100% mismatch" (a false signal drowning out the one true signal).
+**Corrected**: the one mismatch behind `payment_amount_mismatch_count = 1`
+is booking_id 13594, which `gold_payment_reconciliation` shows with
+`booking_amount = $818.56` against one completed payment of $775.56
+(`completed_payment_count = 1`, `payment_record_count = 1`). This was
+originally reported here as a genuine $43.00 underpayment in the sampled
+source data. A follow-up investigation (see the correction note above)
+found that conclusion was wrong: $818.56 is a superseded intermediate
+booking-update amount, not this booking's true final state, which is
+$775.56 and matches the payment exactly. The defect is in
+`current_bookings_silver`'s "latest state" selection, now fixed. The new
+5-state reconciliation model and `health_passed` gate still did their job
+correctly here: they surfaced a real discrepancy that the old code's
+always-true gate could never have detected — the discrepancy was in this
+pipeline's own logic rather than in the source data, which the gate alone
+cannot distinguish, but is a much better outcome than the old code's silent
+"100% mismatch, health_passed=true" behavior.
 
 ## Revenue: source total vs. Gold join outputs
 
@@ -137,11 +172,13 @@ Databricks infrastructure, with real 16x-duplicated historical Bronze data as
 input. Every dedup and join-cardinality fix in this PR is confirmed correct
 against live execution, not just local pure-Python mirrors. The job's overall
 `FAILED` status is caused by `validate_gold_health`'s assertion correctly
-firing on one genuine $43 underpayment already present in the sampled source
-data — this is the health gate working as designed, not a defect in PR #15.
-Whether a single-booking underpayment of this kind should fail the gate
-outright, or whether some tolerance/exception policy is wanted, is a business
-decision for the repository owner, not something changed here.
+firing on `payment_amount_mismatch_count = 1`. As corrected above, that one
+mismatch was itself caused by a pipeline ordering defect in
+`current_bookings_silver`, not by a genuine source-data underpayment as this
+document originally concluded. The ordering defect has since been fixed (see
+`pipeline/silver.py` and the regression tests added for it); this document's
+originally measured numbers are left unchanged as the historical record of
+Run 1.
 
 ## Warehouse state
 

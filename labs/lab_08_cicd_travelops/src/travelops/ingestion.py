@@ -20,6 +20,8 @@ Responsibilities:
 - derive the deterministic, (SEED_VERSION, seed_limit, row_count)-based raw
   file identity used for the immutable, write-once seed design, and mirror
   the notebook's write/skip/fail decision logic for that design
+- select each booking's latest state from its base row plus update events,
+  mirroring pipeline/silver.py's current_bookings_silver() ordering
 
 Inputs:
 Plain dictionaries representing rows in local tests; mirrors PySpark
@@ -240,3 +242,52 @@ def decide_seed_action(
     if file_name in matching:
         return ("skip", file_name)
     return ("fail", file_name)
+
+
+# Sentinel for a base bookings_silver row's rank position, mirroring
+# pipeline/silver.py's `F.lit(-1).cast("long")`: always lower than a real
+# booking_update_id, so a booking's own update events always outrank the row
+# it started from once `updated_at` ties.
+BASE_BOOKING_RANK_SENTINEL = -1
+
+
+def _booking_rank_key(record: Mapping[str, Any]) -> tuple[Any, Any, Any]:
+    """Mirror the ORDER BY tuple used by current_bookings_silver()'s window.
+
+    (updated_at, booking_update_id, _travelops_ingested_at), all effectively
+    descending -- the highest tuple wins. A record with no booking_update_id
+    (a base bookings_silver row) is treated as BASE_BOOKING_RANK_SENTINEL.
+    """
+
+    booking_update_id = record.get("booking_update_id")
+    rank_id = booking_update_id if booking_update_id is not None else BASE_BOOKING_RANK_SENTINEL
+    return (record["updated_at"], rank_id, record["_travelops_ingested_at"])
+
+
+def select_current_booking_state(records: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    """Pick each booking_id's latest state, mirroring current_bookings_silver().
+
+    This source's `updated_at` is not fine-grained enough to order a
+    booking's own update events on its own: multiple booking_updates rows for
+    one booking_id, and even its base bookings_silver row, commonly share one
+    identical `updated_at` value, and rows ingested together also share one
+    identical `_travelops_ingested_at` -- verified live on booking_id 13594,
+    where an intermediate, superseded update and the true final `confirmed`
+    update shared one `updated_at`, which the previous two-column ordering
+    resolved arbitrarily. Ordering by `booking_update_id` (a monotonically
+    increasing per-event identity) as an additional tie-break between
+    `updated_at` and `_travelops_ingested_at` resolves this deterministically
+    and correctly: among rows sharing the same `updated_at`, the update with
+    the highest `booking_update_id` -- the true last event -- wins, and a
+    base row (no `booking_update_id` of its own) always ranks below any of
+    its own real update events.
+    """
+
+    latest_by_booking: dict[Any, dict[str, Any]] = {}
+    for record in records:
+        booking_id = record["booking_id"]
+        if booking_id not in latest_by_booking or _booking_rank_key(record) > _booking_rank_key(
+            latest_by_booking[booking_id]
+        ):
+            latest_by_booking[booking_id] = dict(record)
+    return list(latest_by_booking.values())

@@ -7,8 +7,10 @@ tests/test_ingestion.py
 Purpose:
 Checks the local mirrors of the ingestion-idempotency and referential-sampling
 fixes: payment/review deduplication on composite business keys, dimension
-deduplication on verified-safe primary keys, and booking-scoped sampling for
-payments/booking_updates/reviews.
+deduplication on verified-safe primary keys, booking-scoped sampling for
+payments/booking_updates/reviews, and current_bookings_silver's latest-state
+selection ordering (including the booking_id 13594 tie-break defect found by
+a live Personal DEV integration test and fixed here).
 
 Inputs:
 Small in-memory Python records.
@@ -47,6 +49,7 @@ from travelops.ingestion import (
     review_business_key,
     seed_file_name,
     seed_identity_prefix,
+    select_current_booking_state,
 )
 
 
@@ -304,3 +307,89 @@ def test_dimension_deduplication_is_idempotent_on_repeated_execution() -> None:
     twice = deduplicate_by_primary_key(once, "property_id")
 
     assert once == twice
+
+
+def _booking_row(**overrides: object) -> dict:
+    row = {
+        "booking_id": 13594,
+        "booking_amount": 793.56,
+        "status": "pending",
+        "updated_at": "2025-06-23T23:59:59",
+        "booking_update_id": None,
+        "_travelops_ingested_at": "2026-09-19T20:31:31.204",
+    }
+    row.update(overrides)
+    return row
+
+
+def test_select_current_booking_state_reproduces_booking_13594_scenario() -> None:
+    # The exact scenario found live on Personal DEV: a base booking row plus
+    # four update events all sharing one identical `updated_at`, where the
+    # true final state (confirmed, $775.56 -- matching the one completed
+    # payment) has a lower `updated_at`-based rank than an earlier,
+    # superseded update ($818.56) under the old two-column ordering. Only
+    # booking_update_id (ascending with true event order) disambiguates them.
+    rows = [
+        _booking_row(),  # base bookings_silver row: $793.56
+        _booking_row(booking_amount=818.56, status="pending", booking_update_id=17570289830169),
+        _booking_row(booking_amount=775.56, status="pending", booking_update_id=17570289862637),
+        _booking_row(booking_amount=775.56, status="pending", booking_update_id=17570289878128),
+        _booking_row(booking_amount=775.56, status="confirmed", booking_update_id=17570289952966),
+    ]
+
+    selected = select_current_booking_state(rows)
+
+    assert len(selected) == 1
+    assert selected[0]["booking_amount"] == 775.56
+    assert selected[0]["status"] == "confirmed"
+    assert selected[0]["booking_update_id"] == 17570289952966
+
+
+def test_select_current_booking_state_base_row_ranks_below_update_at_tied_timestamp() -> None:
+    rows = [
+        _booking_row(booking_amount=793.56, booking_update_id=None),
+        _booking_row(booking_amount=818.56, status="confirmed", booking_update_id=1),
+    ]
+
+    selected = select_current_booking_state(rows)
+
+    assert selected[0]["booking_amount"] == 818.56
+
+
+def test_select_current_booking_state_prefers_later_updated_at_over_booking_update_id() -> None:
+    # updated_at is still the primary ordering key: a later true updated_at
+    # must win even against a lower booking_update_id.
+    rows = [
+        _booking_row(booking_amount=100.0, updated_at="2025-06-24T00:00:00", booking_update_id=1),
+        _booking_row(booking_amount=200.0, updated_at="2025-06-23T23:59:59", booking_update_id=999),
+    ]
+
+    selected = select_current_booking_state(rows)
+
+    assert selected[0]["booking_amount"] == 100.0
+
+
+def test_select_current_booking_state_uses_ingestion_timestamp_as_final_tiebreak() -> None:
+    # Two ingested copies of the exact same update event (repeated raw
+    # ingestion) share both updated_at and booking_update_id; the
+    # more-recently-ingested copy is an arbitrary but harmless choice since
+    # both carry identical business content in this scenario.
+    rows = [
+        _booking_row(booking_update_id=5, _travelops_ingested_at="2026-09-18T00:00:00"),
+        _booking_row(booking_update_id=5, _travelops_ingested_at="2026-09-19T00:00:00"),
+    ]
+
+    selected = select_current_booking_state(rows)
+
+    assert selected[0]["_travelops_ingested_at"] == "2026-09-19T00:00:00"
+
+
+def test_select_current_booking_state_keeps_one_row_per_distinct_booking() -> None:
+    rows = [
+        _booking_row(booking_id=1, booking_amount=100.0, booking_update_id=None),
+        _booking_row(booking_id=2, booking_amount=200.0, booking_update_id=None),
+    ]
+
+    selected = select_current_booking_state(rows)
+
+    assert {r["booking_id"] for r in selected} == {1, 2}

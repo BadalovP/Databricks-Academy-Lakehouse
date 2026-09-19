@@ -59,6 +59,16 @@ decision and its validation/recovery procedure.
 because `current_bookings_silver` read it directly instead of through a
 quality-gated Silver table; it now passes through the same expectations as
 new bookings before being merged into `current_bookings_silver`.
+`current_bookings_silver`'s "latest state" selection also previously ordered
+candidate rows only by `updated_at` then `_travelops_ingested_at`, both of
+which can be identical across a booking's own update events in this source
+(verified live on booking_id 13594: an intermediate, superseded update and
+the true final `confirmed` update shared one `updated_at`), making the
+selection arbitrary on a tie. It now also orders by the update event's own
+`booking_update_id` (a monotonically increasing per-event identity,
+preserved through the union instead of being dropped) as an additional
+tie-break, with a sentinel value ranking the base booking row below any of
+its own real update events.
 
 The same repeated-ingestion duplication affects `properties_bronze`,
 `destinations_bronze`, `users_bronze` and `reviews_bronze` (verified: each
@@ -188,8 +198,26 @@ def bookings_silver():
     private=_private_silver(),
 )
 def current_bookings_silver():
-    base = spark.read.table("bookings_silver").withColumn(
-        "_change_sequence", F.col("updated_at").cast("timestamp")
+    # This source's `updated_at` is not fine-grained enough to order a
+    # booking's own update events: multiple booking_updates rows for the same
+    # booking_id, and even the base booking row, commonly share one identical
+    # `updated_at` value (and, since they are ingested together, an identical
+    # `_travelops_ingested_at` too) -- verified live on booking_id 13594,
+    # where an intermediate $818.56 update and the true final $775.56/
+    # `confirmed` update both carried the same `updated_at`, causing the
+    # previous two-column ordering to pick between them arbitrarily.
+    # `booking_update_id` is a monotonically increasing per-event identity
+    # that disambiguates this correctly; it is preserved through the union
+    # below (as `_booking_update_id`) instead of being dropped, and used as
+    # the tie-break between `_change_sequence` and `_travelops_ingested_at`.
+    # A base bookings_silver row has no `booking_update_id` of its own, so it
+    # is given a sentinel of -1 -- always lower than a real update's ID -- so
+    # a booking's own update events always outrank the row it started from
+    # once their timestamps tie.
+    base = (
+        spark.read.table("bookings_silver")
+        .withColumn("_change_sequence", F.col("updated_at").cast("timestamp"))
+        .withColumn("_booking_update_id", F.lit(-1).cast("long"))
     )
     updates = _booking_quality_filter(
         spark.read.table("booking_updates_bronze")
@@ -197,16 +225,19 @@ def current_bookings_silver():
         .withColumn("stay_nights", F.datediff(F.col("check_out"), F.col("check_in")))
         .withColumn("booking_amount", F.col("total_amount").cast("decimal(15,4)"))
         .withColumn("_change_sequence", F.col("updated_at").cast("timestamp"))
+        .withColumn("_booking_update_id", F.col("booking_update_id").cast("long"))
     ).select(base.columns)
     ranked = base.unionByName(updates).withColumn(
         "_rn",
         F.row_number().over(
             Window.partitionBy("booking_id").orderBy(
-                F.col("_change_sequence").desc(), F.col("_travelops_ingested_at").desc()
+                F.col("_change_sequence").desc(),
+                F.col("_booking_update_id").desc(),
+                F.col("_travelops_ingested_at").desc(),
             )
         ),
     )
-    return ranked.filter(F.col("_rn") == 1).drop("_rn")
+    return ranked.filter(F.col("_rn") == 1).drop("_rn", "_booking_update_id")
 
 
 @dp.materialized_view(
