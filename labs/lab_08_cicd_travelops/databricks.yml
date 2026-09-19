@@ -147,6 +147,7 @@ targets:
             - level: CAN_MANAGE
               service_principal_name: ${var.service_principal_name}
           serverless: false
+          photon: false
           clusters:
             - label: default
               node_type_id: Standard_F4
