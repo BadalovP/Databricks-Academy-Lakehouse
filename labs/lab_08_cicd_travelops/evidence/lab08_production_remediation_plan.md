@@ -1,11 +1,78 @@
 # LAB 08 - Azure PROD Bronze Duplicate Remediation Plan (NOT EXECUTED)
 
 Prepared 2026-09-19 alongside the payment-idempotency/reconciliation code fix
-(`fix/lab08-payment-idempotency-reconciliation`). This is a plan only. No step
-in this document has been executed. It requires explicit separate approval,
-and even then should be run against Azure PROD only after the code fix in
-this PR has been deployed and verified once with a normal (non-refresh) job
-run.
+(`fix/lab08-payment-idempotency-reconciliation`), and updated the same day
+after further review found the identical duplication pattern in
+`properties_bronze`, `destinations_bronze`, `users_bronze` and
+`reviews_bronze`, plus a separate join-cardinality bug in
+`gold_property_performance`/`gold_destination_performance`. This is a plan
+only. No step in this document has been executed. It requires explicit
+separate approval, and even then should be run against Azure PROD only
+after the code fix in this PR has been deployed and verified once with a
+normal (non-refresh) job run.
+
+## Scope: all seven Bronze tables, not just bookings and payments
+
+Read-only verification against live Azure PROD found the same ~7x
+repeated-ingestion duplication in every Bronze table sourced by
+`00_seed_raw_data.ipynb`, not only `bookings_bronze`/`payments_bronze`:
+
+| Table | Total rows | Distinct business-key values | Ratio |
+| --- | ---: | ---: | ---: |
+| `bookings_bronze` | 175,000 | 25,000 (`booking_id`) | ~7.0x |
+| `payments_bronze` | 175,000 | 21,089 distinct `payment_id`; 24,611 distinct full records | ~7.0x (on full records) |
+| `properties_bronze` | 127,141 | 18,163 (`property_id`), confirmed a safe 1:1 key | ~7.0x |
+| `destinations_bronze` | 294 | 42 (`destination_id`), confirmed a safe 1:1 key | ~7.0x |
+| `users_bronze` | 175,000 | 25,000 (`user_id`), confirmed a safe 1:1 key | ~7.0x |
+| `reviews_bronze` | 175,000 | 1,000 distinct `review_id`; 24,999 distinct full records | ~7.0x (on full records) |
+| `booking_updates_bronze` | 175,000 | 14,397 distinct `booking_id` | not a clean multiple; consistent with content having varied across historical seed runs, as already seen for payments |
+
+`property_id`, `destination_id` and `user_id` were each verified (comparing
+distinct full-business-row counts to distinct key counts) to have zero
+cross-record reuse, so `properties_silver`, `destinations_silver` and
+`users_silver` now deduplicate on that primary key alone.
+`review_id` is far less reliable than even `payment_id`: only 1,000 distinct
+values exist across 24,999 genuinely distinct review records (roughly 25
+different reviews sharing each `review_id` on average), so `reviews_silver`
+deduplicates on a full composite key (`REVIEW_BUSINESS_KEY`), the same
+pattern as `payments_silver`, not on `review_id` alone.
+
+## A second, independent bug: join-cardinality revenue inflation
+
+Separately from ingestion duplication, `gold_property_performance` and
+`gold_destination_performance` join `current_bookings_silver` to
+`properties_silver`/`destinations_silver` (and, for destinations, directly
+to `reviews_silver`). Before this fix, an undeduplicated dimension table on
+either side of a `LEFT JOIN` multiplies the joined booking row once per
+matching dimension row, inflating `SUM(booking_amount)` by that factor. This
+was verified live and is severe:
+
+```text
+true_total_booking_value (current_bookings_silver alone): $13,892,373.75
+via_properties_join_value (undeduped properties_silver):   $97,246,616.25  (~7.0x)
+via_reviews_direct_join_value (undeduped, un-aggregated):  $96,751,154.93  (~7.0x)
+```
+
+This means the `booking_value` figures in `gold_property_performance` and
+`gold_destination_performance` — and by extension anything reading them,
+including the dashboard — have been overstated by roughly 7x on live Azure
+PROD. This is fixed by two independent changes: deduplicating
+`properties_silver`/`destinations_silver` on their primary key (removes the
+ingestion-duplication half of the inflation), and pre-aggregating
+`reviews_silver` to one row per `booking_id` before joining in
+`gold_destination_performance` (removes a second, independent fan-out
+source: a booking can legitimately have more than one review, which would
+have inflated `booking_value` even with zero duplicate ingestion).
+`gold_property_performance`/`gold_review_score`'s `review_count` also
+changed from `COUNT(DISTINCT review_id)` to a plain row count, since
+`review_id` cannot be trusted to distinguish reviews.
+
+**Do not treat `gold_payment_reconciliation` passing as proof that other
+financial metrics are correct.** The payment-reconciliation fix and this
+join-cardinality fix are independent bugs in different Gold tables; fixing
+one says nothing about the other. `gold_daily_booking_revenue` was checked
+and is not affected (it reads only from the already-deduplicated
+`current_bookings_silver`, with no joins).
 
 ## Is a full refresh actually necessary?
 
@@ -38,23 +105,27 @@ A full refresh to shrink Bronze back to its intended size is a cost/hygiene
 decision, not a data-correctness requirement.
 
 **Residual risk this PR reduces but does not fully close:** this PR's
-`notebooks/00_seed_raw_data.ipynb` change now writes each raw table to a
-single Parquet file at a path derived from `seed_limit`, instead of a
-fresh Spark-generated file name on every write. Auto Loader's documented
-default `cloudFiles.allowOverwrites=false` means it should not reprocess a
-path it has already ingested, so a **rerun with an unchanged `seed_limit`
-should stop adding new duplicate rows to Bronze** going forward — this is a
-genuine source-level fix, not only a downstream mitigation, but it is based
-on documented Auto Loader behavior and has not been empirically confirmed
-by an actual run in this session (see the Validation section below). It
-does not cover every possible content change (for example,
-`samples.wanderbricks` changing upstream without any local `seed_limit`
-change keeps the same path and would not be picked up), and it does not
-retroactively remove Bronze rows already accumulated from runs before this
-fix shipped — that cleanup is the full-refresh procedure later in this
-document. Silver-layer deduplication remains a defense-in-depth backstop
-for whatever duplication does still reach Bronze; it does not by itself
-stop Bronze from accumulating rows.
+`notebooks/00_seed_raw_data.ipynb` change now fingerprints each table's
+sampled content and writes it to a path derived from both `seed_limit` and
+that fingerprint, skipping the write entirely when a file at that exact
+path already exists, instead of letting Spark allocate a fresh,
+uniquely-named file on every write. Auto Loader's documented default
+`cloudFiles.allowOverwrites=false` means it should not reprocess a path it
+has already ingested, so a **rerun whose content is unchanged should stop
+adding new duplicate rows to Bronze** going forward — this is a genuine
+source-level fix, not only a downstream mitigation, but it is based on
+documented Auto Loader behavior and has not been empirically confirmed by
+an actual run in this session (see the Validation section below). It does
+not retroactively remove Bronze rows already accumulated from runs before
+this fix shipped — that cleanup is the full-refresh procedure later in this
+document — and by design it never deletes a superseded content-version
+file when content does change (a `seed_limit` change, or an upstream
+`samples.wanderbricks` change), to avoid ever leaving the raw Volume
+without valid input; such a leftover file is a low-urgency cleanup item,
+not a correctness risk, since Silver-layer deduplication absorbs it.
+Silver-layer deduplication remains a defense-in-depth backstop for whatever
+duplication does still reach Bronze; it does not by itself stop Bronze from
+accumulating rows.
 
 ## Validating that Silver/Gold pick up this fix without a full refresh
 
@@ -76,17 +147,32 @@ trusting the "no full refresh needed" claim above for Azure PROD.
    were somehow still running the old logic, these columns would not exist
    at all, which is an unambiguous, easy-to-spot failure signal.
 4. Rerun the promotion job a second time with an unchanged `seed_limit` and
-   confirm `bookings_bronze`/`payments_bronze` row counts in DEV do **not**
-   grow between the two runs. Growth here would mean the stable-file-name
-   fix did not achieve idempotency as expected, even though Silver/Gold
-   correctness would still hold via the dedup backstop.
+   confirm `bookings_bronze`/`payments_bronze`/`properties_bronze`/
+   `destinations_bronze`/`users_bronze`/`reviews_bronze` row counts in DEV
+   do **not** grow between the two runs. Growth here would mean the
+   content-fingerprint fix did not achieve idempotency as expected, even
+   though Silver/Gold correctness would still hold via the dedup backstop.
+5. Compare `SUM(booking_amount)` from `current_bookings_silver` alone
+   against `gold_property_performance`'s and `gold_destination_performance`'s
+   summed `booking_value` (grouped totals should reconcile to the same
+   grand total, modulo bookings with a null `property_id`/`destination_id`).
+   This directly checks the join-cardinality fix; do not infer it from
+   `gold_payment_reconciliation` alone, since that is a different Gold
+   table with an independent bug history.
+6. Spot-check `gold_property_performance`/`gold_review_score`'s
+   `review_count` against a manual `SELECT COUNT(*) FROM reviews_silver
+   WHERE property_id = ...` for one property, to confirm it is no longer
+   using `COUNT(DISTINCT review_id)` (which would undercount).
 
 ### Recovery if the new logic does not appear after a normal run
 
 If step 3 shows the old schema (missing the new health columns) or stale
-reconciliation numbers persist after a normal run, the recovery is a
-**table-scoped refresh of the specific Silver/Gold materialized views**
-(e.g. `payments_silver`, `current_bookings_silver`, `gold_payment_reconciliation`,
+reconciliation/performance numbers persist after a normal run, the recovery
+is a **table-scoped refresh of the specific Silver/Gold materialized
+views** (e.g. `payments_silver`, `reviews_silver`, `properties_silver`,
+`destinations_silver`, `users_silver`, `current_bookings_silver`,
+`gold_payment_reconciliation`, `gold_property_performance`,
+`gold_destination_performance`, `gold_review_score`,
 `gold_production_health`) via Lakeflow's per-table refresh (for example
 `databricks pipelines start-update --full-refresh-selection <table>`, or the
 equivalent "Refresh" action on that specific table in the Lakeflow UI). This
@@ -103,12 +189,14 @@ scenario in a controlled DEV test has a known, safe next step.
 ## If a full refresh is later approved
 
 ### Scope
-A full refresh only of the affected Azure PROD Bronze tables
-(`bookings_bronze`, `payments_bronze`; optionally `booking_updates_bronze`
-and `reviews_bronze`, which share the same ingestion mechanism and were not
-independently row-counted in this investigation) in
-`dbr_dev.parvinbadalov_lab08_prod`. Not Personal DEV/PROD, not Terraform, not
-any other Lab 8 or repository resource.
+A full refresh of **all seven affected Azure PROD Bronze tables** in
+`dbr_dev.parvinbadalov_lab08_prod`: `bookings_bronze`, `payments_bronze`,
+`booking_updates_bronze`, `properties_bronze`, `destinations_bronze`,
+`users_bronze` and `reviews_bronze` — all seven were verified in this round
+to carry the same ~7x repeated-ingestion duplication (see the Scope table
+above), so there is no basis left to exclude any of them from this plan.
+Not Personal DEV/PROD, not Terraform, not any other Lab 8 or repository
+resource.
 
 ### Pre-conditions
 1. This PR is merged and deployed, and the pipeline has completed at least
@@ -116,18 +204,20 @@ any other Lab 8 or repository resource.
    independent of any Bronze cleanup.
 2. A snapshot of current state is captured for rollback comparison: row
    counts and a checksum-style aggregate (e.g. `SELECT COUNT(*), SUM(hash(*))`
-   or a Delta table version/timestamp) for `bookings_bronze`,
-   `payments_bronze`, `current_bookings_silver`, `payments_silver`, and
-   `gold_production_health`, plus the Delta history (`DESCRIBE HISTORY`) of
-   each affected table so a specific version can be identified if needed.
-3. Confirm current raw Volume contents: at the time of this investigation,
-   `raw/payments/` contained exactly one live `part-*.parquet` data file
-   (old files are removed by each `df.write.mode("overwrite")`, only
-   `_committed_*`/`_started_*` transaction markers persist) — so a full
-   refresh's Auto Loader re-ingestion should pick up only the current,
-   already-referentially-consistent seed, not all historical duplicate
-   generations. Re-verify this file listing immediately before refreshing,
-   since a concurrent seed run would change it.
+   or a Delta table version/timestamp) for all seven Bronze tables, their
+   corresponding Silver tables, and `gold_production_health`, plus the Delta
+   history (`DESCRIBE HISTORY`) of each affected table so a specific version
+   can be identified if needed.
+3. Confirm current raw Volume contents for each of the seven `raw/<table>/`
+   paths: at the time of this investigation, each contained exactly one
+   live `part-*.parquet` data file (old files are removed by each
+   `df.write.mode("overwrite")`, only `_committed_*`/`_started_*`
+   transaction markers persist) — so a full refresh's Auto Loader
+   re-ingestion should pick up only the current seed, not all historical
+   duplicate generations. Re-verify this file listing immediately before
+   refreshing, since a concurrent seed run would change it, and since this
+   PR's notebook fix can leave more than one content-version file present
+   going forward (see the Residual risk note above).
 
 ### Backups
 Delta's built-in time travel is used instead of a separate backup:
@@ -139,22 +229,23 @@ reproducible from `samples.wanderbricks` by rerunning
 `00_seed_raw_data.ipynb`.
 
 ### Execution (not performed)
-1. Trigger a Lakeflow full refresh scoped to `bookings_bronze` and
-   `payments_bronze` (Lakeflow supports refreshing selected tables rather
+
+1. Trigger a Lakeflow full refresh scoped to all seven Bronze tables
+   (`bookings_bronze`, `payments_bronze`, `booking_updates_bronze`,
+   `properties_bronze`, `destinations_bronze`, `users_bronze`,
+   `reviews_bronze` — Lakeflow supports refreshing selected tables rather
    than the whole pipeline). This resets Auto Loader's checkpoint for those
    tables only and reprocesses whatever raw files currently exist under
    their raw paths.
 2. Allow the full pipeline update to complete so Silver and Gold recompute
    from the refreshed Bronze tables.
-3. Do not touch `booking_updates_bronze`/`reviews_bronze` in the same pass
-   unless their duplicate accumulation is independently confirmed — this
-   plan does not assume they need the same treatment without verification.
 
 ### Validation after refresh
 1. Re-run the row-count checks from
-   `lab08_photon_fix_and_reconciliation_observation.md`:
-   `bookings_bronze`/`payments_bronze` total row counts should drop to
-   match the current referentially-consistent seed size (not 175,000).
+   `lab08_photon_fix_and_reconciliation_observation.md` and this plan's
+   Scope table for all seven tables: each should drop to match its current
+   referentially-consistent seed size (not the previously observed ~7x
+   inflated counts).
 2. Re-run `01_validate_gold_health.ipynb` (or query
    `gold_production_health` directly) and confirm
    `payment_amount_mismatch_count = 0` and `invalid_booking_amount_count = 0`
@@ -164,6 +255,11 @@ reproducible from `samples.wanderbricks` by rerunning
 3. Compare `current_booking_count` and the Gold row counts against the
    pre-refresh snapshot from the Pre-conditions step to confirm no
    unexpected data loss.
+4. Repeat the join-cardinality reconciliation from step 5 of the DEV
+   validation procedure above (`current_bookings_silver`'s
+   `SUM(booking_amount)` vs. `gold_property_performance`'s/
+   `gold_destination_performance`'s summed `booking_value`) against the
+   post-refresh Azure PROD tables.
 
 ### Rollback
 If validation fails, `RESTORE TABLE <table> TO VERSION AS OF <n>` using the

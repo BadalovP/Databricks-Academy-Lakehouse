@@ -62,14 +62,26 @@ def gold_daily_booking_revenue():
     cluster_by=["destination_id", "property_type"],
 )
 def gold_property_performance():
+    """Property-level booking, revenue and review performance.
+
+    `properties_silver` deduplicates on `property_id` (a verified-safe
+    unique key), so the join below no longer fans out `current_bookings_
+    silver` rows and inflates `SUM(booking_amount)` the way it did before
+    that fix (verified live: reported booking_value was ~7x the true total
+    from an undeduped properties join). `review_count` uses a plain row
+    count instead of `COUNT(DISTINCT review_id)`: `review_id` is not a
+    reliable identifier (only 1,000 distinct values exist across ~25,000
+    genuinely distinct reviews, verified live), so counting distinct
+    review_id values would undercount real review volume even after
+    `reviews_silver`'s own composite-key deduplication.
+    """
+
     bookings = spark.read.table("current_bookings_silver")
     properties = spark.read.table("properties_silver")
     reviews = (
         spark.read.table("reviews_silver")
         .groupBy("property_id")
-        .agg(
-            F.avg("rating").alias("avg_rating"), F.countDistinct("review_id").alias("review_count")
-        )
+        .agg(F.avg("rating").alias("avg_rating"), F.count(F.lit(1)).alias("review_count"))
     )
     return (
         bookings.join(properties, "property_id", "left")
@@ -90,14 +102,32 @@ def gold_property_performance():
     cluster_by=["country", "destination"],
 )
 def gold_destination_performance():
+    """Destination-level booking value, demand and review score.
+
+    Reviews are pre-aggregated to one row per `booking_id` before joining,
+    because a booking can legitimately have more than one review: joining
+    `reviews_silver` directly (as this query previously did) fans out that
+    booking's row once per review and inflates `SUM(booking_amount)` by the
+    number of reviews attached to it. This is independent of and in
+    addition to `properties_silver`/`destinations_silver` now deduplicating
+    on their primary keys, which fixes the same kind of fan-out from
+    repeated Bronze ingestion of those two dimension tables (verified live:
+    reported booking_value was roughly 7x the true total before these
+    fixes).
+    """
+
     bookings = spark.read.table("current_bookings_silver")
     properties = spark.read.table("properties_silver")
     destinations = spark.read.table("destinations_silver")
-    reviews = spark.read.table("reviews_silver")
+    reviews = (
+        spark.read.table("reviews_silver")
+        .groupBy("booking_id")
+        .agg(F.avg("rating").alias("rating"))
+    )
     return (
         bookings.join(properties, "property_id", "left")
         .join(destinations, "destination_id", "left")
-        .join(reviews.select("booking_id", "rating"), "booking_id", "left")
+        .join(reviews, "booking_id", "left")
         .groupBy("destination_id", "destination", "country", "state_or_province")
         .agg(
             F.countDistinct("booking_id").alias("booking_count"),
@@ -170,14 +200,22 @@ def gold_payment_reconciliation():
     name="gold_review_score", comment="Active review score by destination and property type."
 )
 def gold_review_score():
+    """Active review score by destination and property type.
+
+    The base table is `reviews_silver` itself (one row per review is the
+    correct grain here), so this join only fans out if `properties_silver`/
+    `destinations_silver` have duplicate rows per key -- both now
+    deduplicate on their primary key. `review_count` uses a plain row count
+    instead of `COUNT(DISTINCT review_id)` for the same reason as
+    `gold_property_performance`: `review_id` is not a reliable identifier.
+    """
+
     return (
         spark.read.table("reviews_silver")
         .join(spark.read.table("properties_silver"), "property_id", "left")
         .join(spark.read.table("destinations_silver"), "destination_id", "left")
         .groupBy("destination", "country", "property_type")
-        .agg(
-            F.avg("rating").alias("avg_rating"), F.countDistinct("review_id").alias("review_count")
-        )
+        .agg(F.avg("rating").alias("avg_rating"), F.count(F.lit(1)).alias("review_count"))
     )
 
 

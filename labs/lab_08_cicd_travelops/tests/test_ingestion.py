@@ -6,8 +6,9 @@ tests/test_ingestion.py
 
 Purpose:
 Checks the local mirrors of the ingestion-idempotency and referential-sampling
-fixes: payment deduplication on a composite business key, and booking-scoped
-sampling for payments/booking_updates/reviews.
+fixes: payment/review deduplication on composite business keys, dimension
+deduplication on verified-safe primary keys, and booking-scoped sampling for
+payments/booking_updates/reviews.
 
 Inputs:
 Small in-memory Python records.
@@ -35,9 +36,12 @@ of this change) can validate the end-to-end behavior of the real pipeline.
 """
 
 from travelops.ingestion import (
+    deduplicate_by_primary_key,
     deduplicate_payment_records,
+    deduplicate_review_records,
     filter_to_sampled_bookings,
     payment_business_key,
+    review_business_key,
     seed_file_name,
 )
 
@@ -128,14 +132,104 @@ def test_referentially_consistent_sampling_preserves_multiple_events_per_booking
     assert len(filtered) == 2
 
 
-def test_seed_file_name_is_stable_for_an_unchanged_seed_limit() -> None:
-    # A rerun with the same seed_limit must resolve to the same path so Auto
-    # Loader's default cloudFiles.allowOverwrites=false recognizes it as
-    # already-ingested and skips reprocessing it.
-    assert seed_file_name(25000) == seed_file_name(25000)
+def test_seed_file_name_is_stable_for_unchanged_seed_limit_and_fingerprint() -> None:
+    # A rerun with the same seed_limit and the same content fingerprint must
+    # resolve to the same path so Auto Loader's default
+    # cloudFiles.allowOverwrites=false recognizes it as already-ingested and
+    # skips reprocessing it.
+    assert seed_file_name(25000, "abc123") == seed_file_name(25000, "abc123")
 
 
 def test_seed_file_name_changes_when_seed_limit_changes() -> None:
     # A deliberate configuration change must still be picked up as new
     # content by Auto Loader, so the path must differ.
-    assert seed_file_name(25000) != seed_file_name(30000)
+    assert seed_file_name(25000, "abc123") != seed_file_name(30000, "abc123")
+
+
+def test_seed_file_name_changes_when_content_fingerprint_changes() -> None:
+    # An upstream source change that leaves seed_limit unchanged must still
+    # be picked up as new content -- this is why seed_limit alone is not a
+    # safe content version and the fingerprint is required.
+    assert seed_file_name(25000, "abc123") != seed_file_name(25000, "def456")
+
+
+def _review(**overrides: object) -> dict:
+    review = {
+        "review_id": 42,
+        "booking_id": 22691,
+        "property_id": 501,
+        "user_id": 9001,
+        "rating": 4.5,
+        "comment": "Great stay",
+        "created_at": "2026-01-06",
+        "updated_at": "2026-01-06",
+        "is_deleted": False,
+    }
+    review.update(overrides)
+    return review
+
+
+def test_repeated_review_ingestion_collapses_to_one() -> None:
+    records = [_review(), _review(), _review()]
+
+    deduped = deduplicate_review_records(records)
+
+    assert deduped == [_review()]
+
+
+def test_reviews_sharing_a_review_id_are_preserved_when_genuinely_different() -> None:
+    # review_id was found to be reused across roughly 25 genuinely distinct
+    # reviews on average (only 1,000 distinct review_id values across 24,999
+    # distinct review records, verified live). Deduplicating by review_id
+    # alone would silently discard almost all real reviews.
+    first_review = _review(booking_id=1, rating=5.0, comment="Loved it")
+    second_review = _review(booking_id=2, rating=2.0, comment="Not great")
+
+    deduped = deduplicate_review_records([first_review, second_review])
+
+    assert len(deduped) == 2
+    assert review_business_key(first_review) != review_business_key(second_review)
+    assert review_business_key(first_review)[0] == review_business_key(second_review)[0]
+
+
+def test_review_deduplication_is_idempotent_on_repeated_execution() -> None:
+    records = [_review(), _review(), _review(rating=1.0)]
+
+    once = deduplicate_review_records(records)
+    twice = deduplicate_review_records(once)
+
+    assert once == twice
+
+
+def _property(**overrides: object) -> dict:
+    prop = {"property_id": 501, "destination_id": 7, "title": "Seaside Villa", "base_price": 200.0}
+    prop.update(overrides)
+    return prop
+
+
+def test_repeated_dimension_ingestion_collapses_by_primary_key() -> None:
+    # property_id, destination_id and user_id were each verified live to
+    # have zero cross-record reuse (unlike payment_id/review_id), so a plain
+    # primary-key dedup is safe for these dimension tables specifically.
+    records = [_property(), _property(), _property()]
+
+    deduped = deduplicate_by_primary_key(records, "property_id")
+
+    assert len(deduped) == 1
+
+
+def test_dimension_deduplication_keeps_distinct_keys() -> None:
+    records = [_property(property_id=1), _property(property_id=2)]
+
+    deduped = deduplicate_by_primary_key(records, "property_id")
+
+    assert {r["property_id"] for r in deduped} == {1, 2}
+
+
+def test_dimension_deduplication_is_idempotent_on_repeated_execution() -> None:
+    records = [_property(), _property(), _property(property_id=2)]
+
+    once = deduplicate_by_primary_key(records, "property_id")
+    twice = deduplicate_by_primary_key(once, "property_id")
+
+    assert once == twice

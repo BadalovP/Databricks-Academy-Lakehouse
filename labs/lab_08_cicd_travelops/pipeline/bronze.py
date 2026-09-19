@@ -34,20 +34,23 @@ Outputs:
 Idempotency:
 Lakeflow manages checkpointing. As of the ingestion-idempotency fix in
 `notebooks/00_seed_raw_data.ipynb`, the seed notebook writes each raw table
-to a single Parquet file at a path derived from `seed_limit`, instead of
-letting Spark allocate a fresh, uniquely-named file on every write. Auto
-Loader's default `cloudFiles.allowOverwrites=false` means it will not
-reprocess a path it has already ingested, even if that path is later
-overwritten with new bytes, so a rerun with an unchanged `seed_limit` should
-no longer be re-ingested as new. This is based on Auto Loader's documented
-behavior and has not been empirically validated by an actual run in this
-repository — see the notebook's Idempotency note and
-`evidence/lab08_production_remediation_plan.md` for the validation
-procedure and residual limitations (it does not cover every possible
-content change, and it does not retroactively deduplicate Bronze rows
-already accumulated from runs before this fix shipped). Silver
-(`pipeline/silver.py`) still deduplicates as a defense-in-depth backstop for
-those residual cases — `current_bookings_silver` keeps only the latest row
+to a Parquet file at a path derived from both `seed_limit` and a content
+fingerprint of the sampled rows, instead of letting Spark allocate a fresh,
+uniquely-named file on every write, and it skips the write entirely when a
+file at that exact path already exists. Auto Loader's default
+`cloudFiles.allowOverwrites=false` means it will not reprocess a path it has
+already ingested, so a rerun whose content is unchanged (same `seed_limit`
+and unchanged upstream data) should no longer be re-ingested as new. This is
+based on Auto Loader's documented behavior and has not been empirically
+validated by an actual run in this repository — see the notebook's
+Idempotency note and `evidence/lab08_production_remediation_plan.md` for the
+validation procedure and residual limitations (it does not retroactively
+deduplicate Bronze rows already accumulated from runs before this fix
+shipped, and it never deletes a superseded content-version file when
+content does change, by design, to avoid ever leaving the raw Volume
+without valid input). Silver (`pipeline/silver.py`) still deduplicates as a
+defense-in-depth backstop for those residual cases — `current_bookings_silver`
+keeps only the latest row
 per `booking_id`, and `payments_silver` deduplicates on a composite business
 key — but Silver deduplication does not by itself prevent Bronze from
 accumulating duplicate rows; it only prevents those duplicates from
