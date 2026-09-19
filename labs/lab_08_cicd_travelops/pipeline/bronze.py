@@ -51,7 +51,14 @@ a full content check — a same-row-count in-place value edit is not
 detected; it does not retroactively deduplicate Bronze rows already
 accumulated from runs before this fix shipped; and it never deletes an
 existing file, by design, to avoid ever leaving the raw Volume without
-valid input). Silver (`pipeline/silver.py`) still deduplicates as a
+valid input). The notebook's existence check also only swallows the
+specific "path does not exist yet" failure from the underlying filesystem
+call -- a permission, authentication or transient storage error propagates
+and stops the notebook, rather than being mistaken for "nothing seeded
+yet" and risking a second write over an already-ingested file. Concurrent
+executions of the seed notebook for the same identity are prevented at the
+job level (`resources/job.yml` sets `max_concurrent_runs: 1`), not by the
+notebook's own logic. Silver (`pipeline/silver.py`) still deduplicates as a
 defense-in-depth backstop for residual cases — `current_bookings_silver`
 keeps only the latest row per `booking_id`, `payments_silver`/
 `reviews_silver` deduplicate on composite business keys, and

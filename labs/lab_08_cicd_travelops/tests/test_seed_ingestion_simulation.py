@@ -13,6 +13,11 @@ without a Databricks runtime -- something a pure decision-logic mirror
 (tests/test_ingestion.py's decide_seed_action tests) cannot do, since those
 only prove the write/skip/fail branching is correct, not that the
 underlying file operations behave safely if interrupted partway through.
+Also mirrors `_existing_seed_files`'s exception-handling branch (distinct
+from the file-operation sequence above): only a "path does not exist yet"
+failure may be treated as "no files," and every other failure -- a
+permission error, an authentication failure, a transient storage error --
+must propagate rather than being silently reported as "nothing seeded yet."
 
 Inputs:
 An in-memory FakeVolumeFilesystem standing in for dbutils.fs.
@@ -198,6 +203,81 @@ def test_write_never_touches_an_unrelated_existing_file() -> None:
     )
 
     assert fs.exists("raw/payments/seed-v1-25000-21089rows.snappy.parquet")
+
+
+class _FakeFileInfo:
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+
+def _simulate_existing_seed_files(ls_fn, prefix: str):
+    """Mirrors 00_seed_raw_data.ipynb's `_existing_seed_files` exception handling.
+
+    `ls_fn` is a zero-argument callable standing in for `dbutils.fs.ls(target_path)`:
+    it either returns a list of `_FakeFileInfo` or raises, so this can exercise the
+    real notebook's distinction between "the path does not exist yet" (swallowed,
+    returns []) and every other failure (an auth/permission/transient storage
+    error, which must propagate) without a live Databricks Volume.
+    """
+
+    try:
+        listing = ls_fn()
+    except Exception as e:
+        if "java.io.FileNotFoundException" in str(e) or "FileNotFoundException" in str(e):
+            return []
+        raise
+
+    return [f for f in listing if f.name.startswith(prefix) and f.name.endswith(".snappy.parquet")]
+
+
+def test_existing_seed_files_treats_missing_path_as_no_files() -> None:
+    def ls_fn():
+        raise Exception("java.io.FileNotFoundException: raw/bookings does not exist")
+
+    assert _simulate_existing_seed_files(ls_fn, "seed-v1-25000-") == []
+
+
+def test_existing_seed_files_propagates_permission_errors() -> None:
+    # A confirmed defect fixed in this change: the prior implementation caught
+    # every exception and returned [], which would make a permission error on
+    # an EXISTING seed file look identical to "nothing has been seeded yet" --
+    # risking _write_immutable_seed running again and dbutils.fs.mv silently
+    # overwriting an already-ingested immutable file. Only the specific
+    # "path does not exist" condition may be swallowed.
+    def ls_fn():
+        raise Exception("com.databricks.backend.common.rpc.SecurityException: ACCESS_DENIED")
+
+    try:
+        _simulate_existing_seed_files(ls_fn, "seed-v1-25000-")
+        raised = False
+    except Exception:
+        raised = True
+    assert raised
+
+
+def test_existing_seed_files_propagates_transient_storage_errors() -> None:
+    def ls_fn():
+        raise Exception("com.databricks.sql.io.FileReadException: transient read failure")
+
+    try:
+        _simulate_existing_seed_files(ls_fn, "seed-v1-25000-")
+        raised = False
+    except Exception:
+        raised = True
+    assert raised
+
+
+def test_existing_seed_files_filters_to_matching_prefix_and_suffix_on_success() -> None:
+    def ls_fn():
+        return [
+            _FakeFileInfo("seed-v1-25000-25000rows.snappy.parquet"),
+            _FakeFileInfo("seed-v1-30000-30000rows.snappy.parquet"),  # different identity
+            _FakeFileInfo("seed-v1-25000-staging.tmp"),  # wrong suffix
+        ]
+
+    result = _simulate_existing_seed_files(ls_fn, "seed-v1-25000-")
+
+    assert [f.name for f in result] == ["seed-v1-25000-25000rows.snappy.parquet"]
 
 
 def test_second_write_for_same_identity_would_be_prevented_by_existence_check() -> None:
