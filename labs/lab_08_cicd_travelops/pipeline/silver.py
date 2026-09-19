@@ -26,8 +26,67 @@ Outputs:
 - destinations_silver
 
 Idempotency:
-Datasets are declaratively managed by Lakeflow and recomputed from deterministic
-Bronze inputs.
+Silver materialized views are fully recomputed from Bronze on every pipeline
+run. `notebooks/00_seed_raw_data.ipynb` treats each raw table's seed as an
+immutable, write-once snapshot identified by an explicit, human-controlled
+`(SEED_VERSION, seed_limit)` pair plus the sampled row count, rather than
+resampling on every run: it writes once, skips on an unchanged rerun, and
+raises instead of writing if the row count differs under an unchanged
+identity. Auto Loader's default `cloudFiles.allowOverwrites=false` should
+then skip reprocessing a rerun with unchanged content — a genuine
+ingestion-idempotency fix at the source, not merely a downstream
+mitigation; see that notebook's architecture decision for the full
+reasoning and its residual limitations (not empirically validated by an
+actual run in this repository, and row count is multiplicity-aware but not
+a full content check — a same-row-count in-place value edit is not
+detected). Deduplication here in Silver remains
+a necessary defense-in-depth backstop, not a claim that it prevents Bronze
+from accumulating duplicates: it does not shrink or stop Bronze row growth
+by itself, it only prevents whatever duplication Bronze does have from
+corrupting Silver/Gold results. `current_bookings_silver` absorbs bookings
+duplication by keeping only the latest row per `booking_id`. `payments_silver`
+explicitly deduplicates on the composite business key below for the same
+reason: `payment_id` alone is not a safe key because the source data reuses
+some `payment_id` values across genuinely different events (different
+`booking_id`, `amount`, `status` or `payment_date`), so deduplicating by
+`payment_id` alone would silently discard distinct events. Historical
+duplicates already accumulated in Bronze before the ingestion fix shipped
+are not removed by either fix; see
+`evidence/lab08_photon_fix_and_reconciliation_observation.md` and
+`evidence/lab08_production_remediation_plan.md` for that separate cleanup
+decision and its validation/recovery procedure.
+`booking_updates_bronze` previously bypassed `BOOKING_EXPECTATIONS` entirely
+because `current_bookings_silver` read it directly instead of through a
+quality-gated Silver table; it now passes through the same expectations as
+new bookings before being merged into `current_bookings_silver`.
+
+The same repeated-ingestion duplication affects `properties_bronze`,
+`destinations_bronze`, `users_bronze` and `reviews_bronze` (verified: each
+holds roughly 7x its distinct business-row count). Unlike Gold tables that
+read only from `current_bookings_silver` (already deduped), `gold_property_
+performance` and `gold_destination_performance` join `current_bookings_silver`
+to `properties_silver`/`destinations_silver`, so undeduped duplicate rows in
+those dimension tables fan out the join and inflate `SUM(booking_amount)` by
+the same factor — verified live on Azure PROD at roughly 7x
+($97.2M reported vs. a $13.9M ground truth from `current_bookings_silver`
+alone). `property_id`, `destination_id` and `user_id` were each confirmed
+(by comparing distinct full-business-row counts to distinct key counts) to
+be safe, uniquely-identifying keys with no cross-record reuse, unlike
+`payment_id` — so `properties_silver`, `destinations_silver` and
+`users_silver` deduplicate on their primary key alone. `reviews_bronze` is
+different again: only 1,000 distinct `review_id` values exist across 24,999
+genuinely distinct review records (confirmed the same way), meaning
+`review_id` is far less reliable a key than even `payment_id` — deduplicating
+`reviews_silver` by `review_id` alone would silently discard the vast
+majority of real reviews, so it deduplicates on the full composite
+`REVIEW_BUSINESS_KEY` below instead, exactly like `payments_silver`.
+`pipeline/gold.py`'s `gold_property_performance`/`gold_review_score` also
+switch their `review_count` metric from `COUNT(DISTINCT review_id)` to a
+plain row count post-dedup, since `review_id` cannot be trusted to
+distinguish reviews; `gold_destination_performance` additionally
+pre-aggregates reviews by `booking_id` before joining, because a booking can
+legitimately have more than one review, which fanned out `SUM(booking_amount)`
+independently of any ingestion duplication.
 
 Environment behavior:
 Published to the pipeline target catalog/schema configured by the active bundle
@@ -60,11 +119,50 @@ REVIEW_EXPECTATIONS = {
     "valid_rating_range": "rating IS NULL OR rating BETWEEN 1.0 AND 5.0",
 }
 
+# payment_id alone is not a safe deduplication key: some payment_id values are
+# reused across genuinely different events (different booking_id, amount,
+# status or payment_date). Deduplicating on this full tuple collapses only
+# exact-duplicate rows (the shape produced by repeated raw-file ingestion)
+# while preserving distinct events that happen to share a payment_id.
+PAYMENT_BUSINESS_KEY = ["payment_id", "booking_id", "amount", "status", "payment_date"]
+
+# review_id is even less reliable than payment_id: verified live, only 1,000
+# distinct review_id values exist across 24,999 genuinely distinct review
+# records. Deduplicating on this full tuple collapses only exact-duplicate
+# rows while preserving every genuinely distinct review, regardless of how
+# many other reviews happen to share its review_id.
+REVIEW_BUSINESS_KEY = [
+    "review_id",
+    "booking_id",
+    "property_id",
+    "user_id",
+    "rating",
+    "comment",
+    "created_at",
+    "updated_at",
+    "is_deleted",
+]
+
 
 def _private_silver() -> bool:
     """Return whether Silver should be a private pipeline intermediate."""
 
     return spark.conf.get("travelops.private_silver", "false").lower() == "true"
+
+
+def _booking_quality_filter(df):
+    """Apply BOOKING_EXPECTATIONS as an inline filter.
+
+    Reuses the same predicates enforced on new bookings via
+    @dp.expect_all_or_drop so booking_updates_bronze is held to an identical
+    data contract instead of bypassing it.
+    """
+
+    condition = None
+    for predicate in BOOKING_EXPECTATIONS.values():
+        clause = F.expr(predicate)
+        condition = clause if condition is None else condition & clause
+    return df.filter(condition)
 
 
 @dp.materialized_view(
@@ -93,14 +191,13 @@ def current_bookings_silver():
     base = spark.read.table("bookings_silver").withColumn(
         "_change_sequence", F.col("updated_at").cast("timestamp")
     )
-    updates = (
+    updates = _booking_quality_filter(
         spark.read.table("booking_updates_bronze")
         .withColumn("status", F.lower(F.trim(F.col("status"))))
         .withColumn("stay_nights", F.datediff(F.col("check_out"), F.col("check_in")))
         .withColumn("booking_amount", F.col("total_amount").cast("decimal(15,4)"))
         .withColumn("_change_sequence", F.col("updated_at").cast("timestamp"))
-        .select(base.columns)
-    )
+    ).select(base.columns)
     ranked = base.unionByName(updates).withColumn(
         "_rn",
         F.row_number().over(
@@ -120,8 +217,10 @@ def current_bookings_silver():
 )
 @dp.expect_all_or_drop(PAYMENT_EXPECTATIONS)
 def payments_silver():
-    return spark.read.table("payments_bronze").withColumn(
-        "status", F.lower(F.trim(F.col("status")))
+    return (
+        spark.read.table("payments_bronze")
+        .withColumn("status", F.lower(F.trim(F.col("status"))))
+        .dropDuplicates(PAYMENT_BUSINESS_KEY)
     )
 
 
@@ -131,14 +230,18 @@ def payments_silver():
     private=_private_silver(),
 )
 def users_silver():
-    return spark.read.table("users_bronze").select(
-        "user_id",
-        "country",
-        "user_type",
-        "is_business",
-        "company_name",
-        "created_at",
-        "_travelops_ingested_at",
+    return (
+        spark.read.table("users_bronze")
+        .select(
+            "user_id",
+            "country",
+            "user_type",
+            "is_business",
+            "company_name",
+            "created_at",
+            "_travelops_ingested_at",
+        )
+        .dropDuplicates(["user_id"])
     )
 
 
@@ -149,8 +252,10 @@ def users_silver():
     private=_private_silver(),
 )
 def properties_silver():
-    return spark.read.table("properties_bronze").withColumn(
-        "base_price_amount", F.col("base_price").cast("decimal(15,4)")
+    return (
+        spark.read.table("properties_bronze")
+        .withColumn("base_price_amount", F.col("base_price").cast("decimal(15,4)"))
+        .dropDuplicates(["property_id"])
     )
 
 
@@ -162,7 +267,11 @@ def properties_silver():
 )
 @dp.expect_all_or_drop(REVIEW_EXPECTATIONS)
 def reviews_silver():
-    return spark.read.table("reviews_bronze").filter(F.col("is_deleted") == F.lit(False))
+    return (
+        spark.read.table("reviews_bronze")
+        .dropDuplicates(REVIEW_BUSINESS_KEY)
+        .filter(F.col("is_deleted") == F.lit(False))
+    )
 
 
 @dp.materialized_view(
@@ -171,4 +280,4 @@ def reviews_silver():
     private=_private_silver(),
 )
 def destinations_silver():
-    return spark.read.table("destinations_bronze")
+    return spark.read.table("destinations_bronze").dropDuplicates(["destination_id"])

@@ -32,8 +32,40 @@ Outputs:
 - destinations_bronze
 
 Idempotency:
-Lakeflow manages checkpointing. The seed notebook writes deterministic source
-paths, so repeated deployments do not create duplicate business records.
+Lakeflow manages checkpointing. `notebooks/00_seed_raw_data.ipynb` treats
+each raw table's seed as an immutable, write-once snapshot of a fixed
+sample dataset (`samples.wanderbricks`): it writes one Parquet file named
+from an explicit, human-controlled identity (`SEED_VERSION` and
+`seed_limit`) and the sampled row count, skips writing entirely when a file
+for that exact identity and row count already exists, and raises instead of
+writing anything if the row count differs under an unchanged identity
+(treated as an unexpected upstream change, not something to silently
+absorb). Auto Loader's default `cloudFiles.allowOverwrites=false` means it
+will not reprocess a path it has already ingested, so a rerun with
+unchanged content should no longer be re-ingested as new. This is based on
+Auto Loader's documented behavior and has not been empirically validated by
+an actual run in this repository — see the notebook's architecture decision
+and `evidence/lab08_production_remediation_plan.md` for the validation
+procedure and residual limitations (row count is multiplicity-aware but not
+a full content check — a same-row-count in-place value edit is not
+detected; it does not retroactively deduplicate Bronze rows already
+accumulated from runs before this fix shipped; and it never deletes an
+existing file, by design, to avoid ever leaving the raw Volume without
+valid input). The notebook's existence check also only swallows the
+specific "path does not exist yet" failure from the underlying filesystem
+call -- a permission, authentication or transient storage error propagates
+and stops the notebook, rather than being mistaken for "nothing seeded
+yet" and risking a second write over an already-ingested file. Concurrent
+executions of the seed notebook for the same identity are prevented at the
+job level (`resources/job.yml` sets `max_concurrent_runs: 1`), not by the
+notebook's own logic. Silver (`pipeline/silver.py`) still deduplicates as a
+defense-in-depth backstop for residual cases — `current_bookings_silver`
+keeps only the latest row per `booking_id`, `payments_silver`/
+`reviews_silver` deduplicate on composite business keys, and
+`properties_silver`/`destinations_silver`/`users_silver` deduplicate on
+their primary key — but Silver deduplication does not by itself prevent
+Bronze from accumulating duplicate rows; it only prevents those duplicates
+from corrupting Silver/Gold results.
 
 Environment behavior:
 Raw Volume catalog, schema and name are read from pipeline configuration
