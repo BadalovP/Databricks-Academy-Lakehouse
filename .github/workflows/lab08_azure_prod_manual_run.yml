@@ -156,14 +156,27 @@ jobs:
           set -uo pipefail
           run_id="${{ steps.locate-run.outputs.run_id }}"
           terminal_states="TERMINATED INTERNAL_ERROR SKIPPED"
-          for attempt in $(seq 1 60); do
+          # Poll for up to 60 minutes (120 attempts * 30s). If the run is
+          # still active after that, report an explicit timeout and stop --
+          # never trigger a second run automatically; the run may still be
+          # active on Databricks and requires manual follow-up.
+          max_attempts=120
+          life_cycle_state=""
+          for attempt in $(seq 1 "$max_attempts"); do
             databricks jobs get-run "$run_id" --output json > run-details.json
             life_cycle_state="$(jq -r '.state.life_cycle_state // empty' run-details.json)"
             if [[ " $terminal_states " == *" $life_cycle_state "* ]]; then
               break
             fi
-            sleep 30
+            if [[ "$attempt" -lt "$max_attempts" ]]; then
+              sleep 30
+            fi
           done
+          if [[ " $terminal_states " != *" $life_cycle_state "* ]]; then
+            echo "run_result=TIMEOUT" >> "$GITHUB_OUTPUT"
+            echo "::error::Polling timed out after 60 minutes; run $run_id is still in state '$life_cycle_state' and has not reached a terminal state. Not retrying or triggering a second run. Check the run directly in the Databricks UI/API: run_id=$run_id."
+            exit 0
+          fi
           result_state="$(jq -r '.state.result_state // "UNKNOWN"' run-details.json)"
           echo "run_result=$result_state" >> "$GITHUB_OUTPUT"
           echo "=== Task results ==="
@@ -224,6 +237,7 @@ jobs:
             labs/lab_08_cicd_travelops/azure-prod-pre-run-plan.txt
             labs/lab_08_cicd_travelops/run-details.json
             labs/lab_08_cicd_travelops/pipeline-state.json
+            labs/lab_08_cicd_travelops/pipeline-update-correlation.json
           if-no-files-found: warn
 
       - name: Fail this job if the triggered run did not succeed
@@ -231,7 +245,10 @@ jobs:
         run: |
           result="${{ steps.poll-run.outputs.run_result }}"
           echo "Triggered run result: ${result:-UNKNOWN}"
-          if [[ "$result" != "SUCCESS" ]]; then
+          if [[ "$result" == "TIMEOUT" ]]; then
+            echo "::error::Polling timed out after 60 minutes waiting on the Azure PROD job run; it may still be active on Databricks. Not retried and no second run was triggered -- check the run directly."
+            exit 1
+          elif [[ "$result" != "SUCCESS" ]]; then
             echo "::error::Azure PROD job run did not succeed (result: ${result:-UNKNOWN}). See uploaded run-details.json for task-level failure details."
             exit 1
           fi
