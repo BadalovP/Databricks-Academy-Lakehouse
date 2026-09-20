@@ -58,24 +58,46 @@ Unit Tests / Ruff / Black
   |
 Bundle Validate
   |
-Terraform validate + read-only plan
+Terraform validate + read-only plan (when LAB08_ENABLE_AZURE_OIDC=true)
 
-Push main
+Push to main
   |
 Unit Tests -> Bundle Validate
   |
+Detect Deployable Changes (docs/evidence/workflow-only changes stop here; no deployment)
+  |
 Personal DEV deploy/run -> zero-change validation
   |
-Personal PROD deploy/run -> zero-change validation
+Personal PROD approval (personal-prod-approval)
+  -> Personal PROD deploy/run -> zero-change validation
   |
 LAB08_ENABLE_AZURE_OIDC=true:
   Terraform plan -> imported-state gate -> RBAC must be no-op
+  -> Azure release approval (azure-release-approval)
   -> fresh no-change plan/apply -> final no-change plan
   -> Azure PROD bundle deploy -> zero-change validation
+  -> Run Azure PROD job only if LAB08_RUN_AZURE_PROD_JOB=true
 
 LAB08_ENABLE_AZURE_OIDC=false:
-  PAT validation -> delete-free plan -> Azure PROD deploy/run
-  -> validation -> zero-change plan
+  Azure release approval (azure-release-approval)
+  -> PAT host + credential + permission preflight -> delete-free plan -> Azure PROD deploy
+  -> Run Azure PROD job unconditionally after deploy
+
+Manual workflow_dispatch on main (on-demand live demonstration)
+  |
+Unit Tests -> Bundle Validate -> Detect Deployable Changes deliberately
+  bypassed (a human explicitly requested a full run)
+  |
+Personal DEV deploy/run -> zero-change validation
+  |
+Personal PROD approval -> Personal PROD deploy/run -> zero-change validation
+  |
+azure_auth_mode=oidc: same OIDC chain as above, with the final job gated
+  by the run_azure_prod_job input instead of LAB08_RUN_AZURE_PROD_JOB
+azure_auth_mode=pat:  same PAT chain as above, but the final job is also
+  gated by run_azure_prod_job instead of running unconditionally
+  (only one azure_auth_mode path is ever eligible per run; the other
+  path's jobs correctly report skipped)
 ```
 
 ## Design Notes
@@ -89,3 +111,7 @@ The Personal PROD raw source changed from the historical managed Volume `dbr_dev
 Azure PROD now has the complete Terraform storage chain, Terraform-owned application schema, and deployed DAB application definition. The first application run proved the seed notebook precondition by failing safely before downstream work when the target schema was absent. Terraform added only `dbr_dev.parvinbadalov_lab08_prod`; the rerun then completed seed, pipeline, and health tasks successfully. The external raw Volume remains at `abfss://lab08-travelops@lab08travelops63e621.dfs.core.windows.net/raw`, and DAB owns the 20 Bronze/Silver/Gold tables created inside the application schema.
 
 PAT and OIDC deployments share the pinned Azure bundle root `/Workspace/Users/parvinbadalov@softserve.academy/.bundle/lab08-travelops-cicd/azure_prod`. The existing human identity remains the job and pipeline run-as identity and owner. The GitHub service principal has `CAN_MANAGE` on that root, job, and pipeline; dashboard and alert management inherit from the root, and the shared warehouse grants only `CAN_USE`. Azure target-level DAB permissions manage only the service-principal grant. The human `IS_OWNER` entry remains implicit so a non-admin deployment never attempts an ownership change.
+
+## Known Limitations
+
+This document describes the architecture as designed and deployed; it does not itself track outstanding follow-up items. See `CICD.md`'s "Known Limitations" section and `README.md` section 7 for the current, run-referenced list: historical Bronze duplication predating the write-once seed identity has not been retroactively remediated, no independent Azure SQL health-row audit was performed for runs #45/#46, and the older standalone Azure PROD manual-run workflow's own post-trigger monitoring has not been independently reverified since its host-resolution defect was diagnosed.
