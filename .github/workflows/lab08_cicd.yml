@@ -22,6 +22,18 @@
 # changed in the same push. Unit Tests, Bundle Validate and (for a pull
 # request) the read-only Terraform Plan are unaffected and still validate
 # every change, including documentation-only and workflow-only ones.
+#
+# A manual `workflow_dispatch` run on `main` deliberately bypasses that
+# change-detection guard (a human explicitly asked for a full run), but
+# every other safeguard stays exactly as it is for a push: Personal PROD
+# approval, the Azure release approval, all Terraform safety checks, and
+# the OIDC-only Azure path (the temporary PAT path stays push-only and,
+# being gated on `LAB08_ENABLE_AZURE_OIDC == 'false'`, never runs alongside
+# it while that variable is `true`). The `run_azure_prod_job` input controls
+# only the final Azure PROD job-run step for that one dispatched run; it
+# never reads or writes the `LAB08_RUN_AZURE_PROD_JOB` repository variable,
+# which continues to control that same step exactly as before on an
+# ordinary push.
 name: LAB 08 TravelOps CI/CD
 
 on:
@@ -36,6 +48,18 @@ on:
       - "labs/lab_08_cicd_travelops/**"
       - ".github/workflows/lab08_cicd.yml"
       - ".github/terraform/**"
+  workflow_dispatch:
+    inputs:
+      run_azure_prod_job:
+        description: >-
+          Run the final Azure PROD job after successful Azure deployment and
+          validation. This demonstration deploys and runs Personal DEV and
+          Personal PROD, and applies/deploys Azure PROD, regardless of this
+          setting -- it repeats real jobs and incurs real compute costs on
+          all three targets. Leave false to demonstrate the full pipeline
+          without the final Azure PROD job execution.
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -50,6 +74,15 @@ env:
   TF_INPUT: "false"
 
 jobs:
+  manual-dispatch-notice:
+    name: Manual Dispatch Cost Warning
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Warn about repeated jobs and compute cost
+        run: |
+          echo "::warning::This manual run repeats the same Deploy DEV, Deploy Personal PROD, Terraform Apply and Deploy Azure PROD jobs an ordinary push to main would run, and incurs the same real compute costs on Personal DEV, Personal PROD and Azure PROD. run_azure_prod_job=${{ inputs.run_azure_prod_job }} additionally controls only the final Azure PROD job-run step; every approval gate still applies."
+
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
@@ -125,11 +158,16 @@ jobs:
   deploy-personal-dev:
     name: Deploy DEV
     if: >-
-      github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
       needs.bundle-validate.result == 'success' &&
-      needs.detect-changes.result == 'success' &&
-      needs.detect-changes.outputs.deploy_needed == 'true'
+      (
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event_name == 'push' &&
+          needs.detect-changes.result == 'success' &&
+          needs.detect-changes.outputs.deploy_needed == 'true'
+        )
+      )
     needs: [bundle-validate, detect-changes]
     runs-on: ubuntu-latest
     environment: personal-dev
@@ -363,7 +401,7 @@ jobs:
     name: Approve Azure Release (Terraform Apply)
     if: >-
       needs.terraform-plan.result == 'success' &&
-      github.event_name == 'push' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       github.ref == 'refs/heads/main' &&
       vars.LAB08_ENABLE_AZURE_OIDC == 'true'
     needs: terraform-plan
@@ -377,7 +415,7 @@ jobs:
     name: Terraform Apply
     if: >-
       needs.approve-azure-release.result == 'success' &&
-      github.event_name == 'push' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       github.ref == 'refs/heads/main' &&
       vars.LAB08_ENABLE_AZURE_OIDC == 'true'
     needs: approve-azure-release
@@ -612,10 +650,14 @@ jobs:
   run-azure-prod:
     name: Run Azure PROD (OIDC, Explicitly Gated)
     if: >-
-      github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
       vars.LAB08_ENABLE_AZURE_OIDC == 'true' &&
-      vars.LAB08_RUN_AZURE_PROD_JOB == 'true'
+      needs.terraform-apply.result == 'success' &&
+      needs.validate-azure-prod.result == 'success' &&
+      (
+        (github.event_name == 'push' && vars.LAB08_RUN_AZURE_PROD_JOB == 'true') ||
+        (github.event_name == 'workflow_dispatch' && inputs.run_azure_prod_job == true)
+      )
     needs: [terraform-apply, validate-azure-prod]
     runs-on: ubuntu-latest
     environment: azure-prod
