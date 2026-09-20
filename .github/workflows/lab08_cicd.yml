@@ -26,14 +26,26 @@
 # A manual `workflow_dispatch` run on `main` deliberately bypasses that
 # change-detection guard (a human explicitly asked for a full run), but
 # every other safeguard stays exactly as it is for a push: Personal PROD
-# approval, the Azure release approval, all Terraform safety checks, and
-# the OIDC-only Azure path (the temporary PAT path stays push-only and,
-# being gated on `LAB08_ENABLE_AZURE_OIDC == 'false'`, never runs alongside
-# it while that variable is `true`). The `run_azure_prod_job` input controls
-# only the final Azure PROD job-run step for that one dispatched run; it
-# never reads or writes the `LAB08_RUN_AZURE_PROD_JOB` repository variable,
-# which continues to control that same step exactly as before on an
-# ordinary push.
+# approval, the Azure release approval, and all Terraform safety checks.
+# The `run_azure_prod_job` input controls only the final Azure PROD
+# job-run step for that one dispatched run; it never reads or writes the
+# `LAB08_RUN_AZURE_PROD_JOB` repository variable, which continues to
+# control that same step exactly as before on an ordinary push.
+#
+# On an ordinary push, the Azure path (OIDC/Terraform vs. temporary PAT) is
+# still chosen solely by `LAB08_ENABLE_AZURE_OIDC`, exactly as before. A
+# manual `workflow_dispatch` run instead chooses its Azure path with the
+# `azure_auth_mode` input (`oidc` or `pat`), independently of that
+# variable's current value, so a demonstration can exercise either path on
+# demand. Every job in one path checks the *other* path's selector as well
+# as its own, so only one Azure deployment path can ever be eligible in a
+# single run (for a push this was already true, since the variable can't be
+# both `true` and `false` at once; for a dispatch it's true because
+# `azure_auth_mode` is a single-choice input). The PAT path's deploy and job
+# -run steps are split into separate jobs so `run_azure_prod_job` gates the
+# job execution the same way for both paths on a manual run; the PAT path's
+# existing automatic (unconditional) job run on an ordinary push is
+# unchanged.
 name: LAB 08 TravelOps CI/CD
 
 on:
@@ -50,14 +62,27 @@ on:
       - ".github/terraform/**"
   workflow_dispatch:
     inputs:
+      azure_auth_mode:
+        description: >-
+          Azure PROD authentication path for this manual run only. Does not
+          read or change the LAB08_ENABLE_AZURE_OIDC repository variable,
+          which still controls an ordinary push. Only one path executes per
+          run: oidc uses the existing Terraform/OIDC deployment; pat uses
+          the alternative temporary-PAT deployment.
+        type: choice
+        options:
+          - oidc
+          - pat
+        default: oidc
       run_azure_prod_job:
         description: >-
           Run the final Azure PROD job after successful Azure deployment and
-          validation. This demonstration deploys and runs Personal DEV and
-          Personal PROD, and applies/deploys Azure PROD, regardless of this
-          setting -- it repeats real jobs and incurs real compute costs on
-          all three targets. Leave false to demonstrate the full pipeline
-          without the final Azure PROD job execution.
+          validation (works the same way for both azure_auth_mode values).
+          This demonstration deploys and runs Personal DEV and Personal
+          PROD, and applies/deploys Azure PROD, regardless of this setting
+          -- it repeats real jobs and incurs real compute costs on all three
+          targets. Leave false to demonstrate the full pipeline without the
+          final Azure PROD job execution.
         type: boolean
         default: false
 
@@ -81,7 +106,7 @@ jobs:
     steps:
       - name: Warn about repeated jobs and compute cost
         run: |
-          echo "::warning::This manual run repeats the same Deploy DEV, Deploy Personal PROD, Terraform Apply and Deploy Azure PROD jobs an ordinary push to main would run, and incurs the same real compute costs on Personal DEV, Personal PROD and Azure PROD. run_azure_prod_job=${{ inputs.run_azure_prod_job }} additionally controls only the final Azure PROD job-run step; every approval gate still applies."
+          echo "::warning::This manual run repeats the same Deploy DEV, Deploy Personal PROD, and Azure PROD deployment jobs an ordinary push to main would run, and incurs the same real compute costs on Personal DEV, Personal PROD and Azure PROD. azure_auth_mode=${{ inputs.azure_auth_mode }} selects which Azure path runs (only one ever does); run_azure_prod_job=${{ inputs.run_azure_prod_job }} additionally controls only the final Azure PROD job-run step for that path; every approval gate still applies."
 
   unit-tests:
     name: Unit Tests
@@ -269,11 +294,20 @@ jobs:
 
   terraform-plan:
     name: Terraform Plan
+    # Preserves the existing push/PR dependence on LAB08_ENABLE_AZURE_OIDC
+    # exactly as before (first OR branch); a manual workflow_dispatch run
+    # instead depends only on the azure_auth_mode input, independent of
+    # that variable's current value (second OR branch).
     if: >-
       always() &&
-      vars.LAB08_ENABLE_AZURE_OIDC == 'true' &&
       needs.bundle-validate.result == 'success' &&
-      (github.event_name == 'pull_request' || needs.validate-personal-prod.result == 'success')
+      (
+        (
+          vars.LAB08_ENABLE_AZURE_OIDC == 'true' &&
+          (github.event_name == 'pull_request' || (github.event_name == 'push' && needs.validate-personal-prod.result == 'success'))
+        ) ||
+        (github.event_name == 'workflow_dispatch' && inputs.azure_auth_mode == 'oidc' && needs.validate-personal-prod.result == 'success')
+      )
     needs: [bundle-validate, validate-personal-prod]
     runs-on: ubuntu-latest
     environment: azure-prod
@@ -417,9 +451,11 @@ jobs:
     name: Approve Azure Release (Terraform Apply)
     if: >-
       needs.terraform-plan.result == 'success' &&
-      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       github.ref == 'refs/heads/main' &&
-      vars.LAB08_ENABLE_AZURE_OIDC == 'true'
+      (
+        (github.event_name == 'push' && vars.LAB08_ENABLE_AZURE_OIDC == 'true') ||
+        (github.event_name == 'workflow_dispatch' && inputs.azure_auth_mode == 'oidc')
+      )
     needs: terraform-plan
     runs-on: ubuntu-latest
     environment: azure-release-approval
@@ -431,9 +467,11 @@ jobs:
     name: Terraform Apply
     if: >-
       needs.approve-azure-release.result == 'success' &&
-      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       github.ref == 'refs/heads/main' &&
-      vars.LAB08_ENABLE_AZURE_OIDC == 'true'
+      (
+        (github.event_name == 'push' && vars.LAB08_ENABLE_AZURE_OIDC == 'true') ||
+        (github.event_name == 'workflow_dispatch' && inputs.azure_auth_mode == 'oidc')
+      )
     needs: approve-azure-release
     runs-on: ubuntu-latest
     environment: azure-prod
@@ -541,7 +579,9 @@ jobs:
 
   deploy-azure-prod:
     name: Deploy Azure PROD
-    if: vars.LAB08_ENABLE_AZURE_OIDC == 'true'
+    if: >-
+      (github.event_name == 'push' && vars.LAB08_ENABLE_AZURE_OIDC == 'true') ||
+      (github.event_name == 'workflow_dispatch' && inputs.azure_auth_mode == 'oidc')
     needs: terraform-apply
     runs-on: ubuntu-latest
     environment: azure-prod
@@ -575,7 +615,9 @@ jobs:
 
   validate-azure-prod:
     name: Validate Azure PROD
-    if: vars.LAB08_ENABLE_AZURE_OIDC == 'true'
+    if: >-
+      (github.event_name == 'push' && vars.LAB08_ENABLE_AZURE_OIDC == 'true') ||
+      (github.event_name == 'workflow_dispatch' && inputs.azure_auth_mode == 'oidc')
     needs: [terraform-apply, deploy-azure-prod]
     runs-on: ubuntu-latest
     environment: azure-prod
@@ -613,9 +655,11 @@ jobs:
     name: Approve Azure Release (Temporary PAT)
     if: >-
       needs.validate-personal-prod.result == 'success' &&
-      github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
-      vars.LAB08_ENABLE_AZURE_OIDC == 'false'
+      (
+        (github.event_name == 'push' && vars.LAB08_ENABLE_AZURE_OIDC == 'false') ||
+        (github.event_name == 'workflow_dispatch' && inputs.azure_auth_mode == 'pat')
+      )
     needs: validate-personal-prod
     runs-on: ubuntu-latest
     environment: azure-release-approval
@@ -623,13 +667,15 @@ jobs:
       - name: Approved
         run: echo "Azure PROD deployment (temporary PAT path) approved."
 
-  deploy-run-azure-prod-pat:
-    name: Deploy and Run Azure PROD (Temporary PAT)
+  deploy-azure-prod-pat:
+    name: Deploy Azure PROD (Temporary PAT)
     if: >-
       needs.approve-azure-release-pat.result == 'success' &&
-      github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
-      vars.LAB08_ENABLE_AZURE_OIDC == 'false'
+      (
+        (github.event_name == 'push' && vars.LAB08_ENABLE_AZURE_OIDC == 'false') ||
+        (github.event_name == 'workflow_dispatch' && inputs.azure_auth_mode == 'pat')
+      )
     needs: approve-azure-release-pat
     runs-on: ubuntu-latest
     environment: azure-prod
@@ -641,7 +687,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: databricks/setup-cli@main
-      - name: Validate, deploy, run, and verify Azure PROD with PAT
+      - name: Preflight - verify PAT credential availability and permissions
+        env:
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_AZURE_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Confirms the secret exists and actually authenticates, and that
+          # it can read the exact job this path deploys/runs, without ever
+          # printing the token or creating/rotating any credential.
+          [[ -n "$DATABRICKS_HOST" ]] || { echo "::error::DATABRICKS_AZURE_HOST is required."; exit 1; }
+          [[ -n "$DATABRICKS_TOKEN" ]] || { echo "::error::DATABRICKS_AZURE_TOKEN secret is not set."; exit 1; }
+          databricks current-user me --output json > /dev/null
+          echo "PAT authenticates successfully against the Azure PROD workspace."
+          databricks jobs get 941995669563439 --output json > /dev/null
+          echo "PAT has read access to the Azure PROD TravelOps job."
+      - name: Validate, plan, and deploy Azure PROD with PAT
         env:
           DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_AZURE_TOKEN }}
@@ -649,8 +711,6 @@ jobs:
         run: |
           set -euo pipefail
           storage_account="${{ vars.LAB08_AZURE_STORAGE_ACCOUNT_NAME || 'lab08travelops63e621' }}"
-          [[ -n "$DATABRICKS_HOST" ]] || { echo "DATABRICKS_AZURE_HOST is required."; exit 1; }
-          [[ -n "$DATABRICKS_TOKEN" ]] || { echo "DATABRICKS_AZURE_TOKEN is required."; exit 1; }
           [[ -n "$storage_account" ]] || { echo "LAB08_AZURE_STORAGE_ACCOUNT_NAME is required."; exit 1; }
           # The pinned human-owned root retains an unmanaged human CAN_MANAGE ACL;
           # bundle-managing it would conflict with preserving live IS_OWNER ownership.
@@ -658,21 +718,54 @@ jobs:
           databricks bundle plan -t azure_prod --var azure_storage_account_name="$storage_account" | tee azure-prod-pat-plan.txt
           grep -Eq "Plan: [0-9]+ to add, [0-9]+ to change, 0 to delete" azure-prod-pat-plan.txt
           databricks bundle deploy -t azure_prod --var azure_storage_account_name="$storage_account"
-          databricks bundle run -t azure_prod travelops_promotion_job --var azure_storage_account_name="$storage_account"
           databricks bundle validate -t azure_prod --var azure_storage_account_name="$storage_account"
           databricks bundle plan -t azure_prod --var azure_storage_account_name="$storage_account" | tee azure-prod-pat-final-plan.txt
           grep -Fq "Plan: 0 to add, 0 to change, 0 to delete" azure-prod-pat-final-plan.txt
+
+  run-azure-prod-pat:
+    name: Run Azure PROD (Temporary PAT, Explicitly Gated)
+    # On push this preserves the original combined job's behavior exactly:
+    # it always ran the job unconditionally once deploy succeeded, with no
+    # separate flag (the push branch below has no run_azure_prod_job-style
+    # check, matching that). On workflow_dispatch, run_azure_prod_job now
+    # gates this the same way it gates the OIDC path's run-azure-prod job.
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      needs.deploy-azure-prod-pat.result == 'success' &&
+      (
+        (github.event_name == 'push' && vars.LAB08_ENABLE_AZURE_OIDC == 'false') ||
+        (github.event_name == 'workflow_dispatch' && inputs.azure_auth_mode == 'pat' && inputs.run_azure_prod_job == true)
+      )
+    needs: deploy-azure-prod-pat
+    runs-on: ubuntu-latest
+    environment: azure-prod
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: labs/lab_08_cicd_travelops
+    steps:
+      - uses: actions/checkout@v4
+      - uses: databricks/setup-cli@main
+      - name: Run Azure PROD application job with PAT
+        env:
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_AZURE_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          storage_account="${{ vars.LAB08_AZURE_STORAGE_ACCOUNT_NAME || 'lab08travelops63e621' }}"
+          databricks bundle run -t azure_prod travelops_promotion_job --var azure_storage_account_name="$storage_account"
 
   run-azure-prod:
     name: Run Azure PROD (OIDC, Explicitly Gated)
     if: >-
       github.ref == 'refs/heads/main' &&
-      vars.LAB08_ENABLE_AZURE_OIDC == 'true' &&
       needs.terraform-apply.result == 'success' &&
       needs.validate-azure-prod.result == 'success' &&
       (
-        (github.event_name == 'push' && vars.LAB08_RUN_AZURE_PROD_JOB == 'true') ||
-        (github.event_name == 'workflow_dispatch' && inputs.run_azure_prod_job == true)
+        (github.event_name == 'push' && vars.LAB08_ENABLE_AZURE_OIDC == 'true' && vars.LAB08_RUN_AZURE_PROD_JOB == 'true') ||
+        (github.event_name == 'workflow_dispatch' && inputs.azure_auth_mode == 'oidc' && inputs.run_azure_prod_job == true)
       )
     needs: [terraform-apply, validate-azure-prod]
     runs-on: ubuntu-latest
