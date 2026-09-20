@@ -22,6 +22,18 @@
 # changed in the same push. Unit Tests, Bundle Validate and (for a pull
 # request) the read-only Terraform Plan are unaffected and still validate
 # every change, including documentation-only and workflow-only ones.
+#
+# A manual `workflow_dispatch` run on `main` deliberately bypasses that
+# change-detection guard (a human explicitly asked for a full run), but
+# every other safeguard stays exactly as it is for a push: Personal PROD
+# approval, the Azure release approval, all Terraform safety checks, and
+# the OIDC-only Azure path (the temporary PAT path stays push-only and,
+# being gated on `LAB08_ENABLE_AZURE_OIDC == 'false'`, never runs alongside
+# it while that variable is `true`). The `run_azure_prod_job` input controls
+# only the final Azure PROD job-run step for that one dispatched run; it
+# never reads or writes the `LAB08_RUN_AZURE_PROD_JOB` repository variable,
+# which continues to control that same step exactly as before on an
+# ordinary push.
 name: LAB 08 TravelOps CI/CD
 
 on:
@@ -36,6 +48,18 @@ on:
       - "labs/lab_08_cicd_travelops/**"
       - ".github/workflows/lab08_cicd.yml"
       - ".github/terraform/**"
+  workflow_dispatch:
+    inputs:
+      run_azure_prod_job:
+        description: >-
+          Run the final Azure PROD job after successful Azure deployment and
+          validation. This demonstration deploys and runs Personal DEV and
+          Personal PROD, and applies/deploys Azure PROD, regardless of this
+          setting -- it repeats real jobs and incurs real compute costs on
+          all three targets. Leave false to demonstrate the full pipeline
+          without the final Azure PROD job execution.
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -50,6 +74,15 @@ env:
   TF_INPUT: "false"
 
 jobs:
+  manual-dispatch-notice:
+    name: Manual Dispatch Cost Warning
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Warn about repeated jobs and compute cost
+        run: |
+          echo "::warning::This manual run repeats the same Deploy DEV, Deploy Personal PROD, Terraform Apply and Deploy Azure PROD jobs an ordinary push to main would run, and incurs the same real compute costs on Personal DEV, Personal PROD and Azure PROD. run_azure_prod_job=${{ inputs.run_azure_prod_job }} additionally controls only the final Azure PROD job-run step; every approval gate still applies."
+
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
@@ -92,7 +125,18 @@ jobs:
 
   detect-changes:
     name: Detect Deployable Changes
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Runs (and must succeed) for both events this feeds: push and
+    # workflow_dispatch. GitHub Actions implicitly ANDs a success() check
+    # onto deploy-personal-dev's `if:` below, because that expression does
+    # not itself call success()/failure()/cancelled()/always() -- so if this
+    # job were skipped (as it previously was for workflow_dispatch), the
+    # implicit success() would evaluate to false and silently skip
+    # deploy-personal-dev even when its own condition was true. Always
+    # completing this job with a real (never "skipped") result for both
+    # relevant events avoids relying on always() everywhere downstream.
+    if: >-
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      github.ref == 'refs/heads/main'
     needs: bundle-validate
     runs-on: ubuntu-latest
     outputs:
@@ -106,6 +150,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "Manual workflow_dispatch run: deploying explicitly requested, skipping file classification."
+            echo "deploy_needed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           changed="$(git diff --name-only "${{ github.event.before }}" "${{ github.event.after }}")"
           echo "Changed files in this push:"
           echo "$changed"
@@ -124,8 +173,13 @@ jobs:
 
   deploy-personal-dev:
     name: Deploy DEV
+    # detect-changes now always runs (and must succeed) for both push and
+    # workflow_dispatch, so this plain AND-chain is sufficient: GitHub's
+    # implicit success() check on [bundle-validate, detect-changes] and this
+    # explicit condition agree in every case. See detect-changes' comment
+    # for why a job-specific OR-branch previously bypassed that implicit
+    # check incorrectly.
     if: >-
-      github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
       needs.bundle-validate.result == 'success' &&
       needs.detect-changes.result == 'success' &&
@@ -363,7 +417,7 @@ jobs:
     name: Approve Azure Release (Terraform Apply)
     if: >-
       needs.terraform-plan.result == 'success' &&
-      github.event_name == 'push' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       github.ref == 'refs/heads/main' &&
       vars.LAB08_ENABLE_AZURE_OIDC == 'true'
     needs: terraform-plan
@@ -377,7 +431,7 @@ jobs:
     name: Terraform Apply
     if: >-
       needs.approve-azure-release.result == 'success' &&
-      github.event_name == 'push' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       github.ref == 'refs/heads/main' &&
       vars.LAB08_ENABLE_AZURE_OIDC == 'true'
     needs: approve-azure-release
@@ -612,10 +666,14 @@ jobs:
   run-azure-prod:
     name: Run Azure PROD (OIDC, Explicitly Gated)
     if: >-
-      github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
       vars.LAB08_ENABLE_AZURE_OIDC == 'true' &&
-      vars.LAB08_RUN_AZURE_PROD_JOB == 'true'
+      needs.terraform-apply.result == 'success' &&
+      needs.validate-azure-prod.result == 'success' &&
+      (
+        (github.event_name == 'push' && vars.LAB08_RUN_AZURE_PROD_JOB == 'true') ||
+        (github.event_name == 'workflow_dispatch' && inputs.run_azure_prod_job == true)
+      )
     needs: [terraform-apply, validate-azure-prod]
     runs-on: ubuntu-latest
     environment: azure-prod
