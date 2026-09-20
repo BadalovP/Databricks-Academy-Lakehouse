@@ -125,7 +125,18 @@ jobs:
 
   detect-changes:
     name: Detect Deployable Changes
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Runs (and must succeed) for both events this feeds: push and
+    # workflow_dispatch. GitHub Actions implicitly ANDs a success() check
+    # onto deploy-personal-dev's `if:` below, because that expression does
+    # not itself call success()/failure()/cancelled()/always() -- so if this
+    # job were skipped (as it previously was for workflow_dispatch), the
+    # implicit success() would evaluate to false and silently skip
+    # deploy-personal-dev even when its own condition was true. Always
+    # completing this job with a real (never "skipped") result for both
+    # relevant events avoids relying on always() everywhere downstream.
+    if: >-
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      github.ref == 'refs/heads/main'
     needs: bundle-validate
     runs-on: ubuntu-latest
     outputs:
@@ -139,6 +150,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "Manual workflow_dispatch run: deploying explicitly requested, skipping file classification."
+            echo "deploy_needed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           changed="$(git diff --name-only "${{ github.event.before }}" "${{ github.event.after }}")"
           echo "Changed files in this push:"
           echo "$changed"
@@ -157,17 +173,17 @@ jobs:
 
   deploy-personal-dev:
     name: Deploy DEV
+    # detect-changes now always runs (and must succeed) for both push and
+    # workflow_dispatch, so this plain AND-chain is sufficient: GitHub's
+    # implicit success() check on [bundle-validate, detect-changes] and this
+    # explicit condition agree in every case. See detect-changes' comment
+    # for why a job-specific OR-branch previously bypassed that implicit
+    # check incorrectly.
     if: >-
       github.ref == 'refs/heads/main' &&
       needs.bundle-validate.result == 'success' &&
-      (
-        github.event_name == 'workflow_dispatch' ||
-        (
-          github.event_name == 'push' &&
-          needs.detect-changes.result == 'success' &&
-          needs.detect-changes.outputs.deploy_needed == 'true'
-        )
-      )
+      needs.detect-changes.result == 'success' &&
+      needs.detect-changes.outputs.deploy_needed == 'true'
     needs: [bundle-validate, detect-changes]
     runs-on: ubuntu-latest
     environment: personal-dev
