@@ -1,104 +1,244 @@
-# LAB 08 - TravelOps
+# Lab 08 · TravelOps
 
-TravelOps is a standalone Lab 8 project that demonstrates CI/CD promotion for a Databricks lakehouse. Pull requests run quality gates and bundle validation, with read-only Terraform plans added when advanced OIDC mode is enabled. Merges to main promote Personal DEV and Personal PROD before selecting either the advanced Terraform deployment or temporary PAT deployment for Azure PROD.
+### From a pull request to an approved Azure production release
 
-Azure PROD infrastructure, DAB resources, and the application workload are complete and idempotent. The first grading run failed safely because the required application schema was absent; Terraform now owns that schema, and the authorized rerun succeeded with a green production-health result.
+**Databricks Asset Bundles · Lakeflow · GitHub Actions · Terraform · Azure OIDC / Databricks PAT**
 
-## Requirement Matrix
+[![OIDC CI/CD](https://img.shields.io/badge/OIDC%20end--to--end-PASSED-238636)](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/35485851420)
+[![PAT CI/CD](https://img.shields.io/badge/PAT%20end--to--end-PASSED-238636)](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/35483922379)
+[![Documentation](https://img.shields.io/badge/Docs--only%20CI-Verified-0969da)](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/35481666973)
 
-| Requirement | Implementation |
-|---|---|
-| Dedicated DAB | `labs/lab_08_cicd_travelops/databricks.yml` |
-| DEV and PROD targets | `personal_dev`, `personal_prod`, `azure_prod` |
-| PR tests/lint/validate | `.github/workflows/lab08_cicd.yml` |
-| Personal PROD rehearsal | `personal_prod` target and post-run zero-change plan |
-| Azure PROD deploy on main | Advanced Terraform/OIDC path or temporary Databricks PAT path |
-| Assets as code | `resources/`, `pipeline/`, `notebooks/`, `dashboards/`, `sql/`, `terraform/personal`, `terraform/azure-prod` |
-| Idempotency | deterministic raw overwrite, DAB state, Terraform `prevent_destroy` |
-| No duplicate root ownership | root `databricks.yml` is not modified for Lab 8 |
+> **Submission snapshot — 20 September 2026.** Both selectable Azure deployment modes have now completed real manual end-to-end GitHub Actions runs, including the explicitly enabled final Azure application job. The alternate mode remains *skipped* within each run by design. These runs establish successful workflow/job execution, **not** retroactive removal of historical Bronze duplicates or an independent SQL audit of the Azure Gold health row.
 
-## Source Database
+**Start here:** [What was built](#1-what-was-built) · [Architecture](#2-data-and-compute-architecture) · [CI/CD stages](#3-cicd-design) · [How to run](#4-how-to-run-the-workflow) · [Evidence](#5-actual-execution-evidence) · [Limitations](#7-known-limitations) · [Submit](#9-submission-links)
 
-Phase 0 discovered `samples.wanderbricks` in the personal workspace. Tables used:
+![GitHub Actions page with the manual Run workflow form](evidence/images/01_github_workflow_overview.png)
 
-| Table | Row count |
-|---|---:|
-| bookings | 72,247 |
-| booking_updates | 83,068 |
-| payments | 49,638 |
-| users | 124,509 |
-| properties | 18,163 |
-| reviews | 99,793 |
-| destinations | 42 |
+*Figure 1. The Lab 8 workflow overview offers a manually dispatched, approval-gated demonstration from `main`; this is not the same as an individual run's “Re-run all jobs” control.*
 
-## Architecture
+---
 
-`samples.wanderbricks` is copied by `notebooks/00_seed_raw_data.ipynb` into a Terraform-owned raw Volume. Lakeflow ingests those Parquet folders with Auto Loader into Bronze, promotes validated records to Silver, and publishes Gold operational datasets for dashboarding and health checks.
+## 1. What was built
 
-Bronze, Silver and Gold are DAB-owned Lakeflow datasets because application data lifecycle belongs to Databricks. Raw uses Volumes because it models file landing zones and gives Auto Loader a cloud-file source. Personal DEV and Personal PROD raw volumes are managed volumes owned by `terraform/personal` in `dbr_dev.parvinbadalov`. The Personal application schemas are separate: `dbr_dev.parvinbadalov_lab08_dev` and `dbr_dev.parvinbadalov_lab08_prod`. Azure raw uses an external Volume owned by `terraform/azure-prod` so PROD can land data in ADLS Gen2 created and permissioned by Terraform.
+TravelOps is an independently deployable Lab 8 lakehouse. A GitHub pull request runs quality gates; eligible changes merged to `main` can promote an identical Databricks application through **Personal DEV → Personal PROD → Azure PROD**. A manual workflow can demonstrate the entire release with an explicit choice of Azure authentication method.
 
-### Compute Architecture
+| Capability | Implemented behavior | Where to inspect |
+|:--|:--|:--|
+| Source / pipeline | Seven `samples.wanderbricks` sources → file landing → Bronze → Silver → Gold | [`pipeline/`](pipeline/) and [`notebooks/`](notebooks/) |
+| Bundle as code | Dedicated bundle with `personal_dev`, `personal_prod`, `azure_prod` | [`databricks.yml`](databricks.yml) and [`resources/`](resources/) |
+| Quality on PR | Ruff, Black, Pytest, strict Personal bundle validation; OIDC-mode PR plan is read-only | [Workflow YAML](../../.github/workflows/lab08_cicd.yml) |
+| Controlled promotion | DEV validation → Personal PROD approval and validation → Azure release approval | [OIDC run #46](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/35485851420) |
+| Infrastructure | Terraform-backed raw Volumes / Azure storage and schema; imported remote state and no-change safety gates | [`terraform/`](terraform/) · [Architecture](ARCHITECTURE.md) |
+| Azure identity | Choose **OIDC + Terraform** or **temporary PAT**, never both in one run | [OIDC #46](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/35485851420) · [PAT #45](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/35483922379) |
+| Repeatability | Stable write-once raw-file identity for normal same-input reruns; Gold health assertions; deployment plans | [DEV integration results](evidence/lab08_personal_dev_run2_after_results.md) |
 
-- **Personal DEV and Personal PROD**:
-  - Lakeflow Pipeline: serverless compute (`serverless: true`).
-  - Promotion Job notebook tasks (`seed_raw_data`, `validate_gold_health`): serverless compute.
-- **Azure PROD**:
-  - `seed_raw_data` notebook task: attached to existing all-purpose GP2 cluster (`0702-171207-xo9bbc0y`) via configurable `azure_job_cluster_id`.
-  - `validate_gold_health` notebook task: attached to existing all-purpose GP2 cluster (`0702-171207-xo9bbc0y`) via configurable `azure_job_cluster_id`.
-  - `run_lakeflow_pipeline` pipeline task: runs on **classic pipeline-managed compute** (`serverless: false`, single-label `default` cluster with `Standard_F4` nodes, `ON_DEMAND_AZURE`, and enhanced autoscaling `min_workers: 1`, `max_workers: 2`).
-  - **Important**: GP2 is an existing all-purpose cluster attached strictly to notebook tasks; GP2 is **not** the compute backing the Lakeflow pipeline.
+**Ownership separation:** Terraform owns raw landing infrastructure and the Azure application schema; the Databricks bundle owns jobs, notebooks, the Lakeflow pipeline, dashboard/alert and application datasets. The older root bundle used by Labs 1–7 is not reassigned to Lab 8.
 
-Run bundle commands from this directory:
+## 2. Data and compute architecture
 
-```powershell
-cd labs\lab_08_cicd_travelops
-databricks bundle validate --strict -t personal_dev
-databricks bundle deploy -t personal_dev
-databricks bundle run travelops_promotion_job -t personal_dev
+```mermaid
+flowchart TD
+    S["samples.wanderbricks · 7 source tables"] --> N["Seed notebook · stable Parquet landing files"]
+    N --> V["Environment-specific Terraform-owned Volume"]
+    V --> B["Lakeflow Auto Loader · Bronze · 7 tables"]
+    B --> SI["Silver · quality + deduplication + booking current state · 7 views"]
+    SI --> G["Gold · reporting + reconciliation + health · 6 views"]
+    G --> H["validate_gold_health · job fails if assertions fail"]
+    G --> D["Dashboard / SQL alert"]
 ```
 
-## Datasets
+**Input entities:** `bookings`, `booking_updates`, `payments`, `users`, `properties`, `reviews`, `destinations`. The seed notebook writes files into the target's raw Volume, rather than reading the samples database directly from the production pipeline. Stable write-once filenames prevent *ordinary unchanged-input reruns* from appearing as new Auto Loader files; they do **not** remove historical records already ingested by the previous approach. The identity is based on seed metadata and row count, not a comprehensive content hash or concurrency-proof transaction.
 
-Personal DEV and Personal PROD use the same unprefixed logical table names in different schemas. DEV receives a new DAB-owned pipeline targeting `dbr_dev.parvinbadalov_lab08_dev`. PROD re-adopts the historical pipeline `4d36399f-2f34-46f8-a2d1-b9340fd1556a` because it already owns the unprefixed objects in `dbr_dev.parvinbadalov_lab08_prod` and Databricks pipeline target schemas are immutable.
+| Target | Application schema | Raw storage | Compute arrangement |
+|:--|:--|:--|:--|
+| `personal_dev` | `dbr_dev.parvinbadalov_lab08_dev` | Managed raw Volume in Personal workspace | Serverless notebook tasks and Lakeflow |
+| `personal_prod` | `dbr_dev.parvinbadalov_lab08_prod` in **Personal** workspace | Different managed raw Volume | Serverless notebook tasks and Lakeflow |
+| `azure_prod` | `dbr_dev.parvinbadalov_lab08_prod` in **Azure** workspace | External Volume on Terraform-managed ADLS Gen2 | Existing GP2 handles notebook tasks; separate classic **pipeline-managed** `Standard_F4` compute handles Lakeflow |
 
-Bronze: `bookings_bronze`, `booking_updates_bronze`, `payments_bronze`, `users_bronze`, `properties_bronze`, `reviews_bronze`, `destinations_bronze`.
+The matching `personal_prod` / `azure_prod` schema names are not a collision: they live in **different workspaces**. The existing GP2 notebook cluster is **not** the Lakeflow compute cluster. See [ARCHITECTURE.md](ARCHITECTURE.md) for the raw-source migration, resource ownership and compute details.
 
-Silver: `bookings_silver`, `current_bookings_silver`, `payments_silver`, `users_silver`, `properties_silver`, `reviews_silver`, `destinations_silver`.
+**Published data:** seven Bronze datasets, seven Silver datasets, and six Gold datasets, including `gold_payment_reconciliation` and `gold_production_health`. The Lakeflow interface shows **20 datasets** across these layers.
 
-Gold: `gold_daily_booking_revenue`, `gold_property_performance`, `gold_destination_performance`, `gold_payment_reconciliation`, `gold_review_score`, `gold_production_health`.
+![Actual Azure Lakeflow table graph after a successful PAT-driven application run](evidence/images/08_pat_lakeflow_success.png)
 
-## Environments
+*Figure 2. Run #45's Azure Lakeflow task succeeded; the graph shows the source → Bronze → Silver → Gold lineage, with 20 listed datasets. “Succeeded” is the pipeline update result, not an independent SQL verification of all business measures.*
 
-`personal_dev` publishes application outputs to `dbr_dev.parvinbadalov_lab08_dev` in the personal workspace and reads raw data from the Terraform-owned managed Volume `dbr_dev.parvinbadalov.lab08_dev_travelops_raw`. It may be deployed and run automatically after Personal Terraform is applied.
+## 3. CI/CD design
 
-`personal_prod` publishes application outputs to `dbr_dev.parvinbadalov_lab08_prod` in the same personal workspace and reads raw data from the Terraform-owned managed Volume `dbr_dev.parvinbadalov.lab08_prod_travelops_raw`. The historical PROD pipeline is bound into the current DAB deployment so existing PROD tables and Lakeflow internals are reused rather than recreated.
+### Release graph
 
-During the ownership migration, the adopted Personal PROD pipeline initially failed with `INVALID_PARAMETER_VALUE.LOCATION_OVERLAP`. Detailed Lakeflow events showed the active Auto Loader source pointed at the new Terraform-owned raw Volume, while retained streaming offsets still referenced the previous raw Volume path in `dbr_dev.parvinbadalov_lab08_prod.lab08_travelops_raw`. The code does not configure explicit `cloudFiles.schemaLocation` or `checkpointLocation`; Lakeflow owns checkpoint metadata under target table `_dlt_metadata`. Because the new raw Volume contained a complete replayable seed and ordinary batch reads succeeded, a supported Personal PROD full refresh was used to rebuild the rehearsal pipeline without deleting schemas, volumes, pipelines, or checkpoints manually.
+```mermaid
+flowchart TD
+    PR["Pull request"] --> Q["Unit Tests · Ruff · Black"]
+    PUSH["Push to main"] --> Q
+    MAN["Manual Run workflow from main"] --> Q
+    Q --> BV["Bundle Validate"]
+    BV -->|PR| READ["Optional read-only Terraform Plan; stop"]
+    BV -->|Push| DET{"Deployable files changed?"}
+    DET -->|No: docs / images / workflow only| DOC["Stop after CI; no deployment"]
+    DET -->|Yes| DEV["Deploy + validate Personal DEV"]
+    BV -->|Manual: explicitly requested full run| DEV
+    DEV --> PA["Personal PROD approval"] --> PP["Deploy + validate Personal PROD"]
+    PP --> M{"Selected Azure auth"}
+    M -->|OIDC| TF["Terraform Plan"] --> OA["Azure approval"] --> APPLY["Safe Terraform Apply"] --> OD["Azure bundle deploy + validate"]
+    M -->|PAT| TA["Azure approval"] --> PREF["PAT host + authentication preflight"] --> PD["Azure bundle plan + deploy + verify"]
+    OD --> EX{"Final Azure job enabled?"}
+    PD --> EX
+    EX -->|Yes| JOB["Run Azure job · 3 tasks"]
+    EX -->|No| SKIP["Deployment complete · final execution skipped"]
+```
 
-`azure_prod` uses the paid Azure workspace `https://adb-7405604503619901.1.azuredatabricks.net` in production mode. Terraform owns the application schema `dbr_dev.parvinbadalov_lab08_prod`, while DAB owns the Bronze/Silver/Gold datasets created within it. The Terraform-owned external raw Volume remains `dbr_dev.parvinbadalov.lab08_prod_travelops_raw`. The identical Personal PROD and Azure PROD logical volume name is intentional because they live in different physical workspaces. The authorized Azure PROD rerun completed successfully.
+**Branch controls:** PRs do not apply infrastructure or deploy production. An ordinary push to `main` must pass deployable-file detection before DEV starts; docs, evidence screenshots and workflow-only changes do not constitute deployable changes. A *manual* `workflow_dispatch` explicitly bypasses change detection **only to launch the full promotion**; tests and both approval gates still apply.
 
-## Ownership
+**Authentication controls:** OIDC uses GitHub-to-Azure identity, Terraform remote state and a guarded Apply; PAT uses a Databricks Azure-workspace PAT, explicitly confirms the CLI's resolved host and job read access, and skips Terraform. Both require Azure release approval. PAT permissions were exercised by the successful run #45; that does not mean the token should be copied into documentation.
 
-Terraform owns raw Volumes in every environment. `terraform/personal` owns the two Personal managed raw Volumes. `terraform/azure-prod` owns Azure storage, raw filesystem, access connector, RBAC, storage credential, external location, the Azure PROD external raw Volume, and the Azure PROD application schema. DAB owns the Lakeflow pipeline, job, notebooks, dashboard, alert, application configuration and Bronze/Silver/Gold datasets. Neither Terraform nor DAB owns the existing `dbr_dev.parvinbadalov` raw schema. The root bundle remains available for Labs 1-7 and does not own Lab 8 resources.
+**What grey boxes mean:** the unused PAT/OIDC branch shows grey *skipped* jobs by design. Grey is not a failed check, and it is neither possible nor appropriate to run the two alternatives in the **same** execution.
 
-## CI/CD Graph
+![Documentation-only merge: checks pass, deployments intentionally skipped](evidence/images/02_documentation_only_ci.png)
 
-Pull requests run Unit Tests -> Bundle Validate and, only when `LAB08_ENABLE_AZURE_OIDC=true`, read-only Terraform plans. They never apply, deploy, or run PROD. Pushes to `main` first promote Personal DEV and Personal PROD, then select one explicit Azure mode: `true` preserves the advanced OIDC/Terraform/deploy path; `false` uses a temporary Azure Databricks PAT to validate, deploy, run, and verify Azure PROD without running Terraform. The advanced application-run job also requires `LAB08_RUN_AZURE_PROD_JOB=true`.
+*Figure 3. Run #41 illustrates the docs/workflow-only guard: green quality checks, grey deployment jobs.*
 
-## Current Status
+## 4. How to run the workflow
 
-Personal DEV, Personal PROD and Azure PROD have all been deployed and independently exercised successfully with the fixed TravelOps pipeline code (PR #15, merged as commit `dcf4998`). The merge-triggered GitHub Actions run (`35471709436`) completed the full chain — Deploy DEV, Validate DEV, the Personal PROD approval gate, Deploy Personal PROD, Validate Personal PROD, Terraform Plan, the Azure release approval gate, Terraform Apply, Deploy Azure PROD, and Validate Azure PROD — all successfully. `LAB08_ENABLE_AZURE_OIDC=true` and `LAB08_RUN_AZURE_PROD_JOB=false` (verified current values); the advanced OIDC/Terraform path is active, and the Azure PROD job-run step correctly stayed skipped under that gate.
+### 4.1 Start a new run (not a retry)
 
-The Azure PROD TravelOps job was subsequently executed once via the standalone, approval-gated `LAB08 Azure PROD Manual Run` workflow. **The Databricks job run itself (`989280124372132`) succeeded independently**: all three tasks (`seed_raw_data`, `run_lakeflow_pipeline`, `validate_gold_health`) completed with `SUCCESS`, and Lakeflow pipeline update `be3996b6-9e42-452f-aca1-c01c230e24fe` completed. **GitHub Actions' own monitoring of that run failed separately** — a standalone Databricks CLI step resolved the Personal DEV workspace host instead of Azure PROD due to bundle-directory auto-detection, a defect in the monitoring workflow itself, not in the Databricks job. Full trace and root cause in `evidence/lab08_azure_prod_run_989280124372132.md`.
+1. Open [GitHub Actions → LAB 08 TravelOps CI/CD](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/workflows/lab08_cicd.yml), **the workflow overview page**.
+2. Click **Run workflow** above the run list; select **Branch: `main`**. If the green confirmation button is hidden, scroll **inside the dropdown**.
+3. Choose `azure_auth_mode`:
+   - `oidc` (default): Terraform/OIDC → Azure bundle deployment and validation.
+   - `pat`: temporary PAT authentication and bundle deployment; **no Terraform Plan/Apply**.
+4. Set **Run the final Azure PROD job** (`run_azure_prod_job`): **unchecked** skips *only* the final Azure application job; **checked** also runs it, after Azure deployment succeeds. Either choice still deploys/runs Personal DEV and Personal PROD and deploys Azure PROD.
+5. Check authorization, current active runs and compute budget; press the green **Run workflow** button **once**.
 
-`validate_gold_health` succeeding requires `health_passed=true` and `payment_amount_mismatch_count=0` by that task's own internal assertions — the same assertions that correctly failed an equivalent Personal DEV run once already. **The exact row values were not independently re-queried for this Azure PROD run**, because its SQL warehouse was stopped at the time and was not started to check it.
+![Manual-run inputs: main branch, authentication choice, and final-job checkbox](evidence/images/01_github_workflow_overview.png)
 
-Historical Bronze duplication accumulated by pre-fix, overwrite-based seeding on Azure PROD (and, independently, on Personal DEV) **remains unresolved by design** — the immutable-seed fix stops new duplication going forward, it does not retroactively clean up rows already ingested under the old logic. The scoped, human-approved full-refresh remediation in `evidence/lab08_production_remediation_plan.md` is written but has not been executed anywhere. Evidence logs live in `evidence/logs/`; Lab 8 integration-test evidence is indexed in `evidence/README.md`.
+*Figure 4. Actual `workflow_dispatch` controls. The checkbox controls only final Azure job execution; it does not turn deployment stages on/off.*
 
-## One-Time Configuration
+![Selector offers OIDC or PAT, not both](evidence/images/06_auth_mode_choices.png)
 
-GitHub repository variables, secrets, OIDC federation, PAT fallback, and remote-state migration required by the workflow are documented in `CICD.md`. Do not commit secret values. Set `LAB08_ENABLE_AZURE_OIDC` explicitly; an unset value activates neither Azure deployment path.
+*Figure 5. The two Azure authentication modes are **mutually exclusive**. Changing the selector affects only the **new run**; it cannot alter an already-started run.*
 
-## Documentation Convention
+| Demonstration | Azure mode | Final-job checkbox | Expected outcome |
+|:--|:--|:--|:--|
+| OIDC deployment only | `oidc` | Unchecked | Full DEV/Personal PROD promotion + Azure Terraform and deployment; final Azure job grey/skipped. |
+| **Full OIDC end-to-end** | **`oidc`** | **Checked** | Same promotion + final Azure application job; demonstrated by [#46](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/35485851420). |
+| PAT deployment only | `pat` | Unchecked | Full DEV/Personal PROD promotion + PAT Azure deployment; final Azure job grey/skipped. |
+| **Full PAT end-to-end** | **`pat`** | **Checked** | Same promotion + final Azure application job; demonstrated by [#45](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/35483922379). |
 
-Every Lab 8 Python, YAML, SQL, PowerShell/Shell and Terraform file starts with an ownership/purpose comment or docstring. Every notebook starts with an introduction Markdown cell and each executable cell has an explanation immediately before it.
+### 4.2 Approvals and completion
+
+1. **Quality/DEV:** Unit Tests → Bundle Validate → Detect Deployable Changes → Deploy DEV → Validate DEV.
+2. **Personal PROD:** GitHub pauses at `personal-prod-approval`. Review the DEV result, then select **Review deployments → Approve and deploy** if authorized. Personal PROD deploys/runs and validates.
+3. **Azure PROD:** review the selected path's prerequisite: OIDC runs Terraform Plan **before** `azure-release-approval`; PAT requests this approval **before** PAT preflight and bundle deployment. Approve only if authorized. OIDC then enforces Terraform's imported-state/no-change safeguards before Azure deployment.
+4. **Final job:** if checked, verify `Run Azure PROD` succeeded, plus the Databricks tasks `seed_raw_data` → `run_lakeflow_pipeline` → `validate_gold_health`. If unchecked, the final job remains grey by design.
+5. Save the exact **GitHub workflow run URL**, the Azure **Databricks job run ID**, and any read-only health query output you actually captured.
+
+![Review deployments popup for the Personal PROD approval](evidence/images/05_production_approval_gate.png)
+
+*Figure 6. The checkbox inside **Review pending deployments** chooses an **environment to approve**, not OIDC versus PAT. Each new run needs its own approvals.*
+
+> **Important operational distinction:** For ordinary pushes, `LAB08_ENABLE_AZURE_OIDC` chooses the Azure path and the existing repository-variable gates retain their original semantics; for manual runs, the dropdown/checkbox supply the selection **without changing variables**. The PAT route's automatic push behavior is not identical to manual checkbox behavior; consult the [actual workflow YAML](../../.github/workflows/lab08_cicd.yml) before changing repository variables. Do not use “Re-run all jobs” as a substitute for choosing fresh manual inputs.
+
+> **Costs and safety:** Each manual run executes real DEV/Personal PROD workloads and a real Azure deployment, even if the final-job box is unchecked. Stop and review if another run is active; no retries or checkpoint resets merely to make alternative boxes green. Only authorized operators should approve production stages.
+
+## 5. Actual execution evidence
+
+These links point to **distinct completed runs**, not one combined run or simulated images. For job-level assertions, use the GitHub job outcome; for Databricks task/pipeline outcomes, use the Databricks UI. A green health task means its internal assertions completed, but is not a substitute for an independent SQL result.
+
+### 5.1 OIDC + Terraform: full success — run #46
+
+**[GitHub Actions #46 · 35485851420](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/35485851420)** · Manual `workflow_dispatch` from `main` · **Success**, 32m 58s as captured. Confirmed successful stages: tests and bundle validation; DEV deploy/validate; Personal PROD approval/deploy/validate; Terraform Plan; Azure release approval; Terraform Apply; Azure bundle deploy/validate; **Run Azure PROD (OIDC)**. PAT-related jobs were skipped intentionally.
+
+![Full successful OIDC manual CI/CD execution](evidence/images/09_oidc_full_cicd_success.png)
+
+*Figure 7. Run #46: every job in the selected OIDC route completed; the unused PAT route is grey by design. The screenshot also shows two completed approval events and two retained artifacts.*
+
+Earlier **[OIDC #39](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/35479987880)** independently completed the full OIDC deployment and Azure job as well. These links can be shown separately to the supervisor as repeated execution evidence.
+
+### 5.2 Temporary PAT: full success — run #45
+
+**[GitHub Actions #45 · 35483922379](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/35483922379)** · Manual `workflow_dispatch` from `main` · **Success**, 44m 8s as captured. Tests, DEV, Personal PROD, both human approvals, PAT host/token/job-access preflight, PAT Azure bundle deployment and **Run Azure PROD (Temporary PAT)** all passed. Terraform jobs and the entire OIDC branch were skipped, as designed.
+
+![Full successful PAT manual CI/CD execution](evidence/images/07_pat_full_cicd_success.png)
+
+*Figure 8. Run #45: the selected PAT deployment and final PAT-triggered Azure job are green; OIDC/Terraform boxes are expected to be grey.*
+
+The PAT workflow then ran the real Azure Databricks promotion job. Its [pipeline-task screenshot](evidence/images/08_pat_lakeflow_success.png) shows success for `run_lakeflow_pipeline` and 20 lakehouse datasets. The screenshot does not itself show an independently executed health-row SQL query.
+
+### 5.3 Azure application: three-task success
+
+![Azure promotion job showing successful seed, pipeline and health tasks](evidence/images/03_azure_prod_job_success.png)
+
+*Figure 9. Earlier completed OIDC application execution: `seed_raw_data`, `run_lakeflow_pipeline` and `validate_gold_health` all show success. The exact corresponding Databricks job is [run `947981337227704`](https://adb-7405604503619901.1.azuredatabricks.net/jobs/941995669563439/runs/947981337227704?o=7405604503619901). This is historical evidence; do not present its run ID as the ID of #45 or #46.*
+
+![An earlier successful Azure Lakeflow Bronze / Silver / Gold graph](evidence/images/04_lakeflow_pipeline_success.png)
+
+*Figure 10. Earlier successful Azure pipeline update; kept as historical comparative evidence rather than relabeled as #45 or #46.*
+
+### 5.4 Documentation-only safeguard and earlier incident
+
+- **[GitHub Actions #41](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/35481666973):** successful quality checks, deployment jobs skipped because only documentation/workflow files changed.
+- **[Failed PAT attempt #42](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/35482773314):** preflight resolved the Personal workspace host while checking an Azure PAT. This run did *not* deploy Azure PROD. The corrected preflight verifies the host outside the bundle directory; its successful execution is evidenced in #45.
+- **[PAT host correction PR #20](https://github.com/BadalovP/Databricks-Academy-Lakehouse/pull/20):** traceable source fix for #42.
+- **Earlier standalone monitor:** [retained incident record](evidence/lab08_azure_prod_run_989280124372132.md) distinguishes a successful Databricks run from its failing GitHub post-trigger monitoring. Integrated runs #45 and #46 have passed; this does **not** prove the old standalone monitoring workflow was repaired.
+
+The concise, timestamped run matrix is also retained in **[FINAL_RUNS_2026-09-20.md](evidence/FINAL_RUNS_2026-09-20.md)**. Detailed original logs and migration history remain indexed in [evidence/README.md](evidence/README.md).
+
+## 6. Project layout and non-deploying validation
+
+```text
+labs/lab_08_cicd_travelops/
+├── README.md                       # This illustrated supervisor walkthrough
+├── databricks.yml                  # Lab-specific bundle + three targets
+├── pipeline/                       # Bronze, Silver and Gold definitions
+├── notebooks/                      # Seed notebook and Gold health assertion
+├── resources/                      # Pipeline, promotion job, dashboard, alert
+├── tests/                          # Pipeline/application tests
+├── terraform/                      # Separate Personal / Azure PROD roots
+├── ARCHITECTURE.md                 # Ownership, resource and compute details
+├── CICD.md                         # Configuration and historical rollout notes
+└── evidence/
+    ├── README.md                   # Existing detailed evidence index
+    ├── FINAL_RUNS_2026-09-20.md     # Latest PAT/OIDC execution summary
+    └── images/                     # 9 original screenshots used here
+```
+
+No bundle or production code is modified by this documentation package. Existing detailed `CICD.md` and `ARCHITECTURE.md` are retained rather than overwritten: their *historical status snapshots* may predate the latest successful manual runs; this README and the final-runs note provide the up-to-date **20 September 2026 status**.
+
+For validation from the Lab 8 directory, use the repository's development environment and run non-deploying checks appropriate to its configuration (e.g., `ruff check .`, `black --check .`, `pytest`, and `databricks bundle validate --strict -t personal_dev` with Personal workspace credentials). The workflow runs these gates automatically; **do not** run `bundle deploy`, `bundle run`, `terraform apply` or a manual dispatch simply to update the README.
+
+## 7. Known limitations
+
+| Boundary | Accurate statement |
+|:--|:--|
+| **Historical Bronze duplicates** | Earlier file overwrites produced duplicate ingestion. Normal rerun protection now exists, but historical Bronze rows remain; the [production remediation plan](evidence/lab08_production_remediation_plan.md) has **not** been executed. No deletion/full refresh is implied by the green CI/CD results. |
+| **Independent SQL health audit** | The Azure `validate_gold_health` task passed in recorded successful job executions. Independent, separately captured read-only SQL results for the underlying Azure Gold health-row values were not provided with this screenshot package. Do not invent `health_passed`/mismatch numbers for these exact runs. |
+| **Standalone monitoring workflow** | The earlier standalone monitor failed after triggering a successful Databricks job. The newer *integrated* PAT/OIDC workflows succeeded; the standalone monitor's separate post-trigger fix has not been reverified here. |
+
+**Resolved since the previous README:** the PAT preflight host-selection defect reported by #42 was corrected and a *real* PAT path passed in #45. It is no longer accurate to describe PAT as “not live-tested.”
+
+## 8. Troubleshooting and operational notes
+
+- **Run workflow button not visible?** Open the workflow *overview* via the link above, not an individual run. Refresh after a merged change that adds `workflow_dispatch`.
+- **Two Azure paths, many grey jobs?** Choose exactly one auth mode; all jobs in the other mode are intentionally skipped. Do not run both just to obtain green icons.
+- **PAT reports an invalid access token?** Read the host in its log first. In #42 the CLI incorrectly used the Personal host; the newer preflight checks the resolved Azure host before testing the token. If it fails *after* confirming the Azure host, treat it as a separate credential or permission issue; do not disclose/rotate credentials in a PR.
+- **Lakeflow says “waiting for resources”?** Inspect its event log and compute provisioning; avoid repeated job triggers. A slow pipeline is not proof of failure.
+- **GitHub workflow failed after triggering Databricks?** Inspect the actual job and task run ID before attempting recovery. The old monitoring failure was not the same as a failed Databricks job.
+- **Want a second demonstration?** Wait until the current run is terminal; review cost and production approvals again. For a docs-only update, push only README and files under `evidence/` on a review branch so deployments remain skipped.
+
+## 9. Submission links
+
+| Resource | Link |
+|:--|:--|
+| **Repository project** | [Lab 8 source directory](https://github.com/BadalovP/Databricks-Academy-Lakehouse/tree/main/labs/lab_08_cicd_travelops) |
+| Workflow definition | [`.github/workflows/lab08_cicd.yml`](../../.github/workflows/lab08_cicd.yml) |
+| **Latest OIDC end-to-end success** | [Actions #46](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/35485851420) |
+| **PAT end-to-end success** | [Actions #45](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/35483922379) |
+| Earlier OIDC demonstration | [Actions #39](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/35479987880) |
+| Source bug fix | [PR #20](https://github.com/BadalovP/Databricks-Academy-Lakehouse/pull/20) |
+| Run-level evidence note | [Final run matrix](evidence/FINAL_RUNS_2026-09-20.md) |
+| Detailed migration and historical evidence | [Evidence index](evidence/README.md) |
+
+---
+
+*Screenshots are original evidence from this project, dated 20 September 2026, and represent specific executions rather than a promise about future runs. Nine screenshots are placed under `evidence/images/` because this directory is classified as evidence by the current deployment-change guard; creating a new top-level `images/` directory inside this lab would not have the same documented exemption. No credentials, Terraform state, or plan binaries are included.*
