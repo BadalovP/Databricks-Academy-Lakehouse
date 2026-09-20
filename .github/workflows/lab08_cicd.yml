@@ -12,6 +12,16 @@
 # `azure-release-approval` environment before either one deploys or applies
 # Terraform. Existing `personal-prod`/`azure-prod` environment names and the
 # Azure OIDC federated-credential subject are left unchanged by this gating.
+#
+# On a push to main, `detect-changes` classifies the files that actually
+# changed: top-level `*.md` docs and anything under `evidence/` in this lab,
+# and this workflow file itself, never require a deployment on their own.
+# `deploy-personal-dev` (and therefore the entire rest of the deploy chain,
+# which depends on it transitively) only runs when at least one other file
+# under `labs/lab_08_cicd_travelops/**` or `.github/terraform/**` also
+# changed in the same push. Unit Tests, Bundle Validate and (for a pull
+# request) the read-only Terraform Plan are unaffected and still validate
+# every change, including documentation-only and workflow-only ones.
 name: LAB 08 TravelOps CI/CD
 
 on:
@@ -80,10 +90,47 @@ jobs:
           databricks bundle validate --strict -t personal_dev
           databricks bundle validate --strict -t personal_prod
 
-  deploy-personal-dev:
-    name: Deploy DEV
+  detect-changes:
+    name: Detect Deployable Changes
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: bundle-validate
+    runs-on: ubuntu-latest
+    outputs:
+      deploy_needed: ${{ steps.filter.outputs.deploy_needed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Classify changed files (docs/evidence/workflow-only vs. deployable)
+        id: filter
+        shell: bash
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only "${{ github.event.before }}" "${{ github.event.after }}")"
+          echo "Changed files in this push:"
+          echo "$changed"
+          deploy_needed=false
+          while IFS= read -r f; do
+            [[ -z "$f" ]] && continue
+            case "$f" in
+              labs/lab_08_cicd_travelops/*.md) ;;
+              labs/lab_08_cicd_travelops/evidence/*) ;;
+              .github/workflows/lab08_cicd.yml) ;;
+              labs/lab_08_cicd_travelops/*|.github/terraform/*) deploy_needed=true ;;
+            esac
+          done <<< "$changed"
+          echo "deploy_needed=$deploy_needed" >> "$GITHUB_OUTPUT"
+          echo "deploy_needed=$deploy_needed"
+
+  deploy-personal-dev:
+    name: Deploy DEV
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.bundle-validate.result == 'success' &&
+      needs.detect-changes.result == 'success' &&
+      needs.detect-changes.outputs.deploy_needed == 'true'
+    needs: [bundle-validate, detect-changes]
     runs-on: ubuntu-latest
     environment: personal-dev
     defaults:
