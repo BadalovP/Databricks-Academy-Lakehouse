@@ -46,6 +46,14 @@
 # job execution the same way for both paths on a manual run; the PAT path's
 # existing automatic (unconditional) job run on an ordinary push is
 # unchanged.
+#
+# The PAT path's preflight step runs outside the checked-out repository
+# (working-directory: runner.temp) and explicitly verifies the resolved
+# authentication host before checking the token or job permissions --
+# confirmed root cause of a real failure (run #42) where that step, run
+# from inside the bundle directory, had its DATABRICKS_HOST silently
+# overridden by bundle-context auto-detection and authenticated against
+# Personal DEV's host instead of Azure PROD's.
 name: LAB 08 TravelOps CI/CD
 
 on:
@@ -687,21 +695,65 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: databricks/setup-cli@main
-      - name: Preflight - verify PAT credential availability and permissions
+      - name: Preflight - verify resolved host, then PAT credential and permissions
+        # Runs entirely outside the checked-out repository (and therefore
+        # outside labs/lab_08_cicd_travelops, which contains databricks.yml)
+        # so the Databricks CLI cannot perform bundle-context
+        # auto-detection and silently override DATABRICKS_HOST/
+        # DATABRICKS_TOKEN below with the bundle's default target's cached
+        # Personal DEV host. This is the confirmed root cause of run #42's
+        # preflight authenticating against
+        # dbc-1750318a-76a9.cloud.databricks.com (Personal) instead of
+        # Azure PROD and reporting "Invalid access token" -- the PAT was
+        # never actually checked against Azure PROD in that run. The other
+        # steps in this job (`databricks bundle ... -t azure_prod`) are
+        # unaffected by this because they explicitly name their bundle
+        # target, which overrides the default regardless of working
+        # directory; this is the only standalone (non-bundle) Databricks
+        # CLI call using the Azure PAT anywhere in this workflow.
+        working-directory: ${{ runner.temp }}
         env:
           DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_AZURE_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
-          # Confirms the secret exists and actually authenticates, and that
-          # it can read the exact job this path deploys/runs, without ever
-          # printing the token or creating/rotating any credential.
           [[ -n "$DATABRICKS_HOST" ]] || { echo "::error::DATABRICKS_AZURE_HOST is required."; exit 1; }
           [[ -n "$DATABRICKS_TOKEN" ]] || { echo "::error::DATABRICKS_AZURE_TOKEN secret is not set."; exit 1; }
-          databricks current-user me --output json > /dev/null
+          echo "Requested host: $DATABRICKS_HOST"
+
+          # Verify the resolved authentication host BEFORE checking the
+          # token or job permissions. `databricks auth describe` (without
+          # --sensitive, which is never passed here) does not print
+          # credential values by the CLI's own documented contract.
+          databricks auth describe > auth-describe.txt 2>&1 || {
+            echo "::error::Could not describe the resolved authentication source."
+            cat auth-describe.txt
+            exit 1
+          }
+          cat auth-describe.txt
+          expected_host_fragment="adb-7405604503619901"
+          if ! grep -q "$expected_host_fragment" auth-describe.txt; then
+            echo "::error::Resolved authentication host does not match Azure PROD (expected to contain $expected_host_fragment). This is a host-resolution problem, not a token problem -- do not assume the PAT is invalid or expired from this alone."
+            exit 1
+          fi
+          echo "Confirmed: resolved authentication host matches Azure PROD."
+
+          # Only now check the token itself and its permissions. A failure
+          # past this point is a genuine, separate credential/permission
+          # issue -- report it as such, distinct from host resolution.
+          if ! databricks current-user me --output json > /dev/null 2> current-user-error.txt; then
+            echo "::error::Host resolution was verified as Azure PROD, but the PAT failed to authenticate. Report this as a PAT credential problem separate from host resolution; do not assume it is expired without further investigation."
+            cat current-user-error.txt
+            exit 1
+          fi
           echo "PAT authenticates successfully against the Azure PROD workspace."
-          databricks jobs get 941995669563439 --output json > /dev/null
+
+          if ! databricks jobs get 941995669563439 --output json > /dev/null 2> jobs-get-error.txt; then
+            echo "::error::PAT authenticated against Azure PROD, but does not have read access to the Azure PROD TravelOps job (941995669563439). Report this as a PAT permissions problem separate from host resolution."
+            cat jobs-get-error.txt
+            exit 1
+          fi
           echo "PAT has read access to the Azure PROD TravelOps job."
       - name: Validate, plan, and deploy Azure PROD with PAT
         env:
