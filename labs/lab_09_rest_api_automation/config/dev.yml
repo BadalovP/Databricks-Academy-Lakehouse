@@ -1,0 +1,85 @@
+# LAB 09 - dev configuration
+#
+# This file intentionally does NOT pin a Databricks profile name. The
+# repository's local ~/.databrickscfg contains multiple profiles named "dev"
+# / "AZURE_DEV" that actually resolve to the Azure PROD host used by Lab 8
+# (adb-7405604503619901.1.azuredatabricks.net) -- a naming trap, not a real
+# separate dev workspace. Lab 9 therefore REQUIRES the profile to be passed
+# explicitly (--profile flag or DATABRICKS_CONFIG_PROFILE env var) rather
+# than guessing one from this file, so a human always makes that choice
+# consciously. See README.md "Security model" for the full explanation.
+
+catalog: dbr_dev
+schema: parvinbadalov
+volume: lab09_landing
+
+# Ordered, explicit month list. land_next_month() always lands the first
+# entry in this list that is not yet present under the trips/ volume path.
+months:
+  - "2024-01"
+  - "2024-02"
+  - "2024-03"
+  - "2024-04"
+  - "2024-05"
+  - "2024-06"
+  - "2024-07"
+  - "2024-08"
+  - "2024-09"
+  - "2024-10"
+  - "2024-11"
+  - "2024-12"
+
+dataset:
+  trips_url_template: "https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_{month}.parquet"
+  zone_lookup_url: "https://d37ci6vzurychx.cloudfront.net/misc/taxi_zone_lookup.csv"
+  download_retries: 3
+  download_backoff_seconds: 2.0
+  download_timeout_seconds: 300
+
+workspace:
+  # Rendered against the authenticated identity at runtime:
+  # /Workspace/Users/<current-user>/lab09/...
+  root_subpath: "lab09"
+  pipeline_subpath: "pipeline"
+  notebook_subpath: "notebooks"
+
+pipeline:
+  name: "lab09_taxi_pipeline"
+  target_schema: parvinbadalov
+  prefer_serverless: true
+  # Only consulted if serverless pipeline creation is rejected by the
+  # workspace (see pipelines.py's fallback path).
+  classic_node_type_hint: null
+  classic_num_workers: 1
+
+tables:
+  bronze: lab09_taxi_bronze
+  silver: lab09_taxi_silver
+  quarantine: lab09_taxi_quarantine
+  gold: lab09_taxi_daily_summary
+
+compute:
+  autotermination_minutes: 20
+  single_node: true
+  # If set, must be the name of an existing cluster policy this identity is
+  # allowed to use. Left null means "no policy" and compute.py resolves
+  # node type / runtime dynamically instead of hardcoding either.
+  cluster_policy_name: null
+  # Optional hint (e.g. "Standard_DS3_v2" or "i3.xlarge"). If null,
+  # compute.py picks the smallest available non-deprecated node type.
+  node_type_hint: null
+
+job:
+  name: "lab09_taxi_reconciliation_job"
+  task_key: "reconcile_counts"
+
+monitoring:
+  pipeline_timeout_seconds: 2400
+  pipeline_poll_interval_seconds: 15
+  cluster_timeout_seconds: 900
+  cluster_poll_interval_seconds: 10
+  job_timeout_seconds: 1800
+  job_poll_interval_seconds: 15
+
+report:
+  output_path: "evidence/lab09_report.json"

@@ -1,0 +1,25 @@
+# LAB 09 - REST API Automation
+#
+# Keeps local build/test artifacts, downloaded datasets, and generated
+# evidence reports out of Git. taxi_tripdata parquet files are downloaded on
+# demand by src/lab09/landing.py and must never be committed -- only the
+# generated JSON report and any supervisor-captured screenshots belong under
+# evidence/.
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+__pycache__/
+*.pyc
+**/.databricks/
+.env
+.env.*
+!.env.example
+
+# Downloaded NYC TLC source data (never committed; landed into the Volume,
+# not the repo).
+*.parquet
+taxi_zone_lookup.csv
+
+# Generated run reports (evidence/README.md documents what belongs here
+# deliberately, named and reviewed -- not every ad hoc local run's output).
+evidence/lab09_report.json
