@@ -14,9 +14,18 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from databricks.sdk import WorkspaceClient
+from databricks.sdk.errors import DatabricksError, InvalidParameterValue, PermissionDenied
 from databricks.sdk.service import compute as compute_svc
 
 logger = logging.getLogger(__name__)
+
+# Errors that genuinely signal "explicit cluster creation is not permitted
+# here" -- a cluster policy rejecting the requested shape, or a plain
+# permission denial. Anything else (network failure, authentication
+# failure, an internal/service error, a malformed payload from a bug in
+# this code) is NOT one of these and must fail the run rather than being
+# silently treated as "fall back to a job-managed cluster".
+CLUSTER_CREATE_REJECTION_ERRORS = (PermissionDenied, InvalidParameterValue)
 
 
 @dataclass
@@ -151,6 +160,34 @@ def start_cluster_create(client: WorkspaceClient, spec: ClusterSpec, cluster_nam
     kwargs = spec.as_create_kwargs(cluster_name)
     waiter = client.clusters.create(**kwargs)
     return waiter.cluster_id
+
+
+def try_start_cluster_create(
+    client: WorkspaceClient, spec: ClusterSpec, cluster_name: str
+) -> tuple[str | None, DatabricksError | None]:
+    """Attempt explicit cluster creation, with the documented policy fallback.
+
+    Returns ``(cluster_id, None)`` on success. Returns ``(None, exc)`` only
+    when the workspace rejected the request for a genuine
+    permission/policy/unsupported-compute reason
+    (:data:`CLUSTER_CREATE_REJECTION_ERRORS`) -- the caller's documented
+    signal to fall back to a job-managed ``new_cluster`` definition instead
+    (see ``ClusterSpec.as_new_cluster_dict``). Any other exception is not
+    caught here and propagates, so an unrelated failure (network, auth,
+    internal error, bad payload) fails the run instead of silently
+    switching compute modes.
+    """
+    try:
+        cluster_id = start_cluster_create(client, spec, cluster_name)
+        return cluster_id, None
+    except CLUSTER_CREATE_REJECTION_ERRORS as exc:
+        logger.warning(
+            "Explicit cluster creation rejected (%s: %s); falling back to a "
+            "job-managed new_cluster.",
+            type(exc).__name__,
+            exc,
+        )
+        return None, exc
 
 
 def terminate_cluster(client: WorkspaceClient, cluster_id: str) -> None:

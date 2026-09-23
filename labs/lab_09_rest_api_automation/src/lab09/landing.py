@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 import requests
+from databricks.sdk.errors import NotFound
 
 from .client import reference_path as reference_volume_path
 from .client import trips_path as trips_volume_path
@@ -46,19 +47,29 @@ def parse_landed_month(filename: str) -> str | None:
 
 
 def list_landed_months(client: Any, cfg: dict[str, Any]) -> set[str]:
-    """List months already landed under the trips/ volume path via the Files API."""
+    """List months already landed under the trips/ volume path via the Files API.
+
+    `files.list_directory_contents()` is a generator: the underlying HTTP
+    call only happens once iteration starts, not when the function is
+    called. The try/except therefore has to wrap the iteration itself, not
+    just the call that constructs the generator -- wrapping only the call
+    would silently never catch anything. Only a genuine NotFound (the
+    directory does not exist yet, e.g. before the first month has ever
+    landed) is treated as "no months landed"; any other error (permission,
+    authentication, network, service) propagates so it is never mistaken
+    for an empty landing area.
+    """
     path = trips_volume_path(cfg)
     months: set[str] = set()
     try:
-        entries = client.files.list_directory_contents(path)
-    except Exception as exc:  # noqa: BLE001 - a missing directory means "nothing landed yet"
-        logger.info("Could not list %s (%s); treating as no months landed yet.", path, exc)
-        return months
-    for entry in entries:
-        name = getattr(entry, "name", None) or Path(getattr(entry, "path", "")).name
-        month = parse_landed_month(name)
-        if month:
-            months.add(month)
+        for entry in client.files.list_directory_contents(path):
+            name = getattr(entry, "name", None) or Path(getattr(entry, "path", "")).name
+            month = parse_landed_month(name)
+            if month:
+                months.add(month)
+    except NotFound:
+        logger.info("%s does not exist yet; treating as no months landed.", path)
+        return set()
     return months
 
 
@@ -118,6 +129,16 @@ def build_trips_url(cfg: dict[str, Any], month: str) -> str:
     return template.format(month=month)
 
 
+def _ensure_directory(client: Any, directory_path: str) -> None:
+    """Explicitly ensure a Lab 9-owned Files API directory exists before uploading into it.
+
+    Uses the Files API's own directory-create operation (idempotent: safe
+    to call even when the directory already exists) rather than assuming
+    upload() implicitly creates missing parent directories.
+    """
+    client.files.create_directory(directory_path)
+
+
 def land_next_month(
     client: Any,
     cfg: dict[str, Any],
@@ -147,8 +168,10 @@ def land_next_month(
         get_fn=get_fn,
     )
 
+    trips_root = trips_volume_path(cfg)
+    _ensure_directory(client, trips_root)
     filename = f"yellow_tripdata_{month}.parquet"
-    remote_path = f"{trips_volume_path(cfg)}/{filename}"
+    remote_path = f"{trips_root}/{filename}"
     client.files.upload(remote_path, io.BytesIO(data), overwrite=False)
     logger.info("Landed %s (%d bytes) at %s", month, len(data), remote_path)
 
@@ -166,13 +189,18 @@ def ensure_reference_csv(
     cfg: dict[str, Any],
     get_fn: Callable[..., Any] = requests.get,
 ) -> str:
-    """Upload the taxi zone lookup CSV once, if it is not already present."""
+    """Upload the taxi zone lookup CSV once, if it is not already present.
+
+    Only a genuine NotFound from get_metadata() is treated as "not present
+    yet"; any other error (permission, authentication, network, service)
+    propagates rather than being silently reinterpreted as a missing file.
+    """
     remote_path = f"{reference_volume_path(cfg)}/taxi_zone_lookup.csv"
     try:
         client.files.get_metadata(remote_path)
         logger.info("Reference file %s already present; not re-downloading.", remote_path)
         return remote_path
-    except Exception:  # noqa: BLE001 - metadata lookup failing means "not present yet"
+    except NotFound:
         pass
 
     url = cfg["dataset"]["zone_lookup_url"]
@@ -182,6 +210,7 @@ def ensure_reference_csv(
     data = response.content
     if len(data) == 0:
         raise DownloadValidationError(f"Downloaded reference file from {url} was empty.")
+    _ensure_directory(client, reference_volume_path(cfg))
     client.files.upload(remote_path, io.BytesIO(data), overwrite=False)
     logger.info("Uploaded reference file to %s (%d bytes).", remote_path, len(data))
     return remote_path

@@ -53,6 +53,7 @@ class Report:
     pipeline_serverless: bool | None = None
     update_id: str | None = None
     cluster_id: str | None = None
+    compute_mode: str | None = None  # "explicit_cluster" | "job_cluster"
     job_id: int | None = None
     run_id: int | None = None
     bronze_rows: int | None = None

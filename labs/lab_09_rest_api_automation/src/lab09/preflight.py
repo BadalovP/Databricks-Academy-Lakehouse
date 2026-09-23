@@ -7,6 +7,21 @@ it is usable, and immediately terminate it. That probe is opt-in
 (`probe_cluster_create=True`) because it provisions real (if tiny, minimal,
 autoterminating) compute, and the caller is responsible for having already
 verified the resolved host/identity is the intended DEV/academy workspace.
+
+Every check reports one of three states, never just a boolean:
+
+  PASS        the capability was actually exercised and succeeded
+  FAIL        the capability was actually exercised and failed
+  NOT_TESTED  the capability was NOT exercised this run (e.g. the Files API
+              round trip when the Lab 9 volume does not exist yet, or the
+              cluster-create probe when it was not requested)
+
+A NOT_TESTED result is never reported as PASS -- an unexecuted capability
+must never be described as proven. `PreflightReport.passed` (used to gate
+`run-all` and the `preflight` CLI's exit code) only requires that no check
+actually FAILed; a NOT_TESTED check does not block it, since some checks
+are deliberately deferred (see each check's own comment below), but every
+NOT_TESTED check remains visible and distinguishable in the report.
 """
 
 from __future__ import annotations
@@ -15,22 +30,29 @@ import io
 import logging
 import uuid
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 from databricks.sdk import WorkspaceClient
-from databricks.sdk.errors import DatabricksError
+from databricks.sdk.errors import NotFound
 
 from . import compute, monitoring
 from .client import volume_root_path
 
 logger = logging.getLogger(__name__)
 
+CheckStatus = Literal["PASS", "FAIL", "NOT_TESTED"]
+
 
 @dataclass
 class CheckResult:
     name: str
-    passed: bool
+    status: CheckStatus
     detail: str = ""
+
+    @property
+    def passed(self) -> bool:
+        """True only for a check that was actually executed and succeeded."""
+        return self.status == "PASS"
 
 
 @dataclass
@@ -50,17 +72,26 @@ class PreflightReport:
 
     @property
     def passed(self) -> bool:
-        return all(c.passed for c in self.checks)
+        """No check actually FAILed.
 
-    def add(self, name: str, passed: bool, detail: str = "") -> None:
-        self.checks.append(CheckResult(name=name, passed=passed, detail=detail))
+        A NOT_TESTED check never blocks this (cluster_create_probe is
+        deliberately NOT_TESTED unless explicitly requested;
+        files_api_roundtrip is deliberately NOT_TESTED when the Lab 9
+        volume does not exist yet, which is normal before the first
+        ensure_volume() call) -- but neither is ever counted as PASS, and
+        both remain individually visible in `checks`.
+        """
+        return all(c.status != "FAIL" for c in self.checks)
+
+    def add(self, name: str, status: CheckStatus, detail: str = "") -> None:
+        self.checks.append(CheckResult(name=name, status=status, detail=detail))
 
     def as_dict(self) -> dict[str, Any]:
         return {
             "identity": self.identity,
             "passed": self.passed,
             "checks": [
-                {"name": c.name, "passed": c.passed, "detail": c.detail} for c in self.checks
+                {"name": c.name, "status": c.status, "detail": c.detail} for c in self.checks
             ],
             "cluster_create_tested": self.cluster_create_tested,
             "cluster_create_supported": self.cluster_create_supported,
@@ -69,11 +100,12 @@ class PreflightReport:
 
 
 def _run_check(report: PreflightReport, name: str, fn: Any) -> None:
+    """Run a check that always genuinely executes: PASS on success, FAIL on any exception."""
     try:
         detail = fn()
-        report.add(name, True, detail or "ok")
+        report.add(name, "PASS", detail or "ok")
     except Exception as exc:  # noqa: BLE001 - one bad check must not abort the rest
-        report.add(name, False, f"{type(exc).__name__}: {exc}")
+        report.add(name, "FAIL", f"{type(exc).__name__}: {exc}")
 
 
 def run_preflight(
@@ -113,41 +145,23 @@ def run_preflight(
     )
 
     def check_volume() -> str:
+        # A genuine "not found" answer is still a fully executed,
+        # successful check of volume *access* (the identity can reach the
+        # schema and get an authoritative answer) -- it is PASS, not
+        # NOT_TESTED. Only NotFound/ResourceDoesNotExist (the typed SDK
+        # exceptions, not a fragile string match) are treated as "missing";
+        # anything else (permission, auth, service errors) propagates and
+        # fails this check for real.
         full_name = f"{cfg['catalog']}.{cfg['schema']}.{cfg['volume']}"
         try:
             vol = client.volumes.read(full_name)
             return f"exists: {vol.full_name}"
-        except DatabricksError as exc:
-            if "NOT_FOUND" in str(getattr(exc, "error_code", "")) or "NOT_FOUND" in str(exc):
-                return "does not exist yet (will be created by ensure_volume)"
-            raise
+        except NotFound:
+            return "does not exist yet (will be created by ensure_volume)"
 
     _run_check(report, "volume_access", check_volume)
+    _check_files_roundtrip(client, cfg, report)
 
-    def check_files_roundtrip() -> str:
-        full_name = f"{cfg['catalog']}.{cfg['schema']}.{cfg['volume']}"
-        try:
-            client.volumes.read(full_name)
-        except DatabricksError:
-            return (
-                "skipped: volume does not exist yet, round trip deferred until after ensure_volume"
-            )
-
-        root = volume_root_path(cfg)
-        probe_path = f"{root}/_preflight/probe_{uuid.uuid4().hex}.txt"
-        client.files.upload(probe_path, io.BytesIO(b"lab09-preflight-probe"), overwrite=True)
-        try:
-            listed = list(client.files.list_directory_contents(f"{root}/_preflight"))
-            found = any(getattr(entry, "path", None) == probe_path for entry in listed)
-            if not found:
-                raise RuntimeError(
-                    "Uploaded probe file was not visible in list_directory_contents."
-                )
-        finally:
-            client.files.delete(probe_path)
-        return "upload/list/delete round trip ok"
-
-    _run_check(report, "files_api_roundtrip", check_files_roundtrip)
     _run_check(
         report,
         "pipeline_list_permission",
@@ -159,18 +173,71 @@ def run_preflight(
     else:
         report.add(
             "cluster_create_probe",
-            True,
-            "skipped (not requested this run) -- explicit cluster-create capability "
-            "remains unverified; architecture falls back to "
-            "jobs.submit(new_cluster=...) if it turns out to be forbidden",
+            "NOT_TESTED",
+            "not requested this run -- explicit cluster-create capability remains "
+            "unverified; architecture falls back to a job-managed new_cluster "
+            "(compute.try_start_cluster_create) if it turns out to be forbidden",
         )
 
     return report
 
 
+def _check_files_roundtrip(
+    client: WorkspaceClient, cfg: dict[str, Any], report: PreflightReport
+) -> None:
+    """Upload/list/delete a tiny probe file -- but only when it can genuinely be tested.
+
+    If the Lab 9 volume does not exist yet (normal before the first
+    ensure_volume() call, e.g. run-all's own preflight step runs before
+    step 2), this is reported as NOT_TESTED, never as PASS: the capability
+    was not actually exercised.
+    """
+    full_name = f"{cfg['catalog']}.{cfg['schema']}.{cfg['volume']}"
+    try:
+        client.volumes.read(full_name)
+    except NotFound:
+        report.add(
+            "files_api_roundtrip",
+            "NOT_TESTED",
+            "Lab 9 volume does not exist yet, so the Files API upload/list/delete "
+            "round trip was not exercised. This is expected before ensure_volume() "
+            "runs and must not be read as a passed check.",
+        )
+        return
+    except Exception as exc:  # noqa: BLE001
+        report.add("files_api_roundtrip", "FAIL", f"{type(exc).__name__}: {exc}")
+        return
+
+    root = volume_root_path(cfg)
+    preflight_dir = f"{root}/_preflight"
+    probe_path = f"{preflight_dir}/probe_{uuid.uuid4().hex}.txt"
+    try:
+        client.files.create_directory(preflight_dir)
+        client.files.upload(probe_path, io.BytesIO(b"lab09-preflight-probe"), overwrite=True)
+        try:
+            listed = list(client.files.list_directory_contents(f"{root}/_preflight"))
+            found = any(getattr(entry, "path", None) == probe_path for entry in listed)
+            if not found:
+                raise RuntimeError(
+                    "Uploaded probe file was not visible in list_directory_contents."
+                )
+        finally:
+            client.files.delete(probe_path)
+    except Exception as exc:  # noqa: BLE001
+        report.add("files_api_roundtrip", "FAIL", f"{type(exc).__name__}: {exc}")
+        return
+
+    report.add("files_api_roundtrip", "PASS", "upload/list/delete round trip ok")
+
+
 def _run_cluster_create_probe(
     client: WorkspaceClient, cfg: dict[str, Any], report: PreflightReport
 ) -> None:
+    """The only reliable cluster-create capability check: create -> poll -> terminate.
+
+    Never weakened to a cheaper check like clusters.list_node_types() --
+    that only proves read access, not create permission.
+    """
     report.cluster_create_tested = True
     cluster_id = None
     try:
@@ -188,12 +255,12 @@ def _run_cluster_create_probe(
         report.cluster_create_supported = outcome.usable
         report.add(
             "cluster_create_probe",
-            outcome.usable,
+            "PASS" if outcome.usable else "FAIL",
             f"cluster {cluster_id} reached state={outcome.state} timed_out={outcome.timed_out}",
         )
     except Exception as exc:  # noqa: BLE001
         report.cluster_create_supported = False
-        report.add("cluster_create_probe", False, f"{type(exc).__name__}: {exc}")
+        report.add("cluster_create_probe", "FAIL", f"{type(exc).__name__}: {exc}")
     finally:
         if cluster_id:
             try:

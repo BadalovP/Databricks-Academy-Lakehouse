@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 
 import pytest
+from databricks.sdk.errors import InternalError, NotFound, PermissionDenied
 
 from lab09 import landing
 
@@ -110,6 +111,98 @@ def test_land_next_month_downloads_and_uploads_first_missing_month():
     args, kwargs = client.files.upload.call_args
     assert args[0].endswith("yellow_tripdata_2024-02.parquet")
     assert kwargs.get("overwrite") is False
+    client.files.create_directory.assert_called_once_with(
+        "/Volumes/dbr_dev/parvinbadalov/lab09_landing/trips"
+    )
+
+
+# --- landing error handling: only genuine "not found" is treated as missing -
+
+
+def test_list_landed_months_treats_not_found_as_empty():
+    client = MagicMock()
+    client.files.list_directory_contents.side_effect = NotFound("directory does not exist")
+
+    assert landing.list_landed_months(client, _cfg()) == set()
+
+
+def test_list_landed_months_propagates_permission_errors():
+    client = MagicMock()
+    client.files.list_directory_contents.side_effect = PermissionDenied("not authorized")
+
+    with pytest.raises(PermissionDenied):
+        landing.list_landed_months(client, _cfg())
+
+
+def test_list_landed_months_propagates_errors_raised_during_lazy_iteration():
+    """list_directory_contents() is a real generator: the SDK's HTTP call only
+    happens once iteration starts. A NotFound raised mid-iteration (not at
+    call time) must still be treated as "missing", not crash the caller.
+    """
+
+    def _lazy_not_found(_path):
+        raise NotFound("directory does not exist")
+        yield  # pragma: no cover - makes this a generator function
+
+    client = MagicMock()
+    client.files.list_directory_contents.side_effect = _lazy_not_found
+
+    assert landing.list_landed_months(client, _cfg()) == set()
+
+
+def test_ensure_reference_csv_downloads_when_metadata_lookup_says_not_found():
+    client = MagicMock()
+    client.files.get_metadata.side_effect = NotFound("not found")
+
+    fake_response = MagicMock()
+    fake_response.content = b"LocationID,Borough,Zone\n1,EWR,Newark Airport\n"
+    fake_response.raise_for_status = MagicMock()
+    get_fn = MagicMock(return_value=fake_response)
+
+    remote_path = landing.ensure_reference_csv(client, _cfg(), get_fn=get_fn)
+
+    assert remote_path.endswith("taxi_zone_lookup.csv")
+    get_fn.assert_called_once()
+    client.files.create_directory.assert_called_once_with(
+        "/Volumes/dbr_dev/parvinbadalov/lab09_landing/reference"
+    )
+    client.files.upload.assert_called_once()
+    _, kwargs = client.files.upload.call_args
+    assert kwargs.get("overwrite") is False
+
+
+def test_ensure_reference_csv_does_not_redownload_when_already_present():
+    client = MagicMock()
+    client.files.get_metadata.return_value = MagicMock()
+    get_fn = MagicMock()
+
+    landing.ensure_reference_csv(client, _cfg(), get_fn=get_fn)
+
+    get_fn.assert_not_called()
+    client.files.upload.assert_not_called()
+
+
+def test_ensure_reference_csv_propagates_permission_errors_without_downloading():
+    client = MagicMock()
+    client.files.get_metadata.side_effect = PermissionDenied("not authorized")
+    get_fn = MagicMock()
+
+    with pytest.raises(PermissionDenied):
+        landing.ensure_reference_csv(client, _cfg(), get_fn=get_fn)
+
+    get_fn.assert_not_called()
+    client.files.upload.assert_not_called()
+
+
+def test_ensure_reference_csv_propagates_service_errors_without_downloading():
+    client = MagicMock()
+    client.files.get_metadata.side_effect = InternalError("service unavailable")
+    get_fn = MagicMock()
+
+    with pytest.raises(InternalError):
+        landing.ensure_reference_csv(client, _cfg(), get_fn=get_fn)
+
+    get_fn.assert_not_called()
 
 
 def test_build_trips_url_uses_configured_template():

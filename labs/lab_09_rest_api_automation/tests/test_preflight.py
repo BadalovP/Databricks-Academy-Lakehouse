@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, create_autospec, patch
 
 from databricks.sdk import WorkspaceClient
-from databricks.sdk.errors import DatabricksError
+from databricks.sdk.errors import InternalError, NotFound
 
 from lab09 import compute, monitoring, preflight
 
@@ -32,7 +32,7 @@ def _passing_client() -> MagicMock:
     client.cluster_policies.list.return_value = []
     client.catalogs.get.return_value.name = "dbr_dev"
     client.schemas.get.return_value.name = "parvinbadalov"
-    client.volumes.read.side_effect = DatabricksError("not found", error_code="NOT_FOUND")
+    client.volumes.read.side_effect = NotFound("volume does not exist")
     client.pipelines.list_pipelines.return_value = []
     return client
 
@@ -65,18 +65,26 @@ def test_run_preflight_volume_not_found_is_reported_as_passed():
     report = preflight.run_preflight(client, _cfg(), probe_cluster_create=False)
 
     volume_check = next(c for c in report.checks if c.name == "volume_access")
+    assert volume_check.status == "PASS"
     assert volume_check.passed is True
     assert "does not exist yet" in volume_check.detail
 
 
-def test_run_preflight_skips_files_roundtrip_when_volume_missing():
+def test_run_preflight_files_roundtrip_is_not_tested_when_volume_missing():
+    """The truthfulness fix: an unexercised capability must never be PASS."""
     client = _passing_client()
     report = preflight.run_preflight(client, _cfg(), probe_cluster_create=False)
 
     files_check = next(c for c in report.checks if c.name == "files_api_roundtrip")
-    assert files_check.passed is True
-    assert "skipped" in files_check.detail
+    assert files_check.status == "NOT_TESTED"
+    assert files_check.passed is False
+    assert "not exercised" in files_check.detail
     client.files.upload.assert_not_called()
+    client.files.create_directory.assert_not_called()
+
+    # A NOT_TESTED check does not block the overall report, but it is never
+    # conflated with an actually-passed check.
+    assert report.passed is True
 
 
 def test_run_preflight_does_files_roundtrip_when_volume_exists():
@@ -95,9 +103,38 @@ def test_run_preflight_does_files_roundtrip_when_volume_exists():
         report = preflight.run_preflight(client, _cfg(), probe_cluster_create=False)
 
     files_check = next(c for c in report.checks if c.name == "files_api_roundtrip")
-    assert files_check.passed is True
+    assert files_check.status == "PASS"
+    client.files.create_directory.assert_called_once_with(
+        "/Volumes/dbr_dev/parvinbadalov/lab09_landing/_preflight"
+    )
     client.files.upload.assert_called_once()
     client.files.delete.assert_called_once()
+
+
+def test_run_preflight_files_roundtrip_fails_when_probe_not_visible_in_listing():
+    client = _passing_client()
+    client.volumes.read.side_effect = None
+    client.volumes.read.return_value = MagicMock()
+    client.files.list_directory_contents.return_value = []  # probe never shows up
+
+    report = preflight.run_preflight(client, _cfg(), probe_cluster_create=False)
+
+    files_check = next(c for c in report.checks if c.name == "files_api_roundtrip")
+    assert files_check.status == "FAIL"
+    client.files.delete.assert_called_once()  # cleanup still attempted
+    assert report.passed is False
+
+
+def test_run_preflight_volume_lookup_failure_propagates_as_fail_not_missing():
+    """A real error (auth/permission/service) must not be mistaken for "missing"."""
+    client = _passing_client()
+    client.volumes.read.side_effect = InternalError("service unavailable")
+
+    report = preflight.run_preflight(client, _cfg(), probe_cluster_create=False)
+
+    volume_check = next(c for c in report.checks if c.name == "volume_access")
+    assert volume_check.status == "FAIL"
+    assert report.passed is False
 
 
 def test_run_preflight_one_failing_check_does_not_abort_the_rest():
@@ -107,12 +144,12 @@ def test_run_preflight_one_failing_check_does_not_abort_the_rest():
     report = preflight.run_preflight(client, _cfg(), probe_cluster_create=False)
 
     catalog_check = next(c for c in report.checks if c.name == "catalog_access")
-    assert catalog_check.passed is False
+    assert catalog_check.status == "FAIL"
     assert report.passed is False
 
     # Every other check still ran despite catalog_access failing.
     schema_check = next(c for c in report.checks if c.name == "schema_access")
-    assert schema_check.passed is True
+    assert schema_check.status == "PASS"
 
 
 def test_run_preflight_records_ci_identity_caveat():
@@ -153,7 +190,7 @@ def test_run_preflight_cluster_probe_success_terminates_cluster():
     terminate.assert_called_once_with(client, "probe-cluster")
 
     probe_check = next(c for c in report.checks if c.name == "cluster_create_probe")
-    assert probe_check.passed is True
+    assert probe_check.status == "PASS"
 
 
 def test_run_preflight_cluster_probe_still_terminates_on_failure_after_create():
@@ -176,16 +213,22 @@ def test_run_preflight_cluster_probe_still_terminates_on_failure_after_create():
     terminate.assert_called_once_with(client, "probe-cluster")
 
     probe_check = next(c for c in report.checks if c.name == "cluster_create_probe")
-    assert probe_check.passed is False
+    assert probe_check.status == "FAIL"
 
 
 def test_run_preflight_cluster_probe_not_run_when_not_requested():
     client = _passing_client()
-    with (patch.object(preflight.compute, "start_cluster_create") as start_create,):
+    with patch.object(preflight.compute, "start_cluster_create") as start_create:
         report = preflight.run_preflight(client, _cfg(), probe_cluster_create=False)
 
     start_create.assert_not_called()
     assert report.cluster_create_tested is False
     probe_check = next(c for c in report.checks if c.name == "cluster_create_probe")
-    assert probe_check.passed is True
-    assert "skipped" in probe_check.detail
+    assert probe_check.status == "NOT_TESTED"
+    assert probe_check.passed is False
+    assert "not requested" in probe_check.detail
+
+    # A NOT_TESTED cluster-create probe does not block the overall report --
+    # run-all's own preflight gate must not fail every run just because the
+    # expensive opt-in probe wasn't requested.
+    assert report.passed is True

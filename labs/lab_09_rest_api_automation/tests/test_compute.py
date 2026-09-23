@@ -1,6 +1,8 @@
 from unittest.mock import MagicMock, create_autospec
 
+import pytest
 from databricks.sdk import WorkspaceClient
+from databricks.sdk.errors import InternalError, InvalidParameterValue, PermissionDenied
 
 from lab09 import compute
 
@@ -165,3 +167,60 @@ def test_cluster_exists_and_active_false_when_lookup_fails():
     client = _autospec_client()
     client.clusters.get.side_effect = RuntimeError("not found")
     assert compute.cluster_exists_and_active(client, "cluster-123") is False
+
+
+# --- try_start_cluster_create: the explicit-cluster-vs-fallback decision ---
+
+
+def _spec() -> compute.ClusterSpec:
+    return compute.ClusterSpec(
+        spark_version="15.4.x-scala2.12", node_type_id="small", autotermination_minutes=20
+    )
+
+
+def test_try_start_cluster_create_returns_cluster_id_on_success():
+    client = _autospec_client()
+    waiter = MagicMock()
+    waiter.cluster_id = "cluster-1"
+    client.clusters.create.return_value = waiter
+
+    cluster_id, rejection = compute.try_start_cluster_create(client, _spec(), "lab09-temp")
+
+    assert cluster_id == "cluster-1"
+    assert rejection is None
+
+
+def test_try_start_cluster_create_falls_back_on_permission_denied():
+    client = _autospec_client()
+    client.clusters.create.side_effect = PermissionDenied("not allowed to create clusters")
+
+    cluster_id, rejection = compute.try_start_cluster_create(client, _spec(), "lab09-temp")
+
+    assert cluster_id is None
+    assert isinstance(rejection, PermissionDenied)
+
+
+def test_try_start_cluster_create_falls_back_on_invalid_parameter_value():
+    client = _autospec_client()
+    client.clusters.create.side_effect = InvalidParameterValue("cluster policy forbids this shape")
+
+    cluster_id, rejection = compute.try_start_cluster_create(client, _spec(), "lab09-temp")
+
+    assert cluster_id is None
+    assert isinstance(rejection, InvalidParameterValue)
+
+
+def test_try_start_cluster_create_does_not_swallow_unrelated_errors():
+    client = _autospec_client()
+    client.clusters.create.side_effect = InternalError("service is having a bad day")
+
+    with pytest.raises(InternalError):
+        compute.try_start_cluster_create(client, _spec(), "lab09-temp")
+
+
+def test_try_start_cluster_create_does_not_swallow_plain_exceptions():
+    client = _autospec_client()
+    client.clusters.create.side_effect = RuntimeError("network error")
+
+    with pytest.raises(RuntimeError):
+        compute.try_start_cluster_create(client, _spec(), "lab09-temp")

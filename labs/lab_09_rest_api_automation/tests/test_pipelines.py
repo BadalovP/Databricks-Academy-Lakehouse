@@ -1,7 +1,8 @@
 from unittest.mock import MagicMock, create_autospec
 
+import pytest
 from databricks.sdk import WorkspaceClient
-from databricks.sdk.errors import DatabricksError
+from databricks.sdk.errors import InternalError, InvalidParameterValue, PermissionDenied
 
 from lab09 import pipelines
 
@@ -21,6 +22,12 @@ def _cfg(prefer_serverless: bool = True) -> dict:
             "classic_num_workers": 1,
         },
     }
+
+
+def _node_types(client: MagicMock) -> None:
+    client.clusters.list_node_types.return_value.node_types = [
+        MagicMock(node_type_id="small", num_cores=4, memory_mb=16384, is_deprecated=False)
+    ]
 
 
 def test_find_pipeline_by_name_returns_exact_match():
@@ -43,23 +50,7 @@ def test_find_pipeline_by_name_returns_none_when_missing():
     assert pipelines.find_pipeline_by_name(client, "lab09_taxi_pipeline") is None
 
 
-def test_ensure_pipeline_reuses_existing_pipeline_without_creating_duplicate():
-    client = _autospec_client()
-    existing = MagicMock()
-    existing.name = "lab09_taxi_pipeline"
-    existing.pipeline_id = "existing-id"
-    client.pipelines.list_pipelines.return_value = [existing]
-
-    pipeline_id, used_serverless = pipelines.ensure_pipeline(
-        client, _cfg(), "/Workspace/Users/x/lab09/pipeline"
-    )
-
-    assert pipeline_id == "existing-id"
-    assert used_serverless is True
-    client.pipelines.create.assert_not_called()
-    client.pipelines.update.assert_called_once()
-    _, kwargs = client.pipelines.update.call_args
-    assert kwargs["name"] == "lab09_taxi_pipeline"
+# --- creation path ------------------------------------------------------
 
 
 def test_ensure_pipeline_creates_serverless_when_missing_and_preferred():
@@ -81,17 +72,15 @@ def test_ensure_pipeline_creates_serverless_when_missing_and_preferred():
     assert len(kwargs["libraries"]) == 3
 
 
-def test_ensure_pipeline_falls_back_to_classic_when_serverless_rejected():
+def test_ensure_pipeline_falls_back_to_classic_when_serverless_creation_rejected():
     client = _autospec_client()
     client.pipelines.list_pipelines.return_value = []
-    client.clusters.list_node_types.return_value.node_types = [
-        MagicMock(node_type_id="small", num_cores=4, memory_mb=16384, is_deprecated=False)
-    ]
+    _node_types(client)
 
     classic_created = MagicMock()
     classic_created.pipeline_id = "classic-id"
     client.pipelines.create.side_effect = [
-        DatabricksError("serverless pipelines are not enabled for this workspace"),
+        PermissionDenied("serverless pipelines are not enabled for this workspace"),
         classic_created,
     ]
 
@@ -105,14 +94,22 @@ def test_ensure_pipeline_falls_back_to_classic_when_serverless_rejected():
     _, kwargs = client.pipelines.create.call_args
     assert kwargs["serverless"] is False
     assert kwargs["clusters"] is not None
+    assert kwargs["clusters"][0].node_type_id == "small"
+
+
+def test_ensure_pipeline_creation_does_not_swallow_unrelated_errors():
+    client = _autospec_client()
+    client.pipelines.list_pipelines.return_value = []
+    client.pipelines.create.side_effect = InternalError("service is having a bad day")
+
+    with pytest.raises(InternalError):
+        pipelines.ensure_pipeline(client, _cfg(), "/Workspace/Users/x/lab09/pipeline")
 
 
 def test_ensure_pipeline_creates_classic_directly_when_not_preferred():
     client = _autospec_client()
     client.pipelines.list_pipelines.return_value = []
-    client.clusters.list_node_types.return_value.node_types = [
-        MagicMock(node_type_id="small", num_cores=4, memory_mb=16384, is_deprecated=False)
-    ]
+    _node_types(client)
     created = MagicMock()
     created.pipeline_id = "classic-id"
     client.pipelines.create.return_value = created
@@ -124,6 +121,73 @@ def test_ensure_pipeline_creates_classic_directly_when_not_preferred():
     assert pipeline_id == "classic-id"
     assert used_serverless is False
     assert client.pipelines.create.call_count == 1
+
+
+# --- update path (existing pipeline) -------------------------------------
+
+
+def test_ensure_pipeline_updates_existing_pipeline_to_serverless_when_it_succeeds():
+    client = _autospec_client()
+    existing = MagicMock()
+    existing.name = "lab09_taxi_pipeline"
+    existing.pipeline_id = "existing-id"
+    client.pipelines.list_pipelines.return_value = [existing]
+
+    pipeline_id, used_serverless = pipelines.ensure_pipeline(
+        client, _cfg(), "/Workspace/Users/x/lab09/pipeline"
+    )
+
+    assert pipeline_id == "existing-id"
+    assert used_serverless is True
+    client.pipelines.create.assert_not_called()
+    client.pipelines.update.assert_called_once()
+    _, kwargs = client.pipelines.update.call_args
+    assert kwargs["pipeline_id"] == "existing-id"
+    assert kwargs["name"] == "lab09_taxi_pipeline"
+    assert kwargs["serverless"] is True
+
+
+def test_ensure_pipeline_falls_back_to_classic_when_existing_pipeline_serverless_update_rejected():
+    """The defect this guards against: an EXISTING pipeline was previously just
+    updated with serverless=<preference> with no fallback at all -- claiming
+    serverless was used even when the update call for it never succeeded.
+    """
+    client = _autospec_client()
+    existing = MagicMock()
+    existing.name = "lab09_taxi_pipeline"
+    existing.pipeline_id = "existing-id"
+    client.pipelines.list_pipelines.return_value = [existing]
+    _node_types(client)
+
+    client.pipelines.update.side_effect = [
+        InvalidParameterValue("cluster policy forbids serverless pipelines"),
+        None,  # the classic-compute update call succeeds
+    ]
+
+    pipeline_id, used_serverless = pipelines.ensure_pipeline(
+        client, _cfg(), "/Workspace/Users/x/lab09/pipeline"
+    )
+
+    assert pipeline_id == "existing-id"
+    assert used_serverless is False  # never claim serverless unless it actually was used
+    assert client.pipelines.update.call_count == 2
+    first_kwargs = client.pipelines.update.call_args_list[0].kwargs
+    assert first_kwargs["serverless"] is True
+    second_kwargs = client.pipelines.update.call_args_list[1].kwargs
+    assert second_kwargs["serverless"] is False
+    assert second_kwargs["clusters"] is not None
+
+
+def test_ensure_pipeline_update_does_not_swallow_unrelated_errors():
+    client = _autospec_client()
+    existing = MagicMock()
+    existing.name = "lab09_taxi_pipeline"
+    existing.pipeline_id = "existing-id"
+    client.pipelines.list_pipelines.return_value = [existing]
+    client.pipelines.update.side_effect = InternalError("service is having a bad day")
+
+    with pytest.raises(InternalError):
+        pipelines.ensure_pipeline(client, _cfg(), "/Workspace/Users/x/lab09/pipeline")
 
 
 def test_start_update_returns_update_id_without_waiting():

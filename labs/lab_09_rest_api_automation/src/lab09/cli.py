@@ -172,13 +172,28 @@ def cmd_run_all(client: WorkspaceClient, cfg: dict[str, Any], args: argparse.Nam
         update_id = pipelines.start_update(client, pipeline_id)
         report.update_id = update_id
 
-        # Optional optimization: start the temporary notebook-job cluster now
-        # so its provisioning overlaps the pipeline update's runtime, instead
-        # of waiting for the pipeline to finish first.
+        # Optional optimization: attempt the temporary notebook-job cluster
+        # now so, when explicit creation is allowed, its provisioning
+        # overlaps the pipeline update's runtime instead of waiting for the
+        # pipeline to finish first. If the workspace specifically rejects
+        # explicit cluster creation for a permission/policy/
+        # unsupported-compute reason, fall back to a job-managed
+        # new_cluster instead -- try_start_cluster_create() does not catch
+        # (and therefore does not hide) any other kind of failure.
         cluster_spec = compute.build_cluster_spec(client, cfg)
-        cluster_id = compute.start_cluster_create(
+        cluster_id, rejection = compute.try_start_cluster_create(
             client, cluster_spec, cluster_name="lab09-temp-notebook-cluster"
         )
+        if cluster_id:
+            compute_mode = "explicit_cluster"
+        else:
+            compute_mode = "job_cluster"
+            logger.info(
+                "compute_mode=job_cluster: explicit cluster creation was rejected (%s). "
+                "Databricks will provision and tear down the job cluster itself.",
+                rejection,
+            )
+        report.compute_mode = compute_mode
         report.cluster_id = cluster_id
 
         # 10. Poll pipeline explicitly until terminal
@@ -198,27 +213,43 @@ def cmd_run_all(client: WorkspaceClient, cfg: dict[str, Any], args: argparse.Nam
             )
             return _finish(client, report, cluster_id, cfg)
 
-        # 11. Create/wait for temporary notebook cluster (creation started above)
-        cluster_outcome = monitoring.poll_cluster_state(
-            client,
-            cluster_id,
-            timeout_seconds=monitoring_cfg["cluster_timeout_seconds"],
-            poll_interval_seconds=monitoring_cfg["cluster_poll_interval_seconds"],
-        )
-        if not cluster_outcome.usable:
-            report.status = "FAILED"
-            report.error = (
-                f"Temporary cluster did not become usable: "
-                f"state={cluster_outcome.state} timed_out={cluster_outcome.timed_out}"
+        # 11. Create/wait for temporary notebook cluster -- only applicable
+        # in explicit_cluster mode. In job_cluster mode there is nothing to
+        # poll yet: Databricks provisions (and later tears down) that
+        # cluster itself as part of the job run, starting at run_now().
+        if compute_mode == "explicit_cluster":
+            cluster_outcome = monitoring.poll_cluster_state(
+                client,
+                cluster_id,
+                timeout_seconds=monitoring_cfg["cluster_timeout_seconds"],
+                poll_interval_seconds=monitoring_cfg["cluster_poll_interval_seconds"],
             )
-            return _finish(client, report, cluster_id, cfg)
+            if not cluster_outcome.usable:
+                report.status = "FAILED"
+                report.error = (
+                    f"Temporary cluster did not become usable: "
+                    f"state={cluster_outcome.state} timed_out={cluster_outcome.timed_out}"
+                )
+                return _finish(client, report, cluster_id, cfg)
 
-        # 12. Find/create persistent Lab 9 Databricks Job
-        job_id = jobs.ensure_job(client, cfg, notebook_path, cluster_id=cluster_id)
+        # 12. Find/create persistent Lab 9 Databricks Job -- exactly one
+        # stable job in both compute modes, never a new duplicate.
+        new_cluster = (
+            cluster_spec.as_new_cluster_dict("lab09-job-cluster")
+            if compute_mode == "job_cluster"
+            else None
+        )
+        job_id = jobs.ensure_job(
+            client, cfg, notebook_path, cluster_id=cluster_id, new_cluster=new_cluster
+        )
         report.job_id = job_id
 
-        # 13. RESET the existing job to point at the CURRENT cluster ID
-        jobs.reset_job_cluster(client, job_id, cfg, notebook_path, cluster_id=cluster_id)
+        # 13. RESET the existing job to point at the CURRENT cluster ID (or,
+        # in job_cluster mode, at the new_cluster definition Databricks will
+        # provision and terminate itself -- no standalone cleanup needed).
+        jobs.reset_job_cluster(
+            client, job_id, cfg, notebook_path, cluster_id=cluster_id, new_cluster=new_cluster
+        )
 
         # 14. run_now()
         run_id = jobs.run_job_now(client, job_id)

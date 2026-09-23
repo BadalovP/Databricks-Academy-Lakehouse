@@ -123,7 +123,7 @@ separate rather than assuming any two are interchangeable:
 | `client.py` | `WorkspaceClient` construction (never guesses a profile -- see Security model) |
 | `preflight.py` | `current_user.me`, `clusters.spark_versions`, `clusters.list_node_types`, `cluster_policies.list`, `catalogs.get`, `schemas.get`, `volumes.read`, `files.upload`/`list_directory_contents`/`delete`, `pipelines.list_pipelines`, plus the real cluster-create probe below |
 | `volumes.py` | `volumes.read`, `volumes.create` |
-| `landing.py` | `files.list_directory_contents`, `files.upload`, `files.get_metadata`, `files.delete` |
+| `landing.py` | `files.list_directory_contents`, `files.create_directory`, `files.upload`, `files.get_metadata`, `files.delete` |
 | `workspace.py` | `workspace.mkdirs`, `workspace.upload` (`ImportFormat.SOURCE`) |
 | `compute.py` | `clusters.spark_versions`, `clusters.list_node_types`, `cluster_policies.list`, `clusters.create`, `clusters.get`, `clusters.delete` |
 | `pipelines.py` | `pipelines.list_pipelines`, `pipelines.create`, `pipelines.update`, `pipelines.start_update` |
@@ -143,38 +143,60 @@ prove cluster-create permission -- it only proves the identity can see
 workspace metadata. `preflight.py` runs the following, independently, so
 one failure never hides another:
 
+Every check reports one of three states -- `PASS`, `FAIL`, or `NOT_TESTED`
+-- never just a boolean. A `NOT_TESTED` result is never described as
+passed: `PreflightReport.passed` (used to gate `run-all` and the
+`preflight` CLI's exit code) only requires that no check actually `FAIL`ed,
+but each individual check's real state stays visible in the report.
+
 1. `authenticated_identity` -- `current_user.me()`
 2. `spark_runtimes_listed` -- `clusters.spark_versions()`
 3. `node_types_listed` -- `clusters.list_node_types()`
 4. `cluster_policies_listed` -- `cluster_policies.list()`
 5. `catalog_access` -- `catalogs.get(catalog)`
 6. `schema_access` -- `schemas.get(catalog.schema)`
-7. `volume_access` -- `volumes.read(...)`; a `NOT_FOUND` here is reported as
-   **passed** ("does not exist yet, will be created"), since the volume is
-   created later in the execution order, not before preflight
+7. `volume_access` -- `volumes.read(...)`; a genuine `NotFound` here is
+   reported as **`PASS`** ("does not exist yet, will be created") --
+   getting an authoritative "it doesn't exist" answer is a fully executed,
+   successful check of volume access, since the volume is created later in
+   the execution order, not before preflight. Any other error (permission,
+   auth, service) is a real `FAIL`, using the SDK's typed `NotFound`
+   exception rather than string-matching an error message.
 8. `files_api_roundtrip` -- upload/list/delete a tiny probe file under
-   `_preflight/`; skipped (not failed) if the volume doesn't exist yet
+   `_preflight/` (the directory is created explicitly first via
+   `files.create_directory()`). Reported as **`NOT_TESTED`**, not `PASS`,
+   when the volume doesn't exist yet -- the round trip was not actually
+   exercised, and this report never claims otherwise.
 9. `pipeline_list_permission` -- `pipelines.list_pipelines()`
-10. `cluster_create_probe` -- **opt-in only** (`--probe-cluster-create`):
-    creates a real tiny single-node cluster
+10. `cluster_create_probe` -- **opt-in only** (`--probe-cluster-create`),
+    `NOT_TESTED` otherwise: creates a real tiny single-node cluster
     (`autotermination_minutes=20`), polls it explicitly to `RUNNING`, and
     immediately terminates it in a `finally` block regardless of outcome.
     This is the only check in this list that provisions real compute, and
     it is the only reliable way to confirm create permission --
     `clusters.list_node_types()` succeeding proves nothing about create
-    permission on its own.
+    permission on its own, and this probe is never weakened to that
+    cheaper check.
 
 ### Cluster fallback behavior
 
-If the workspace forbids explicit `clusters.create()` (a policy denial, for
-example), the architecture's documented fallback is `jobs.submit(...,
-new_cluster=...)`: `compute.ClusterSpec.as_new_cluster_dict()` produces the
-exact same shape needed for a job task's inline `new_cluster`, and
-`jobs.py`'s `_task_settings()` already accepts a `new_cluster` dict as an
-alternative to an `existing_cluster_id`. This fallback exists in the code
-today; it has not been exercised live because explicit cluster-create has
-not yet been tested against a confirmed-safe workspace (see "Known
-limitations").
+`cli.py`'s `run-all` always attempts explicit `clusters.create()` first via
+`compute.try_start_cluster_create()`. If the workspace rejects that for a
+genuine permission/policy/unsupported-compute reason (the SDK's typed
+`PermissionDenied` or `InvalidParameterValue` exceptions -- deliberately
+**not** a bare `except Exception`, so an unrelated failure like a network
+error or bad payload fails the run instead of silently switching modes),
+`run-all` falls back to `compute_mode = "job_cluster"`: the same persistent
+job is reset with a `new_cluster` definition
+(`compute.ClusterSpec.as_new_cluster_dict()`) instead of an
+`existing_cluster_id`, `run_now()` is called, and Databricks provisions and
+tears down that job cluster itself -- no standalone
+`compute.terminate_cluster()` call is needed or made in that mode. Either
+way, the exact same persistent Lab 9 job is reused (never a new duplicate),
+and the report's `compute_mode` field records which path actually ran.
+This fallback is fully wired into `run-all` today; it has not been
+exercised live because explicit cluster-create has not yet been tested
+against a confirmed-safe workspace (see "Known limitations").
 
 ### CI identity vs. local identity
 
@@ -335,12 +357,18 @@ from Lab 8's `lab08_cicd.yml` (not modified by this PR), scoped to
 - `pull_request` / `push`: `static-checks` only -- Ruff, Black, pytest
   against a mocked `WorkspaceClient`. No live Databricks call is possible
   from this path.
-- `workflow_dispatch`: `static-checks` -> `approve-live-run` (a
-  `lab09-live-approval` GitHub Environment gate; its required-reviewers
-  rule must be configured once in GitHub's UI, which this workflow file
-  cannot do itself) -> `run-live-automation` (`python -m lab09.cli
-  run-all`, using the same `DATABRICKS_PERSONAL_HOST` /
-  `DATABRICKS_PERSONAL_TOKEN` variable/secret pair Lab 8 already uses) ->
+- `workflow_dispatch`: `static-checks` -> `run-live-automation`.
+  `run-live-automation` itself references the `lab09-live-approval`
+  GitHub Environment (its required-reviewers rule must be configured once
+  in GitHub's UI, which this workflow file cannot do itself) -- that alone
+  is the approval gate; there is no separate dummy approval job, since a
+  second job referencing the same protected environment would just make a
+  human approve the identical prompt twice for one dispatch. Before
+  running, an explicit shell step verifies `DATABRICKS_PERSONAL_HOST` /
+  `DATABRICKS_PERSONAL_TOKEN` are actually set and fails with a clear
+  `::error::` message if either is missing -- there is no hardcoded host
+  fallback, so this workflow can never silently resolve against an
+  unintended workspace. Then `python -m lab09.cli run-all` runs, and
   `actions/upload-artifact` uploads the generated `lab09_report.json`.
 - `concurrency: { group: lab09-api-automation, cancel-in-progress: false
   }` prevents two live demonstrations from running at once.
@@ -399,13 +427,15 @@ from Lab 8's `lab08_cicd.yml` (not modified by this PR), scoped to
 - Because of the above, whether **explicit cluster creation is supported**
   in the target workspace is **unknown** -- this is exactly the question
   the (not-yet-run) `--probe-cluster-create` check answers. The
-  `jobs.submit(new_cluster=...)` fallback exists in the code but has
-  correspondingly not been exercised either.
+  `compute_mode = "job_cluster"` fallback (see "Cluster fallback behavior")
+  is fully wired into `run-all` but has correspondingly not been exercised
+  live either.
 - Even once Phase 0 is run, it only proves the identity used for that run
   has these permissions -- it does **not** prove GitHub Actions CI's own
   identity does, since CI authenticates with its own secret-backed token.
 - The pipeline's serverless-vs-classic fallback logic
-  (`pipelines.ensure_pipeline`) has not been exercised against a real
+  (`pipelines.ensure_pipeline`, covering both a new pipeline's creation and
+  an existing pipeline's update) has not been exercised against a real
   workspace, so it is unverified whether this specific workspace accepts
   serverless Lakeflow pipelines or requires the classic fallback.
 - `taxi_zone_lookup.csv`'s schema (`LocationID`, `Borough`, `Zone`) is
