@@ -1,9 +1,37 @@
+import contextlib
 from unittest.mock import MagicMock, create_autospec, patch
 
 from databricks.sdk import WorkspaceClient
-from databricks.sdk.errors import InternalError, NotFound
+from databricks.sdk.errors import InternalError, NotFound, PermissionDenied
 
 from lab09 import compute, monitoring, preflight
+
+
+@contextlib.contextmanager
+def _no_op_cluster_probe():
+    """Make the cluster-create probe a trivial, instant success.
+
+    Used by full-probe tests that care about volume/files behavior, not
+    the cluster probe itself -- without this, probe_cluster_create=True
+    would attempt a real (autospec-mocked but unconfigured) cluster
+    create/poll cycle that could loop for real wall-clock time.
+    """
+    spec = compute.ClusterSpec(
+        spark_version="15.4.x-scala2.12", node_type_id="small", autotermination_minutes=20
+    )
+    outcome = monitoring.ClusterOutcome(cluster_id="probe-cluster", state="RUNNING")
+    with contextlib.ExitStack() as stack:
+        stack.enter_context(
+            patch.object(preflight.compute, "build_cluster_spec", return_value=spec)
+        )
+        stack.enter_context(
+            patch.object(preflight.compute, "start_cluster_create", return_value="probe-cluster")
+        )
+        stack.enter_context(
+            patch.object(preflight.monitoring, "poll_cluster_state", return_value=outcome)
+        )
+        stack.enter_context(patch.object(preflight.compute, "terminate_cluster"))
+        yield
 
 
 def _autospec_client() -> MagicMock:
@@ -232,3 +260,69 @@ def test_run_preflight_cluster_probe_not_run_when_not_requested():
     # run-all's own preflight gate must not fail every run just because the
     # expensive opt-in probe wasn't requested.
     assert report.passed is True
+
+
+# --- full live probe (probe_cluster_create=True): volume + files roundtrip -
+
+
+def test_run_preflight_full_probe_creates_volume_and_completes_files_roundtrip_when_absent():
+    """The fix this proves: the explicit live probe must not finish with
+    files_api_roundtrip=NOT_TESTED just because the Lab 9 volume didn't
+    exist yet -- it should create-or-get ONLY that volume and then
+    genuinely exercise the round trip.
+    """
+    client = _passing_client()  # client.volumes.read always raises NotFound
+    created_volume = MagicMock()
+    created_volume.full_name = "dbr_dev.parvinbadalov.lab09_landing"
+    client.volumes.create.return_value = created_volume
+
+    probe_entry = MagicMock()
+    client.files.list_directory_contents.return_value = [probe_entry]
+
+    with _no_op_cluster_probe(), patch("lab09.preflight.uuid") as fake_uuid:
+        fake_uuid.uuid4.return_value.hex = "abc123"
+        probe_entry.path = (
+            "/Volumes/dbr_dev/parvinbadalov/lab09_landing/_preflight/probe_abc123.txt"
+        )
+        report = preflight.run_preflight(client, _cfg(), probe_cluster_create=True)
+
+    # The volume was actually created -- not just read-only checked -- and
+    # this call is scoped to exactly this config's own catalog/schema/volume.
+    client.volumes.create.assert_called_once()
+    _, create_kwargs = client.volumes.create.call_args
+    assert create_kwargs["catalog_name"] == "dbr_dev"
+    assert create_kwargs["schema_name"] == "parvinbadalov"
+    assert create_kwargs["name"] == "lab09_landing"
+
+    volume_check = next(c for c in report.checks if c.name == "volume_access")
+    assert volume_check.status == "PASS"
+    assert "ensured" in volume_check.detail
+
+    files_check = next(c for c in report.checks if c.name == "files_api_roundtrip")
+    assert files_check.status == "PASS"
+    client.files.create_directory.assert_called_once_with(
+        "/Volumes/dbr_dev/parvinbadalov/lab09_landing/_preflight"
+    )
+    client.files.upload.assert_called_once()
+    client.files.delete.assert_called_once()
+
+
+def test_run_preflight_full_probe_volume_creation_permission_failure_remains_fail():
+    """Permission failures during the full probe's volume ensure must remain
+    FAIL, not be reinterpreted as "missing" or silently skipped.
+    """
+    client = _passing_client()
+    client.volumes.create.side_effect = PermissionDenied("not authorized to create volumes")
+
+    with _no_op_cluster_probe():
+        report = preflight.run_preflight(client, _cfg(), probe_cluster_create=True)
+
+    volume_check = next(c for c in report.checks if c.name == "volume_access")
+    assert volume_check.status == "FAIL"
+    assert report.passed is False
+
+    # The round trip could not be forced (volume was never actually ensured),
+    # so it correctly falls back to NOT_TESTED rather than crashing or lying.
+    files_check = next(c for c in report.checks if c.name == "files_api_roundtrip")
+    assert files_check.status == "NOT_TESTED"
+    client.files.upload.assert_not_called()

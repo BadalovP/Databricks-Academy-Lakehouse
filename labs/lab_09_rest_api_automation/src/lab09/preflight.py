@@ -35,7 +35,7 @@ from typing import Any, Literal
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.errors import NotFound
 
-from . import compute, monitoring
+from . import compute, monitoring, volumes
 from .client import volume_root_path
 
 logger = logging.getLogger(__name__)
@@ -113,6 +113,25 @@ def run_preflight(
     cfg: dict[str, Any],
     probe_cluster_create: bool = False,
 ) -> PreflightReport:
+    """Run Phase 0 checks.
+
+    probe_cluster_create=False (the default -- what run-all uses for its
+    own internal gate) performs only lightweight, non-mutating checks: it
+    never creates the Lab 9 volume, so files_api_roundtrip is NOT_TESTED
+    whenever that volume does not already exist.
+
+    probe_cluster_create=True is the explicit, opt-in, full live capability
+    probe (`preflight --probe-cluster-create`). In addition to the
+    lightweight checks, it:
+      - create-or-gets ONLY the Lab 9-owned managed volume (never any other
+        resource -- volumes.ensure_volume is scoped to this config's own
+        catalog.schema.volume)
+      - creates the Lab 9 `_preflight/` directory and performs a real
+        upload/list/delete Files API round trip, so files_api_roundtrip
+        becomes PASS or FAIL in this mode -- never NOT_TESTED just because
+        the volume happened not to exist yet
+      - performs the real tiny cluster create -> poll -> terminate probe
+    """
     report = PreflightReport()
 
     def check_identity() -> str:
@@ -145,14 +164,20 @@ def run_preflight(
     )
 
     def check_volume() -> str:
-        # A genuine "not found" answer is still a fully executed,
-        # successful check of volume *access* (the identity can reach the
-        # schema and get an authoritative answer) -- it is PASS, not
-        # NOT_TESTED. Only NotFound/ResourceDoesNotExist (the typed SDK
-        # exceptions, not a fragile string match) are treated as "missing";
-        # anything else (permission, auth, service errors) propagates and
-        # fails this check for real.
+        # In the full live probe, actually create-or-get the Lab 9-owned
+        # volume (scoped to this config's own catalog.schema.volume, never
+        # any other resource) so the Files API round trip below can always
+        # be genuinely exercised. Otherwise this stays read-only: a
+        # genuine "not found" answer is still a fully executed, successful
+        # check of volume *access* -- it is PASS, not NOT_TESTED. Only
+        # NotFound/ResourceDoesNotExist (the typed SDK exception, not a
+        # fragile string match) is treated as "missing"; anything else
+        # (permission, auth, service errors) propagates and fails this
+        # check for real.
         full_name = f"{cfg['catalog']}.{cfg['schema']}.{cfg['volume']}"
+        if probe_cluster_create:
+            vol = volumes.ensure_volume(client, cfg)
+            return f"ensured (created-or-existing): {vol.full_name}"
         try:
             vol = client.volumes.read(full_name)
             return f"exists: {vol.full_name}"
@@ -160,7 +185,8 @@ def run_preflight(
             return "does not exist yet (will be created by ensure_volume)"
 
     _run_check(report, "volume_access", check_volume)
-    _check_files_roundtrip(client, cfg, report)
+    volume_ready = probe_cluster_create and report.checks[-1].status == "PASS"
+    _check_files_roundtrip(client, cfg, report, force=volume_ready)
 
     _run_check(
         report,
@@ -183,30 +209,41 @@ def run_preflight(
 
 
 def _check_files_roundtrip(
-    client: WorkspaceClient, cfg: dict[str, Any], report: PreflightReport
+    client: WorkspaceClient,
+    cfg: dict[str, Any],
+    report: PreflightReport,
+    force: bool = False,
 ) -> None:
-    """Upload/list/delete a tiny probe file -- but only when it can genuinely be tested.
+    """Upload/list/delete a tiny probe file under the Lab 9 volume's `_preflight/` directory.
 
-    If the Lab 9 volume does not exist yet (normal before the first
-    ensure_volume() call, e.g. run-all's own preflight step runs before
-    step 2), this is reported as NOT_TESTED, never as PASS: the capability
-    was not actually exercised.
+    `force=True` (only passed by the full live probe, after volume_access
+    already ensured the volume exists) skips the existence check below and
+    always exercises the round trip for real, so this reports PASS or FAIL
+    -- never NOT_TESTED just because the volume happened not to exist
+    beforehand.
+
+    Otherwise (the lightweight path run-all uses), if the Lab 9 volume
+    does not exist yet (normal before the first ensure_volume() call),
+    this is reported as NOT_TESTED, never as PASS: the capability was not
+    actually exercised.
     """
-    full_name = f"{cfg['catalog']}.{cfg['schema']}.{cfg['volume']}"
-    try:
-        client.volumes.read(full_name)
-    except NotFound:
-        report.add(
-            "files_api_roundtrip",
-            "NOT_TESTED",
-            "Lab 9 volume does not exist yet, so the Files API upload/list/delete "
-            "round trip was not exercised. This is expected before ensure_volume() "
-            "runs and must not be read as a passed check.",
-        )
-        return
-    except Exception as exc:  # noqa: BLE001
-        report.add("files_api_roundtrip", "FAIL", f"{type(exc).__name__}: {exc}")
-        return
+    if not force:
+        full_name = f"{cfg['catalog']}.{cfg['schema']}.{cfg['volume']}"
+        try:
+            client.volumes.read(full_name)
+        except NotFound:
+            report.add(
+                "files_api_roundtrip",
+                "NOT_TESTED",
+                "Lab 9 volume does not exist yet, so the Files API upload/list/delete "
+                "round trip was not exercised. Run `preflight --probe-cluster-create` "
+                "for the full live probe, which creates the Lab 9 volume first and "
+                "always exercises this round trip for real.",
+            )
+            return
+        except Exception as exc:  # noqa: BLE001
+            report.add("files_api_roundtrip", "FAIL", f"{type(exc).__name__}: {exc}")
+            return
 
     root = volume_root_path(cfg)
     preflight_dir = f"{root}/_preflight"

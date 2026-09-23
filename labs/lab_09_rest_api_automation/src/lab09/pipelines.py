@@ -37,16 +37,21 @@ def find_pipeline_by_name(client: WorkspaceClient, name: str):
 
 
 def _library_specs(pipeline_source_dir: str) -> list[pipelines_svc.PipelineLibrary]:
+    """One typed glob-include library covering the whole pipeline source directory.
+
+    The installed SDK's `PipelineLibrary` supports a `glob: PathPattern`
+    field (`PathPattern(include=...)`), the modern equivalent of listing
+    bronze.py/silver.py/gold.py individually via `FileLibrary`. All three
+    files are still uploaded as genuine workspace FILE objects by
+    workspace.py -- this glob is what registers that whole directory as
+    pipeline source with the pipeline, so a future fourth pipeline source
+    file dropped into the same directory would not require touching this
+    code, matching how Lab 8's DAB `root_path` config already works.
+    """
     return [
         pipelines_svc.PipelineLibrary(
-            file=pipelines_svc.FileLibrary(path=f"{pipeline_source_dir}/bronze.py")
-        ),
-        pipelines_svc.PipelineLibrary(
-            file=pipelines_svc.FileLibrary(path=f"{pipeline_source_dir}/silver.py")
-        ),
-        pipelines_svc.PipelineLibrary(
-            file=pipelines_svc.FileLibrary(path=f"{pipeline_source_dir}/gold.py")
-        ),
+            glob=pipelines_svc.PathPattern(include=f"{pipeline_source_dir}/**")
+        )
     ]
 
 

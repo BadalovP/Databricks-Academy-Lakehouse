@@ -36,10 +36,30 @@ never contributes to quarantine.
 
 Zone validation is observability, not a hard-validity rule: pickup/dropoff
 location IDs are left-joined against the taxi zone lookup reference file.
-Unknown zones (including TLC's own 264/265 "Unknown"/"N/A" codes) are kept
-and their borough/zone are coalesced to the literal string "UNKNOWN" rather
-than dropped, with an accompanying *_zone_known boolean. No location ID
-range is hardcoded as a validity test -- only the lookup join result.
+No location ID range is hardcoded as a validity test -- only the lookup
+join result, and specifically the *values* it returns, decide
+`*_zone_known` (see `_join_zone` below). Rows are never dropped for an
+unknown zone.
+
+A location ID can fail to be "known" two different ways, both retained and
+both normalized to display value "UNKNOWN":
+  - unmatched: no row in the lookup file has this LocationID at all.
+  - TLC's own semantic placeholders: the lookup file DOES have a row (so a
+    naive "did the join match" check alone would call this known), but its
+    Borough or Zone value is itself TLC's own "Unknown"/"N/A" marker.
+    Confirmed directly from the official taxi_zone_lookup.csv:
+    LocationID 264 = Borough "Unknown", Zone "N/A"; LocationID 265 =
+    Borough "N/A", Zone "Outside of NYC". Treating either of those as a
+    genuinely "known" zone would be wrong even though the join succeeds.
+
+This module runs inside Lakeflow and cannot be unit tested directly (it
+references `spark` at runtime and is not importable outside a live Spark
+session, like every other file under pipeline/). The zone-known decision
+in `_join_zone` below is mirrored in plain Python in
+`src/lab09/zone_lookup.py` (kept in sync by hand) and unit tested in
+`tests/test_zone_lookup.py` -- that proves the classification logic in
+isolation, not that Lakeflow resolves it identically live; see README.md
+"Known limitations".
 """
 
 from __future__ import annotations
@@ -52,6 +72,11 @@ DEFAULT_REFERENCE_CSV_PATH = (
 )
 
 FAILED_RULE_MONTH_PATTERN = r"yellow_tripdata_(\d{4}-\d{2})\.parquet"
+
+# TLC's own semantic "not a real zone" placeholder values, observed
+# verbatim in the official taxi_zone_lookup.csv (LocationID 264 and 265).
+# Matched case-insensitively against both Borough and Zone.
+UNKNOWN_ZONE_MARKERS = {"unknown", "n/a", "na"}
 
 
 def _reference_csv_path() -> str:
@@ -73,13 +98,30 @@ def _read_zone_lookup():
 
 
 def _join_zone(df, location_col: str, prefix: str):
-    """Left-join `df[location_col]` against the zone lookup, flag unknowns, never drop rows."""
+    """Left-join `df[location_col]` against the zone lookup, flag unknowns, never drop rows.
+
+    `*_zone_known` is true only for a row that both (a) matched a lookup
+    entry and (b) that entry's Borough/Zone are not themselves TLC's own
+    "Unknown"/"N/A" placeholders -- a successful join alone is not enough,
+    since 264/265 always join successfully.
+    """
     zones = F.broadcast(_read_zone_lookup())
     joined = df.join(zones, df[location_col] == zones["location_id"], "left")
+
+    matched = F.col("location_id").isNotNull()
+    normalized_borough = F.lower(F.trim(F.coalesce(F.col("borough"), F.lit(""))))
+    normalized_zone = F.lower(F.trim(F.coalesce(F.col("zone"), F.lit(""))))
+    is_semantic_unknown = normalized_borough.isin(*UNKNOWN_ZONE_MARKERS) | normalized_zone.isin(
+        *UNKNOWN_ZONE_MARKERS
+    )
+    zone_known = matched & ~is_semantic_unknown
+
     return (
-        joined.withColumn(f"{prefix}_zone_known", F.col("location_id").isNotNull())
-        .withColumn(f"{prefix}_borough", F.coalesce(F.col("borough"), F.lit("UNKNOWN")))
-        .withColumn(f"{prefix}_zone", F.coalesce(F.col("zone"), F.lit("UNKNOWN")))
+        joined.withColumn(f"{prefix}_zone_known", zone_known)
+        .withColumn(
+            f"{prefix}_borough", F.when(zone_known, F.col("borough")).otherwise(F.lit("UNKNOWN"))
+        )
+        .withColumn(f"{prefix}_zone", F.when(zone_known, F.col("zone")).otherwise(F.lit("UNKNOWN")))
         .drop("location_id", "borough", "zone")
     )
 

@@ -69,7 +69,8 @@ def test_ensure_pipeline_creates_serverless_when_missing_and_preferred():
     client.pipelines.create.assert_called_once()
     _, kwargs = client.pipelines.create.call_args
     assert kwargs["serverless"] is True
-    assert len(kwargs["libraries"]) == 3
+    assert len(kwargs["libraries"]) == 1
+    assert kwargs["libraries"][0].glob.include == "/Workspace/Users/x/lab09/pipeline/**"
 
 
 def test_ensure_pipeline_falls_back_to_classic_when_serverless_creation_rejected():

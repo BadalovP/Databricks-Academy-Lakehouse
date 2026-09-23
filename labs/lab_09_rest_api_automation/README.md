@@ -116,6 +116,35 @@ separate rather than assuming any two are interchangeable:
 | **Lakeflow pipeline compute** | Managed by the pipeline itself (serverless by default; classic cluster definition if serverless is rejected) | Managed by Lakeflow, not by this code -- `pipelines.py` never assumes it can reuse this compute for anything else |
 | **Temporary notebook-job compute** | A single-node cluster created by `compute.py` specifically to run the reconciliation Job | Created fresh each `run-all`, `autotermination_minutes=20`, explicitly terminated in the outer `finally`-equivalent safety net every single run |
 
+### Workspace object types: pipeline source FILEs vs. the reconciliation NOTEBOOK
+
+`bronze.py`/`silver.py`/`gold.py` and `01_reconcile_counts.py` are uploaded
+through the same Workspace Import API but must become two genuinely
+different Workspace object types, and `workspace.py` uses different
+`import_()` parameters for each:
+
+- `01_reconcile_counts.py` has a `# Databricks notebook source` header and
+  is imported with `format=SOURCE, language=PYTHON`, producing an
+  `ObjectType.NOTEBOOK` -- required for `NotebookTask`.
+- `bronze.py`/`silver.py`/`gold.py` have no notebook header and must
+  become plain `ObjectType.FILE` objects, matching what
+  `pipelines.py`'s glob-include `PipelineLibrary` expects. Per the SDK's
+  own `import_()` docstring, `language` "is set only if the object type is
+  NOTEBOOK", and Databricks' own CLI/REST docs state that importing a
+  single file as `SOURCE` requires (and therefore produces) a notebook --
+  so `format=RAW` is used instead, with no `language` set, which imports
+  the bytes as-is.
+
+This was verified against this repository's actually-installed
+`databricks-sdk` package: the correct method is `workspace.import_()`
+(there is no `workspace.upload()` method, and an earlier version of this
+code called that non-existent method), and its `content` parameter must
+be base64-encoded text, not raw bytes -- both were real bugs, now fixed.
+**What has not been verified is live Lakeflow behavior**: whether a
+pipeline's glob/file library actually resolves a `RAW`-imported file as
+valid pipeline source has not been confirmed against a real workspace.
+See "Known limitations".
+
 ## 5. API/SDK operations used
 
 | Module | Databricks SDK / REST surface |
@@ -124,7 +153,7 @@ separate rather than assuming any two are interchangeable:
 | `preflight.py` | `current_user.me`, `clusters.spark_versions`, `clusters.list_node_types`, `cluster_policies.list`, `catalogs.get`, `schemas.get`, `volumes.read`, `files.upload`/`list_directory_contents`/`delete`, `pipelines.list_pipelines`, plus the real cluster-create probe below |
 | `volumes.py` | `volumes.read`, `volumes.create` |
 | `landing.py` | `files.list_directory_contents`, `files.create_directory`, `files.upload`, `files.get_metadata`, `files.delete` |
-| `workspace.py` | `workspace.mkdirs`, `workspace.upload` (`ImportFormat.SOURCE`) |
+| `workspace.py` | `workspace.mkdirs`, `workspace.import_` (`ImportFormat.RAW` for pipeline source files, `ImportFormat.SOURCE`/`Language.PYTHON` for the reconciliation notebook -- see below) |
 | `compute.py` | `clusters.spark_versions`, `clusters.list_node_types`, `cluster_policies.list`, `clusters.create`, `clusters.get`, `clusters.delete` |
 | `pipelines.py` | `pipelines.list_pipelines`, `pipelines.create`, `pipelines.update`, `pipelines.start_update` |
 | `jobs.py` | `jobs.list`, `jobs.create`, `jobs.reset`, `jobs.run_now`, `jobs.get_run`, `jobs.get_run_output` |
@@ -155,18 +184,31 @@ but each individual check's real state stays visible in the report.
 4. `cluster_policies_listed` -- `cluster_policies.list()`
 5. `catalog_access` -- `catalogs.get(catalog)`
 6. `schema_access` -- `schemas.get(catalog.schema)`
-7. `volume_access` -- `volumes.read(...)`; a genuine `NotFound` here is
-   reported as **`PASS`** ("does not exist yet, will be created") --
-   getting an authoritative "it doesn't exist" answer is a fully executed,
-   successful check of volume access, since the volume is created later in
-   the execution order, not before preflight. Any other error (permission,
-   auth, service) is a real `FAIL`, using the SDK's typed `NotFound`
-   exception rather than string-matching an error message.
+7. `volume_access` -- two modes:
+   - lightweight (`run-all`'s own internal gate, and plain `preflight`):
+     read-only `volumes.read(...)`; a genuine `NotFound` here is reported
+     as **`PASS`** ("does not exist yet, will be created") -- getting an
+     authoritative "it doesn't exist" answer is a fully executed,
+     successful check of volume access, since the volume is created later
+     in the execution order, not before preflight.
+   - full live probe (`preflight --probe-cluster-create`): actually
+     `volumes.ensure_volume(...)` -- create-or-get, scoped to only this
+     config's own `catalog.schema.volume`, never any other resource --
+     reported `PASS` as "ensured (created-or-existing)".
+   Either way, any other error (permission, auth, service) is a real
+   `FAIL`, using the SDK's typed `NotFound` exception rather than
+   string-matching an error message.
 8. `files_api_roundtrip` -- upload/list/delete a tiny probe file under
    `_preflight/` (the directory is created explicitly first via
-   `files.create_directory()`). Reported as **`NOT_TESTED`**, not `PASS`,
-   when the volume doesn't exist yet -- the round trip was not actually
-   exercised, and this report never claims otherwise.
+   `files.create_directory()`).
+   - lightweight mode: reported as **`NOT_TESTED`**, not `PASS`, when the
+     volume doesn't exist yet -- the round trip was not actually
+     exercised, and this report never claims otherwise.
+   - full live probe: since `volume_access` just ensured the volume
+     exists, this always genuinely runs and reports `PASS`/`FAIL` --
+     never `NOT_TESTED` -- unless the volume ensure itself failed, in
+     which case it correctly falls back to the lightweight (`NOT_TESTED`)
+     behavior rather than crashing.
 9. `pipeline_list_permission` -- `pipelines.list_pipelines()`
 10. `cluster_create_probe` -- **opt-in only** (`--probe-cluster-create`),
     `NOT_TESTED` otherwise: creates a real tiny single-node cluster
@@ -254,11 +296,27 @@ non-positive value only sets `passenger_count_warning = true` and never
 contributes to `failed_rules` or quarantine.
 
 Pickup/dropoff location IDs are left-joined against
-`reference/taxi_zone_lookup.csv`. An unmatched ID (including TLC's own
-264/265 "Unknown"/"N/A" codes) is **kept**, with `pickup_zone_known` /
-`dropoff_zone_known` set to `false` and the borough/zone coalesced to the
-literal string `"UNKNOWN"` -- never dropped, and never based on a
-hardcoded numeric ID range.
+`reference/taxi_zone_lookup.csv`. A location ID can fail to be "known" two
+different ways, and both are **kept**, never dropped, with `pickup_zone_known` /
+`dropoff_zone_known` set to `false` and the borough/zone normalized to the
+literal string `"UNKNOWN"`:
+
+- **unmatched**: no row in the lookup file has this LocationID at all.
+- **TLC's own semantic placeholders**: the lookup file *does* have a
+  matching row (so a naive "did the join succeed" check alone would call
+  it known), but its Borough or Zone value is itself TLC's own
+  "Unknown"/"N/A" marker. Confirmed directly by downloading the real
+  `taxi_zone_lookup.csv`: LocationID 264 = Borough `Unknown`, Zone `N/A`;
+  LocationID 265 = Borough `N/A`, Zone `Outside of NYC`. An earlier version
+  of this logic used "did the join match" as the sole test, which
+  incorrectly reported 264/265 as *known* zones merely because they exist
+  in the lookup file.
+
+No hardcoded numeric ID range is used for any of this -- only the lookup
+join result and the returned values. The classification is mirrored in
+plain Python (`src/lab09/zone_lookup.py`, unit tested in
+`tests/test_zone_lookup.py`) since `pipeline/silver.py` itself cannot be
+unit tested outside a live Spark session.
 
 ### Why not just `@dp.expect_all_or_drop`
 
@@ -438,10 +496,27 @@ from Lab 8's `lab08_cicd.yml` (not modified by this PR), scoped to
   an existing pipeline's update) has not been exercised against a real
   workspace, so it is unverified whether this specific workspace accepts
   serverless Lakeflow pipelines or requires the classic fallback.
-- `taxi_zone_lookup.csv`'s schema (`LocationID`, `Borough`, `Zone`) is
-  assumed from the well-documented TLC reference format; it has not been
-  independently re-verified column-by-column against a freshly downloaded
-  copy in this PR.
+- **`workspace.py`'s FILE-vs-NOTEBOOK upload distinction is unverified
+  live.** `format=RAW` for `bronze.py`/`silver.py`/`gold.py` (so they
+  become `ObjectType.FILE`, not `ObjectType.NOTEBOOK`) was derived from
+  the SDK's `import_()` docstring and Databricks' own CLI/REST
+  documentation, cross-checked with real method signatures -- but not
+  from an actual live import followed by inspecting the resulting
+  object's type, nor from a real Lakeflow pipeline update successfully
+  resolving the resulting glob-include library against those files. This
+  needs a real `run-all` (or at least `workspace.upload_pipeline_sources`
+  followed by a manual pipeline update) against a confirmed-safe workspace
+  to consider proven.
+- `taxi_zone_lookup.csv`'s schema (`LocationID`, `Borough`, `Zone`,
+  `service_zone`) and the specific values for LocationID 264/265 were
+  confirmed by downloading the real, current file directly from
+  `https://d37ci6vzurychx.cloudfront.net/misc/taxi_zone_lookup.csv` during
+  this review, not assumed. What remains unverified is only whether
+  `pipeline/silver.py`'s live Spark column expressions (`_join_zone`)
+  produce the same result as their pure-Python mirror
+  (`src/lab09/zone_lookup.py`) when actually run inside a Lakeflow
+  pipeline -- the two are kept in sync by hand, not by a shared runtime
+  dependency, and only the pure-Python side has automated test coverage.
 
 ## 15. Evidence section
 
