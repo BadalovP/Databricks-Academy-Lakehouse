@@ -8,7 +8,13 @@ version = "0.1.0"
 description = "LAB 09 Databricks REST API / Python SDK automation"
 requires-python = ">=3.11"
 dependencies = [
-  "databricks-sdk>=0.30.0",
+  # >=0.133.0 because this package relies on ImportFormat.RAW (plain
+  # workspace FILE uploads, as opposed to notebook imports) and
+  # PipelineLibrary.glob/PathPattern (glob-include pipeline source
+  # registration) -- both confirmed present in 0.133.0 and absent in the
+  # 0.30.0 this was originally (incorrectly) pinned to, which caused a
+  # real CI failure once code using them was added.
+  "databricks-sdk>=0.133.0",
   "PyYAML>=6.0",
   "requests>=2.31",
 ]
