@@ -236,9 +236,50 @@ tears down that job cluster itself -- no standalone
 `compute.terminate_cluster()` call is needed or made in that mode. Either
 way, the exact same persistent Lab 9 job is reused (never a new duplicate),
 and the report's `compute_mode` field records which path actually ran.
-This fallback is fully wired into `run-all` today; it has not been
-exercised live because explicit cluster-create has not yet been tested
-against a confirmed-safe workspace (see "Known limitations").
+This fallback is fully wired into `run-all` today. **Live Phase 0 testing
+against the confirmed-safe `personal-yahoo` workspace
+(`dbc-1750318a-76a9.cloud.databricks.com`) found that explicit
+`clusters.create()` does not work in this specific
+workspace/organization**: `preflight --probe-cluster-create` (see
+`evidence/phase0_2026-09-24.json`) failed with `TimeoutError: Timed out
+after 0:05:00 | caused by BadRequest: Current organization
+7474653929863069 does not have any associated worker environments`. This
+is a genuine backend/organization-level limitation (this Personal
+workspace has no "worker environment" provisioned for classic compute),
+not a permission problem (the identity has the `allow-cluster-create`
+entitlement) and not a `ClusterSpec` defect -- an earlier, separate bug in
+`resolve_lts_spark_version`/`resolve_node_type` (both ignored CPU
+architecture, so an `aarch64` runtime could be paired with an x86_64 node
+type) was found and fixed during this same investigation, and the
+corrected, architecturally-compatible spec still failed identically,
+confirming the worker-environment limitation is the real, separate cause.
+**Recommendation for this specific workspace: use `compute_mode =
+"job_cluster"` deliberately.** Note that because this failure surfaces as
+`TimeoutError` (via the SDK's own internal HTTP retry-and-give-up
+behavior -- see below), not as `PermissionDenied`/`InvalidParameterValue`,
+`try_start_cluster_create()` does **not** automatically trigger the
+`job_cluster` fallback for this specific failure mode, by design (this
+task's explicit instruction was not to broadly catch `TimeoutError` as if
+it were a permission-style rejection, since an ordinary transient timeout
+is not the same thing as "forbidden"). A workspace already known to lack
+worker environments should be run with `job_cluster` mode deliberately
+rather than relying on automatic detection.
+
+**Where the "5 minutes" actually comes from** (verified by reading the
+installed `databricks-sdk==0.133.0` source, not assumed): it is
+`databricks.sdk._base_client.BaseClient.__init__`'s
+`self._retry_timeout_seconds = retry_timeout_seconds or 300` -- a default
+retry-timeout wrapper the SDK applies to **every** HTTP call
+(`databricks.sdk.retries.retried`), including the single `POST
+/api/2.1/clusters/create` request. It is completely independent of, and
+unrelated to, this project's own `cluster_timeout_seconds` polling config
+in `config/dev.yml` (`monitoring.poll_cluster_state`'s own loop never even
+started here, since `clusters.create()` itself never returned a
+`cluster_id`). `Wait.__getattr__` (confirmed by reading
+`databricks/sdk/service/_internal.py`) resolves `waiter.cluster_id` as a
+synchronous dict lookup with no implicit wait, so LAB 09's own
+`start_cluster_create()` was never the source of any hidden blocking
+either.
 
 ### CI identity vs. local identity
 
@@ -462,35 +503,41 @@ from Lab 8's `lab08_cicd.yml` (not modified by this PR), scoped to
 
 ## 14. Known limitations
 
-- **No live execution has been performed as part of this PR.** Every
-  behavior described above is verified by (a) unit tests against a mocked
-  `WorkspaceClient`, and (b) manually cross-checking every SDK call's
-  method signature, dataclass fields, and enum values against the actual
-  `databricks-sdk` package installed in this repository's local Python
-  environment. Neither is a substitute for a real run, and this README
-  does not claim one occurred.
-- **Phase 0 was not run against a live workspace in this PR**, because the
-  locally configured `~/.databrickscfg` profiles named `dev`/`AZURE_DEV`
-  resolve to the Azure PROD host, and no profile in that file is
-  unambiguously confirmed (by explicit instruction, not just by matching
-  naming convention with Lab 8) to be the intended Lab 9 target. The
-  `personal-yahoo` profile is the best available candidate (it matches
-  Lab 8's established "Personal" workspace host and this config's
-  `dbr_dev.parvinbadalov` catalog/schema naming), but per this task's own
-  safety instructions ("if host/identity is ambiguous, do not create
-  compute"), no cluster was created and no live call of any kind was made.
-  **A human needs to explicitly confirm the correct profile and run
-  `python -m lab09.cli --profile <confirmed-profile> preflight
-  --probe-cluster-create` before this is considered verified.**
-- Because of the above, whether **explicit cluster creation is supported**
-  in the target workspace is **unknown** -- this is exactly the question
-  the (not-yet-run) `--probe-cluster-create` check answers. The
-  `compute_mode = "job_cluster"` fallback (see "Cluster fallback behavior")
-  is fully wired into `run-all` but has correspondingly not been exercised
-  live either.
-- Even once Phase 0 is run, it only proves the identity used for that run
-  has these permissions -- it does **not** prove GitHub Actions CI's own
-  identity does, since CI authenticates with its own secret-backed token.
+- **Phase 0 (the lightweight checks plus the full `--probe-cluster-create`
+  live probe) has now been run against the confirmed-safe `personal-yahoo`
+  profile** (`https://dbc-1750318a-76a9.cloud.databricks.com`, identity
+  `parvinbadalov@yahoo.com`, confirmed via `databricks auth describe` /
+  `current-user me` before any mutation) -- see
+  `evidence/phase0_2026-09-24.json`. All lightweight checks passed for
+  real: `authenticated_identity`, `spark_runtimes_listed`,
+  `node_types_listed`, `cluster_policies_listed`, `catalog_access`,
+  `schema_access`, `volume_access` (the Lab 9 volume was actually
+  created), `files_api_roundtrip` (a real upload/list/delete round trip),
+  and `pipeline_list_permission` (22 visible pipelines).
+- **`cluster_create_probe` genuinely fails in this workspace** --
+  confirmed root cause, not assumed: `TimeoutError: Timed out after
+  0:05:00 | caused by BadRequest: Current organization
+  7474653929863069 does not have any associated worker environments`.
+  This organization has no backend "worker environment" for classic
+  compute; `allow-cluster-create` being present in this identity's
+  entitlements does not change that, since it is an infrastructure-level
+  condition, not a permission. See "Cluster fallback behavior" above for
+  the full investigation, including a separate real bug
+  (`resolve_lts_spark_version`/`resolve_node_type` ignoring CPU
+  architecture) found and fixed along the way, and confirmed live
+  afterward to not be the cause of this specific failure. No cluster was
+  ever created on the backend by either attempt (confirmed via
+  `databricks clusters list` returning zero results both times), so no
+  cleanup was required.
+- Because of the above, **explicit cluster creation is confirmed
+  unsupported specifically for this organization/workspace** -- `run-all`
+  should be run with `compute_mode = "job_cluster"` deliberately here (see
+  "Cluster fallback behavior" for why the automatic fallback does not
+  self-select this for a `TimeoutError`-shaped failure).
+- Phase 0 was run under `parvinbadalov@yahoo.com` via the `personal-yahoo`
+  profile. This only proves that identity's permissions -- it does **not**
+  prove GitHub Actions CI's own identity does, since CI authenticates with
+  its own secret-backed token (`DATABRICKS_PERSONAL_TOKEN`).
 - The pipeline's serverless-vs-classic fallback logic
   (`pipelines.ensure_pipeline`, covering both a new pipeline's creation and
   an existing pipeline's update) has not been exercised against a real
@@ -520,22 +567,30 @@ from Lab 8's `lab08_cicd.yml` (not modified by this PR), scoped to
 
 ## 15. Evidence section
 
-See `evidence/README.md`. As of this PR, no run report exists yet -- there
-is nothing to show because nothing has been run live. Live run
-evidence should be added in a follow-up once a human has confirmed the
-correct DEV/academy profile and dispatched the workflow (or run the CLI
-locally).
+See `evidence/README.md` and `evidence/phase0_2026-09-24.json` -- the
+first real live evidence for this lab: a full `preflight
+--probe-cluster-create` run against the confirmed-safe `personal-yahoo`
+workspace. All lightweight checks (identity, catalog/schema/volume access,
+a real Files API round trip, pipeline list permission) passed for real;
+the cluster-create probe found a genuine, confirmed backend limitation in
+this specific organization (see "Cluster fallback behavior" and "Known
+limitations"). No `run-all` evidence exists yet -- that still requires a
+separate, explicitly authorized live execution.
 
 ## 16. How a supervisor can reproduce the demo
 
 1. Confirm which `~/.databrickscfg` profile (or `DATABRICKS_HOST`/
    `DATABRICKS_TOKEN` pair) points at the intended DEV/academy workspace --
    do not trust a profile's name alone; this repository has profiles named
-   `dev` that are not actually a separate dev workspace.
+   `dev` that are not actually a separate dev workspace. `personal-yahoo`
+   (`https://dbc-1750318a-76a9.cloud.databricks.com`) has been explicitly
+   confirmed safe and is used throughout this section's evidence.
 2. `cd labs/lab_09_rest_api_automation && pip install -e . -r requirements-dev.txt`
 3. `python -m lab09.cli --profile <confirmed-profile> preflight --probe-cluster-create`
    and review the JSON output, especially `cluster_create_supported` and
-   `ci_identity_caveat`.
+   `ci_identity_caveat`. Against `personal-yahoo` specifically, expect
+   `cluster_create_supported: false` -- see "Known limitations" for why,
+   and use `job_cluster` mode for that workspace.
 4. `python -m lab09.cli --profile <confirmed-profile> run-all` and inspect
    `evidence/lab09_report.json`.
 5. Re-run `run-all` a second time and confirm the report's `status` is

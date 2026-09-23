@@ -72,13 +72,38 @@ class ClusterSpec:
 
 
 def resolve_lts_spark_version(client: WorkspaceClient) -> str:
-    """Pick a current, non-deprecated LTS runtime rather than hardcoding one."""
+    """Pick a current, non-deprecated, x86_64 LTS runtime rather than hardcoding one.
+
+    Excludes aarch64/Graviton-specific runtime variants (e.g.
+    "18.x-aarch64-scala2.13"). This function does not coordinate with
+    resolve_node_type(), so pairing an aarch64 runtime with an x86_64 node
+    type (or vice versa) silently produces an incompatible cluster spec.
+    Confirmed live: "18.x-scala2.13" and "18.x-aarch64-scala2.13" both
+    report as LTS and previously produced an *identical* sort key here
+    (this function only parsed the "18.x" segment before the first
+    hyphen, never inspecting "aarch64"), so Python's stable sort picked
+    whichever one the API happened to list first -- non-deterministically
+    selecting the aarch64 variant, while resolve_node_type() independently
+    picked the x86_64-only "m4.large". Databricks cannot provision that
+    combination; the resulting cluster-create call failed with a
+    backend "worker environment" error that the SDK's own HTTP client
+    (databricks.sdk._base_client.BaseClient, default
+    retry_timeout_seconds=300) retried silently for a full 5 minutes
+    before raising `TimeoutError("Timed out after 0:05:00")` -- a timeout
+    from the SDK's transport layer, unrelated to and not controlled by
+    this project's own cluster_timeout_seconds polling config.
+    """
     versions = client.clusters.spark_versions().versions or []
     candidates = [
         v
         for v in versions
-        if "LTS" in (v.name or "") and "ML" not in (v.name or "") and "GPU" not in (v.name or "")
+        if "LTS" in (v.name or "")
+        and "ML" not in (v.name or "")
+        and "GPU" not in (v.name or "")
+        and "aarch64" not in (v.key or "").lower()
     ]
+    if not candidates:
+        candidates = [v for v in versions if "aarch64" not in (v.key or "").lower()]
     if not candidates:
         candidates = list(versions)
     if not candidates:
@@ -99,7 +124,13 @@ def resolve_lts_spark_version(client: WorkspaceClient) -> str:
 
 
 def resolve_node_type(client: WorkspaceClient, node_type_hint: str | None = None) -> str:
-    """Pick the smallest available, non-deprecated node type unless hinted."""
+    """Pick the smallest available, non-deprecated, non-Graviton node type unless hinted.
+
+    Excludes Graviton (ARM64) node types by default, symmetric with
+    resolve_lts_spark_version()'s aarch64 exclusion above -- see that
+    function's docstring for the real cluster-creation failure this
+    architecture mismatch caused when the two were chosen independently.
+    """
     node_types = client.clusters.list_node_types().node_types or []
     if node_type_hint:
         for nt in node_types:
@@ -110,7 +141,13 @@ def resolve_node_type(client: WorkspaceClient, node_type_hint: str | None = None
             node_type_hint,
         )
 
-    eligible = [nt for nt in node_types if not getattr(nt, "is_deprecated", False)]
+    eligible = [
+        nt
+        for nt in node_types
+        if not getattr(nt, "is_deprecated", False) and not getattr(nt, "is_graviton", False)
+    ]
+    if not eligible:
+        eligible = [nt for nt in node_types if not getattr(nt, "is_deprecated", False)]
     if not eligible:
         eligible = list(node_types)
     if not eligible:

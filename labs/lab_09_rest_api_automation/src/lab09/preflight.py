@@ -99,13 +99,33 @@ class PreflightReport:
         }
 
 
+def _format_exception_chain(exc: BaseException) -> str:
+    """Format an exception together with its __cause__ chain.
+
+    A bare `f"{type(exc).__name__}: {exc}"` hides the real underlying
+    error whenever the SDK re-raises via `raise TimeoutError(...) from
+    last_err` (e.g. databricks.sdk.retries.retried's own 5-minute HTTP
+    retry-timeout wrapper) -- the top-level message alone ("Timed out
+    after 0:05:00") gives no clue what was actually being retried. This
+    walks `__cause__` so that underlying reason is never silently lost.
+    """
+    parts = [f"{type(exc).__name__}: {exc}"]
+    cause = exc.__cause__
+    seen = set()
+    while cause is not None and id(cause) not in seen:
+        seen.add(id(cause))
+        parts.append(f"caused by {type(cause).__name__}: {cause}")
+        cause = cause.__cause__
+    return " | ".join(parts)
+
+
 def _run_check(report: PreflightReport, name: str, fn: Any) -> None:
     """Run a check that always genuinely executes: PASS on success, FAIL on any exception."""
     try:
         detail = fn()
         report.add(name, "PASS", detail or "ok")
     except Exception as exc:  # noqa: BLE001 - one bad check must not abort the rest
-        report.add(name, "FAIL", f"{type(exc).__name__}: {exc}")
+        report.add(name, "FAIL", _format_exception_chain(exc))
 
 
 def run_preflight(
@@ -242,7 +262,7 @@ def _check_files_roundtrip(
             )
             return
         except Exception as exc:  # noqa: BLE001
-            report.add("files_api_roundtrip", "FAIL", f"{type(exc).__name__}: {exc}")
+            report.add("files_api_roundtrip", "FAIL", _format_exception_chain(exc))
             return
 
     root = volume_root_path(cfg)
@@ -261,7 +281,7 @@ def _check_files_roundtrip(
         finally:
             client.files.delete(probe_path)
     except Exception as exc:  # noqa: BLE001
-        report.add("files_api_roundtrip", "FAIL", f"{type(exc).__name__}: {exc}")
+        report.add("files_api_roundtrip", "FAIL", _format_exception_chain(exc))
         return
 
     report.add("files_api_roundtrip", "PASS", "upload/list/delete round trip ok")
@@ -297,7 +317,7 @@ def _run_cluster_create_probe(
         )
     except Exception as exc:  # noqa: BLE001
         report.cluster_create_supported = False
-        report.add("cluster_create_probe", "FAIL", f"{type(exc).__name__}: {exc}")
+        report.add("cluster_create_probe", "FAIL", _format_exception_chain(exc))
     finally:
         if cluster_id:
             try:

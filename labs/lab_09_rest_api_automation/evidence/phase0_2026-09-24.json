@@ -1,0 +1,49 @@
+{
+  "run_type": "preflight --probe-cluster-create (full live probe)",
+  "executed_at_utc": "2026-09-24",
+  "profile": "personal-yahoo",
+  "host": "https://dbc-1750318a-76a9.cloud.databricks.com",
+  "identity": "parvinbadalov@yahoo.com",
+  "catalog": "dbr_dev",
+  "schema": "parvinbadalov",
+  "volume": "dbr_dev.parvinbadalov.lab09_landing",
+  "checks": {
+    "authenticated_identity": "PASS",
+    "spark_runtimes_listed": "PASS (47 versions)",
+    "node_types_listed": "PASS (631 node types)",
+    "cluster_policies_listed": "PASS (5 policies)",
+    "catalog_access": "PASS (dbr_dev)",
+    "schema_access": "PASS (parvinbadalov)",
+    "volume_access": "PASS (ensured (created-or-existing): dbr_dev.parvinbadalov.lab09_landing)",
+    "files_api_roundtrip": "PASS (upload/list/delete round trip ok)",
+    "pipeline_list_permission": "PASS (22 pipelines visible)",
+    "cluster_create_probe": "FAIL"
+  },
+  "selected_compute_spec": {
+    "spark_version": "18.x-photon-scala2.13",
+    "node_type_id": "m4.large",
+    "policy_id": null,
+    "data_security_mode": "SINGLE_USER",
+    "num_workers": 0,
+    "autotermination_minutes": 20,
+    "note": "Confirmed x86_64 (non-aarch64/non-Graviton) after this session's fix to resolve_lts_spark_version/resolve_node_type. This spec was NOT the cause of the failure below -- the same class of error occurred with a corrected, architecturally-compatible spec."
+  },
+  "available_cluster_policies": [
+    { "policy_id": "000D9C46D78119F1", "name": "Personal Compute" },
+    { "policy_id": "001CAE06A1E2672E", "name": "Power User Compute" },
+    { "policy_id": "0015BE781E6D7C40", "name": "Shared Compute" },
+    { "policy_id": "001C76B64B7DA1E4", "name": "Job Compute" },
+    { "policy_id": "00150ABD60978297", "name": "Legacy Shared Compute" }
+  ],
+  "cluster_create_attempt": {
+    "cluster_id": null,
+    "result": "FAILED",
+    "exception": "TimeoutError: Timed out after 0:05:00 | caused by BadRequest: Current organization 7474653929863069 does not have any associated worker environments",
+    "root_cause": "The POST /api/2.1/clusters/create request itself was rejected by the Databricks backend with a BadRequest whose message ('does not have any associated worker environments') is one of the specific substrings databricks-sdk's own BaseClient._is_retryable() treats as transient. The SDK's HTTP client (databricks.sdk._base_client.BaseClient, default retry_timeout_seconds=300) silently retried this request for the full 5 minutes before giving up and raising TimeoutError -- so no cluster object was ever created on the backend at any point, and this specific 5-minute figure came entirely from the SDK's own transport-layer retry default, not from this project's own cluster_timeout_seconds polling config (which never had a chance to run, since create() itself never returned a cluster_id).",
+    "interpretation": "This is a genuine workspace/organization-level limitation, not a permission/entitlement problem (the identity has the allow-cluster-create entitlement) and not the earlier aarch64/x86_64 architecture-mismatch bug (already fixed and confirmed not to be the cause here, since the corrected spec still failed identically). This specific Databricks organization does not have a 'worker environment' provisioned for classic cluster compute."
+  },
+  "final_cluster_state": "N/A -- no cluster_id was ever obtained; the cluster never reached PENDING",
+  "cleanup_result": "Nothing to clean up. Confirmed via `databricks clusters list --profile personal-yahoo` returning zero clusters both before and after this attempt.",
+  "recommended_compute_mode": "job_cluster",
+  "recommended_compute_mode_rationale": "Explicit classic cluster creation (compute_mode=explicit_cluster) does not work in this specific workspace/organization due to the missing 'worker environment' backend condition above -- this is unrelated to and unaffected by ClusterSpec correctness. The job_cluster fallback (a job-managed new_cluster, provisioned and torn down by Databricks as part of a job run rather than via a standalone clusters.create() call) should be used for actual Lab 9 execution against this workspace. NOTE: because this failure surfaces as TimeoutError (via the SDK's own retry-and-give-up behavior), not as PermissionDenied/InvalidParameterValue, LAB 09's existing compute.try_start_cluster_create() will NOT automatically trigger this fallback for this specific failure mode -- per this task's explicit instruction not to broadly catch TimeoutError and treat it as a permission-style rejection. This is a known, deliberate gap: automatic fallback still requires a PermissionDenied/InvalidParameterValue-shaped rejection; a workspace known to lack worker environments should be run with job_cluster mode deliberately rather than relying on automatic detection."
+}

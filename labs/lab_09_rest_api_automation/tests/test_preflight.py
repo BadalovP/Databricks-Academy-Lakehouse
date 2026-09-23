@@ -326,3 +326,56 @@ def test_run_preflight_full_probe_volume_creation_permission_failure_remains_fai
     files_check = next(c for c in report.checks if c.name == "files_api_roundtrip")
     assert files_check.status == "NOT_TESTED"
     client.files.upload.assert_not_called()
+
+
+# --- diagnostic exception-chain formatting ----------------------------------
+
+
+def test_format_exception_chain_includes_the_underlying_cause():
+    """The fix this proves: a bare str(exc) on a re-raised TimeoutError
+    (e.g. `raise TimeoutError("Timed out after 0:05:00") from last_err`,
+    the SDK's own base-client retry-timeout wrapper) hides the real
+    underlying error. The detail must surface it, not just the wrapper.
+    """
+    try:
+        try:
+            raise RuntimeError("worker environment not ready")
+        except RuntimeError as inner:
+            raise TimeoutError("Timed out after 0:05:00") from inner
+    except TimeoutError as outer:
+        formatted = preflight._format_exception_chain(outer)
+
+    assert "TimeoutError: Timed out after 0:05:00" in formatted
+    assert "caused by RuntimeError: worker environment not ready" in formatted
+
+
+def test_format_exception_chain_handles_no_cause():
+    formatted = preflight._format_exception_chain(RuntimeError("plain failure"))
+    assert formatted == "RuntimeError: plain failure"
+
+
+def test_run_preflight_cluster_probe_failure_detail_surfaces_chained_cause():
+    """End-to-end: a chained TimeoutError from the cluster-create probe must
+    show its real cause in the report, not just the opaque wrapper text.
+    """
+    client = _passing_client()
+    spec = compute.ClusterSpec(
+        spark_version="15.4.x-scala2.12", node_type_id="small", autotermination_minutes=20
+    )
+
+    def _raise_chained_timeout(*args, **kwargs):
+        try:
+            raise RuntimeError("does not have any associated worker environments")
+        except RuntimeError as inner:
+            raise TimeoutError("Timed out after 0:05:00") from inner
+
+    with (
+        patch.object(preflight.compute, "build_cluster_spec", return_value=spec),
+        patch.object(preflight.compute, "start_cluster_create", side_effect=_raise_chained_timeout),
+    ):
+        report = preflight.run_preflight(client, _cfg(), probe_cluster_create=True)
+
+    probe_check = next(c for c in report.checks if c.name == "cluster_create_probe")
+    assert probe_check.status == "FAIL"
+    assert "TimeoutError" in probe_check.detail
+    assert "worker environments" in probe_check.detail
