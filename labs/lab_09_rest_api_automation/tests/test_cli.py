@@ -12,6 +12,7 @@ import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import pytest
 from databricks.sdk.errors import InvalidParameterValue
 
 from lab09 import cli, compute, monitoring
@@ -228,3 +229,137 @@ def test_unrelated_cluster_error_fails_the_run_instead_of_falling_back(tmp_path,
     # The run must fail outright, not silently proceed in either compute mode.
     ensure_job_mock.assert_not_called()
     reset_job_cluster_mock.assert_not_called()
+
+
+def _forbid_cluster_calls(monkeypatch):
+    """Assert that no cluster-related SDK call happens at all -- used to prove
+    serverless_job mode never touches the Clusters API in any way.
+    """
+    for name in (
+        "build_cluster_spec",
+        "try_start_cluster_create",
+        "terminate_cluster",
+        "cluster_exists_and_active",
+    ):
+        monkeypatch.setattr(
+            cli.compute,
+            name,
+            MagicMock(
+                side_effect=AssertionError(
+                    f"compute.{name} must not be called in serverless_job mode"
+                )
+            ),
+        )
+    monkeypatch.setattr(
+        cli.monitoring,
+        "poll_cluster_state",
+        MagicMock(
+            side_effect=AssertionError("poll_cluster_state must not run in serverless_job mode")
+        ),
+    )
+
+
+def test_serverless_job_forced_via_cli_override_never_touches_clusters_api(tmp_path, monkeypatch):
+    cfg = _cfg(tmp_path)
+    _patch_common_success_path(monkeypatch)
+    _forbid_cluster_calls(monkeypatch)
+
+    ensure_job_mock = MagicMock(return_value=42)
+    reset_job_cluster_mock = MagicMock()
+    _patch_job_success_path(monkeypatch, ensure_job_mock, reset_job_cluster_mock)
+
+    client = MagicMock()
+    exit_code = cli.cmd_run_all(client, cfg, SimpleNamespace(compute_mode="serverless_job"))
+
+    assert exit_code == 0
+    report = json.loads((tmp_path / "report.json").read_text())
+    assert report["compute_mode"] == "serverless_job"
+    assert report["cluster_id"] is None
+    # A null cluster_id in serverless mode is never a cleanup failure.
+    assert report["cluster_cleaned_up"] is True
+
+    _, kwargs = ensure_job_mock.call_args
+    assert kwargs["cluster_id"] is None
+    assert kwargs["new_cluster"] is None
+    assert kwargs["serverless"] is True
+    _, kwargs = reset_job_cluster_mock.call_args
+    assert kwargs["serverless"] is True
+
+    ensure_job_mock.assert_called_once()
+    reset_job_cluster_mock.assert_called_once()
+
+
+def test_serverless_job_chosen_via_config_preferred_mode_in_auto(tmp_path, monkeypatch):
+    """auto mode must read config/dev.yml's compute.preferred_mode directly
+    rather than attempting explicit_cluster first for a workspace already
+    known to lack worker environments.
+    """
+    cfg = _cfg(tmp_path)
+    cfg["compute"] = {
+        "preferred_mode": "serverless_job",
+        "preferred_mode_reason": "organization has no associated worker environments",
+    }
+    _patch_common_success_path(monkeypatch)
+    _forbid_cluster_calls(monkeypatch)
+
+    ensure_job_mock = MagicMock(return_value=42)
+    reset_job_cluster_mock = MagicMock()
+    _patch_job_success_path(monkeypatch, ensure_job_mock, reset_job_cluster_mock)
+
+    client = MagicMock()
+    exit_code = cli.cmd_run_all(client, cfg, SimpleNamespace(compute_mode="auto"))
+
+    assert exit_code == 0
+    report = json.loads((tmp_path / "report.json").read_text())
+    assert report["compute_mode"] == "serverless_job"
+    assert report["cluster_id"] is None
+    assert report["classic_cluster_supported"] is False
+    assert (
+        report["classic_cluster_failure_reason"]
+        == "organization has no associated worker environments"
+    )
+
+
+def test_cli_override_takes_precedence_over_config_preferred_mode(tmp_path, monkeypatch):
+    """A deliberate --compute-mode flag must win over config/dev.yml's
+    preferred_mode -- an explicit override is more specific than a
+    workspace-level default.
+    """
+    cfg = _cfg(tmp_path)
+    cfg["compute"] = {"preferred_mode": "serverless_job"}
+    _patch_common_success_path(monkeypatch)
+    monkeypatch.setattr(
+        cli.compute, "try_start_cluster_create", lambda *a, **k: ("cluster-1", None)
+    )
+    monkeypatch.setattr(
+        cli.monitoring,
+        "poll_cluster_state",
+        lambda *a, **k: monitoring.ClusterOutcome(cluster_id="cluster-1", state="RUNNING"),
+    )
+    monkeypatch.setattr(cli.compute, "terminate_cluster", MagicMock())
+    monkeypatch.setattr(cli.compute, "cluster_exists_and_active", lambda *a, **k: True)
+
+    ensure_job_mock = MagicMock(return_value=42)
+    reset_job_cluster_mock = MagicMock()
+    _patch_job_success_path(monkeypatch, ensure_job_mock, reset_job_cluster_mock)
+
+    client = MagicMock()
+    exit_code = cli.cmd_run_all(client, cfg, SimpleNamespace(compute_mode="explicit_cluster"))
+
+    assert exit_code == 0
+    report = json.loads((tmp_path / "report.json").read_text())
+    assert report["compute_mode"] == "explicit_cluster"
+
+
+def test_build_parser_accepts_compute_mode_choices():
+    parser = cli._build_parser()
+
+    args = parser.parse_args(["run-all"])
+    assert args.compute_mode == "auto"
+
+    for mode in ("auto", "explicit_cluster", "job_cluster", "serverless_job"):
+        args = parser.parse_args(["run-all", "--compute-mode", mode])
+        assert args.compute_mode == mode
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["run-all", "--compute-mode", "not-a-real-mode"])

@@ -68,6 +68,36 @@ compute:
   # Optional hint (e.g. "Standard_DS3_v2" or "i3.xlarge"). If null,
   # compute.py picks the smallest available non-deprecated node type.
   node_type_hint: null
+  # Deliberate, evidence-backed compute-mode choice for THIS workspace.
+  # `run-all --compute-mode auto` (the default) uses this directly instead
+  # of attempting explicit_cluster first -- so a workspace already known
+  # to be incapable of classic compute never wastes time (and the SDK's
+  # own 5-minute internal HTTP retry-timeout) re-discovering that on every
+  # run. One of: "explicit_cluster" | "job_cluster" | "serverless_job" |
+  # null (null means "attempt explicit_cluster, fall back to job_cluster
+  # only on a genuine PermissionDenied/InvalidParameterValue rejection" --
+  # the legacy auto behavior, appropriate for a workspace with no known
+  # limitation yet).
+  #
+  # Set to serverless_job here because Phase 0 proved, live, against this
+  # exact profile/host (see evidence/phase0_2026-09-24.json), that
+  # explicit clusters.create() fails with a backend error --
+  # "Current organization ... does not have any associated worker
+  # environments" -- meaning this specific Databricks organization has no
+  # infrastructure for classic compute at all. A job-managed `new_cluster`
+  # (compute_mode=job_cluster) is ALSO classic compute under the hood and
+  # would be expected to fail the same way, so it is not the preferred
+  # next thing to try here -- serverless Jobs compute is the genuinely
+  # distinct Databricks-managed path for this workspace. This has NOT yet
+  # been confirmed by an actual successful serverless job run; see
+  # README.md "Cluster fallback behavior" and "Known limitations".
+  preferred_mode: serverless_job
+  preferred_mode_reason: >-
+    Phase 0 (2026-09-24, personal-yahoo profile) confirmed explicit
+    clusters.create() fails with: BadRequest: Current organization
+    7474653929863069 does not have any associated worker environments.
+    This is a workspace/organization-level classic-compute limitation,
+    not a permission problem. See evidence/phase0_2026-09-24.json.
 
 job:
   name: "lab09_taxi_reconciliation_job"

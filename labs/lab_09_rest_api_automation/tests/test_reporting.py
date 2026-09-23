@@ -61,6 +61,37 @@ def test_no_new_data_report_has_month_landed_false():
     assert reporting.exit_code_for(report) == 0
 
 
+def test_write_report_accepts_null_cluster_id_for_serverless_mode(tmp_path):
+    """A null cluster_id is expected and valid for compute_mode=serverless_job
+    -- it must never be treated as a missing/invalid field.
+    """
+    report = reporting.Report(
+        status="SUCCESS",
+        compute_mode="serverless_job",
+        cluster_id=None,
+        cluster_cleaned_up=True,
+        classic_cluster_supported=False,
+        classic_cluster_failure_reason="organization has no associated worker environments",
+        reconciliation_passed=True,
+    )
+    report.mark_started()
+    report.mark_finished()
+
+    out_path = tmp_path / "report.json"
+    reporting.write_report(report, out_path)
+
+    payload = json.loads(out_path.read_text(encoding="utf-8"))
+    assert payload["compute_mode"] == "serverless_job"
+    assert payload["cluster_id"] is None
+    assert payload["cluster_cleaned_up"] is True
+    assert payload["classic_cluster_supported"] is False
+    assert (
+        payload["classic_cluster_failure_reason"]
+        == "organization has no associated worker environments"
+    )
+    assert reporting.exit_code_for(report) == 0
+
+
 # --- exit code determination -------------------------------------------------
 
 

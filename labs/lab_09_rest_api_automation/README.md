@@ -222,23 +222,35 @@ but each individual check's real state stays visible in the report.
 
 ### Cluster fallback behavior
 
-`cli.py`'s `run-all` always attempts explicit `clusters.create()` first via
-`compute.try_start_cluster_create()`. If the workspace rejects that for a
-genuine permission/policy/unsupported-compute reason (the SDK's typed
-`PermissionDenied` or `InvalidParameterValue` exceptions -- deliberately
-**not** a bare `except Exception`, so an unrelated failure like a network
-error or bad payload fails the run instead of silently switching modes),
-`run-all` falls back to `compute_mode = "job_cluster"`: the same persistent
-job is reset with a `new_cluster` definition
-(`compute.ClusterSpec.as_new_cluster_dict()`) instead of an
-`existing_cluster_id`, `run_now()` is called, and Databricks provisions and
-tears down that job cluster itself -- no standalone
-`compute.terminate_cluster()` call is needed or made in that mode. Either
-way, the exact same persistent Lab 9 job is reused (never a new duplicate),
-and the report's `compute_mode` field records which path actually ran.
-This fallback is fully wired into `run-all` today. **Live Phase 0 testing
-against the confirmed-safe `personal-yahoo` workspace
-(`dbc-1750318a-76a9.cloud.databricks.com`) found that explicit
+The reconciliation Job task can be configured in exactly one of three
+mutually exclusive ways (`jobs.py`'s `_task_settings()` validates that
+precisely one is selected; confirmed against the installed
+`databricks-sdk==0.133.0`'s `Task` field set before coding):
+
+| `compute_mode` | Job task fields set | Compute Databricks uses |
+|:--|:--|:--|
+| `explicit_cluster` | `existing_cluster_id` | A standalone cluster this run created via `compute.try_start_cluster_create()`, polled, then explicitly terminated |
+| `job_cluster` | `new_cluster` | A job-managed **classic** cluster Databricks provisions and tears down itself as part of the run -- still classic compute under the hood, just job-scoped instead of standalone |
+| `serverless_job` | none of `existing_cluster_id` / `new_cluster` / `job_cluster_key` | Databricks-managed **serverless** job compute -- a genuinely separate infrastructure path from the other two |
+
+`run-all --compute-mode auto` (the default) resolves which of these to use
+from `config/dev.yml`'s `compute.preferred_mode`, a deliberate,
+evidence-backed per-workspace choice, rather than hardcoding this
+workspace's hostname into business logic. If `preferred_mode` is unset,
+`auto` falls back to the legacy behavior: attempt `explicit_cluster` via
+`compute.try_start_cluster_create()`, and fall back to `job_cluster` only
+on a genuine permission/policy/unsupported-compute rejection (the SDK's
+typed `PermissionDenied` or `InvalidParameterValue` -- deliberately
+**not** a bare `except Exception`, and deliberately **not**
+`TimeoutError`, so an unrelated or ambiguous failure fails the run instead
+of silently switching modes). `--compute-mode explicit_cluster` /
+`job_cluster` / `serverless_job` forces that exact mode with no
+attempt/fallback at all. Whichever mode is used, the exact same persistent
+Lab 9 job is reused (never a new duplicate), and the report's
+`compute_mode` field records which one actually ran.
+
+**Live Phase 0 testing against the confirmed-safe `personal-yahoo`
+workspace (`dbc-1750318a-76a9.cloud.databricks.com`) found that explicit
 `clusters.create()` does not work in this specific
 workspace/organization**: `preflight --probe-cluster-create` (see
 `evidence/phase0_2026-09-24.json`) failed with `TimeoutError: Timed out
@@ -253,17 +265,36 @@ architecture, so an `aarch64` runtime could be paired with an x86_64 node
 type) was found and fixed during this same investigation, and the
 corrected, architecturally-compatible spec still failed identically,
 confirming the worker-environment limitation is the real, separate cause.
-**Recommendation for this specific workspace: use `compute_mode =
-"job_cluster"` deliberately.** Note that because this failure surfaces as
-`TimeoutError` (via the SDK's own internal HTTP retry-and-give-up
-behavior -- see below), not as `PermissionDenied`/`InvalidParameterValue`,
-`try_start_cluster_create()` does **not** automatically trigger the
-`job_cluster` fallback for this specific failure mode, by design (this
-task's explicit instruction was not to broadly catch `TimeoutError` as if
-it were a permission-style rejection, since an ordinary transient timeout
-is not the same thing as "forbidden"). A workspace already known to lack
-worker environments should be run with `job_cluster` mode deliberately
-rather than relying on automatic detection.
+
+**Recommendation for this specific workspace: `compute_mode =
+"serverless_job"` (`config/dev.yml`'s `compute.preferred_mode`), not
+`job_cluster`.** An earlier version of this document recommended
+`job_cluster` -- that was a mistake, corrected here: a Jobs `new_cluster`
+is **still classic jobs compute**, provisioned through the same
+cluster-manager/worker-environment infrastructure as a standalone
+cluster, just job-scoped instead of standalone. It would be expected to
+fail identically to the `explicit_cluster` attempt above, for the same
+organization-level reason, so it is not a meaningfully different
+infrastructure path and not the preferred next thing to test here.
+`serverless_job` is the genuinely distinct, Databricks-managed compute
+path that does not depend on this organization's classic-compute
+worker-environment infrastructure at all. **This has not yet been
+confirmed by an actual successful serverless job run** -- see "Known
+limitations".
+
+Note that because the classic-compute failure surfaces as `TimeoutError`
+(via the SDK's own internal HTTP retry-and-give-up behavior -- see below),
+not as `PermissionDenied`/`InvalidParameterValue`,
+`try_start_cluster_create()` does **not** and should **not**
+automatically trigger `job_cluster` or `serverless_job` for this specific
+failure mode -- this task's explicit instruction was not to broadly catch
+`TimeoutError` as if it were a permission-style rejection, since an
+ordinary timeout is not the same thing as "forbidden" and could just as
+easily mean something else entirely. That is exactly why this workspace's
+choice is recorded **deliberately** in `config/dev.yml`'s
+`compute.preferred_mode` instead of being detected automatically at
+runtime -- `--compute-mode auto` reads that recorded choice directly
+rather than rediscovering the same 5-minute failure on every single run.
 
 **Where the "5 minutes" actually comes from** (verified by reading the
 installed `databricks-sdk==0.133.0` source, not assumed): it is
@@ -280,6 +311,36 @@ started here, since `clusters.create()` itself never returned a
 synchronous dict lookup with no implicit wait, so LAB 09's own
 `start_cluster_create()` was never the source of any hidden blocking
 either.
+
+### Lab requirement vs. Personal workspace reality
+
+The Lab 9 task literally asks the automation to **create clusters**. The
+Personal workspace this project has actually tested against
+(`personal-yahoo`) cannot do that for classic compute -- proven live, not
+assumed (see above). This is a genuine gap between the literal task
+wording and what this specific workspace supports, and it is worth
+stating plainly rather than papering over with a fallback that quietly
+changes what was actually demonstrated. Two compliance interpretations
+are possible, and **this PR does not decide between them**:
+
+- **Option A -- run the Personal workspace end-to-end on
+  `serverless_job`.** This proves API/SDK automation, Volume/Files API
+  operations, Lakeflow pipeline triggering, persistent-Job
+  find-or-reset-or-create, job execution, explicit monitoring, and
+  reconciliation -- everything Lab 9 asks for **except** a successful
+  `clusters.create()` call, which this workspace cannot do.
+- **Option B -- additionally run the cluster-create portion in a
+  separate, approved academy/Azure DEV workspace** that is confirmed to
+  support classic clusters, if the "create clusters" requirement must be
+  satisfied literally and cannot be waived for a Personal workspace's
+  infrastructure limitation.
+
+**Until a mentor/reviewer approves one of these interpretations (or a
+successful classic cluster creation is demonstrated somewhere), the
+"create clusters" portion of the Lab 9 requirement should not be
+described as fully satisfied.** Everything else Lab 9 asks for remains
+demonstrable, and is tracked separately in "Known limitations" by what
+has and has not actually been run live.
 
 ### CI identity vs. local identity
 
@@ -503,6 +564,17 @@ from Lab 8's `lab08_cicd.yml` (not modified by this PR), scoped to
 
 ## 14. Known limitations
 
+- **A real bug in `job_cluster` mode was found and fixed while adding
+  `serverless_job` mode's tests**: `jobs.py` built `Task.new_cluster` using
+  `databricks.sdk.service.jobs.ClusterSpec` -- a different, unrelated
+  struct (used for `JobSettings.job_clusters` list entries: it has no
+  `node_type_id`/`spark_version`/etc. of its own) than the
+  `databricks.sdk.service.compute.ClusterSpec` the `Task.new_cluster`
+  field is actually typed as. This went undetected because no earlier
+  test inspected the constructed task's `new_cluster` object's own
+  fields, only that it was non-`None`. Fixed to use `compute.ClusterSpec`;
+  `job_cluster` mode has still never been exercised live either way (see
+  below), so this fix itself remains live-unverified too.
 - **Phase 0 (the lightweight checks plus the full `--probe-cluster-create`
   live probe) has now been run against the confirmed-safe `personal-yahoo`
   profile** (`https://dbc-1750318a-76a9.cloud.databricks.com`, identity
@@ -531,9 +603,16 @@ from Lab 8's `lab08_cicd.yml` (not modified by this PR), scoped to
   cleanup was required.
 - Because of the above, **explicit cluster creation is confirmed
   unsupported specifically for this organization/workspace** -- `run-all`
-  should be run with `compute_mode = "job_cluster"` deliberately here (see
-  "Cluster fallback behavior" for why the automatic fallback does not
-  self-select this for a `TimeoutError`-shaped failure).
+  should be run with `compute_mode = "serverless_job"` deliberately here
+  (recorded in `config/dev.yml`'s `compute.preferred_mode`; see "Cluster
+  fallback behavior" for why `job_cluster` is not the right next thing to
+  try -- it is still classic compute -- and why the automatic
+  exception-driven fallback does not and should not self-select either
+  mode for a `TimeoutError`-shaped failure). **`serverless_job` itself has
+  not yet been confirmed by an actual successful live job run** -- only
+  the classic-compute failure has been confirmed; see "Lab requirement vs.
+  Personal workspace reality" for the two open compliance interpretations
+  this leaves for the literal "create clusters" task requirement.
 - Phase 0 was run under `parvinbadalov@yahoo.com` via the `personal-yahoo`
   profile. This only proves that identity's permissions -- it does **not**
   prove GitHub Actions CI's own identity does, since CI authenticates with
@@ -590,7 +669,10 @@ separate, explicitly authorized live execution.
    and review the JSON output, especially `cluster_create_supported` and
    `ci_identity_caveat`. Against `personal-yahoo` specifically, expect
    `cluster_create_supported: false` -- see "Known limitations" for why,
-   and use `job_cluster` mode for that workspace.
+   and use `--compute-mode serverless_job` (or rely on `auto`, which
+   already reads `config/dev.yml`'s `compute.preferred_mode:
+   serverless_job` for this workspace) rather than `job_cluster`, which is
+   still classic compute and expected to fail the same way here.
 4. `python -m lab09.cli --profile <confirmed-profile> run-all` and inspect
    `evidence/lab09_report.json`.
 5. Re-run `run-all` a second time and confirm the report's `status` is

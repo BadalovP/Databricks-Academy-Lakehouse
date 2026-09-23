@@ -2,11 +2,29 @@
 
 Exactly one stable Lab 9 job is used across runs (Phase 12): a new
 duplicate job is never created. On every run the existing job's task is
-reset to point at that run's freshly created temporary cluster id, so the
-job never points at a dead cluster across executions. If explicit cluster
-creation turns out to be forbidden, the same job task can instead be
-pointed at a `new_cluster` definition (the documented fallback -- see
-compute.ClusterSpec.as_new_cluster_dict()).
+reset to point at that run's chosen compute, in exactly one of three
+mutually exclusive ways:
+
+  A. existing_cluster_id -- a standalone cluster this run created via
+     compute.try_start_cluster_create() (compute_mode="explicit_cluster").
+  B. new_cluster -- a job-managed classic cluster Databricks provisions
+     and tears down itself as part of the run
+     (compute_mode="job_cluster"; see compute.ClusterSpec.as_new_cluster_dict()).
+  C. serverless -- no cluster reference of any kind
+     (compute_mode="serverless_job"). Confirmed via the installed
+     databricks-sdk==0.133.0's Task field set and cross-checked against
+     Databricks' own Jobs API docs: omitting existing_cluster_id,
+     new_cluster, AND job_cluster_key is how a notebook_task runs on
+     serverless compute. `environment_key` is deliberately NOT set here --
+     it is documented as applicable (and required) only for Python
+     script/wheel/dbt tasks, not notebook tasks; setting it on a
+     notebook_task is rejected by the Jobs API.
+
+This avoids a persistent job pointing at a dead standalone cluster across
+executions in mode A, and lets the same job be run against whichever
+compute mode a given workspace actually supports (see README.md "Cluster
+fallback behavior" for why the Personal workspace this project has tested
+against needs mode C).
 """
 
 from __future__ import annotations
@@ -16,6 +34,7 @@ import logging
 from typing import Any
 
 from databricks.sdk import WorkspaceClient
+from databricks.sdk.service import compute as compute_svc
 from databricks.sdk.service import jobs as jobs_svc
 
 logger = logging.getLogger(__name__)
@@ -34,20 +53,41 @@ def _task_settings(
     notebook_path: str,
     cluster_id: str | None,
     new_cluster: dict[str, Any] | None,
+    serverless: bool = False,
 ) -> jobs_svc.Task:
     task_key = cfg["job"]["task_key"]
     notebook_task = jobs_svc.NotebookTask(notebook_path=notebook_path)
+
+    modes_selected = sum([bool(cluster_id), bool(new_cluster), bool(serverless)])
+    if modes_selected != 1:
+        new_cluster_repr = "set" if new_cluster else None
+        raise ValueError(
+            "Exactly one of cluster_id, new_cluster, or serverless=True must be provided for "
+            f"the Lab 9 job task; got {modes_selected} selected "
+            f"(cluster_id={cluster_id!r}, new_cluster={new_cluster_repr!r}, "
+            f"serverless={serverless!r})."
+        )
+
+    if serverless:
+        # No existing_cluster_id / new_cluster / job_cluster_key at all.
+        return jobs_svc.Task(task_key=task_key, notebook_task=notebook_task)
     if cluster_id:
         return jobs_svc.Task(
             task_key=task_key, notebook_task=notebook_task, existing_cluster_id=cluster_id
         )
-    if new_cluster:
-        return jobs_svc.Task(
-            task_key=task_key,
-            notebook_task=notebook_task,
-            new_cluster=jobs_svc.ClusterSpec.from_dict(new_cluster),
-        )
-    raise ValueError("Either cluster_id or new_cluster must be provided for the Lab 9 job task.")
+    return jobs_svc.Task(
+        task_key=task_key,
+        notebook_task=notebook_task,
+        # Task.new_cluster is typed Optional[compute.ClusterSpec] -- NOT
+        # jobs.ClusterSpec, which is a different, unrelated struct (used
+        # for JobSettings.job_clusters list entries: job_cluster_key +
+        # new_cluster + libraries). Confirmed by inspecting both classes'
+        # dataclass fields directly; using jobs.ClusterSpec here silently
+        # built the wrong object (e.g. it has no node_type_id field at
+        # all) until a test that actually inspected the constructed
+        # object's own fields caught it.
+        new_cluster=compute_svc.ClusterSpec.from_dict(new_cluster),
+    )
 
 
 def ensure_job(
@@ -56,6 +96,7 @@ def ensure_job(
     notebook_path: str,
     cluster_id: str | None = None,
     new_cluster: dict[str, Any] | None = None,
+    serverless: bool = False,
 ) -> int:
     """Find the Lab 9 job by name; create it only if missing. Returns job_id."""
     name = cfg["job"]["name"]
@@ -66,7 +107,7 @@ def ensure_job(
         )
         return existing.job_id
 
-    task = _task_settings(cfg, notebook_path, cluster_id, new_cluster)
+    task = _task_settings(cfg, notebook_path, cluster_id, new_cluster, serverless)
     created = client.jobs.create(name=name, tasks=[task])
     logger.info("Created job %s (id=%s).", name, created.job_id)
     return created.job_id
@@ -79,17 +120,28 @@ def reset_job_cluster(
     notebook_path: str,
     cluster_id: str | None = None,
     new_cluster: dict[str, Any] | None = None,
+    serverless: bool = False,
 ) -> None:
-    """Reset the existing job so its task points at the current run's cluster.
+    """Reset the existing job so its task points at the current run's chosen compute.
 
     This is what prevents a persistent job from accumulating stale
     existing_cluster_id references to clusters that were already
-    terminated by a previous run's cleanup step.
+    terminated by a previous run's cleanup step (mode A). Modes B and C
+    have no such staleness concern -- Databricks provisions that compute
+    fresh each run -- but the same job is still reused every time; a new
+    duplicate job is never created for any mode.
     """
     name = cfg["job"]["name"]
-    task = _task_settings(cfg, notebook_path, cluster_id, new_cluster)
+    task = _task_settings(cfg, notebook_path, cluster_id, new_cluster, serverless)
     client.jobs.reset(job_id=job_id, new_settings=jobs_svc.JobSettings(name=name, tasks=[task]))
-    logger.info("Reset job %s (id=%s) to point at cluster_id=%s.", name, job_id, cluster_id)
+    logger.info(
+        "Reset job %s (id=%s) to point at cluster_id=%s new_cluster=%s serverless=%s.",
+        name,
+        job_id,
+        cluster_id,
+        bool(new_cluster),
+        serverless,
+    )
 
 
 def run_job_now(client: WorkspaceClient, job_id: int) -> int:

@@ -53,7 +53,14 @@ class Report:
     pipeline_serverless: bool | None = None
     update_id: str | None = None
     cluster_id: str | None = None
-    compute_mode: str | None = None  # "explicit_cluster" | "job_cluster"
+    compute_mode: str | None = None  # "explicit_cluster" | "job_cluster" | "serverless_job"
+    # Whether explicit classic cluster creation (compute.try_start_cluster_create)
+    # is known/proven to work in this workspace, and why not if it isn't.
+    # None means "not attempted or not yet known this run" -- never
+    # inferred or guessed, only ever set from an actual attempt's result
+    # or a config-declared, evidence-backed `compute.preferred_mode_reason`.
+    classic_cluster_supported: bool | None = None
+    classic_cluster_failure_reason: str | None = None
     job_id: int | None = None
     run_id: int | None = None
     bronze_rows: int | None = None

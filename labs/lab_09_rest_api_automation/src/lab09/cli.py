@@ -1,7 +1,7 @@
 """argparse CLI for LAB 09.
 
 python -m lab09.cli preflight [--probe-cluster-create]
-python -m lab09.cli run-all
+python -m lab09.cli run-all [--compute-mode auto|explicit_cluster|job_cluster|serverless_job]
 python -m lab09.cli cleanup [--reset-landing] [--reset-reference]
 python -m lab09.cli status
 """
@@ -54,7 +54,22 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Also run the real tiny-cluster create/terminate capability test.",
     )
 
-    sub.add_parser("run-all", help="Run the full Lab 9 live execution order end to end.")
+    p_run_all = sub.add_parser(
+        "run-all", help="Run the full Lab 9 live execution order end to end."
+    )
+    p_run_all.add_argument(
+        "--compute-mode",
+        choices=["auto", "explicit_cluster", "job_cluster", "serverless_job"],
+        default="auto",
+        help=(
+            "How to provision compute for the reconciliation job. 'auto' (default) uses "
+            "config/dev.yml's compute.preferred_mode if set (a deliberate, evidence-backed "
+            "choice for a specific workspace); otherwise it attempts explicit_cluster and "
+            "falls back to job_cluster only on a genuine PermissionDenied/InvalidParameterValue "
+            "rejection -- never on a bare TimeoutError. The other three values force that exact "
+            "mode with no attempt/fallback at all."
+        ),
+    )
 
     p_cleanup = sub.add_parser("cleanup", help="Delete only Lab 9-owned resources.")
     p_cleanup.add_argument(
@@ -172,27 +187,69 @@ def cmd_run_all(client: WorkspaceClient, cfg: dict[str, Any], args: argparse.Nam
         update_id = pipelines.start_update(client, pipeline_id)
         report.update_id = update_id
 
-        # Optional optimization: attempt the temporary notebook-job cluster
-        # now so, when explicit creation is allowed, its provisioning
-        # overlaps the pipeline update's runtime instead of waiting for the
-        # pipeline to finish first. If the workspace specifically rejects
-        # explicit cluster creation for a permission/policy/
-        # unsupported-compute reason, fall back to a job-managed
-        # new_cluster instead -- try_start_cluster_create() does not catch
-        # (and therefore does not hide) any other kind of failure.
-        cluster_spec = compute.build_cluster_spec(client, cfg)
-        cluster_id, rejection = compute.try_start_cluster_create(
-            client, cluster_spec, cluster_name="lab09-temp-notebook-cluster"
+        # Determine the compute mode. `auto` prefers a deliberate,
+        # evidence-backed config choice (config/dev.yml's
+        # compute.preferred_mode) over guessing from a live attempt -- see
+        # README.md "Cluster fallback behavior" for why the Personal
+        # workspace this project has tested against needs
+        # preferred_mode=serverless_job specifically, and why a bare
+        # TimeoutError must never be interpreted as "try job_cluster
+        # instead" (a timeout is not the same thing as a permission
+        # rejection, and could just as easily mean "still provisioning").
+        compute_cfg = cfg.get("compute", {})
+        preferred_mode = compute_cfg.get("preferred_mode")
+        requested_mode = getattr(args, "compute_mode", "auto")
+        compute_mode = (
+            preferred_mode if requested_mode == "auto" and preferred_mode else requested_mode
         )
-        if cluster_id:
+        if compute_mode == "auto":
             compute_mode = "explicit_cluster"
-        else:
-            compute_mode = "job_cluster"
-            logger.info(
-                "compute_mode=job_cluster: explicit cluster creation was rejected (%s). "
-                "Databricks will provision and tear down the job cluster itself.",
-                rejection,
+
+        cluster_spec = None
+        new_cluster_dict: dict[str, Any] | None = None
+
+        if compute_mode == "explicit_cluster":
+            # Optional optimization: attempt the temporary notebook-job
+            # cluster now so its provisioning overlaps the pipeline
+            # update's runtime instead of waiting for the pipeline to
+            # finish first. try_start_cluster_create() only catches a
+            # genuine permission/policy/unsupported-compute rejection
+            # (PermissionDenied/InvalidParameterValue) as grounds to fall
+            # back to job_cluster -- any other exception, including
+            # TimeoutError, propagates and fails the run instead of
+            # silently switching modes.
+            cluster_spec = compute.build_cluster_spec(client, cfg)
+            attempted_cluster_id, rejection = compute.try_start_cluster_create(
+                client, cluster_spec, cluster_name="lab09-temp-notebook-cluster"
             )
+            if attempted_cluster_id:
+                cluster_id = attempted_cluster_id
+                report.classic_cluster_supported = True
+            else:
+                report.classic_cluster_supported = False
+                report.classic_cluster_failure_reason = f"{type(rejection).__name__}: {rejection}"
+                compute_mode = "job_cluster"
+                new_cluster_dict = cluster_spec.as_new_cluster_dict("lab09-job-cluster")
+                logger.info(
+                    "compute_mode=job_cluster: explicit cluster creation was rejected (%s). "
+                    "Databricks will provision and tear down the job cluster itself.",
+                    rejection,
+                )
+        elif compute_mode == "job_cluster":
+            cluster_spec = compute.build_cluster_spec(client, cfg)
+            new_cluster_dict = cluster_spec.as_new_cluster_dict("lab09-job-cluster")
+        elif compute_mode == "serverless_job":
+            # No cluster of any kind is created or referenced. If this
+            # mode was chosen via the config's declared preferred_mode
+            # (rather than a fresh live attempt this run), surface the
+            # already-proven reason -- see config/dev.yml and
+            # evidence/phase0_2026-09-24.json. This is not re-tested here.
+            if preferred_mode == "serverless_job":
+                report.classic_cluster_supported = False
+                report.classic_cluster_failure_reason = compute_cfg.get("preferred_mode_reason")
+        else:
+            raise ValueError(f"Unknown --compute-mode value: {compute_mode!r}")
+
         report.compute_mode = compute_mode
         report.cluster_id = cluster_id
 
@@ -233,22 +290,30 @@ def cmd_run_all(client: WorkspaceClient, cfg: dict[str, Any], args: argparse.Nam
                 return _finish(client, report, cluster_id, cfg)
 
         # 12. Find/create persistent Lab 9 Databricks Job -- exactly one
-        # stable job in both compute modes, never a new duplicate.
-        new_cluster = (
-            cluster_spec.as_new_cluster_dict("lab09-job-cluster")
-            if compute_mode == "job_cluster"
-            else None
-        )
+        # stable job across all three compute modes, never a new duplicate.
+        serverless = compute_mode == "serverless_job"
         job_id = jobs.ensure_job(
-            client, cfg, notebook_path, cluster_id=cluster_id, new_cluster=new_cluster
+            client,
+            cfg,
+            notebook_path,
+            cluster_id=cluster_id,
+            new_cluster=new_cluster_dict,
+            serverless=serverless,
         )
         report.job_id = job_id
 
-        # 13. RESET the existing job to point at the CURRENT cluster ID (or,
-        # in job_cluster mode, at the new_cluster definition Databricks will
-        # provision and terminate itself -- no standalone cleanup needed).
+        # 13. RESET the existing job to point at the CURRENT compute choice:
+        # existing_cluster_id (explicit_cluster), new_cluster (job_cluster,
+        # which Databricks provisions and terminates itself -- no
+        # standalone cleanup needed), or neither (serverless_job).
         jobs.reset_job_cluster(
-            client, job_id, cfg, notebook_path, cluster_id=cluster_id, new_cluster=new_cluster
+            client,
+            job_id,
+            cfg,
+            notebook_path,
+            cluster_id=cluster_id,
+            new_cluster=new_cluster_dict,
+            serverless=serverless,
         )
 
         # 14. run_now()
