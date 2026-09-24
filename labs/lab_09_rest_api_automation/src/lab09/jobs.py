@@ -25,6 +25,14 @@ executions in mode A, and lets the same job be run against whichever
 compute mode a given workspace actually supports (see README.md "Cluster
 fallback behavior" for why the Personal workspace this project has tested
 against needs mode C).
+
+Independent of compute mode, every task also carries NotebookTask.base_parameters
+(see _notebook_base_parameters()) so the reconciliation notebook queries
+cfg["pipeline"]["target_schema"] -- the pipeline's actual OUTPUT schema --
+instead of silently relying on its own hardcoded widget defaults. This
+matters because the pipeline's output schema (config/dev.yml's
+pipeline.target_schema, e.g. "lab09") is deliberately NOT the same schema
+as the landing volume's schema (cfg["schema"]) -- see volumes.ensure_output_schema().
 """
 
 from __future__ import annotations
@@ -48,6 +56,27 @@ def find_job_by_name(client: WorkspaceClient, name: str):
     return None
 
 
+def _notebook_base_parameters(cfg: dict[str, Any]) -> dict[str, str]:
+    """Override the reconciliation notebook's hardcoded widget defaults so it
+    queries the pipeline's actual OUTPUT schema (cfg["pipeline"]["target_schema"],
+    e.g. "lab09") instead of silently falling back to its
+    dbutils.widgets.text("schema", "parvinbadalov") default -- which would
+    reconcile against the wrong (and possibly stale/nonexistent) tables once
+    the pipeline itself writes to a different schema. Every value must be a
+    plain str: NotebookTask.base_parameters is typed Dict[str, str] in the
+    installed databricks-sdk==0.133.0.
+    """
+    tables = cfg["tables"]
+    return {
+        "catalog": str(cfg["catalog"]),
+        "schema": str(cfg["pipeline"]["target_schema"]),
+        "bronze_table": str(tables["bronze"]),
+        "silver_table": str(tables["silver"]),
+        "quarantine_table": str(tables["quarantine"]),
+        "gold_table": str(tables["gold"]),
+    }
+
+
 def _task_settings(
     cfg: dict[str, Any],
     notebook_path: str,
@@ -56,7 +85,9 @@ def _task_settings(
     serverless: bool = False,
 ) -> jobs_svc.Task:
     task_key = cfg["job"]["task_key"]
-    notebook_task = jobs_svc.NotebookTask(notebook_path=notebook_path)
+    notebook_task = jobs_svc.NotebookTask(
+        notebook_path=notebook_path, base_parameters=_notebook_base_parameters(cfg)
+    )
 
     modes_selected = sum([bool(cluster_id), bool(new_cluster), bool(serverless)])
     if modes_selected != 1:

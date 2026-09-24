@@ -159,8 +159,15 @@ def cmd_run_all(client: WorkspaceClient, cfg: dict[str, Any], args: argparse.Nam
             report.error = f"Preflight failed before any resources were touched: {failing}"
             return _finish(client, report, cluster_id, cfg)
 
-        # 2. Create-or-get volume
+        # 2. Create-or-get landing volume (input schema: cfg["schema"])
         volumes.ensure_volume(client, cfg)
+
+        # 2b. Create-or-get the pipeline's OUTPUT schema (cfg["pipeline"]["target_schema"]).
+        # Deliberately separate from the landing schema above -- see
+        # volumes.ensure_output_schema()'s docstring and README.md "Known
+        # limitations" for why (dbr_dev.parvinbadalov hit Unity Catalog's
+        # per-schema table-count quota live).
+        volumes.ensure_output_schema(client, cfg)
 
         # 3-5. Determine next month, download+validate, upload via Files API
         landing_result = landing.land_next_month(client, cfg)

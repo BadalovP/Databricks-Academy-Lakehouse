@@ -12,7 +12,17 @@ def _autospec_client() -> MagicMock:
 
 
 def _cfg() -> dict:
-    return {"job": {"name": "lab09_taxi_reconciliation_job", "task_key": "reconcile_counts"}}
+    return {
+        "catalog": "dbr_dev",
+        "pipeline": {"target_schema": "lab09"},
+        "tables": {
+            "bronze": "lab09_taxi_bronze",
+            "silver": "lab09_taxi_silver",
+            "quarantine": "lab09_taxi_quarantine",
+            "gold": "lab09_taxi_daily_summary",
+        },
+        "job": {"name": "lab09_taxi_reconciliation_job", "task_key": "reconcile_counts"},
+    }
 
 
 def test_find_job_by_name_returns_exact_match():
@@ -85,6 +95,63 @@ def test_reset_job_cluster_points_task_at_the_given_cluster_id():
     task = kwargs["new_settings"].tasks[0]
     assert task.existing_cluster_id == "cluster-new"
     assert task.task_key == "reconcile_counts"
+
+
+# --- notebook base_parameters (dedicated output schema) ---------------------
+
+
+def test_task_settings_passes_catalog_and_output_schema_as_base_parameters():
+    task = jobs._task_settings(
+        _cfg(),
+        "/Workspace/Users/x/lab09/notebooks/01_reconcile_counts",
+        "cluster-1",
+        None,
+    )
+
+    assert task.notebook_task.base_parameters["catalog"] == "dbr_dev"
+    # Must be the pipeline's OUTPUT schema (config/dev.yml's
+    # pipeline.target_schema), never the landing/input schema -- the
+    # reconciliation notebook's own hardcoded widget default
+    # ("parvinbadalov") must be overridden, not relied upon.
+    assert task.notebook_task.base_parameters["schema"] == "lab09"
+
+
+def test_task_settings_passes_all_four_table_names_as_base_parameters():
+    task = jobs._task_settings(
+        _cfg(),
+        "/Workspace/Users/x/lab09/notebooks/01_reconcile_counts",
+        "cluster-1",
+        None,
+    )
+
+    params = task.notebook_task.base_parameters
+    assert params["bronze_table"] == "lab09_taxi_bronze"
+    assert params["silver_table"] == "lab09_taxi_silver"
+    assert params["quarantine_table"] == "lab09_taxi_quarantine"
+    assert params["gold_table"] == "lab09_taxi_daily_summary"
+
+
+def test_task_settings_base_parameters_present_in_every_compute_mode():
+    """base_parameters must not depend on which of the three mutually
+    exclusive compute modes is selected.
+    """
+    serverless_task = jobs._task_settings(
+        _cfg(),
+        "/Workspace/Users/x/lab09/notebooks/01_reconcile_counts",
+        None,
+        None,
+        serverless=True,
+    )
+    new_cluster_task = jobs._task_settings(
+        _cfg(),
+        "/Workspace/Users/x/lab09/notebooks/01_reconcile_counts",
+        None,
+        {"spark_version": "18.x-scala2.13", "node_type_id": "m4.large", "num_workers": 0},
+    )
+
+    for task in (serverless_task, new_cluster_task):
+        assert task.notebook_task.base_parameters["schema"] == "lab09"
+        assert task.notebook_task.base_parameters["catalog"] == "dbr_dev"
 
 
 # --- three mutually exclusive compute modes ---------------------------------

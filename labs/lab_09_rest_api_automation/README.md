@@ -342,6 +342,60 @@ described as fully satisfied.** Everything else Lab 9 asks for remains
 demonstrable, and is tracked separately in "Known limitations" by what
 has and has not actually been run live.
 
+### Landing schema vs. pipeline output schema
+
+Confirmed live (`personal-yahoo`, 2026-09-23): `lab09_taxi_pipeline`
+(`pipeline_id=9fcf88d2-8dac-4e2a-91e6-e89407c4fe92`) is correctly
+configured with its source glob at
+`/Workspace/Users/parvinbadalov@yahoo.com/lab09/pipeline/**` -- this is
+**not** a workspace-path problem, and Lab 9's runtime files were never
+moved into the Git checkout. Every one of 6 pipeline update attempts
+reached `runtime_details` (confirming the glob resolved bronze.py /
+silver.py / gold.py correctly each time) before failing identically with:
+
+```text
+[UNITY_CATALOG_INITIALIZATION_FAILED] ErrorClass=QUOTA_EXCEEDED.UC_RESOURCE_QUOTA_EXCEEDED
+Cannot create 1 Table(s) in Schema 16e388e4-4f7d-4ea7-9a83-26c44917aced
+(estimated count: 112, limit: 100).
+```
+
+That schema ID is `dbr_dev.parvinbadalov` (confirmed via `schemas get`) --
+the same schema `config/dev.yml`'s top-level `schema:` names, which is
+shared across every other lab and demo in this Personal workspace and has
+hit Unity Catalog's per-schema table-count quota.
+
+**Non-destructive fix (no existing tables/schemas/volumes/pipelines/jobs
+were deleted):** Lab 9's pipeline OUTPUT tables now live in their own
+dedicated schema, `dbr_dev.lab09` (`config/dev.yml`'s
+`pipeline.target_schema`), instead of `dbr_dev.parvinbadalov`. The landing
+Volume is **not** moved -- input data stays exactly where it was:
+
+- Landing/input schema (`schema:` in `config/dev.yml`): `dbr_dev.parvinbadalov`
+  -- holds `/Volumes/dbr_dev/parvinbadalov/lab09_landing/trips/` and
+  `.../reference/taxi_zone_lookup.csv`. Unchanged.
+- Pipeline output schema (`pipeline.target_schema` in `config/dev.yml`):
+  `dbr_dev.lab09` -- will hold `lab09_taxi_bronze`, `lab09_taxi_silver`,
+  `lab09_taxi_quarantine`, `lab09_taxi_daily_summary`. New.
+
+`volumes.ensure_output_schema()` (same create-or-get-only-if-`NotFound`
+discipline as `ensure_volume()`) creates `dbr_dev.lab09` idempotently if it
+doesn't already exist; `run-all` calls it right after `ensure_volume()`,
+before the pipeline is created/updated. The existing persistent pipeline
+(`9fcf88d2-...`) is **reused and retargeted** via `ensure_pipeline()`'s
+existing update path (`catalog=dbr_dev, target=lab09`) -- never duplicated.
+
+This alone is not sufficient, though: the reconciliation notebook
+(`notebooks/01_reconcile_counts.py`) has its own hardcoded widget defaults
+(`dbutils.widgets.text("schema", "parvinbadalov")`) that would silently
+keep querying the *old* schema if left unpassed. `jobs.py`'s
+`_task_settings()` now builds `NotebookTask.base_parameters` (confirmed
+against the installed `databricks-sdk==0.133.0`: `NotebookTask` has a
+typed `base_parameters: Optional[Dict[str, str]]` field) with
+`catalog`/`schema`/all four table names sourced from `config/dev.yml`, so
+the job always overrides the notebook's defaults with the pipeline's
+actual output schema regardless of which of the three compute modes is
+selected.
+
 ### CI identity vs. local identity
 
 **Phase 0, if and when it is run, only proves the permissions of the
@@ -617,22 +671,31 @@ from Lab 8's `lab08_cicd.yml` (not modified by this PR), scoped to
   profile. This only proves that identity's permissions -- it does **not**
   prove GitHub Actions CI's own identity does, since CI authenticates with
   its own secret-backed token (`DATABRICKS_PERSONAL_TOKEN`).
-- The pipeline's serverless-vs-classic fallback logic
-  (`pipelines.ensure_pipeline`, covering both a new pipeline's creation and
-  an existing pipeline's update) has not been exercised against a real
-  workspace, so it is unverified whether this specific workspace accepts
-  serverless Lakeflow pipelines or requires the classic fallback.
-- **`workspace.py`'s FILE-vs-NOTEBOOK upload distinction is unverified
-  live.** `format=RAW` for `bronze.py`/`silver.py`/`gold.py` (so they
-  become `ObjectType.FILE`, not `ObjectType.NOTEBOOK`) was derived from
-  the SDK's `import_()` docstring and Databricks' own CLI/REST
-  documentation, cross-checked with real method signatures -- but not
-  from an actual live import followed by inspecting the resulting
-  object's type, nor from a real Lakeflow pipeline update successfully
-  resolving the resulting glob-include library against those files. This
-  needs a real `run-all` (or at least `workspace.upload_pipeline_sources`
-  followed by a manual pipeline update) against a confirmed-safe workspace
-  to consider proven.
+- **Live-confirmed (2026-09-23): the pipeline's serverless creation path
+  works, and `workspace.py`'s FILE-vs-NOTEBOOK upload/glob distinction is
+  correct.** A real `run-all` reached `lab09_taxi_pipeline`
+  (`pipeline_id=9fcf88d2-8dac-4e2a-91e6-e89407c4fe92`, `serverless: true`),
+  and every one of 6 pipeline update attempts reached `runtime_details`
+  (Databricks' own event log confirms the `/Workspace/Users/.../lab09/pipeline/**`
+  glob resolved `bronze.py`/`silver.py`/`gold.py` as valid pipeline source
+  every single time) before failing later, at Unity Catalog table
+  creation -- see "Landing schema vs. pipeline output schema" above. The
+  classic-fallback branch of `ensure_pipeline`/`upload_pipeline_sources`
+  remains unexercised live, since serverless has not been rejected here.
+- **Live-confirmed (2026-09-23): `dbr_dev.parvinbadalov` (the landing
+  schema, shared with every other lab/demo in this Personal workspace) has
+  hit Unity Catalog's per-schema table-count quota**
+  (`QUOTA_EXCEEDED.UC_RESOURCE_QUOTA_EXCEEDED`, ~100+ existing tables
+  against a limit of 100) -- this, not the workspace path, was the actual
+  cause of all 6 failed pipeline updates. Fixed non-destructively (no
+  existing tables/schemas were touched) by giving Lab 9's pipeline outputs
+  their own dedicated schema, `dbr_dev.lab09` (`pipeline.target_schema`),
+  via the new `volumes.ensure_output_schema()`; the reconciliation
+  notebook now receives that schema (and all four table names) via
+  `NotebookTask.base_parameters` instead of relying on its own hardcoded
+  defaults. **This fix itself has not yet been confirmed by a successful
+  live pipeline update against `dbr_dev.lab09`** -- that is the next
+  proposed live step, not yet run.
 - `taxi_zone_lookup.csv`'s schema (`LocationID`, `Borough`, `Zone`,
   `service_zone`) and the specific values for LocationID 264/265 were
   confirmed by downloading the real, current file directly from

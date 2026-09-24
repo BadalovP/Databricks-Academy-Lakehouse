@@ -148,6 +148,34 @@ def test_ensure_pipeline_updates_existing_pipeline_to_serverless_when_it_succeed
     assert kwargs["serverless"] is True
 
 
+def test_ensure_pipeline_updates_existing_pipeline_to_dedicated_output_schema():
+    """Reuses the existing persistent pipeline (never creates a duplicate)
+    while retargeting it to the dedicated dbr_dev.lab09 output schema --
+    the non-destructive fix for dbr_dev.parvinbadalov's UC table-count quota.
+    """
+    client = _autospec_client()
+    existing = MagicMock()
+    existing.name = "lab09_taxi_pipeline"
+    existing.pipeline_id = "9fcf88d2-8dac-4e2a-91e6-e89407c4fe92"
+    client.pipelines.list_pipelines.return_value = [existing]
+
+    cfg = _cfg()
+    cfg["pipeline"]["target_schema"] = "lab09"
+
+    pipeline_id, used_serverless = pipelines.ensure_pipeline(
+        client, cfg, "/Workspace/Users/parvinbadalov@yahoo.com/lab09/pipeline"
+    )
+
+    assert pipeline_id == "9fcf88d2-8dac-4e2a-91e6-e89407c4fe92"
+    assert used_serverless is True
+    client.pipelines.create.assert_not_called()
+    client.pipelines.update.assert_called_once()
+    _, kwargs = client.pipelines.update.call_args
+    assert kwargs["pipeline_id"] == "9fcf88d2-8dac-4e2a-91e6-e89407c4fe92"
+    assert kwargs["catalog"] == "dbr_dev"
+    assert kwargs["target"] == "lab09"
+
+
 def test_ensure_pipeline_falls_back_to_classic_when_existing_pipeline_serverless_update_rejected():
     """The defect this guards against: an EXISTING pipeline was previously just
     updated with serverless=<preference> with no fallback at all -- claiming

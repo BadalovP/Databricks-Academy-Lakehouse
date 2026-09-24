@@ -10,6 +10,14 @@
 # consciously. See README.md "Security model" for the full explanation.
 
 catalog: dbr_dev
+
+# LANDING/INPUT schema only -- this is where the Files API landing volume
+# (below) lives, nothing else. It is deliberately NOT the same schema Lab 9's
+# pipeline writes its bronze/silver/quarantine/gold tables into -- see
+# pipeline.target_schema below for that, and README.md "Known limitations"
+# for why they were split (dbr_dev.parvinbadalov already holds ~100+ tables
+# from other labs/demos and hit Unity Catalog's per-schema
+# UC_RESOURCE_QUOTA_EXCEEDED table-count limit live).
 schema: parvinbadalov
 volume: lab09_landing
 
@@ -45,7 +53,27 @@ workspace:
 
 pipeline:
   name: "lab09_taxi_pipeline"
-  target_schema: parvinbadalov
+  # OUTPUT schema (bronze/silver/quarantine/gold tables) -- deliberately
+  # separate from the top-level `schema:` above (the landing/input schema
+  # holding the volume). Confirmed live, 2026-09-23 (personal-yahoo
+  # profile): every one of lab09_taxi_pipeline's 6 update attempts against
+  # target_schema=parvinbadalov reached runtime initialization (the
+  # /Workspace/Users/.../lab09/pipeline/** source glob resolved correctly
+  # every time -- this was never a workspace-path problem) but then failed
+  # identically with:
+  #   [UNITY_CATALOG_INITIALIZATION_FAILED] ErrorClass=
+  #   QUOTA_EXCEEDED.UC_RESOURCE_QUOTA_EXCEEDED Cannot create 1 Table(s) in
+  #   Schema 16e388e4-4f7d-4ea7-9a83-26c44917aced (estimated count: 112,
+  #   limit: 100).
+  # That schema ID is dbr_dev.parvinbadalov (confirmed via `schemas get`) --
+  # it already holds ~100+ tables from other labs/demos sharing this
+  # Personal workspace and has hit Unity Catalog's per-schema table-count
+  # quota. Rather than deleting any of that pre-existing, unrelated data,
+  # Lab 9's pipeline OUTPUT tables get their own dedicated schema
+  # (dbr_dev.lab09, created idempotently by volumes.ensure_output_schema()
+  # if missing). The landing Volume itself is NOT moved -- it stays at
+  # /Volumes/dbr_dev/parvinbadalov/lab09_landing/ (see `schema:` above).
+  target_schema: lab09
   prefer_serverless: true
   # Only consulted if serverless pipeline creation is rejected by the
   # workspace (see pipelines.py's fallback path).

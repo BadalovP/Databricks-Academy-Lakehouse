@@ -25,7 +25,13 @@ def _cfg(tmp_path) -> dict:
         "schema": "parvinbadalov",
         "volume": "lab09_landing",
         "months": ["2024-01"],
-        "pipeline": {"name": "lab09_taxi_pipeline", "target_schema": "parvinbadalov"},
+        "pipeline": {"name": "lab09_taxi_pipeline", "target_schema": "lab09"},
+        "tables": {
+            "bronze": "lab09_taxi_bronze",
+            "silver": "lab09_taxi_silver",
+            "quarantine": "lab09_taxi_quarantine",
+            "gold": "lab09_taxi_daily_summary",
+        },
         "job": {"name": "lab09_taxi_reconciliation_job", "task_key": "reconcile_counts"},
         "monitoring": {
             "pipeline_timeout_seconds": 10,
@@ -47,6 +53,7 @@ def _patch_common_success_path(monkeypatch):
         cli.preflight, "run_preflight", lambda *a, **k: SimpleNamespace(passed=True, checks=[])
     )
     monkeypatch.setattr(cli.volumes, "ensure_volume", MagicMock())
+    monkeypatch.setattr(cli.volumes, "ensure_output_schema", MagicMock())
     monkeypatch.setattr(
         cli.landing,
         "land_next_month",
@@ -349,6 +356,36 @@ def test_cli_override_takes_precedence_over_config_preferred_mode(tmp_path, monk
     assert exit_code == 0
     report = json.loads((tmp_path / "report.json").read_text())
     assert report["compute_mode"] == "explicit_cluster"
+
+
+def test_run_all_ensures_dedicated_output_schema_before_creating_pipeline(tmp_path, monkeypatch):
+    """The non-destructive quota fix: run-all must create-or-get the
+    pipeline's dedicated OUTPUT schema before ensure_pipeline() runs, and
+    must never touch/reference the landing volume's schema while doing so.
+    """
+    cfg = _cfg(tmp_path)
+    _patch_common_success_path(monkeypatch)
+    _forbid_cluster_calls(monkeypatch)
+
+    call_order: list[str] = []
+    ensure_output_schema_mock = MagicMock(side_effect=lambda *a, **k: call_order.append("schema"))
+    monkeypatch.setattr(cli.volumes, "ensure_output_schema", ensure_output_schema_mock)
+    ensure_pipeline_mock = MagicMock(
+        side_effect=lambda *a, **k: call_order.append("pipeline") or ("pipeline-1", True)
+    )
+    monkeypatch.setattr(cli.pipelines, "ensure_pipeline", ensure_pipeline_mock)
+
+    ensure_job_mock = MagicMock(return_value=42)
+    reset_job_cluster_mock = MagicMock()
+    _patch_job_success_path(monkeypatch, ensure_job_mock, reset_job_cluster_mock)
+
+    client = MagicMock()
+    exit_code = cli.cmd_run_all(client, cfg, SimpleNamespace(compute_mode="serverless_job"))
+
+    assert exit_code == 0
+    ensure_output_schema_mock.assert_called_once_with(client, cfg)
+    ensure_pipeline_mock.assert_called_once()
+    assert call_order == ["schema", "pipeline"]
 
 
 def test_build_parser_accepts_compute_mode_choices():
