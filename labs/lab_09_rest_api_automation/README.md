@@ -444,6 +444,17 @@ target-schema-change rejection included, but not limited to it --
 propagates immediately instead of triggering a second, likely-doomed API
 call.
 
+**Final safety guard: `pipeline.allow_classic_fallback` (`config/dev.yml`,
+default `false`).** Even when `_is_serverless_capability_rejection()` does
+recognize a genuine serverless-capability rejection, `_create_pipeline()`/
+`_update_pipeline()` only act on it (call `_classic_clusters()` and attempt
+a classic pipeline create/update) if `pipeline.allow_classic_fallback` is
+explicitly `true`. This project's own `config/dev.yml` sets it to `false`
+deliberately: pipeline execution against this Personal workspace must stay
+strictly serverless, and a rejection should surface as a loud failure, not
+a silent switch to classic compute. Other workspaces that still need the
+classic fallback set it to `true` in their own config.
+
 This alone is not sufficient, though: the reconciliation notebook
 (`notebooks/01_reconcile_counts.py`) has its own hardcoded widget defaults
 (`dbutils.widgets.text("schema", "parvinbadalov")`) that would silently

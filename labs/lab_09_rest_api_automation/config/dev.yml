@@ -92,8 +92,19 @@ pipeline:
   # /Volumes/dbr_dev/parvinbadalov/lab09_landing/ (see `schema:` above).
   target_schema: lab09
   prefer_serverless: true
-  # Only consulted if serverless pipeline creation is rejected by the
-  # workspace (see pipelines.py's fallback path).
+  # Final safety guard for this Personal workspace: if serverless pipeline
+  # create/update is ever rejected for a genuine serverless-capability
+  # reason (see pipelines.py's _is_serverless_capability_rejection()), do
+  # NOT fall back to classic pipeline compute -- propagate the error
+  # immediately instead. _classic_clusters() is never called and no
+  # classic pipeline create/update is ever attempted while this is false.
+  # Pipeline execution against this workspace must stay strictly
+  # serverless. Other workspaces that still need the classic fallback can
+  # set this to true in their own config.
+  allow_classic_fallback: false
+  # Only consulted if allow_classic_fallback is true AND serverless
+  # pipeline creation is rejected by the workspace (see pipelines.py's
+  # fallback path).
   classic_node_type_hint: null
   classic_num_workers: 1
 

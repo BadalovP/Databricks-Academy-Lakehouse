@@ -4,6 +4,16 @@ Pipeline compute is provisioned and managed by the pipeline itself (either
 serverless, or the classic fallback cluster definition below) -- it is a
 separate concern from compute.py's temporary notebook-job cluster. Never
 assume they are the same compute.
+
+config/dev.yml's `pipeline.allow_classic_fallback` gates whether a genuine
+serverless-capability rejection (see _is_serverless_capability_rejection())
+may fall back to classic pipeline compute at all. It defaults to False:
+unless a workspace's config explicitly sets it to True, a serverless
+rejection propagates immediately and `_classic_clusters()` is never called
+and no classic pipeline create/update is ever attempted. This project's own
+config/dev.yml sets it to False deliberately -- this Personal workspace's
+pipeline execution must stay strictly serverless. Other workspaces that
+still need the classic fallback set it to True in their own config.
 """
 
 from __future__ import annotations
@@ -138,6 +148,7 @@ def _create_pipeline(
     (pipeline_id, used_serverless) reflecting what actually happened.
     """
     prefer_serverless = bool(cfg["pipeline"].get("prefer_serverless", True))
+    allow_classic_fallback = bool(cfg["pipeline"].get("allow_classic_fallback", False))
 
     if prefer_serverless:
         try:
@@ -153,6 +164,15 @@ def _create_pipeline(
             return created.pipeline_id, True
         except SERVERLESS_REJECTION_ERRORS as exc:
             if not _is_serverless_capability_rejection(exc):
+                raise
+            if not allow_classic_fallback:
+                logger.error(
+                    "Serverless pipeline creation was rejected (%s: %s) and "
+                    "pipeline.allow_classic_fallback is false -- re-raising instead of "
+                    "attempting classic pipeline compute for this workspace.",
+                    type(exc).__name__,
+                    exc,
+                )
                 raise
             logger.warning(
                 "Serverless pipeline creation was rejected (%s: %s); falling back to "
@@ -189,6 +209,7 @@ def _update_pipeline(
     happened -- never assumed from configuration preference alone.
     """
     prefer_serverless = bool(cfg["pipeline"].get("prefer_serverless", True))
+    allow_classic_fallback = bool(cfg["pipeline"].get("allow_classic_fallback", False))
 
     if prefer_serverless:
         try:
@@ -205,6 +226,15 @@ def _update_pipeline(
             return True
         except SERVERLESS_REJECTION_ERRORS as exc:
             if not _is_serverless_capability_rejection(exc):
+                raise
+            if not allow_classic_fallback:
+                logger.error(
+                    "Serverless pipeline update was rejected (%s: %s) and "
+                    "pipeline.allow_classic_fallback is false -- re-raising instead of "
+                    "attempting classic pipeline compute for this workspace.",
+                    type(exc).__name__,
+                    exc,
+                )
                 raise
             logger.warning(
                 "Serverless pipeline update was rejected (%s: %s); falling back to "

@@ -11,13 +11,19 @@ def _autospec_client() -> MagicMock:
     return create_autospec(WorkspaceClient, instance=True)
 
 
-def _cfg(prefer_serverless: bool = True) -> dict:
+def _cfg(prefer_serverless: bool = True, allow_classic_fallback: bool = True) -> dict:
+    """allow_classic_fallback defaults to True here so this shared fixture
+    represents an "other workspace" that still wants the classic fallback
+    (pipelines.py itself defaults to False -- see config/dev.yml, which sets
+    it to False explicitly for the Personal workspace this project targets).
+    """
     return {
         "catalog": "dbr_dev",
         "pipeline": {
             "name": "lab09_taxi_pipeline",
             "target_schema": "parvinbadalov",
             "prefer_serverless": prefer_serverless,
+            "allow_classic_fallback": allow_classic_fallback,
             "classic_node_type_hint": None,
             "classic_num_workers": 1,
         },
@@ -352,6 +358,106 @@ def test_ensure_pipeline_update_unrelated_invalid_parameter_value_still_falls_ba
     assert pipeline_id == "existing-id"
     assert used_serverless is False
     assert client.pipelines.update.call_count == 2
+
+
+# --- pipeline.allow_classic_fallback safety guard ---------------------------
+
+
+def test_ensure_pipeline_creates_serverless_normally_with_fallback_disabled():
+    """allow_classic_fallback=False must not affect the ordinary, successful
+    serverless path at all -- it only changes behavior on a rejection.
+    """
+    client = _autospec_client()
+    client.pipelines.list_pipelines.return_value = []
+    created = MagicMock()
+    created.pipeline_id = "new-id"
+    client.pipelines.create.return_value = created
+
+    pipeline_id, used_serverless = pipelines.ensure_pipeline(
+        client, _cfg(allow_classic_fallback=False), "/Workspace/Users/x/lab09/pipeline"
+    )
+
+    assert pipeline_id == "new-id"
+    assert used_serverless is True
+    client.pipelines.create.assert_called_once()
+    _, kwargs = client.pipelines.create.call_args
+    assert kwargs["serverless"] is True
+
+
+def test_ensure_pipeline_create_rejection_with_fallback_disabled_raises_immediately(monkeypatch):
+    """The final safety guard: with allow_classic_fallback=False, a genuine
+    serverless-capability rejection must propagate immediately.
+    _classic_clusters() must never be called and no classic pipeline
+    create is ever attempted, regardless of the serverless error.
+    """
+    client = _autospec_client()
+    client.pipelines.list_pipelines.return_value = []
+    client.pipelines.create.side_effect = InvalidParameterValue(
+        "serverless is not enabled for this workspace"
+    )
+    classic_clusters_mock = MagicMock(
+        side_effect=AssertionError(
+            "_classic_clusters must never be called when allow_classic_fallback is false"
+        )
+    )
+    monkeypatch.setattr(pipelines, "_classic_clusters", classic_clusters_mock)
+
+    with pytest.raises(InvalidParameterValue, match="serverless is not enabled"):
+        pipelines.ensure_pipeline(
+            client, _cfg(allow_classic_fallback=False), "/Workspace/Users/x/lab09/pipeline"
+        )
+
+    # No second, classic-compute create attempt.
+    client.pipelines.create.assert_called_once()
+    classic_clusters_mock.assert_not_called()
+    client.clusters.list_node_types.assert_not_called()
+
+
+def test_ensure_pipeline_update_rejection_with_fallback_disabled_raises_immediately(monkeypatch):
+    """Same safety guard on the update (existing-pipeline) path."""
+    client = _autospec_client()
+    existing = MagicMock()
+    existing.name = "lab09_taxi_pipeline"
+    existing.pipeline_id = "existing-id"
+    client.pipelines.list_pipelines.return_value = [existing]
+    client.pipelines.update.side_effect = PermissionDenied(
+        "serverless pipelines are not enabled for this workspace"
+    )
+    classic_clusters_mock = MagicMock(
+        side_effect=AssertionError(
+            "_classic_clusters must never be called when allow_classic_fallback is false"
+        )
+    )
+    monkeypatch.setattr(pipelines, "_classic_clusters", classic_clusters_mock)
+
+    with pytest.raises(PermissionDenied):
+        pipelines.ensure_pipeline(
+            client, _cfg(allow_classic_fallback=False), "/Workspace/Users/x/lab09/pipeline"
+        )
+
+    client.pipelines.update.assert_called_once()
+    classic_clusters_mock.assert_not_called()
+    client.clusters.list_node_types.assert_not_called()
+
+
+def test_ensure_pipeline_fallback_defaults_to_disabled_when_key_absent():
+    """Safe-by-default: a config that omits allow_classic_fallback entirely
+    must behave as if it were false, matching config/dev.yml's explicit
+    `allow_classic_fallback: false` for this strictly-serverless workspace.
+    """
+    client = _autospec_client()
+    client.pipelines.list_pipelines.return_value = []
+    client.pipelines.create.side_effect = InvalidParameterValue(
+        "serverless is not enabled for this workspace"
+    )
+
+    cfg = _cfg()
+    del cfg["pipeline"]["allow_classic_fallback"]
+
+    with pytest.raises(InvalidParameterValue):
+        pipelines.ensure_pipeline(client, cfg, "/Workspace/Users/x/lab09/pipeline")
+
+    client.pipelines.create.assert_called_once()
 
 
 def test_ensure_pipeline_update_does_not_swallow_unrelated_errors():
