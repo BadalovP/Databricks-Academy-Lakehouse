@@ -358,22 +358,72 @@ def test_cli_override_takes_precedence_over_config_preferred_mode(tmp_path, monk
     assert report["compute_mode"] == "explicit_cluster"
 
 
-def test_run_all_ensures_dedicated_output_schema_before_creating_pipeline(tmp_path, monkeypatch):
-    """The non-destructive quota fix: run-all must create-or-get the
-    pipeline's dedicated OUTPUT schema before ensure_pipeline() runs, and
-    must never touch/reference the landing volume's schema while doing so.
+def test_run_all_follows_the_required_step_order(tmp_path, monkeypatch):
+    """run-all must follow this exact order: ensure volume -> ensure output
+    schema -> upload pipeline sources -> upload notebook -> ensure/create
+    the pipeline -> land_next_month -> ensure reference CSV -> start_update.
+
+    In particular, ensure_pipeline() must run before land_next_month() (a
+    pipeline-side failure should be caught before wastefully
+    downloading/uploading a new month -- confirmed live, 2026-09-24, when
+    the reverse order landed 2024-03 and only then discovered the pipeline
+    update was rejected), and both pipeline source/notebook uploads must
+    happen before the pipeline resource is created/updated.
     """
     cfg = _cfg(tmp_path)
     _patch_common_success_path(monkeypatch)
     _forbid_cluster_calls(monkeypatch)
 
     call_order: list[str] = []
-    ensure_output_schema_mock = MagicMock(side_effect=lambda *a, **k: call_order.append("schema"))
-    monkeypatch.setattr(cli.volumes, "ensure_output_schema", ensure_output_schema_mock)
-    ensure_pipeline_mock = MagicMock(
-        side_effect=lambda *a, **k: call_order.append("pipeline") or ("pipeline-1", True)
+    monkeypatch.setattr(
+        cli.volumes,
+        "ensure_output_schema",
+        MagicMock(side_effect=lambda *a, **k: call_order.append("ensure_output_schema")),
     )
-    monkeypatch.setattr(cli.pipelines, "ensure_pipeline", ensure_pipeline_mock)
+    monkeypatch.setattr(
+        cli.workspace,
+        "upload_pipeline_sources",
+        MagicMock(side_effect=lambda *a, **k: call_order.append("upload_pipeline_sources")),
+    )
+    monkeypatch.setattr(
+        cli.workspace,
+        "upload_notebook",
+        MagicMock(
+            side_effect=lambda *a, **k: call_order.append("upload_notebook")
+            or "/Workspace/Users/x/lab09/notebooks/01_reconcile_counts"
+        ),
+    )
+    monkeypatch.setattr(
+        cli.pipelines,
+        "ensure_pipeline",
+        MagicMock(
+            side_effect=lambda *a, **k: call_order.append("ensure_pipeline") or ("pipeline-1", True)
+        ),
+    )
+    monkeypatch.setattr(
+        cli.landing,
+        "land_next_month",
+        MagicMock(
+            side_effect=lambda *a, **k: call_order.append("land_next_month")
+            or LandingResult(
+                status="SUCCESS",
+                month="2024-01",
+                month_landed=True,
+                file_bytes=123,
+                volume_path="/Volumes/dbr_dev/parvinbadalov/lab09_landing/trips/yellow_tripdata_2024-01.parquet",
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        cli.landing,
+        "ensure_reference_csv",
+        MagicMock(side_effect=lambda *a, **k: call_order.append("ensure_reference_csv")),
+    )
+    monkeypatch.setattr(
+        cli.pipelines,
+        "start_update",
+        MagicMock(side_effect=lambda *a, **k: call_order.append("start_update") or "update-1"),
+    )
 
     ensure_job_mock = MagicMock(return_value=42)
     reset_job_cluster_mock = MagicMock()
@@ -383,9 +433,15 @@ def test_run_all_ensures_dedicated_output_schema_before_creating_pipeline(tmp_pa
     exit_code = cli.cmd_run_all(client, cfg, SimpleNamespace(compute_mode="serverless_job"))
 
     assert exit_code == 0
-    ensure_output_schema_mock.assert_called_once_with(client, cfg)
-    ensure_pipeline_mock.assert_called_once()
-    assert call_order == ["schema", "pipeline"]
+    assert call_order == [
+        "ensure_output_schema",
+        "upload_pipeline_sources",
+        "upload_notebook",
+        "ensure_pipeline",
+        "land_next_month",
+        "ensure_reference_csv",
+        "start_update",
+    ]
 
 
 def test_build_parser_accepts_compute_mode_choices():

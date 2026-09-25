@@ -379,10 +379,70 @@ Volume is **not** moved -- input data stays exactly where it was:
 
 `volumes.ensure_output_schema()` (same create-or-get-only-if-`NotFound`
 discipline as `ensure_volume()`) creates `dbr_dev.lab09` idempotently if it
-doesn't already exist; `run-all` calls it right after `ensure_volume()`,
-before the pipeline is created/updated. The existing persistent pipeline
-(`9fcf88d2-...`) is **reused and retargeted** via `ensure_pipeline()`'s
-existing update path (`catalog=dbr_dev, target=lab09`) -- never duplicated.
+doesn't already exist; `run-all` calls it right after `ensure_volume()`.
+
+**Retargeting the existing pipeline in place turned out to be impossible --
+confirmed live, 2026-09-24, not assumed.** Attempting to update
+`lab09_taxi_pipeline` (`pipeline_id=9fcf88d2-8dac-4e2a-91e6-e89407c4fe92`)
+to `target=lab09` failed with:
+
+```text
+InvalidParameterValue: Changing target schema is not allowed. Reason: DLT
+does not yet support changing target schema of a pipeline that uses an
+Default Storage catalog. Please create a new pipeline if you need to
+change the target schema.
+```
+
+This is a genuine Databricks platform restriction -- a Default-Storage-
+catalog DLT pipeline's target schema can only be chosen at creation time,
+never changed afterward -- not a bug in this project's fallback logic (the
+code's existing serverless->classic fallback correctly retried the update
+as classic compute, since `InvalidParameterValue` is its rejection signal,
+but the classic attempt failed identically, since the restriction is about
+changing target schema at all, independent of compute type). The fix: a
+**new** pipeline, `lab09_taxi_pipeline_v2` (`config/dev.yml`'s
+`pipeline.name`), created fresh targeting `dbr_dev.lab09` from the start
+(creation has no such restriction). The original `lab09_taxi_pipeline`
+(`9fcf88d2-...`) is **left permanently untouched** -- nothing was deleted,
+renamed, or retargeted. `ensure_pipeline()` itself never migrates an
+existing pipeline's target schema; see its docstring.
+
+Because that failure has nothing to do with landing a new month's data,
+`run-all`'s step order is now:
+
+```text
+preflight -> ensure volume -> ensure dbr_dev.lab09 -> upload bronze/silver/gold
+-> upload reconciliation notebook -> ensure/create lab09_taxi_pipeline_v2
+-> land_next_month -> ensure reference CSV -> start_update
+```
+
+Pipeline source files and the notebook are uploaded *before* the pipeline
+resource is created/updated, so its source glob always points at real,
+already-uploaded content the moment the pipeline exists. `ensure_pipeline()`
+then runs *before* `land_next_month()`, so a pipeline-side failure is
+caught before wastefully downloading/uploading a new month -- exactly what
+happened on the live attempt that surfaced this restriction (2024-03 was
+landed, then the pipeline step failed). `land_next_month()` still runs
+before `pipelines.start_update()`, since the pipeline needs real landed
+data to process.
+
+This also exposed a real latent defect in the serverless->classic fallback
+itself: it treated **any** `InvalidParameterValue` as "serverless was
+rejected, retry as classic," which meant it wastefully retried this exact
+target-schema-change error as classic compute (and failed identically)
+instead of surfacing the real error immediately. Excluding only that one
+observed message would still be wrong, though -- the Pipelines/Jobs API
+can raise `InvalidParameterValue` for many other unrelated reasons (a bad
+catalog name, a malformed library path, ...) that also have nothing to do
+with serverless support. `pipelines.py`'s `_is_serverless_capability_rejection()`
+is therefore a **positive allow-list**, not a denylist: an
+`InvalidParameterValue` is only ever treated as a genuine
+serverless-capability rejection if its message unambiguously says
+serverless itself is unavailable/unsupported (e.g. contains "serverless is
+not enabled"); every other `InvalidParameterValue` -- the
+target-schema-change rejection included, but not limited to it --
+propagates immediately instead of triggering a second, likely-doomed API
+call.
 
 This alone is not sufficient, though: the reconciliation notebook
 (`notebooks/01_reconcile_counts.py`) has its own hardcoded widget defaults
@@ -693,9 +753,16 @@ from Lab 8's `lab08_cicd.yml` (not modified by this PR), scoped to
   via the new `volumes.ensure_output_schema()`; the reconciliation
   notebook now receives that schema (and all four table names) via
   `NotebookTask.base_parameters` instead of relying on its own hardcoded
-  defaults. **This fix itself has not yet been confirmed by a successful
-  live pipeline update against `dbr_dev.lab09`** -- that is the next
-  proposed live step, not yet run.
+  defaults. **Retargeting the existing pipeline to `dbr_dev.lab09` was then
+  attempted live (2026-09-24) and failed** -- not because of the schema
+  quota fix, but because of a separate, genuine Databricks platform
+  restriction (a Default-Storage-catalog DLT pipeline's target schema
+  cannot be changed via update, only chosen at creation); see "Landing
+  schema vs. pipeline output schema" above for the exact error and the
+  fix (a new pipeline, `lab09_taxi_pipeline_v2`, targeting `dbr_dev.lab09`
+  from creation). **A successful live pipeline update/run against
+  `dbr_dev.lab09` has still not yet been confirmed** -- that remains the
+  next proposed live step.
 - `taxi_zone_lookup.csv`'s schema (`LocationID`, `Borough`, `Zone`,
   `service_zone`) and the specific values for LocationID 264/265 were
   confirmed by downloading the real, current file directly from

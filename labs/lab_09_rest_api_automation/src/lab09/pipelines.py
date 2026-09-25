@@ -27,6 +27,53 @@ logger = logging.getLogger(__name__)
 # instead of surfacing the real problem.
 SERVERLESS_REJECTION_ERRORS = (PermissionDenied, InvalidParameterValue)
 
+# Confirmed live (2026-09-24, personal-yahoo profile): updating an EXISTING
+# pipeline's target schema raises InvalidParameterValue with a message that
+# has NOTHING to do with serverless-vs-classic compute support --
+# "Changing target schema is not allowed. Reason: DLT does not yet support
+# changing target schema of a pipeline that uses an Default Storage
+# catalog. Please create a new pipeline if you need to change the target
+# schema." Blindly treating every InvalidParameterValue as "serverless was
+# rejected, retry as classic" made the code retry that exact same update
+# call as classic compute, which failed with the identical error (a
+# platform restriction on changing target schema at all, independent of
+# compute type) -- a wasted, pointless second API call that also delayed
+# surfacing the real, actionable error.
+#
+# A denylist that excludes only that one observed message would still be
+# wrong: the Pipelines/Jobs API can raise InvalidParameterValue for many
+# other completely unrelated reasons (a bad catalog name, an invalid
+# library path, a malformed cluster policy reference, ...), and none of
+# those should be silently reinterpreted as "try classic compute instead"
+# either. This is therefore a POSITIVE allow-list: an InvalidParameterValue
+# is only ever treated as a genuine serverless-capability rejection if its
+# message unambiguously says serverless itself is unavailable/unsupported.
+# Every other InvalidParameterValue -- the target-schema-change rejection
+# included, but not limited to it -- propagates immediately instead of
+# triggering a second, likely-doomed API call.
+_SERVERLESS_REJECTION_MESSAGE_PATTERNS = (
+    "serverless is not enabled",
+    "serverless is not supported",
+    "serverless is not available",
+    "serverless pipelines are not enabled",
+    "serverless compute is not enabled",
+    "serverless compute is not supported",
+    "does not support serverless",
+)
+
+
+def _is_serverless_capability_rejection(exc: Exception) -> bool:
+    """True only for an error that unambiguously says serverless compute
+    itself is unavailable/unsupported -- see module-level comment above for
+    why this is a positive allow-list, not a denylist.
+    """
+    if isinstance(exc, PermissionDenied):
+        return True
+    if isinstance(exc, InvalidParameterValue):
+        message = str(exc).lower()
+        return any(pattern in message for pattern in _SERVERLESS_REJECTION_MESSAGE_PATTERNS)
+    return False
+
 
 def find_pipeline_by_name(client: WorkspaceClient, name: str):
     """Return the existing Lab 9 pipeline with this exact name, or None."""
@@ -105,6 +152,8 @@ def _create_pipeline(
             logger.info("Created serverless pipeline %s (id=%s).", name, created.pipeline_id)
             return created.pipeline_id, True
         except SERVERLESS_REJECTION_ERRORS as exc:
+            if not _is_serverless_capability_rejection(exc):
+                raise
             logger.warning(
                 "Serverless pipeline creation was rejected (%s: %s); falling back to "
                 "classic pipeline compute.",
@@ -155,6 +204,8 @@ def _update_pipeline(
             logger.info("Updated pipeline %s (id=%s) to serverless compute.", name, pipeline_id)
             return True
         except SERVERLESS_REJECTION_ERRORS as exc:
+            if not _is_serverless_capability_rejection(exc):
+                raise
             logger.warning(
                 "Serverless pipeline update was rejected (%s: %s); falling back to "
                 "classic pipeline compute.",
@@ -185,6 +236,15 @@ def ensure_pipeline(
     Returns (pipeline_id, used_serverless) reflecting what the create/update
     call that actually succeeded did -- never just the configured
     preference -- for both the creation and the update code path.
+
+    Note: this does NOT (and, per Databricks' own platform restriction,
+    cannot) migrate an existing pipeline to a different target schema --
+    see _is_serverless_capability_rejection()'s docstring. cfg["pipeline"]["name"]
+    must be a name that either doesn't exist yet, or already targets
+    cfg["pipeline"]["target_schema"]; config/dev.yml's comments explain why
+    this project renamed to "lab09_taxi_pipeline_v2" rather than reusing the
+    original "lab09_taxi_pipeline" (pipeline_id 9fcf88d2-...), which is left
+    untouched.
     """
     pipeline_cfg = cfg["pipeline"]
     name = pipeline_cfg["name"]

@@ -52,7 +52,24 @@ workspace:
   notebook_subpath: "notebooks"
 
 pipeline:
-  name: "lab09_taxi_pipeline"
+  # Renamed from "lab09_taxi_pipeline" to "lab09_taxi_pipeline_v2".
+  # Confirmed live (2026-09-24, personal-yahoo profile): retargeting the
+  # ORIGINAL pipeline (pipeline_id=9fcf88d2-8dac-4e2a-91e6-e89407c4fe92,
+  # still target=dbr_dev.parvinbadalov, still exists, deliberately left
+  # untouched) to target_schema=lab09 failed with:
+  #   InvalidParameterValue: Changing target schema is not allowed. Reason:
+  #   DLT does not yet support changing target schema of a pipeline that
+  #   uses an Default Storage catalog. Please create a new pipeline if you
+  #   need to change the target schema.
+  # This is a genuine Databricks platform restriction, not a bug in this
+  # project's code: an existing Default-Storage-catalog DLT pipeline's
+  # target schema can never be changed via update, only chosen at creation
+  # time. A brand-new pipeline name is therefore required to reach
+  # dbr_dev.lab09 -- ensure_pipeline() finds no existing
+  # "lab09_taxi_pipeline_v2" and creates it fresh, targeting dbr_dev.lab09
+  # from the start (creation has no such restriction). No pipeline,
+  # schema, table, volume, or job was deleted to make this change.
+  name: "lab09_taxi_pipeline_v2"
   # OUTPUT schema (bronze/silver/quarantine/gold tables) -- deliberately
   # separate from the top-level `schema:` above (the landing/input schema
   # holding the volume). Confirmed live, 2026-09-23 (personal-yahoo

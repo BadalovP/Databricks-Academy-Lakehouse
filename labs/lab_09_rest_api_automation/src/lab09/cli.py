@@ -162,14 +162,36 @@ def cmd_run_all(client: WorkspaceClient, cfg: dict[str, Any], args: argparse.Nam
         # 2. Create-or-get landing volume (input schema: cfg["schema"])
         volumes.ensure_volume(client, cfg)
 
-        # 2b. Create-or-get the pipeline's OUTPUT schema (cfg["pipeline"]["target_schema"]).
+        # 3. Create-or-get the pipeline's OUTPUT schema (cfg["pipeline"]["target_schema"]).
         # Deliberately separate from the landing schema above -- see
         # volumes.ensure_output_schema()'s docstring and README.md "Known
         # limitations" for why (dbr_dev.parvinbadalov hit Unity Catalog's
         # per-schema table-count quota live).
         volumes.ensure_output_schema(client, cfg)
 
-        # 3-5. Determine next month, download+validate, upload via Files API
+        # 4-5. Upload pipeline source files and the reconciliation notebook
+        # BEFORE the pipeline resource is created/updated below, so the
+        # pipeline's source glob always points at real, already-uploaded
+        # content the moment it exists.
+        workspace.upload_pipeline_sources(client, PIPELINE_SOURCE_DIR, cfg)
+        notebook_path = workspace.upload_notebook(client, NOTEBOOK_PATH, cfg)
+
+        # 6. Create-or-get the Lakeflow pipeline BEFORE landing any new
+        # month's data. Confirmed live (2026-09-24): a pipeline-side
+        # failure here (e.g. Databricks rejecting an existing
+        # Default-Storage-catalog pipeline's target-schema change -- see
+        # config/dev.yml's pipeline.name comment) has nothing to do with a
+        # specific month's data. Running this before land_next_month()
+        # means that failure is caught before wastefully
+        # downloading/uploading a new month, which is exactly what
+        # happened the first time this reordering was missing (2024-03 was
+        # landed, then the pipeline step failed).
+        pipeline_dir_ws = workspace.pipeline_source_dir(client, cfg)
+        pipeline_id, used_serverless = pipelines.ensure_pipeline(client, cfg, pipeline_dir_ws)
+        report.pipeline_id = pipeline_id
+        report.pipeline_serverless = used_serverless
+
+        # 7. Determine next month, download+validate, upload via Files API
         landing_result = landing.land_next_month(client, cfg)
         report.status = landing_result.status
         report.month = landing_result.month
@@ -177,18 +199,8 @@ def cmd_run_all(client: WorkspaceClient, cfg: dict[str, Any], args: argparse.Nam
         report.file_bytes = landing_result.file_bytes
         report.volume_path = landing_result.volume_path
 
-        # 6. Ensure reference CSV exists (uploaded once, never re-downloaded)
+        # 8. Ensure reference CSV exists (uploaded once, never re-downloaded)
         landing.ensure_reference_csv(client, cfg)
-
-        # 7. Upload notebook and all pipeline source files
-        workspace.upload_pipeline_sources(client, PIPELINE_SOURCE_DIR, cfg)
-        notebook_path = workspace.upload_notebook(client, NOTEBOOK_PATH, cfg)
-        pipeline_dir_ws = workspace.pipeline_source_dir(client, cfg)
-
-        # 8. Create-or-get Lakeflow pipeline (serverless, classic fallback if rejected)
-        pipeline_id, used_serverless = pipelines.ensure_pipeline(client, cfg, pipeline_dir_ws)
-        report.pipeline_id = pipeline_id
-        report.pipeline_serverless = used_serverless
 
         # 9. Start pipeline update
         update_id = pipelines.start_update(client, pipeline_id)
