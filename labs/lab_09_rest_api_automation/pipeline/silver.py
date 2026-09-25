@@ -161,9 +161,31 @@ def _tagged_and_zoned_bronze():
     return df.drop("_source_month", "_pickup_month")
 
 
+# Both lab09_taxi_silver and lab09_taxi_quarantine are built from
+# _tagged_and_zoned_bronze(), which reads lab09_taxi_bronze and retains its
+# tpep_pickup_datetime/tpep_dropoff_datetime columns unmodified -- Spark
+# infers these as TIMESTAMP_NTZ (no timezone) from the source parquet, and
+# neither function casts or converts them (see module docstring: no
+# timezone conversion is introduced here). Confirmed live (2026-09-25,
+# personal-yahoo profile, pipeline lab09_taxi_pipeline_v2, update
+# d6290227-9422-4e86-90f9-2eed6463fb62): creating lab09_taxi_quarantine
+# failed with
+#   [DELTA_FEATURES_REQUIRE_MANUAL_ENABLEMENT] Your table schema requires
+#   manually enablement of the following table feature(s): timestampNtz.
+# because a materialized_view's table creation, unlike the bronze streaming
+# table's, does not auto-enable this Delta protocol feature for a
+# TIMESTAMP_NTZ column. table_properties={"delta.feature.timestampNtz":
+# "supported"} declares it up front instead of requiring a manual
+# `ALTER TABLE ... SET TBLPROPERTIES` after the fact. See README.md "Known
+# limitations" for the live failure detail and the protocol-version
+# tradeoff this carries.
+_TIMESTAMP_NTZ_TABLE_PROPERTIES = {"delta.feature.timestampNtz": "supported"}
+
+
 @dp.materialized_view(
     name="lab09_taxi_silver",
     comment="NYC TLC Yellow Taxi rows that pass every Silver hard-validity rule.",
+    table_properties=_TIMESTAMP_NTZ_TABLE_PROPERTIES,
 )
 def lab09_taxi_silver():
     df = _tagged_and_zoned_bronze()
@@ -173,6 +195,7 @@ def lab09_taxi_silver():
 @dp.materialized_view(
     name="lab09_taxi_quarantine",
     comment="NYC TLC Yellow Taxi rows failing at least one Silver hard-validity rule, with reasons.",
+    table_properties=_TIMESTAMP_NTZ_TABLE_PROPERTIES,
 )
 def lab09_taxi_quarantine():
     df = _tagged_and_zoned_bronze()

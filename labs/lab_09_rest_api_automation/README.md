@@ -467,6 +467,79 @@ the job always overrides the notebook's defaults with the pipeline's
 actual output schema regardless of which of the three compute modes is
 selected.
 
+### Delta `timestampNtz` table feature
+
+**Confirmed live (2026-09-25, personal-yahoo profile):** with the
+`lab09_taxi_pipeline_v2` fix above finally in place, the pipeline update
+(`pipeline_id=33b50108-d51a-4feb-9995-f82b66aa5f11`,
+`update_id=d6290227-9422-4e86-90f9-2eed6463fb62`) got further than any
+previous attempt -- `lab09_taxi_bronze` was created successfully as a real
+`STREAMING_TABLE` -- but then failed creating `dbr_dev.lab09.lab09_taxi_quarantine`:
+
+```text
+[DELTA_FEATURES_REQUIRE_MANUAL_ENABLEMENT] Your table schema requires
+manually enablement of the following table feature(s): timestampNtz.
+
+To do this, run the following command for each of features listed above:
+  ALTER TABLE table_name SET TBLPROPERTIES ('delta.feature.feature_name' = 'supported')
+
+Current supported feature(s): appendOnly, changeDataFeed, deletionVectors,
+domainMetadata, invariants, rowTracking.
+```
+
+Root cause: the source parquet's `tpep_pickup_datetime`/`tpep_dropoff_datetime`
+columns are inferred by Auto Loader as Spark's `TIMESTAMP_NTZ` type (a
+naive timestamp with no timezone) -- `pipeline/bronze.py` retains them
+unmodified, and `pipeline/silver.py`'s `_tagged_and_zoned_bronze()` (shared
+by both `lab09_taxi_silver` and `lab09_taxi_quarantine`) reads them
+straight through from `lab09_taxi_bronze` without any cast or timezone
+conversion. Unity Catalog requires the `timestampNtz` Delta table feature
+to be explicitly enabled before a table containing that column type can be
+created; the bronze `STREAMING_TABLE` apparently enables it implicitly at
+creation, but a `materialized_view`'s table creation does not. Lakeflow's
+own `RETRY_ON_FAILURE` mechanism retried this exact failure 5 times on its
+own before giving up -- this is a deterministic schema/table-property gap,
+not a transient error.
+
+**Fix:** `pipeline/bronze.py`'s `@dp.table` and both of `pipeline/silver.py`'s
+`@dp.materialized_view` decorators (`lab09_taxi_silver` and
+`lab09_taxi_quarantine`) now declare
+`table_properties={"delta.feature.timestampNtz": "supported"}` --
+confirmed against the installed `pyspark==4.1.1`'s own decorator signature
+and docstring (`table_properties: Optional[Dict[str, str]]`, "these
+properties will be set on the table"), the same official, documented
+mechanism Databricks' Lakeflow Declarative Pipelines Python API uses for
+declaring Delta table properties at creation time, instead of a manual
+`ALTER TABLE ... SET TBLPROPERTIES` after the fact. Bronze did not
+strictly need it to succeed this time, but declares it defensively so a
+future full refresh/schema evolution of that table can't hit the same
+failure. `pipeline/gold.py`'s `lab09_taxi_daily_summary` deliberately does
+**not** declare it: its actual output schema only derives `pickup_date` (a
+`DATE`, not a timestamp) via `F.to_date()` from the raw column -- the raw
+`TIMESTAMP_NTZ` column itself is never selected into that view's schema.
+No validity rules, zone-join logic, table names, output schemas, landing
+paths, or reconciliation logic were changed; no timezone conversion was
+introduced; the original timestamp values and types are preserved exactly
+as read from the source files.
+
+**Tradeoff to be aware of:** enabling a table feature this way upgrades
+that table's Delta protocol version (specifically its writer protocol,
+since `timestampNtz` is a writer-only feature). This is a one-way change
+per table -- once enabled, the table can no longer be read or written by
+Delta clients/engines that predate `timestampNtz` support. For this
+project's purposes (Databricks-managed serverless Lakeflow pipeline and
+Databricks SQL warehouses only) this has no practical downside, but it is
+not a fully reversible, no-consequence setting change, and should not be
+applied to a table that must stay readable by an older, non-Databricks
+Delta client.
+
+**Not yet confirmed live:** whether this fix actually lets
+`lab09_taxi_silver`, `lab09_taxi_quarantine`, and `lab09_taxi_daily_summary`
+get created successfully, whether the reconciliation invariant
+(`bronze_rows == silver_valid_rows + rejected_rows`) holds, and whether the
+serverless reconciliation Job then runs successfully end to end. That is
+the next proposed live step, not yet run.
+
 ### CI identity vs. local identity
 
 **Phase 0, if and when it is run, only proves the permissions of the
@@ -771,9 +844,14 @@ from Lab 8's `lab08_cicd.yml` (not modified by this PR), scoped to
   cannot be changed via update, only chosen at creation); see "Landing
   schema vs. pipeline output schema" above for the exact error and the
   fix (a new pipeline, `lab09_taxi_pipeline_v2`, targeting `dbr_dev.lab09`
-  from creation). **A successful live pipeline update/run against
-  `dbr_dev.lab09` has still not yet been confirmed** -- that remains the
-  next proposed live step.
+  from creation). **That new pipeline was then created and run live
+  (2026-09-25)** and progressed further than any previous attempt --
+  `lab09_taxi_bronze` was created successfully -- **but failed creating
+  `lab09_taxi_quarantine` with a separate, genuine Delta table-feature gap
+  (`timestampNtz`)**; see "Delta `timestampNtz` table feature" above for
+  the exact error and the fix. **A successful live pipeline update/run
+  against `dbr_dev.lab09` has still not yet been confirmed** -- that
+  remains the next proposed live step.
 - `taxi_zone_lookup.csv`'s schema (`LocationID`, `Borough`, `Zone`,
   `service_zone`) and the specific values for LocationID 264/265 were
   confirmed by downloading the real, current file directly from

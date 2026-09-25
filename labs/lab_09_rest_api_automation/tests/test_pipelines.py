@@ -217,30 +217,39 @@ def test_ensure_pipeline_reuses_v2_without_touching_v1_when_both_exist():
     assert kwargs["pipeline_id"] != v1.pipeline_id
 
 
-def test_ensure_pipeline_updates_existing_pipeline_to_dedicated_output_schema():
-    """Reuses the existing persistent pipeline (never creates a duplicate)
-    while retargeting it to the dedicated dbr_dev.lab09 output schema --
-    the non-destructive fix for dbr_dev.parvinbadalov's UC table-count quota.
+def test_ensure_pipeline_updates_existing_v2_pipeline_whose_target_is_already_lab09():
+    """Reuses the existing v2 persistent pipeline (never creates a
+    duplicate) on an ordinary repeat run, where it already targets
+    dbr_dev.lab09 from its own creation.
+
+    This deliberately does NOT model retargeting an existing pipeline to a
+    *different* schema -- confirmed live (2026-09-24) that Databricks
+    rejects that outright for a Default-Storage-catalog DLT pipeline (see
+    test_ensure_pipeline_update_target_schema_rejection_propagates_without_classic_fallback
+    below), which is exactly why this project uses a separate pipeline,
+    lab09_taxi_pipeline_v2, created targeting dbr_dev.lab09 from the start,
+    rather than ever retargeting the original lab09_taxi_pipeline (v1).
     """
     client = _autospec_client()
     existing = MagicMock()
-    existing.name = "lab09_taxi_pipeline"
-    existing.pipeline_id = "9fcf88d2-8dac-4e2a-91e6-e89407c4fe92"
+    existing.name = "lab09_taxi_pipeline_v2"
+    existing.pipeline_id = "33b50108-d51a-4feb-9995-f82b66aa5f11"
     client.pipelines.list_pipelines.return_value = [existing]
 
     cfg = _cfg()
+    cfg["pipeline"]["name"] = "lab09_taxi_pipeline_v2"
     cfg["pipeline"]["target_schema"] = "lab09"
 
     pipeline_id, used_serverless = pipelines.ensure_pipeline(
         client, cfg, "/Workspace/Users/parvinbadalov@yahoo.com/lab09/pipeline"
     )
 
-    assert pipeline_id == "9fcf88d2-8dac-4e2a-91e6-e89407c4fe92"
+    assert pipeline_id == "33b50108-d51a-4feb-9995-f82b66aa5f11"
     assert used_serverless is True
     client.pipelines.create.assert_not_called()
     client.pipelines.update.assert_called_once()
     _, kwargs = client.pipelines.update.call_args
-    assert kwargs["pipeline_id"] == "9fcf88d2-8dac-4e2a-91e6-e89407c4fe92"
+    assert kwargs["pipeline_id"] == "33b50108-d51a-4feb-9995-f82b66aa5f11"
     assert kwargs["catalog"] == "dbr_dev"
     assert kwargs["target"] == "lab09"
 

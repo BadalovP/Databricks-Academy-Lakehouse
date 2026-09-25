@@ -20,6 +20,13 @@ from pyspark import pipelines as dp
 from pyspark.sql import functions as F
 
 
+# Deliberately no table_properties={"delta.feature.timestampNtz": ...} here,
+# unlike silver.py's outputs: this table's actual output schema does not
+# retain a TIMESTAMP_NTZ column at all. tpep_pickup_datetime is only used
+# below to derive pickup_date via F.to_date(), which produces a DateType
+# column, not a timestamp; the raw TIMESTAMP_NTZ column itself is never
+# selected/aggregated into this view. See silver.py for where and why that
+# property genuinely is required.
 @dp.materialized_view(
     name="lab09_taxi_daily_summary",
     comment="Daily trip-count and revenue summary by pickup date and pickup borough/zone.",

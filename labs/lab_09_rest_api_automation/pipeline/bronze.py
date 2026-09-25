@@ -39,6 +39,18 @@ def _landing_trips_path() -> str:
 @dp.table(
     name="lab09_taxi_bronze",
     comment="Raw NYC TLC Yellow Taxi trip records ingested by Auto Loader from the Lab 9 landing volume.",
+    # The source parquet's tpep_pickup_datetime/tpep_dropoff_datetime columns
+    # are inferred by Auto Loader as Spark's TIMESTAMP_NTZ type (no timezone),
+    # carried through unmodified into this table. Confirmed live
+    # (2026-09-25, personal-yahoo profile, pipeline lab09_taxi_pipeline_v2):
+    # this streaming table itself was created successfully without this
+    # property, so it is not strictly required here today -- but declaring
+    # it defensively means a later full refresh / schema evolution of this
+    # table can't hit the same DELTA_FEATURES_REQUIRE_MANUAL_ENABLEMENT
+    # failure that silver.py's derived tables did (see silver.py). See
+    # README.md "Known limitations" for the full live failure and the
+    # Delta protocol-version tradeoff this table feature carries.
+    table_properties={"delta.feature.timestampNtz": "supported"},
 )
 def lab09_taxi_bronze():
     return (
