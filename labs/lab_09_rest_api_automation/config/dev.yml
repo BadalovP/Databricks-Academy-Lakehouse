@@ -53,9 +53,9 @@ workspace:
 
 pipeline:
   # Renamed from "lab09_taxi_pipeline" to "lab09_taxi_pipeline_v2".
-  # Confirmed live (2026-09-24, personal-yahoo profile): retargeting the
-  # ORIGINAL pipeline (pipeline_id=9fcf88d2-8dac-4e2a-91e6-e89407c4fe92,
-  # still target=dbr_dev.parvinbadalov, still exists, deliberately left
+  # Confirmed live (2026-09-24, against a confirmed-safe non-Azure-PROD
+  # Personal workspace profile): retargeting the ORIGINAL pipeline
+  # (still target=dbr_dev.parvinbadalov, still exists, deliberately left
   # untouched) to target_schema=lab09 failed with:
   #   InvalidParameterValue: Changing target schema is not allowed. Reason:
   #   DLT does not yet support changing target schema of a pipeline that
@@ -72,16 +72,15 @@ pipeline:
   name: "lab09_taxi_pipeline_v2"
   # OUTPUT schema (bronze/silver/quarantine/gold tables) -- deliberately
   # separate from the top-level `schema:` above (the landing/input schema
-  # holding the volume). Confirmed live, 2026-09-23 (personal-yahoo
-  # profile): every one of lab09_taxi_pipeline's 6 update attempts against
-  # target_schema=parvinbadalov reached runtime initialization (the
-  # /Workspace/Users/.../lab09/pipeline/** source glob resolved correctly
-  # every time -- this was never a workspace-path problem) but then failed
-  # identically with:
+  # holding the volume). Confirmed live, 2026-09-23 (same confirmed-safe
+  # Personal workspace profile): every one of lab09_taxi_pipeline's 6
+  # update attempts against target_schema=parvinbadalov reached runtime
+  # initialization (the /Workspace/Users/.../lab09/pipeline/** source glob
+  # resolved correctly every time -- this was never a workspace-path
+  # problem) but then failed identically with:
   #   [UNITY_CATALOG_INITIALIZATION_FAILED] ErrorClass=
   #   QUOTA_EXCEEDED.UC_RESOURCE_QUOTA_EXCEEDED Cannot create 1 Table(s) in
-  #   Schema 16e388e4-4f7d-4ea7-9a83-26c44917aced (estimated count: 112,
-  #   limit: 100).
+  #   the landing schema (estimated count: 112, limit: 100).
   # That schema ID is dbr_dev.parvinbadalov (confirmed via `schemas get`) --
   # it already holds ~100+ tables from other labs/demos sharing this
   # Personal workspace and has hit Unity Catalog's per-schema table-count
@@ -149,11 +148,11 @@ compute:
   # README.md "Cluster fallback behavior" and "Known limitations".
   preferred_mode: serverless_job
   preferred_mode_reason: >-
-    Phase 0 (2026-09-24, personal-yahoo profile) confirmed explicit
-    clusters.create() fails with: BadRequest: Current organization
-    7474653929863069 does not have any associated worker environments.
-    This is a workspace/organization-level classic-compute limitation,
-    not a permission problem. See evidence/phase0_2026-09-24.json.
+    Phase 0 (2026-09-24, confirmed-safe Personal workspace profile)
+    confirmed explicit clusters.create() fails with: BadRequest: Current
+    organization does not have any associated worker environments. This
+    is a workspace/organization-level classic-compute limitation, not a
+    permission problem. See evidence/phase0_2026-09-24.json.
 
 job:
   name: "lab09_taxi_reconciliation_job"

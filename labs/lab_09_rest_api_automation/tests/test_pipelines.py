@@ -163,7 +163,7 @@ def test_ensure_pipeline_creates_v2_without_touching_v1_when_only_v1_exists():
     client = _autospec_client()
     v1 = MagicMock()
     v1.name = "lab09_taxi_pipeline"
-    v1.pipeline_id = "9fcf88d2-8dac-4e2a-91e6-e89407c4fe92"
+    v1.pipeline_id = "v1-existing-id"
     client.pipelines.list_pipelines.return_value = [v1]
     created = MagicMock()
     created.pipeline_id = "v2-new-id"
@@ -174,7 +174,7 @@ def test_ensure_pipeline_creates_v2_without_touching_v1_when_only_v1_exists():
     cfg["pipeline"]["target_schema"] = "lab09"
 
     pipeline_id, used_serverless = pipelines.ensure_pipeline(
-        client, cfg, "/Workspace/Users/parvinbadalov@yahoo.com/lab09/pipeline"
+        client, cfg, "/Workspace/Users/someone@example.com/lab09/pipeline"
     )
 
     assert pipeline_id == "v2-new-id"
@@ -194,7 +194,7 @@ def test_ensure_pipeline_reuses_v2_without_touching_v1_when_both_exist():
     client = _autospec_client()
     v1 = MagicMock()
     v1.name = "lab09_taxi_pipeline"
-    v1.pipeline_id = "9fcf88d2-8dac-4e2a-91e6-e89407c4fe92"
+    v1.pipeline_id = "v1-existing-id"
     v2 = MagicMock()
     v2.name = "lab09_taxi_pipeline_v2"
     v2.pipeline_id = "v2-existing-id"
@@ -205,7 +205,7 @@ def test_ensure_pipeline_reuses_v2_without_touching_v1_when_both_exist():
     cfg["pipeline"]["target_schema"] = "lab09"
 
     pipeline_id, used_serverless = pipelines.ensure_pipeline(
-        client, cfg, "/Workspace/Users/parvinbadalov@yahoo.com/lab09/pipeline"
+        client, cfg, "/Workspace/Users/someone@example.com/lab09/pipeline"
     )
 
     assert pipeline_id == "v2-existing-id"
@@ -233,7 +233,7 @@ def test_ensure_pipeline_updates_existing_v2_pipeline_whose_target_is_already_la
     client = _autospec_client()
     existing = MagicMock()
     existing.name = "lab09_taxi_pipeline_v2"
-    existing.pipeline_id = "33b50108-d51a-4feb-9995-f82b66aa5f11"
+    existing.pipeline_id = "v2-pipeline-id"
     client.pipelines.list_pipelines.return_value = [existing]
 
     cfg = _cfg()
@@ -241,15 +241,15 @@ def test_ensure_pipeline_updates_existing_v2_pipeline_whose_target_is_already_la
     cfg["pipeline"]["target_schema"] = "lab09"
 
     pipeline_id, used_serverless = pipelines.ensure_pipeline(
-        client, cfg, "/Workspace/Users/parvinbadalov@yahoo.com/lab09/pipeline"
+        client, cfg, "/Workspace/Users/someone@example.com/lab09/pipeline"
     )
 
-    assert pipeline_id == "33b50108-d51a-4feb-9995-f82b66aa5f11"
+    assert pipeline_id == "v2-pipeline-id"
     assert used_serverless is True
     client.pipelines.create.assert_not_called()
     client.pipelines.update.assert_called_once()
     _, kwargs = client.pipelines.update.call_args
-    assert kwargs["pipeline_id"] == "33b50108-d51a-4feb-9995-f82b66aa5f11"
+    assert kwargs["pipeline_id"] == "v2-pipeline-id"
     assert kwargs["catalog"] == "dbr_dev"
     assert kwargs["target"] == "lab09"
 

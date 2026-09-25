@@ -249,13 +249,13 @@ attempt/fallback at all. Whichever mode is used, the exact same persistent
 Lab 9 job is reused (never a new duplicate), and the report's
 `compute_mode` field records which one actually ran.
 
-**Live Phase 0 testing against the confirmed-safe `personal-yahoo`
-workspace (`dbc-1750318a-76a9.cloud.databricks.com`) found that explicit
+**Live Phase 0 testing against a confirmed-safe, non-Azure-PROD Personal
+Databricks workspace found that explicit
 `clusters.create()` does not work in this specific
 workspace/organization**: `preflight --probe-cluster-create` (see
 `evidence/phase0_2026-09-24.json`) failed with `TimeoutError: Timed out
 after 0:05:00 | caused by BadRequest: Current organization
-7474653929863069 does not have any associated worker environments`. This
+<redacted-org-id> does not have any associated worker environments`. This
 is a genuine backend/organization-level limitation (this Personal
 workspace has no "worker environment" provisioned for classic compute),
 not a permission problem (the identity has the `allow-cluster-create`
@@ -315,9 +315,8 @@ either.
 ### Lab requirement vs. Personal workspace reality
 
 The Lab 9 task literally asks the automation to **create clusters**. The
-Personal workspace this project has actually tested against
-(`personal-yahoo`) cannot do that for classic compute -- proven live, not
-assumed (see above). This is a genuine gap between the literal task
+Personal workspace this project has actually tested against cannot do
+that for classic compute -- proven live, not assumed (see above). This is a genuine gap between the literal task
 wording and what this specific workspace supports, and it is worth
 stating plainly rather than papering over with a fallback that quietly
 changes what was actually demonstrated. Two compliance interpretations
@@ -344,10 +343,10 @@ has and has not actually been run live.
 
 ### Landing schema vs. pipeline output schema
 
-Confirmed live (`personal-yahoo`, 2026-09-23): `lab09_taxi_pipeline`
-(`pipeline_id=9fcf88d2-8dac-4e2a-91e6-e89407c4fe92`) is correctly
+Confirmed live (against the same confirmed-safe Personal workspace,
+2026-09-23): `lab09_taxi_pipeline` (the original pipeline) is correctly
 configured with its source glob at
-`/Workspace/Users/parvinbadalov@yahoo.com/lab09/pipeline/**` -- this is
+`/Workspace/Users/<redacted-identity>/lab09/pipeline/**` -- this is
 **not** a workspace-path problem, and Lab 9's runtime files were never
 moved into the Git checkout. Every one of 6 pipeline update attempts
 reached `runtime_details` (confirming the glob resolved bronze.py /
@@ -355,7 +354,7 @@ silver.py / gold.py correctly each time) before failing identically with:
 
 ```text
 [UNITY_CATALOG_INITIALIZATION_FAILED] ErrorClass=QUOTA_EXCEEDED.UC_RESOURCE_QUOTA_EXCEEDED
-Cannot create 1 Table(s) in Schema 16e388e4-4f7d-4ea7-9a83-26c44917aced
+Cannot create 1 Table(s) in the landing schema
 (estimated count: 112, limit: 100).
 ```
 
@@ -383,7 +382,7 @@ doesn't already exist; `run-all` calls it right after `ensure_volume()`.
 
 **Retargeting the existing pipeline in place turned out to be impossible --
 confirmed live, 2026-09-24, not assumed.** Attempting to update
-`lab09_taxi_pipeline` (`pipeline_id=9fcf88d2-8dac-4e2a-91e6-e89407c4fe92`)
+`lab09_taxi_pipeline` (the original pipeline)
 to `target=lab09` failed with:
 
 ```text
@@ -469,10 +468,9 @@ selected.
 
 ### Delta `timestampNtz` table feature
 
-**Confirmed live (2026-09-25, personal-yahoo profile):** with the
-`lab09_taxi_pipeline_v2` fix above finally in place, the pipeline update
-(`pipeline_id=33b50108-d51a-4feb-9995-f82b66aa5f11`,
-`update_id=d6290227-9422-4e86-90f9-2eed6463fb62`) got further than any
+**Confirmed live (2026-09-25, same confirmed-safe Personal workspace
+profile):** with the `lab09_taxi_pipeline_v2` fix above finally in place,
+the pipeline update got further than any
 previous attempt -- `lab09_taxi_bronze` was created successfully as a real
 `STREAMING_TABLE` -- but then failed creating `dbr_dev.lab09.lab09_taxi_quarantine`:
 
@@ -533,12 +531,20 @@ not a fully reversible, no-consequence setting change, and should not be
 applied to a table that must stay readable by an older, non-Databricks
 Delta client.
 
-**Not yet confirmed live:** whether this fix actually lets
-`lab09_taxi_silver`, `lab09_taxi_quarantine`, and `lab09_taxi_daily_summary`
-get created successfully, whether the reconciliation invariant
-(`bronze_rows == silver_valid_rows + rejected_rows`) holds, and whether the
-serverless reconciliation Job then runs successfully end to end. That is
-the next proposed live step, not yet run.
+**Confirmed live (2026-09-25):** this fix works. A single, targeted
+pipeline update (not a full `run-all`) reached `COMPLETED` with zero error
+events -- `lab09_taxi_silver`, `lab09_taxi_quarantine`, and
+`lab09_taxi_daily_summary` were all created successfully alongside the
+already-existing `lab09_taxi_bronze`. A subsequent single, targeted
+serverless reconciliation Job run (also not via `run-all`) then reached
+`SUCCESS` and confirmed the reconciliation invariant with real data:
+`bronze_rows(13,069,067) == silver_valid_rows(12,624,925) +
+rejected_rows(444,142)`. See `evidence/LIVE_VALIDATION_SUMMARY.md` for the
+full sanitized write-up (row counts, per-rule rejection counts, and table
+types) and "Known limitations" below for what this does and does not
+prove. **A full `run-all` execution incorporating this fix has not yet
+been run end to end** -- both validations above were separate, targeted,
+single API calls, not one continuous `run-all` invocation.
 
 ### CI identity vs. local identity
 
@@ -691,12 +697,12 @@ outer cleanup/report path.
 
 ```bash
 # From labs/lab_09_rest_api_automation, with a real profile:
-python -m lab09.cli --profile personal-yahoo preflight
-python -m lab09.cli --profile personal-yahoo preflight --probe-cluster-create
-python -m lab09.cli --profile personal-yahoo run-all
-python -m lab09.cli --profile personal-yahoo status
-python -m lab09.cli --profile personal-yahoo cleanup --reset-landing
-python -m lab09.cli --profile personal-yahoo cleanup --reset-landing --reset-reference
+python -m lab09.cli --profile <your-confirmed-safe-profile> preflight
+python -m lab09.cli --profile <your-confirmed-safe-profile> preflight --probe-cluster-create
+python -m lab09.cli --profile <your-confirmed-safe-profile> run-all
+python -m lab09.cli --profile <your-confirmed-safe-profile> status
+python -m lab09.cli --profile <your-confirmed-safe-profile> cleanup --reset-landing
+python -m lab09.cli --profile <your-confirmed-safe-profile> cleanup --reset-landing --reset-reference
 
 # Or via explicit host/token env vars (the pattern GitHub Actions uses):
 DATABRICKS_HOST=... DATABRICKS_TOKEN=... python -m lab09.cli run-all
@@ -759,6 +765,24 @@ from Lab 8's `lab08_cicd.yml` (not modified by this PR), scoped to
   `DATABRICKS_PERSONAL_TOKEN` variable/secret pair rather than introducing
   new ones; this PR does not create, modify, or rotate any GitHub secret,
   variable, or environment protection rule.
+- **Privacy remediation in progress:** a later review found that this
+  branch had committed `evidence/phase0_2026-09-24.json` with the real
+  workspace hostname, authenticated identity email, organization ID, and
+  internal cluster-policy IDs -- a genuine oversight, since this repository
+  is public. This did not include any credential, token, or secret; the
+  affected identifiers were the workspace's own hostname/email/IDs, not
+  auth material. The file has been replaced in place with a sanitized
+  version (masked identifiers, unchanged diagnostic content). **The
+  original, unsanitized content still exists in this branch's earlier Git
+  history** -- removing it there entirely would require rewriting that
+  history and force-pushing, which is a separate, higher-risk action
+  requiring its own explicit authorization and is not part of this fix.
+  `README.md`, `config/dev.yml`, and `tests/test_pipelines.py` also
+  reference the same real hostname/email/organization ID/pipeline IDs in
+  their currently-committed content (mostly as narrative/evidentiary
+  detail or test fixture values, not credentials); minimal corrections for
+  those are recommended but not yet applied -- see the PR discussion for
+  the specific findings.
 
 ## 14. Known limitations
 
@@ -774,11 +798,10 @@ from Lab 8's `lab08_cicd.yml` (not modified by this PR), scoped to
   `job_cluster` mode has still never been exercised live either way (see
   below), so this fix itself remains live-unverified too.
 - **Phase 0 (the lightweight checks plus the full `--probe-cluster-create`
-  live probe) has now been run against the confirmed-safe `personal-yahoo`
-  profile** (`https://dbc-1750318a-76a9.cloud.databricks.com`, identity
-  `parvinbadalov@yahoo.com`, confirmed via `databricks auth describe` /
-  `current-user me` before any mutation) -- see
-  `evidence/phase0_2026-09-24.json`. All lightweight checks passed for
+  live probe) has now been run against a confirmed-safe, non-Azure-PROD
+  Personal workspace profile** (identity confirmed via
+  `databricks auth describe` / `current-user me` before any mutation) --
+  see `evidence/phase0_2026-09-24.json`. All lightweight checks passed for
   real: `authenticated_identity`, `spark_runtimes_listed`,
   `node_types_listed`, `cluster_policies_listed`, `catalog_access`,
   `schema_access`, `volume_access` (the Lab 9 volume was actually
@@ -787,7 +810,7 @@ from Lab 8's `lab08_cicd.yml` (not modified by this PR), scoped to
 - **`cluster_create_probe` genuinely fails in this workspace** --
   confirmed root cause, not assumed: `TimeoutError: Timed out after
   0:05:00 | caused by BadRequest: Current organization
-  7474653929863069 does not have any associated worker environments`.
+  <redacted-org-id> does not have any associated worker environments`.
   This organization has no backend "worker environment" for classic
   compute; `allow-cluster-create` being present in this identity's
   entitlements does not change that, since it is an infrastructure-level
@@ -811,14 +834,15 @@ from Lab 8's `lab08_cicd.yml` (not modified by this PR), scoped to
   the classic-compute failure has been confirmed; see "Lab requirement vs.
   Personal workspace reality" for the two open compliance interpretations
   this leaves for the literal "create clusters" task requirement.
-- Phase 0 was run under `parvinbadalov@yahoo.com` via the `personal-yahoo`
-  profile. This only proves that identity's permissions -- it does **not**
+- Phase 0 was run under one specific identity via a confirmed-safe
+  Personal workspace profile. This only proves that identity's
+  permissions -- it does **not**
   prove GitHub Actions CI's own identity does, since CI authenticates with
   its own secret-backed token (`DATABRICKS_PERSONAL_TOKEN`).
 - **Live-confirmed (2026-09-23): the pipeline's serverless creation path
   works, and `workspace.py`'s FILE-vs-NOTEBOOK upload/glob distinction is
   correct.** A real `run-all` reached `lab09_taxi_pipeline`
-  (`pipeline_id=9fcf88d2-8dac-4e2a-91e6-e89407c4fe92`, `serverless: true`),
+  (the original pipeline, `serverless: true`),
   and every one of 6 pipeline update attempts reached `runtime_details`
   (Databricks' own event log confirms the `/Workspace/Users/.../lab09/pipeline/**`
   glob resolved `bronze.py`/`silver.py`/`gold.py` as valid pipeline source
@@ -849,9 +873,16 @@ from Lab 8's `lab08_cicd.yml` (not modified by this PR), scoped to
   `lab09_taxi_bronze` was created successfully -- **but failed creating
   `lab09_taxi_quarantine` with a separate, genuine Delta table-feature gap
   (`timestampNtz`)**; see "Delta `timestampNtz` table feature" above for
-  the exact error and the fix. **A successful live pipeline update/run
-  against `dbr_dev.lab09` has still not yet been confirmed** -- that
-  remains the next proposed live step.
+  the exact error and the fix. **That fix was then confirmed live
+  (2026-09-25) with a single, targeted pipeline update**: all four tables
+  were created successfully and the update reached `COMPLETED`. **A
+  single, targeted serverless reconciliation Job run then also succeeded**,
+  confirming the reconciliation invariant against real data -- see
+  `evidence/LIVE_VALIDATION_SUMMARY.md` for the sanitized row counts. **Both
+  validations were separate, targeted API calls, not a single `run-all`
+  invocation -- a full `run-all` execution incorporating this fix has not
+  yet been run end to end**, and should not be described as proven until it
+  is.
 - `taxi_zone_lookup.csv`'s schema (`LocationID`, `Borough`, `Zone`,
   `service_zone`) and the specific values for LocationID 264/265 were
   confirmed by downloading the real, current file directly from
@@ -865,28 +896,48 @@ from Lab 8's `lab08_cicd.yml` (not modified by this PR), scoped to
 
 ## 15. Evidence section
 
-See `evidence/README.md` and `evidence/phase0_2026-09-24.json` -- the
-first real live evidence for this lab: a full `preflight
---probe-cluster-create` run against the confirmed-safe `personal-yahoo`
-workspace. All lightweight checks (identity, catalog/schema/volume access,
-a real Files API round trip, pipeline list permission) passed for real;
-the cluster-create probe found a genuine, confirmed backend limitation in
-this specific organization (see "Cluster fallback behavior" and "Known
-limitations"). No `run-all` evidence exists yet -- that still requires a
-separate, explicitly authorized live execution.
+**`evidence/LIVE_VALIDATION_SUMMARY.md`** is the sanitized, GitHub-suitable
+summary of everything proven live so far (Phase 0, the classic-compute
+limitation, why the pipeline was replaced, the `timestampNtz` fix, the
+successful pipeline update, the successful reconciliation Job, all four
+table names/types, real row counts, and the confirmed reconciliation
+invariant) -- read that first. It also states plainly what is *not* yet
+proven: a single `run-all` execution succeeding end to end.
+
+Dated pipeline-update and reconciliation-Job evidence files from the
+targeted live validations summarized above exist locally only, containing
+this project's actual workspace hostname, authenticated identity, and
+internal resource IDs -- kept for this project's own traceability but
+deliberately never committed. **`evidence/phase0_2026-09-24.json` was an
+exception to that discipline**: an earlier commit on this branch published
+it *with* those same identifiers. That was a privacy oversight, since this
+repository is public -- it has since been replaced in place with a
+sanitized version (see that file's own `sanitization_note` field), but the
+original, unsanitized content remains reachable in this branch's earlier
+Git history, since it has not been rewritten. See "Security model" above
+for the full remediation status. See `evidence/README.md` for the
+indexing convention. **No *successful* `run-all` evidence exists yet** --
+a *failed* `run-all` attempt's report does exist (predating the
+`timestampNtz` fix; it failed at the pipeline step) and is preserved, not
+hidden. A full end-to-end `run-all` run against the current, fixed
+configuration still requires a separate, explicitly authorized live
+execution.
 
 ## 16. How a supervisor can reproduce the demo
 
 1. Confirm which `~/.databrickscfg` profile (or `DATABRICKS_HOST`/
    `DATABRICKS_TOKEN` pair) points at the intended DEV/academy workspace --
    do not trust a profile's name alone; this repository has profiles named
-   `dev` that are not actually a separate dev workspace. `personal-yahoo`
-   (`https://dbc-1750318a-76a9.cloud.databricks.com`) has been explicitly
-   confirmed safe and is used throughout this section's evidence.
+   `dev` that are not actually a separate dev workspace. A separate,
+   dedicated profile pointing at a confirmed-safe, genuinely different,
+   non-Azure-PROD Personal workspace has been explicitly confirmed safe
+   and is used throughout this section's evidence (its name is
+   deliberately not published here).
 2. `cd labs/lab_09_rest_api_automation && pip install -e . -r requirements-dev.txt`
 3. `python -m lab09.cli --profile <confirmed-profile> preflight --probe-cluster-create`
    and review the JSON output, especially `cluster_create_supported` and
-   `ci_identity_caveat`. Against `personal-yahoo` specifically, expect
+   `ci_identity_caveat`. Against that confirmed-safe Personal workspace
+   specifically, expect
    `cluster_create_supported: false` -- see "Known limitations" for why,
    and use `--compute-mode serverless_job` (or rely on `auto`, which
    already reads `config/dev.yml`'s `compute.preferred_mode:
