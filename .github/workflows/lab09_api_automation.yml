@@ -1,0 +1,124 @@
+# LAB 09 - Databricks REST API Automation
+#
+# Pull requests and pushes run only static/test gates (Ruff, Black, pytest)
+# against mocked Databricks SDK clients -- no live Databricks resources are
+# ever touched by a `pull_request` or `push` event. This mirrors Lab 8's own
+# split between PR-safe validation and gated live execution
+# (.github/workflows/lab08_cicd.yml), but Lab 9 is a fully separate
+# workflow: it is never dispatched or triggered by Lab 8's file changes, and
+# this file does not modify lab08_cicd.yml.
+#
+# A manual `workflow_dispatch` run additionally requires an approval gate
+# before running the live Lab 9 automation (`python -m lab09.cli run-all`).
+# `run-live-automation` itself references the `lab09-live-approval` GitHub
+# Environment -- that alone is what triggers the required-reviewers prompt,
+# so there is no separate dummy approval job duplicating the same gate (a
+# second job also referencing this environment would just make a human
+# approve the identical protected-environment prompt twice for one
+# dispatch). The `lab09-live-approval` environment's required-reviewers
+# rule must be configured once in the repository's GitHub UI (Settings ->
+# Environments) -- this workflow file only references the environment by
+# name and cannot create that protection rule itself.
+#
+# The live job REQUIRES the DATABRICKS_PERSONAL_HOST repository variable
+# and DATABRICKS_PERSONAL_TOKEN repository secret to already be set -- the
+# same Personal-workspace pair Lab 8 already uses, reused here rather than
+# introducing new ones. There is deliberately no hardcoded host fallback:
+# an unset variable fails the run with a clear message instead of silently
+# resolving against some other workspace. This workflow never targets
+# Azure PROD.
+#
+# No step in this workflow prints or logs a token. Secrets are only ever
+# passed as step `env:` values.
+name: LAB 09 REST API Automation
+
+on:
+  pull_request:
+    paths:
+      - "labs/lab_09_rest_api_automation/**"
+      - ".github/workflows/lab09_api_automation.yml"
+  push:
+    branches: [main]
+    paths:
+      - "labs/lab_09_rest_api_automation/**"
+      - ".github/workflows/lab09_api_automation.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lab09-api-automation
+  cancel-in-progress: false
+
+env:
+  LAB09_ROOT: labs/lab_09_rest_api_automation
+
+jobs:
+  static-checks:
+    name: Static Checks and Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: labs/lab_09_rest_api_automation
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package and dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . -r requirements-dev.txt
+      - name: Ruff
+        run: ruff check .
+      - name: Black
+        run: black --check .
+      - name: Pytest (mocked WorkspaceClient only -- no live Databricks resources)
+        run: pytest
+
+  run-live-automation:
+    name: Run Lab 9 Live Automation
+    if: github.event_name == 'workflow_dispatch'
+    needs: static-checks
+    runs-on: ubuntu-latest
+    environment: lab09-live-approval
+    defaults:
+      run:
+        working-directory: labs/lab_09_rest_api_automation
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . -r requirements-dev.txt
+      - name: Verify required Databricks workspace configuration is set
+        env:
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_PERSONAL_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_PERSONAL_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DATABRICKS_HOST:-}" ]; then
+            echo "::error::DATABRICKS_PERSONAL_HOST repository variable is not set. Refusing to guess a Databricks workspace -- configure it in Settings -> Environments -> lab09-live-approval before dispatching this workflow."
+            exit 1
+          fi
+          if [ -z "${DATABRICKS_TOKEN:-}" ]; then
+            echo "::error::DATABRICKS_PERSONAL_TOKEN repository secret is not set."
+            exit 1
+          fi
+          echo "Required Databricks workspace configuration is present."
+      - name: Run Lab 9 automation end to end
+        env:
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_PERSONAL_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_PERSONAL_TOKEN }}
+        run: python -m lab09.cli run-all
+      - name: Upload Lab 9 run report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lab09-report-${{ github.run_id }}
+          path: labs/lab_09_rest_api_automation/evidence/lab09_report.json
+          if-no-files-found: warn

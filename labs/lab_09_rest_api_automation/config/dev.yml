@@ -1,0 +1,170 @@
+# LAB 09 - dev configuration
+#
+# This file intentionally does NOT pin a Databricks profile name. The
+# repository's local ~/.databrickscfg contains multiple profiles named "dev"
+# / "AZURE_DEV" that actually resolve to the Azure PROD host used by Lab 8
+# (adb-7405604503619901.1.azuredatabricks.net) -- a naming trap, not a real
+# separate dev workspace. Lab 9 therefore REQUIRES the profile to be passed
+# explicitly (--profile flag or DATABRICKS_CONFIG_PROFILE env var) rather
+# than guessing one from this file, so a human always makes that choice
+# consciously. See README.md "Security model" for the full explanation.
+
+catalog: dbr_dev
+
+# LANDING/INPUT schema only -- this is where the Files API landing volume
+# (below) lives, nothing else. It is deliberately NOT the same schema Lab 9's
+# pipeline writes its bronze/silver/quarantine/gold tables into -- see
+# pipeline.target_schema below for that, and README.md "Known limitations"
+# for why they were split (dbr_dev.parvinbadalov already holds ~100+ tables
+# from other labs/demos and hit Unity Catalog's per-schema
+# UC_RESOURCE_QUOTA_EXCEEDED table-count limit live).
+schema: parvinbadalov
+volume: lab09_landing
+
+# Ordered, explicit month list. land_next_month() always lands the first
+# entry in this list that is not yet present under the trips/ volume path.
+months:
+  - "2024-01"
+  - "2024-02"
+  - "2024-03"
+  - "2024-04"
+  - "2024-05"
+  - "2024-06"
+  - "2024-07"
+  - "2024-08"
+  - "2024-09"
+  - "2024-10"
+  - "2024-11"
+  - "2024-12"
+
+dataset:
+  trips_url_template: "https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_{month}.parquet"
+  zone_lookup_url: "https://d37ci6vzurychx.cloudfront.net/misc/taxi_zone_lookup.csv"
+  download_retries: 3
+  download_backoff_seconds: 2.0
+  download_timeout_seconds: 300
+
+workspace:
+  # Rendered against the authenticated identity at runtime:
+  # /Workspace/Users/<current-user>/lab09/...
+  root_subpath: "lab09"
+  pipeline_subpath: "pipeline"
+  notebook_subpath: "notebooks"
+
+pipeline:
+  # Renamed from "lab09_taxi_pipeline" to "lab09_taxi_pipeline_v2".
+  # Confirmed live (2026-09-24, against a confirmed-safe non-Azure-PROD
+  # Personal workspace profile): retargeting the ORIGINAL pipeline
+  # (still target=dbr_dev.parvinbadalov, still exists, deliberately left
+  # untouched) to target_schema=lab09 failed with:
+  #   InvalidParameterValue: Changing target schema is not allowed. Reason:
+  #   DLT does not yet support changing target schema of a pipeline that
+  #   uses an Default Storage catalog. Please create a new pipeline if you
+  #   need to change the target schema.
+  # This is a genuine Databricks platform restriction, not a bug in this
+  # project's code: an existing Default-Storage-catalog DLT pipeline's
+  # target schema can never be changed via update, only chosen at creation
+  # time. A brand-new pipeline name is therefore required to reach
+  # dbr_dev.lab09 -- ensure_pipeline() finds no existing
+  # "lab09_taxi_pipeline_v2" and creates it fresh, targeting dbr_dev.lab09
+  # from the start (creation has no such restriction). No pipeline,
+  # schema, table, volume, or job was deleted to make this change.
+  name: "lab09_taxi_pipeline_v2"
+  # OUTPUT schema (bronze/silver/quarantine/gold tables) -- deliberately
+  # separate from the top-level `schema:` above (the landing/input schema
+  # holding the volume). Confirmed live, 2026-09-23 (same confirmed-safe
+  # Personal workspace profile): every one of lab09_taxi_pipeline's 6
+  # update attempts against target_schema=parvinbadalov reached runtime
+  # initialization (the /Workspace/Users/.../lab09/pipeline/** source glob
+  # resolved correctly every time -- this was never a workspace-path
+  # problem) but then failed identically with:
+  #   [UNITY_CATALOG_INITIALIZATION_FAILED] ErrorClass=
+  #   QUOTA_EXCEEDED.UC_RESOURCE_QUOTA_EXCEEDED Cannot create 1 Table(s) in
+  #   the landing schema (estimated count: 112, limit: 100).
+  # That schema ID is dbr_dev.parvinbadalov (confirmed via `schemas get`) --
+  # it already holds ~100+ tables from other labs/demos sharing this
+  # Personal workspace and has hit Unity Catalog's per-schema table-count
+  # quota. Rather than deleting any of that pre-existing, unrelated data,
+  # Lab 9's pipeline OUTPUT tables get their own dedicated schema
+  # (dbr_dev.lab09, created idempotently by volumes.ensure_output_schema()
+  # if missing). The landing Volume itself is NOT moved -- it stays at
+  # /Volumes/dbr_dev/parvinbadalov/lab09_landing/ (see `schema:` above).
+  target_schema: lab09
+  prefer_serverless: true
+  # Final safety guard for this Personal workspace: if serverless pipeline
+  # create/update is ever rejected for a genuine serverless-capability
+  # reason (see pipelines.py's _is_serverless_capability_rejection()), do
+  # NOT fall back to classic pipeline compute -- propagate the error
+  # immediately instead. _classic_clusters() is never called and no
+  # classic pipeline create/update is ever attempted while this is false.
+  # Pipeline execution against this workspace must stay strictly
+  # serverless. Other workspaces that still need the classic fallback can
+  # set this to true in their own config.
+  allow_classic_fallback: false
+  # Only consulted if allow_classic_fallback is true AND serverless
+  # pipeline creation is rejected by the workspace (see pipelines.py's
+  # fallback path).
+  classic_node_type_hint: null
+  classic_num_workers: 1
+
+tables:
+  bronze: lab09_taxi_bronze
+  silver: lab09_taxi_silver
+  quarantine: lab09_taxi_quarantine
+  gold: lab09_taxi_daily_summary
+
+compute:
+  autotermination_minutes: 20
+  single_node: true
+  # If set, must be the name of an existing cluster policy this identity is
+  # allowed to use. Left null means "no policy" and compute.py resolves
+  # node type / runtime dynamically instead of hardcoding either.
+  cluster_policy_name: null
+  # Optional hint (e.g. "Standard_DS3_v2" or "i3.xlarge"). If null,
+  # compute.py picks the smallest available non-deprecated node type.
+  node_type_hint: null
+  # Deliberate, evidence-backed compute-mode choice for THIS workspace.
+  # `run-all --compute-mode auto` (the default) uses this directly instead
+  # of attempting explicit_cluster first -- so a workspace already known
+  # to be incapable of classic compute never wastes time (and the SDK's
+  # own 5-minute internal HTTP retry-timeout) re-discovering that on every
+  # run. One of: "explicit_cluster" | "job_cluster" | "serverless_job" |
+  # null (null means "attempt explicit_cluster, fall back to job_cluster
+  # only on a genuine PermissionDenied/InvalidParameterValue rejection" --
+  # the legacy auto behavior, appropriate for a workspace with no known
+  # limitation yet).
+  #
+  # Set to serverless_job here because Phase 0 proved, live, against this
+  # exact profile/host (see evidence/phase0_2026-09-24.json), that
+  # explicit clusters.create() fails with a backend error --
+  # "Current organization ... does not have any associated worker
+  # environments" -- meaning this specific Databricks organization has no
+  # infrastructure for classic compute at all. A job-managed `new_cluster`
+  # (compute_mode=job_cluster) is ALSO classic compute under the hood and
+  # would be expected to fail the same way, so it is not the preferred
+  # next thing to try here -- serverless Jobs compute is the genuinely
+  # distinct Databricks-managed path for this workspace. This has NOT yet
+  # been confirmed by an actual successful serverless job run; see
+  # README.md "Cluster fallback behavior" and "Known limitations".
+  preferred_mode: serverless_job
+  preferred_mode_reason: >-
+    Phase 0 (2026-09-24, confirmed-safe Personal workspace profile)
+    confirmed explicit clusters.create() fails with: BadRequest: Current
+    organization does not have any associated worker environments. This
+    is a workspace/organization-level classic-compute limitation, not a
+    permission problem. See evidence/phase0_2026-09-24.json.
+
+job:
+  name: "lab09_taxi_reconciliation_job"
+  task_key: "reconcile_counts"
+
+monitoring:
+  pipeline_timeout_seconds: 2400
+  pipeline_poll_interval_seconds: 15
+  cluster_timeout_seconds: 900
+  cluster_poll_interval_seconds: 10
+  job_timeout_seconds: 1800
+  job_poll_interval_seconds: 15
+
+report:
+  output_path: "evidence/lab09_report.json"
