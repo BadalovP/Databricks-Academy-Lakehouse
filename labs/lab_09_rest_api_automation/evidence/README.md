@@ -4,10 +4,11 @@
 write-up of everything proven live against a confirmed-safe, non-Azure-PROD
 Personal Databricks workspace: Phase 0 and the classic-compute limitation,
 why the original pipeline was replaced, the `timestampNtz` table-feature
-fix, the successful pipeline update, the successful serverless
-reconciliation Job, all four output tables, real row counts, and the
-confirmed reconciliation invariant. It also states plainly what is *not*
-yet proven -- a single `run-all` execution succeeding end to end.
+fix, the staged targeted validations, and -- its headline result -- **a
+single `run-all` command succeeding completely end to end**, with all four
+output tables populated and the reconciliation invariant confirmed against
+real, five-month data. It also states plainly what remains *not* proven --
+the literal classic cluster-create requirement.
 
 This repository's local `~/.databrickscfg` has profiles literally named
 `dev` / `AZURE_DEV` that resolve to the same host as Lab 8's Azure PROD
@@ -47,17 +48,30 @@ files.
 
 ## Current status
 
-**No successful end-to-end `run-all` evidence exists yet.** A failed
-`run-all` attempt's report does exist (predating the `timestampNtz` fix;
-it failed at the pipeline step) and is preserved locally, not deleted or
-rewritten. Every *successful* live result documented in
-`LIVE_VALIDATION_SUMMARY.md` came from a separate, targeted, single,
+**A successful, complete end-to-end `run-all` execution now exists**
+(2026-09-26): one `python -m lab09.cli run-all --compute-mode
+serverless_job` command, run exactly once, landed a new month, drove the
+Lakeflow pipeline update to `COMPLETED` (zero errors, zero Databricks
+auto-retries), and ran the reconciliation Job to `SUCCESS` -- all in one
+continuous invocation, reusing the existing pipeline and existing Job
+(neither recreated). See `LIVE_VALIDATION_SUMMARY.md` section 8 for the
+full sanitized detail.
+
+An earlier *failed* `run-all` attempt's report also still exists
+(predating the `timestampNtz` fix; it failed at the pipeline step) and
+remains preserved locally, not deleted or overwritten without a backup --
+both outcomes are kept for an accurate history. Before it, every
+*successful* live result was obtained from a separate, targeted, single,
 explicitly authorized API call (one pipeline update, one Job run) made
-directly through this project's own helper functions -- not from `run-all`
-itself, and not from any automatic retry this project's own code
-initiated (Databricks' own platform-level retry behavior on the earlier
-failed attempts is documented separately in `LIVE_VALIDATION_SUMMARY.md`
-and is not something this project's code triggered or controls). A full
-end-to-end `run-all` run against the current, fixed configuration is the
-natural next step and still requires a separate, explicitly authorized
-live execution.
+directly through this project's own helper functions, not `run-all`
+itself (Databricks' own platform-level retry behavior on the earlier
+failed pipeline attempts is documented separately in
+`LIVE_VALIDATION_SUMMARY.md` and was never something this project's code
+triggered or controlled).
+
+**Still not proven:** the literal "create clusters" portion of the Lab 9
+task requirement -- this workspace has no classic-compute worker
+environment, and no classic cluster has been created here at any point,
+in any validation. See the main README's "Lab requirement vs. Personal
+workspace reality" for the two open compliance interpretations this
+leaves; this index does not claim that requirement is satisfied.

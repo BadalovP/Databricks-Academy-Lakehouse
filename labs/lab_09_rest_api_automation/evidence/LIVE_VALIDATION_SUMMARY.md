@@ -9,11 +9,18 @@ The full, unsanitized evidence (with those identifiers, for this
 project's own traceability) exists only in local JSON files under this
 `evidence/` directory and is **not** committed to this repository.
 
-**Scope note:** every stage below was validated with a **separate,
-targeted, single API call** (one pipeline update, one Job run), not by a
-single `run-all` invocation. **A full `run-all` execution has not yet
-succeeded end-to-end since the fixes below were applied** — see
-"What this does and does not prove" at the end of this document.
+**Scope note:** sections 1–5 below were validated with **separate,
+targeted, single API calls** (one pipeline update, one Job run), made
+directly through this project's own helper functions rather than a single
+`run-all` invocation — that was deliberate, staged validation while the
+fixes in sections 2–3 were being found and confirmed. **Section 8
+documents a later, separate milestone: a single `python -m lab09.cli
+run-all` command succeeding completely end-to-end**, landing a new month
+and driving the pipeline and the reconciliation Job itself, with no
+per-stage manual intervention. Both kinds of evidence are kept, clearly
+labeled, rather than one overwriting the other — see "What this does and
+does not prove" at the end of this document for exactly what remains
+open.
 
 ## 1. Phase 0: classic compute is confirmed unsupported on this workspace
 
@@ -115,10 +122,13 @@ once and reached **SUCCESS**.
 | `lab09_taxi_quarantine` | Materialized view |
 | `lab09_taxi_daily_summary` | Materialized view |
 
-## 7. Actual row counts and the reconciliation invariant
+## 7. Actual row counts and the reconciliation invariant (targeted-validation snapshot, 4 months)
 
-From the reconciliation notebook's own output, for the months landed so
-far (four months of real NYC TLC Yellow Taxi trip data):
+From the reconciliation notebook's own output at the time of the targeted
+validation above (four months of real NYC TLC Yellow Taxi trip data
+landed so far). **This is a point-in-time snapshot, superseded by the
+larger, 5-month dataset in section 8** — both are kept for an accurate
+record of what was true at each stage, not as conflicting numbers.
 
 | Metric | Value |
 |:--|--:|
@@ -150,29 +160,93 @@ above. This is expected, not an error: a single rejected row's
 example, a row can simultaneously have an invalid fare *and* an invalid
 distance), so the same row is counted once per rule it violates.
 
-## 8. What this does and does not prove
+## 8. Successful single-command `run-all` execution (end-to-end)
 
-**Proven, live, individually:**
+**This is the milestone the staged validations in sections 1–5 were
+building toward: one single `python -m lab09.cli run-all
+--compute-mode serverless_job` command, run exactly once, completed the
+entire pipeline start to finish with no manual per-stage intervention.**
+Every earlier `run-all` attempt (see `evidence/README.md`'s "Current
+status") had failed partway through; this is the first one that didn't.
+
+What the one command did, in order:
+- Reused the existing landing Volume and the existing `dbr_dev.lab09`
+  output schema (both already existed; created idempotently, nothing
+  duplicated).
+- Uploaded the current pipeline source files and the reconciliation
+  notebook.
+- **Reused the existing v2 pipeline** (found by name, not recreated) and
+  updated its configuration in place.
+- Landed the next missing month, **2024-05** (**62,553,128 bytes**),
+  extending the dataset to five real months (January–May 2024) without
+  removing or overwriting any previously landed month.
+- Started exactly one pipeline update. It reached **COMPLETED**, with
+  **zero error events** in the pipeline's own event log and **zero
+  automatic retries** by Databricks (unlike the earlier `timestampNtz`
+  failure, which needed several) — a clean run on the first attempt.
+- **Reused the existing persistent reconciliation Job** (found by name,
+  not recreated) and reset its task to point at the current serverless
+  configuration — an ordinary, expected part of reusing one persistent
+  Job across runs, not a deletion of anything.
+- Triggered that Job exactly once. It reached **SUCCESS**.
+
+All four output tables were present and populated afterward:
+
+| Table | Type |
+|:--|:--|
+| `lab09_taxi_bronze` | Streaming table |
+| `lab09_taxi_silver` | Materialized view |
+| `lab09_taxi_quarantine` | Materialized view |
+| `lab09_taxi_daily_summary` | Materialized view |
+
+Row counts and the reconciliation invariant, now across five months:
+
+| Metric | Value |
+|:--|--:|
+| Bronze rows | 16,792,900 |
+| Silver (valid) rows | 16,241,181 |
+| Quarantine (rejected) rows | 551,719 |
+| Gold (daily summary) rows | 34,256 |
+
+**Reconciliation invariant confirmed:**
+`bronze_rows == silver_valid_rows + rejected_rows`
+→ `16,792,900 == 16,241,181 + 551,719` ✅ -- and `reconciliation_passed`
+was `true` in the notebook's own output.
+
+Per-rule rejection counts (from the quarantine table's `failed_rules`):
+
+| Rule | Rows |
+|:--|--:|
+| `INVALID_FARE` | 261,037 |
+| `INVALID_DISTANCE` | 311,368 |
+| `INVALID_DATETIME_ORDER` | 5,037 |
+| `INVALID_MONTH` | 98 |
+
+As before, these four counts sum to more than the total rejected-row
+count, since a single rejected row can violate more than one rule at
+once — expected, not an error.
+
+The original v1 pipeline was confirmed unchanged both before and after
+this execution.
+
+## 9. What this does and does not prove
+
+**Proven, live:**
 - Phase 0 capability checks and the classic-compute limitation.
-- The v2 pipeline can be created, updated, and reach `COMPLETED` with all
-  four tables created and populated with real data.
-- The serverless reconciliation Job can be created, run, and succeed,
-  reading those tables and confirming the reconciliation invariant.
+- Every individual stage (sections 1–5), targeted and separate.
+- **A single `run-all` command succeeding completely end-to-end** on
+  serverless compute (section 8) — landing a new month, updating the
+  pipeline, and running the reconciliation Job, all from one invocation,
+  all four tables populated, the reconciliation invariant holding against
+  real, growing data.
 
 **Not yet proven:**
-- A single `run-all` invocation succeeding end-to-end, incorporating the
-  `timestampNtz` fix, in one continuous execution. The most recent
-  `run-all` attempt (before this fix existed) failed at the pipeline
-  step; the successful pipeline update and successful Job run documented
-  above were each triggered as separate, targeted, single API calls
-  using this project's own helper functions — not by `run-all` itself.
-  Re-running `run-all` end-to-end against this now-fixed configuration is
-  the natural next validation step, not yet performed.
 - The literal "create clusters" portion of the Lab 9 task requirement.
   This workspace has no classic-compute worker environment, and no
-  classic cluster has been created here at any point in this project.
-  Whether that requirement is satisfied by proving everything else on
-  serverless compute, or requires a supplementary run in a separate
-  workspace that does support classic clusters, remains an open decision
-  for a reviewer/mentor — see the main README's "Lab requirement vs.
-  Personal workspace reality" section.
+  classic cluster has been created here at any point in this project, in
+  any of the validations above. Whether that requirement is satisfied by
+  proving everything else on serverless compute, or requires a
+  supplementary run in a separate workspace that does support classic
+  clusters, remains an open decision for a reviewer/mentor — see the main
+  README's "Lab requirement vs. Personal workspace reality" section. **This
+  document does not claim that requirement is fulfilled.**

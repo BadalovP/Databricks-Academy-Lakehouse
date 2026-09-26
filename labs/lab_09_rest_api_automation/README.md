@@ -542,9 +542,18 @@ serverless reconciliation Job run (also not via `run-all`) then reached
 rejected_rows(444,142)`. See `evidence/LIVE_VALIDATION_SUMMARY.md` for the
 full sanitized write-up (row counts, per-rule rejection counts, and table
 types) and "Known limitations" below for what this does and does not
-prove. **A full `run-all` execution incorporating this fix has not yet
-been run end to end** -- both validations above were separate, targeted,
-single API calls, not one continuous `run-all` invocation.
+prove.
+
+**Confirmed live (2026-09-26): a single `run-all --compute-mode
+serverless_job` command then succeeded completely end to end**, in one
+continuous invocation with no manual per-stage intervention -- the first
+time that has happened for this project. It reused the existing v2
+pipeline and the existing persistent reconciliation Job (neither
+recreated), landed the next new month, drove the pipeline update to
+`COMPLETED` with zero errors and zero Databricks auto-retries, and ran the
+reconciliation Job to `SUCCESS`, with the reconciliation invariant holding
+against real, larger data. Full sanitized detail, including exact row
+counts: `evidence/LIVE_VALIDATION_SUMMARY.md` section 8.
 
 ### CI identity vs. local identity
 
@@ -829,11 +838,17 @@ from Lab 8's `lab08_cicd.yml` (not modified by this PR), scoped to
   fallback behavior" for why `job_cluster` is not the right next thing to
   try -- it is still classic compute -- and why the automatic
   exception-driven fallback does not and should not self-select either
-  mode for a `TimeoutError`-shaped failure). **`serverless_job` itself has
-  not yet been confirmed by an actual successful live job run** -- only
-  the classic-compute failure has been confirmed; see "Lab requirement vs.
-  Personal workspace reality" for the two open compliance interpretations
-  this leaves for the literal "create clusters" task requirement.
+  mode for a `TimeoutError`-shaped failure). **`serverless_job` has since
+  been confirmed live, repeatedly** -- most recently by a complete,
+  single-command `run-all` execution (2026-09-26) that landed a new month,
+  drove the pipeline to `COMPLETED`, and ran the reconciliation Job to
+  `SUCCESS` end to end (see "Delta `timestampNtz` table feature" above and
+  `evidence/LIVE_VALIDATION_SUMMARY.md` section 8). Only the classic
+  cluster-create requirement itself remains unfulfilled -- see "Lab
+  requirement vs. Personal workspace reality" for the two open compliance
+  interpretations this leaves for the literal "create clusters" task
+  requirement. **This document does not claim that requirement is
+  satisfied.**
 - Phase 0 was run under one specific identity via a confirmed-safe
   Personal workspace profile. This only proves that identity's
   permissions -- it does **not**
@@ -878,11 +893,18 @@ from Lab 8's `lab08_cicd.yml` (not modified by this PR), scoped to
   were created successfully and the update reached `COMPLETED`. **A
   single, targeted serverless reconciliation Job run then also succeeded**,
   confirming the reconciliation invariant against real data -- see
-  `evidence/LIVE_VALIDATION_SUMMARY.md` for the sanitized row counts. **Both
-  validations were separate, targeted API calls, not a single `run-all`
-  invocation -- a full `run-all` execution incorporating this fix has not
-  yet been run end to end**, and should not be described as proven until it
-  is.
+  `evidence/LIVE_VALIDATION_SUMMARY.md` for the sanitized row counts. Both
+  of those validations were separate, targeted API calls, not a single
+  `run-all` invocation. **A single `run-all --compute-mode serverless_job`
+  command was then run (2026-09-26) and succeeded completely end to
+  end** -- reusing the existing v2 pipeline and existing reconciliation
+  Job (neither recreated), landing a new month, driving the pipeline
+  update to `COMPLETED` with zero errors and zero Databricks auto-retries,
+  and running the reconciliation Job to `SUCCESS`, with the invariant
+  holding against real, larger data. See
+  `evidence/LIVE_VALIDATION_SUMMARY.md` section 8 for the full sanitized
+  detail (row counts, per-rule counts, landed-month size). The original v1
+  pipeline (`lab09_taxi_pipeline`) was confirmed unchanged throughout.
 - `taxi_zone_lookup.csv`'s schema (`LocationID`, `Borough`, `Zone`,
   `service_zone`) and the specific values for LocationID 264/265 were
   confirmed by downloading the real, current file directly from
@@ -897,12 +919,13 @@ from Lab 8's `lab08_cicd.yml` (not modified by this PR), scoped to
 ## 15. Evidence section
 
 **`evidence/LIVE_VALIDATION_SUMMARY.md`** is the sanitized, GitHub-suitable
-summary of everything proven live so far (Phase 0, the classic-compute
+summary of everything proven live (Phase 0, the classic-compute
 limitation, why the pipeline was replaced, the `timestampNtz` fix, the
-successful pipeline update, the successful reconciliation Job, all four
-table names/types, real row counts, and the confirmed reconciliation
-invariant) -- read that first. It also states plainly what is *not* yet
-proven: a single `run-all` execution succeeding end to end.
+staged targeted validations, and -- its main current milestone -- **a
+single `run-all` command succeeding completely end to end** with all four
+tables populated and the reconciliation invariant confirmed against real,
+five-month data). It also states plainly what remains *not* proven: the
+literal classic cluster-create requirement.
 
 Dated pipeline-update and reconciliation-Job evidence files from the
 targeted live validations summarized above exist locally only, containing
@@ -916,12 +939,11 @@ sanitized version (see that file's own `sanitization_note` field), but the
 original, unsanitized content remains reachable in this branch's earlier
 Git history, since it has not been rewritten. See "Security model" above
 for the full remediation status. See `evidence/README.md` for the
-indexing convention. **No *successful* `run-all` evidence exists yet** --
-a *failed* `run-all` attempt's report does exist (predating the
-`timestampNtz` fix; it failed at the pipeline step) and is preserved, not
-hidden. A full end-to-end `run-all` run against the current, fixed
-configuration still requires a separate, explicitly authorized live
-execution.
+indexing convention. **A successful, complete `run-all` execution's raw
+report now also exists** (2026-09-26) -- kept locally only, alongside the
+earlier *failed* `run-all` attempt's report (predating the `timestampNtz`
+fix), which is preserved, not hidden, for an accurate history of both
+outcomes.
 
 ## 16. How a supervisor can reproduce the demo
 
@@ -944,7 +966,11 @@ execution.
    serverless_job` for this workspace) rather than `job_cluster`, which is
    still classic compute and expected to fail the same way here.
 4. `python -m lab09.cli --profile <confirmed-profile> run-all` and inspect
-   `evidence/lab09_report.json`.
+   `evidence/lab09_report.json`. **Confirmed live (2026-09-26)**: this
+   exact command (with `--compute-mode serverless_job`) landed a new
+   month, updated the pipeline to `COMPLETED`, and ran the reconciliation
+   Job to `SUCCESS`, all in one invocation -- see
+   `evidence/LIVE_VALIDATION_SUMMARY.md` section 8.
 5. Re-run `run-all` a second time and confirm the report's `status` is
    `NO_NEW_DATA` only once all configured 2024 months have landed --
    otherwise it lands the next month and reports `SUCCESS`.
