@@ -1,7 +1,8 @@
 # LAB 09 — Classic-cluster requirement: reviewer package
 
-**Status: draft for internal/mentor review. Not committed to Git. No
-Databricks action has been taken as part of preparing this document.**
+**Status: committed and published to `feature/lab09-rest-api-automation`
+(PR #23) for reviewer/mentor consideration. No Databricks action has been
+taken as part of preparing this document.**
 
 This package exists to let a reviewer/mentor judge, in one place, exactly
 what has and has not been demonstrated against the literal "create
