@@ -26,6 +26,7 @@ from databricks.sdk.errors import InvalidParameterValue, PermissionDenied
 from databricks.sdk.service import pipelines as pipelines_svc
 
 from . import compute
+from .client import trips_path
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +109,24 @@ def _build_run_as(cfg: dict[str, Any]) -> pipelines_svc.RunAs | None:
     return pipelines_svc.RunAs(user_name=user_name)
 
 
+def _pipeline_configuration(cfg: dict[str, Any]) -> dict[str, str]:
+    """Spark configuration handed to the pipeline's own compute so
+    bronze.py's Auto Loader reads from THIS environment's actual landing
+    volume (cfg["catalog"]/cfg["schema"]/cfg["volume"]), not the
+    module-level default hardcoded in bronze.py.
+
+    Confirmed live (2026-09-27): without this, the Azure pipeline silently
+    fell back to that hardcoded default -- which happens to match
+    config/dev.yml's schema (parvinbadalov) by coincidence, since it was
+    written against the Personal-workspace deployment -- instead of
+    config/azure.yml's actual dbr_dev.parvinbadalov_lab09_prod schema,
+    failing every update with UC_VOLUME_NOT_FOUND. Setting this explicitly
+    for every environment (not just Azure) removes that coincidental
+    dependency entirely, rather than patching it for Azure alone.
+    """
+    return {"lab09.landing_trips_path": f"{trips_path(cfg)}/"}
+
+
 def _library_specs(pipeline_source_dir: str) -> list[pipelines_svc.PipelineLibrary]:
     """One typed glob-include library covering the whole pipeline source directory.
 
@@ -165,6 +184,7 @@ def _create_pipeline(
     prefer_serverless = bool(cfg["pipeline"].get("prefer_serverless", True))
     allow_classic_fallback = bool(cfg["pipeline"].get("allow_classic_fallback", False))
     run_as = _build_run_as(cfg)
+    configuration = _pipeline_configuration(cfg)
 
     if prefer_serverless:
         try:
@@ -176,6 +196,7 @@ def _create_pipeline(
                 serverless=True,
                 continuous=False,
                 run_as=run_as,
+                configuration=configuration,
             )
             logger.info("Created serverless pipeline %s (id=%s).", name, created.pipeline_id)
             return created.pipeline_id, True
@@ -208,6 +229,7 @@ def _create_pipeline(
         clusters=clusters,
         continuous=False,
         run_as=run_as,
+        configuration=configuration,
     )
     logger.info("Created classic-compute pipeline %s (id=%s).", name, created.pipeline_id)
     return created.pipeline_id, False
@@ -229,6 +251,7 @@ def _update_pipeline(
     prefer_serverless = bool(cfg["pipeline"].get("prefer_serverless", True))
     allow_classic_fallback = bool(cfg["pipeline"].get("allow_classic_fallback", False))
     run_as = _build_run_as(cfg)
+    configuration = _pipeline_configuration(cfg)
 
     if prefer_serverless:
         try:
@@ -241,6 +264,7 @@ def _update_pipeline(
                 serverless=True,
                 continuous=False,
                 run_as=run_as,
+                configuration=configuration,
             )
             logger.info("Updated pipeline %s (id=%s) to serverless compute.", name, pipeline_id)
             return True
@@ -274,6 +298,7 @@ def _update_pipeline(
         clusters=clusters,
         continuous=False,
         run_as=run_as,
+        configuration=configuration,
     )
     logger.info("Updated pipeline %s (id=%s) to classic-compute.", name, pipeline_id)
     return False

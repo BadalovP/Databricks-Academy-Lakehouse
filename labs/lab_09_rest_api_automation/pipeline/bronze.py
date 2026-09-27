@@ -29,6 +29,16 @@ from __future__ import annotations
 from pyspark import pipelines as dp
 from pyspark.sql import functions as F
 
+# Last-resort fallback only -- src/lab09/pipelines.py always sets
+# "lab09.landing_trips_path" explicitly (from the deploying config's own
+# catalog/schema/volume) on every pipeline create/update call, so this
+# default is never relied on by any deployed environment. Confirmed live
+# (2026-09-27): before pipelines.py set this configuration explicitly, the
+# Azure deployment silently fell back to this Personal-workspace-specific
+# path and failed with UC_VOLUME_NOT_FOUND once Azure's landing volume
+# lived under a different schema (parvinbadalov_lab09_prod, not
+# parvinbadalov) -- this constant matching config/dev.yml's schema was
+# coincidental, not a guarantee.
 DEFAULT_LANDING_TRIPS_PATH = "/Volumes/dbr_dev/parvinbadalov/lab09_landing/trips/"
 
 
