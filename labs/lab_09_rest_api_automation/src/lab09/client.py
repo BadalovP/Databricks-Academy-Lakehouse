@@ -36,11 +36,16 @@ def _default_databrickscfg_path() -> Path:
     return Path.home() / ".databrickscfg"
 
 
-def _normalize_host(host: str | None) -> str | None:
+def normalize_host(host: str | None) -> str | None:
     """Loose normalization for comparing a raw ini host value against the
     SDK's own resolved, scheme-qualified host -- good enough for Databricks
     hosts specifically (never a non-default port), without depending on the
     SDK's own private host-normalization helper.
+
+    Public: also used directly by scripts/validate_classic_e2e.py,
+    scripts/deploy_azure_job.py, and scripts/run_azure_job.py's own
+    --confirm-host safety checks, instead of each duplicating this exact
+    normalization a second (and third, and fourth) time.
     """
     if not host:
         return host
@@ -152,8 +157,8 @@ def _verify_profile_resolution(
             "resolution to a different file than the canonical one."
         )
 
-    expected_host = _normalize_host(section.get("host"))
-    actual_host = _normalize_host(client.config.host)
+    expected_host = normalize_host(section.get("host"))
+    actual_host = normalize_host(client.config.host)
     if expected_host and expected_host != actual_host:
         raise ProfileResolutionMismatchError(
             f"Profile {resolved_profile!r} declares host {expected_host!r} in "
@@ -191,7 +196,18 @@ def get_workspace_client(profile: str | None = None) -> WorkspaceClient:
       1. the ``profile`` argument
       2. the ``DATABRICKS_CONFIG_PROFILE`` environment variable
       3. explicit ``DATABRICKS_HOST`` + ``DATABRICKS_TOKEN`` environment
-         variables (the pattern GitHub Actions uses for CI)
+         variables (the PAT pattern the Personal-workspace GitHub Actions
+         workflow uses for CI)
+      4. explicit ``DATABRICKS_HOST`` + ``DATABRICKS_AUTH_TYPE=azure-cli``
+         (no token at all) -- the OIDC federated-identity pattern the
+         Azure GitHub Actions workflow uses instead of a PAT, matching
+         Lab 8's own already-configured ``azure/login`` + ``azure-cli``
+         auth flow exactly (see .github/workflows/lab09_azure_deployment.yml
+         and lab08_azure_prod_manual_run.yml). Recognizing this is safe for
+         the same reason branch 3 already is: there is no local profile
+         choice to override in a GitHub Actions runner (no ~/.databrickscfg
+         exists there at all), so this can never re-create the ambient
+         override risk ``_verify_profile_resolution`` exists to catch.
 
     If none of these are set, raises ``ProfileNotSpecifiedError`` instead of
     falling back to the SDK's own default-profile resolution, which could
@@ -219,22 +235,23 @@ def get_workspace_client(profile: str | None = None) -> WorkspaceClient:
     what the profile itself declares.
     """
     resolved_profile = profile or os.environ.get("DATABRICKS_CONFIG_PROFILE")
-    has_explicit_host_token = bool(os.environ.get("DATABRICKS_HOST")) and bool(
-        os.environ.get("DATABRICKS_TOKEN")
-    )
+    has_host = bool(os.environ.get("DATABRICKS_HOST"))
+    has_token = bool(os.environ.get("DATABRICKS_TOKEN"))
+    has_azure_cli_auth = os.environ.get("DATABRICKS_AUTH_TYPE") == "azure-cli"
 
     if resolved_profile:
         ws_client = WorkspaceClient(profile=resolved_profile)
         _verify_profile_resolution(resolved_profile, ws_client)
         return ws_client
-    if has_explicit_host_token:
+    if has_host and (has_token or has_azure_cli_auth):
         return WorkspaceClient()
     raise ProfileNotSpecifiedError(
         "No Databricks profile was specified. Pass --profile explicitly or "
-        "set DATABRICKS_CONFIG_PROFILE (or DATABRICKS_HOST/DATABRICKS_TOKEN). "
-        "LAB 09 refuses to guess, because this repository's ~/.databrickscfg "
-        "has profiles named 'dev'/'AZURE_DEV' that resolve to the Azure PROD "
-        "host used by Lab 8, not a separate dev workspace."
+        "set DATABRICKS_CONFIG_PROFILE (or DATABRICKS_HOST with DATABRICKS_TOKEN "
+        "or DATABRICKS_AUTH_TYPE=azure-cli). LAB 09 refuses to guess, because "
+        "this repository's ~/.databrickscfg has profiles named 'dev'/'AZURE_DEV' "
+        "that resolve to the Azure PROD host used by Lab 8, not a separate dev "
+        "workspace."
     )
 
 

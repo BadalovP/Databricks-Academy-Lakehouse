@@ -1,0 +1,119 @@
+# LAB 09 - Azure Databricks configuration
+#
+# This file governs the Azure deployment of the exact same lab09 Python
+# package used by config/dev.yml's Personal-workspace deployment --
+# environment-specific configuration only, no forked implementation. See
+# README.md "Two-environment architecture" for how the two deployments
+# relate.
+#
+# This Azure Databricks workspace is a large, shared academy environment
+# (100+ other students' clusters, Jobs, and pipelines already exist in it,
+# confirmed via a read-only inventory before this file was written) -- every
+# name below that lives in a workspace-wide shared namespace (specifically,
+# the Unity Catalog schema) is deliberately identity-prefixed to avoid
+# colliding with another student's own Lab 9 submission, mirroring the exact
+# pattern this same workspace's Lab 8 deployment already established
+# (dbr_dev.parvinbadalov_lab08_prod). Resources scoped under this identity's
+# own Workspace home directory (the project folder, notebooks, the Job and
+# pipeline *display names*) do not carry this same collision risk and use
+# the plain "lab09" naming requested for this project.
+
+catalog: dbr_dev
+
+# Dedicated OUTPUT schema for this project's bronze/silver/quarantine/gold
+# tables in the Azure workspace. NOT a bare "lab09" schema (see the header
+# comment above for why) -- this exact naming pattern (parvinbadalov_labNN_prod)
+# is already used by this same identity's Lab 8 deployment in this same
+# catalog, confirmed via a read-only schema listing before this file was
+# written (105 existing schemas, none named "lab09" or "parvinbadalov_lab09_prod").
+schema: parvinbadalov_lab09_prod
+volume: lab09_landing
+
+# Deliberately short for the first Azure validation, to bound cost -- see
+# README.md "Two-environment architecture" for why. Extend this list the
+# same way config/dev.yml's has been extended over time, once the first
+# validation is confirmed clean.
+months:
+  - "2024-01"
+
+dataset:
+  trips_url_template: "https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_{month}.parquet"
+  zone_lookup_url: "https://d37ci6vzurychx.cloudfront.net/misc/taxi_zone_lookup.csv"
+  download_retries: 3
+  download_backoff_seconds: 2.0
+  download_timeout_seconds: 300
+
+workspace:
+  # Rendered against the authenticated identity at runtime, exactly like
+  # config/dev.yml -- /Workspace/Users/<current-user>/lab09/...
+  root_subpath: "lab09"
+  pipeline_subpath: "pipeline"
+  notebook_subpath: "notebooks"
+  # Where this project's actual `src/lab09` package source is uploaded so
+  # the ingestion notebook can import it directly (see
+  # notebooks/02_ingest_data.py) -- no wheel build, no PyPI package, the
+  # same functions this file's own deploy script (scripts/deploy_azure_job.py)
+  # uses locally.
+  source_subpath: "src"
+
+pipeline:
+  name: "lab09_taxi_pipeline_v2"
+  target_schema: parvinbadalov_lab09_prod
+  # This Azure workspace has already been confirmed live to support classic
+  # compute (the classic-compute demonstration in evidence/), unlike the
+  # Personal workspace -- but serverless is still preferred here first: it
+  # is the simpler, already-proven-working pipeline compute path (Personal
+  # workspace, sections 4/8/10 of evidence/LIVE_VALIDATION_SUMMARY.md), and
+  # nothing about this Azure workspace's pipeline-compute support has been
+  # tested yet. If serverless pipeline execution is ever rejected here for a
+  # genuine capability reason, allow_classic_fallback below permits falling
+  # back rather than failing outright -- unlike config/dev.yml, since this
+  # workspace's classic compute is confirmed available.
+  prefer_serverless: true
+  allow_classic_fallback: true
+  classic_node_type_hint: null
+  classic_num_workers: 1
+
+tables:
+  bronze: lab09_taxi_bronze
+  silver: lab09_taxi_silver
+  quarantine: lab09_taxi_quarantine
+  gold: lab09_taxi_daily_summary
+
+# Shared Job-cluster compute for the ingestion and reconciliation tasks
+# (the Lakeflow pipeline task always uses its own managed compute --
+# see pipeline.prefer_serverless above -- independent of this section).
+# Confirmed live (2026-09-27) that this workspace's "Job Compute" cluster
+# policy enforces a specific automated-cluster shape that differs from the
+# "Personal Compute" policy's classic-compute demonstration
+# (evidence/CLASSIC_CLUSTER_REQUIREMENT_REVIEW.md section 10): a fixed
+# Standard_F4 node type, 1-2 workers (never 0/single-node), and rejects
+# both `cluster_name` and `autotermination_minutes` outright for any
+# automated cluster (see src/lab09/compute.py's
+# `ClusterSpec.as_new_cluster_dict()` and its regression test) -- job_compute
+# below intentionally does not reuse the single-node
+# compute.build_cluster_spec()/ClusterSpec shape config/dev.yml's compute:
+# section configures, since that shape is for an interactive/all-purpose
+# demonstration cluster, not this Job's own automated compute.
+job_compute:
+  policy_name: "Job Compute"
+  node_type_id: "Standard_F4"
+  num_workers: 1
+
+job:
+  name: "lab09_taxi_reconciliation_job"
+  ingestion_task_key: "ingestion"
+  pipeline_task_key: "lakeflow_pipeline"
+  reconciliation_task_key: "reconciliation"
+  shared_job_cluster_key: "lab09_shared_compute"
+
+monitoring:
+  pipeline_timeout_seconds: 2400
+  pipeline_poll_interval_seconds: 15
+  job_timeout_seconds: 1800
+  job_poll_interval_seconds: 15
+  termination_timeout_seconds: 600
+  termination_poll_interval_seconds: 10
+
+report:
+  output_path: "evidence/azure_deployment_report.json"

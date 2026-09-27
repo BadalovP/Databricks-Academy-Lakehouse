@@ -1001,7 +1001,7 @@ earlier *failed* `run-all` attempt's report (predating the `timestampNtz`
 fix), which is preserved, not hidden, for an accurate history of both
 outcomes.
 
-## 16. How a supervisor can reproduce the demo
+## 16. How to reproduce the Personal-workspace deployment
 
 1. Confirm which `~/.databrickscfg` profile (or `DATABRICKS_HOST`/
    `DATABRICKS_TOKEN` pair) points at the intended DEV/academy workspace --
@@ -1035,3 +1035,140 @@ outcomes.
    `personal-prod-approval` environment it uses already has a
    required-reviewer rule configured -- see "GitHub Actions integration"
    above) and approve the pending deployment when prompted.
+
+## 17. Two-environment architecture (Personal workspace + Azure)
+
+This project deploys the same `lab09` Python implementation into two
+Databricks environments, with environment-specific configuration rather
+than a forked codebase: `config/dev.yml` for the Personal workspace,
+`config/azure.yml` for the shared Azure workspace. Anyone with access to
+either environment can read this section to understand how the whole
+project fits together, independent of which side they can actually see.
+
+### Why two environments
+
+The Personal workspace has no classic-compute worker environment at all
+(see "Known limitations") -- every live validation there necessarily runs
+on serverless compute. The Azure workspace is a separate, large, shared
+academy Databricks workspace (100+ other students' clusters, Jobs, and
+pipelines coexist in it) that does support classic compute, used here
+specifically to demonstrate the literal "create clusters" portion of this
+project's requirements, which the Personal workspace cannot demonstrate on
+its own. Both deployments are kept, clearly labeled by which workspace
+actually produced each piece of evidence -- neither is presented as if it
+were the other.
+
+### Personal workspace deployment
+
+Unchanged by the Azure work described below. See sections 1-16 above and
+`evidence/LIVE_VALIDATION_SUMMARY.md` sections 1-8 and 11 for the full
+detail: `lab09_taxi_reconciliation_job` (a single-task, serverless-compute
+Job), `lab09_taxi_pipeline_v2`, the existing schemas/landing Volume/tables/
+notebook, and the existing `personal-prod-approval`-gated GitHub Actions
+workflow (`lab09_api_automation.yml`), all reused as-is.
+
+### Azure deployment
+
+**Naming.** Every name that lives in a workspace-wide shared namespace is
+identity-prefixed to avoid colliding with another student's own Lab 9
+submission in the same shared catalog (verified via a read-only schema
+listing before anything was created: 105 existing schemas, all but the
+generic/system ones already following this exact pattern, including this
+same identity's own `parvinbadalov_lab08_prod`). Resources scoped under
+this identity's own Workspace home directory, or that are simply
+*display* names (a Job or pipeline's name, as opposed to a catalog
+schema), do not carry that collision risk and use the plain names below.
+
+| Resource | Azure name |
+|:--|:--|
+| Job | `lab09_taxi_reconciliation_job` (same display name as Personal) |
+| Lakeflow pipeline | `lab09_taxi_pipeline_v2` (same display name as Personal) |
+| Workspace project folder | `/Workspace/Users/<identity>/lab09` |
+| Output schema | `dbr_dev.parvinbadalov_lab09_prod` (**not** a bare `lab09` schema -- see above) |
+| Landing Volume | `dbr_dev.parvinbadalov_lab09_prod.lab09_landing` |
+
+**Compute provisioning.** The Job has one named, shared Job cluster
+(`config/azure.yml`'s `job.shared_job_cluster_key`) used by the ingestion
+and reconciliation tasks; Databricks provisions it only when the Job
+actually runs and tears it down automatically once every task using it has
+finished -- there is no separate, persistent cluster to leave running or
+forget to stop. Its shape is dictated by this workspace's `Job Compute`
+cluster policy, confirmed live: a fixed node type, 1-2 workers (never
+single-node), and no `cluster_name`/`autotermination_minutes` fields at
+all (both rejected outright for any automated cluster -- see
+`src/lab09/compute.py`'s `ClusterSpec.as_new_cluster_dict()`). The Lakeflow
+pipeline task uses its own pipeline-managed compute entirely independently
+of that shared cluster (`config/azure.yml`'s `pipeline.prefer_serverless`).
+
+**Task graph.** One Job, three dependent tasks, visible in the Azure Jobs
+UI as a single graph:
+
+```
+ingestion  -->  lakeflow_pipeline  -->  reconciliation
+(shared job     (pipeline-managed      (shared job
+ cluster)        compute)               cluster)
+```
+
+- **`ingestion`** (`notebooks/02_ingest_data.py`): lands the next
+  configured NYC TLC month into the dedicated landing Volume, reusing
+  `lab09.landing.land_next_month()` directly -- the same function the
+  Personal-workspace `run-all` command calls. Deliberately different from
+  that command's own calling convention: `landing.py`'s module docstring
+  documents that downloading was designed to happen outside Databricks
+  (a GitHub runner or local machine) specifically so the workspace itself
+  never needs outbound internet access. This notebook does the opposite on
+  purpose, because the assignment calls for ingestion to be a real,
+  inspectable task in the Job's own graph -- see that notebook's own
+  markdown cell for the full reasoning, including that whether this
+  workspace's Job-cluster compute actually has outbound internet access
+  was an open question the first live run itself answers.
+- **`lakeflow_pipeline`**: a native Databricks Jobs `PipelineTask`
+  referencing `lab09_taxi_pipeline_v2`'s pipeline id -- runs only after
+  `ingestion` succeeds.
+- **`reconciliation`** (`notebooks/01_reconcile_counts.py`, unmodified):
+  the exact same reconciliation notebook the Personal workspace uses,
+  parameterized via `base_parameters` for this workspace's own
+  catalog/schema/table names -- runs only after `lakeflow_pipeline`
+  succeeds.
+
+**Code reuse mechanism.** This project's actual `src/lab09` package source
+is uploaded as plain Workspace Files (not a wheel -- see
+`scripts/deploy_azure_job.py`'s module docstring for why). Each notebook
+locates its own project root via its own Databricks notebook path (never a
+hardcoded identity, since this is a shared, multi-student workspace) and
+inserts `<project_root>/src` onto `sys.path` before importing `lab09`
+directly.
+
+**Deployment.** `scripts/deploy_azure_job.py` is idempotent: it ensures
+the output schema, landing Volume, uploaded source/notebooks/config, the
+Lakeflow pipeline, and the three-task Job all exist and are up to date,
+using the same `lab09.volumes` / `lab09.pipelines` / `lab09.workspace`
+find-or-create functions the Personal-workspace deployment already relies
+on. It never triggers a run.
+
+**Execution and verification.** `scripts/run_azure_job.py` triggers exactly
+one run of the already-deployed Job, polls it via `lab09.monitoring` to a
+terminal state, retrieves the ingestion and reconciliation tasks' own
+output, and independently polls the run's own job-cluster instance to
+confirm it reached `TERMINATED` afterward -- a successful run does not, by
+itself, count as overall success if that confirmation fails (mirroring the
+same fix applied to `scripts/validate_classic_e2e.py`'s cleanup reporting).
+
+**GitHub Actions.** `.github/workflows/lab09_azure_deployment.yml` is a
+separate workflow from the Personal-workspace one: static checks on every
+pull request/push (no live resource reachable from those events), then,
+only on an explicit `workflow_dispatch`, an approval gate
+(`azure-release-approval`, reused from Lab 8) followed by deployment and
+execution (`azure-prod`, also reused from Lab 8 -- both confirmed,
+read-only, to already carry the protection/credentials this workflow
+needs, before this file was written). Authentication is OIDC-based Azure
+service-principal federation (`azure/login` + `DATABRICKS_AUTH_TYPE=azure-cli`),
+the same already-configured mechanism Lab 8's own Azure workflows use --
+never a stored personal access token.
+
+**What is and is not proven by this section alone:** this section describes
+the architecture and code; live results (once an authorized deployment and
+validation run have actually happened) are recorded separately in
+`evidence/LIVE_VALIDATION_SUMMARY.md`, clearly labeled by which workspace
+actually produced them -- this section is never itself cited as evidence
+of a live result.

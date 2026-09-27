@@ -65,7 +65,7 @@ from databricks.sdk.service.jobs import NotebookTask, Task
 from databricks.sdk.service.workspace import ImportFormat, Language
 
 from lab09 import compute, jobs, monitoring
-from lab09.client import get_workspace_client
+from lab09.client import get_workspace_client, normalize_host
 
 logger = logging.getLogger(__name__)
 
@@ -132,8 +132,33 @@ class ValidationReport:
         return asdict(self)
 
     @property
+    def cleanup_confirmed(self) -> bool:
+        """True unless a resource this run actually created is known NOT to
+        have been cleaned up.
+
+        None means "not applicable" (this run never got far enough to
+        create that resource) and is never itself treated as a failure --
+        only an explicit False (job_deleted=False, notebook_deleted=False,
+        or cluster_terminated_confirmed=False) does. Mirrors the same
+        "confirmed vs. merely not raised" distinction already established in
+        cli.py's _finish() / compute.terminate_and_verify_cluster().
+        """
+        return (
+            self.job_deleted is not False
+            and self.notebook_deleted is not False
+            and self.cluster_terminated_confirmed is not False
+        )
+
+    @property
     def succeeded(self) -> bool:
-        return self.status == "SUCCESS"
+        """A successful notebook run must not, by itself, count as overall
+        success if required cleanup of this run's own temporary resources
+        failed. `status` above still preserves the actual execution
+        result unchanged (never overwritten to "FAILED" just because
+        cleanup fell short) -- this property is the separate, combined
+        signal main()'s exit code is based on.
+        """
+        return self.status == "SUCCESS" and self.cleanup_confirmed
 
 
 def write_report(report: ValidationReport, output_path: str | Path) -> Path:
@@ -405,10 +430,8 @@ def main(argv: list[str] | None = None) -> int:
 
     client = get_workspace_client(args.profile)
 
-    actual_host = (client.config.host or "").rstrip("/").lower()
-    expected_host = args.confirm_host.strip().rstrip("/").lower()
-    if "://" not in expected_host:
-        expected_host = "https://" + expected_host
+    actual_host = normalize_host(client.config.host)
+    expected_host = normalize_host(args.confirm_host)
     if actual_host != expected_host:
         parser.error(
             f"Profile {args.profile!r} resolved to a host that does not match --confirm-host "
