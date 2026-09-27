@@ -1,13 +1,22 @@
 # LAB 09 — Live validation summary
 
-This is a sanitized summary of the live validations performed against a
-confirmed-safe, non-Azure-PROD Personal Databricks workspace. It
-intentionally omits the workspace hostname, the authenticated identity's
-email address, the Databricks organization ID, run/job/pipeline UUIDs, and
-any private URLs — none of that is needed to understand what was proven.
-The full, unsanitized evidence (with those identifiers, for this
-project's own traceability) exists only in local JSON files under this
-`evidence/` directory and is **not** committed to this repository.
+This is a sanitized summary of the live validations performed for Lab 9.
+**Sections 1–8 cover a confirmed-safe, non-Azure-PROD Personal Databricks
+workspace** — the workspace Lab 9 was otherwise built and run against.
+**Section 9 is a distinct, later addition and is explicitly the
+exception to that scope: it documents a supplementary demonstration run
+against Azure PROD itself**, under separate, specific owner
+authorization, precisely because the Personal workspace in sections 1–8
+cannot support classic compute at all (section 1). Section 9 states that
+deviation plainly rather than letting this paragraph's original
+non-Azure-PROD framing silently cover it. Throughout, this document
+intentionally omits the workspace hostname(s), the authenticated
+identity's email address, the Databricks organization ID(s), run/job/
+pipeline/cluster UUIDs, and any private URLs — none of that is needed to
+understand what was proven. The full, unsanitized evidence (with those
+identifiers, for this project's own traceability) exists only in local
+JSON files under this `evidence/` directory and is **not** committed to
+this repository.
 
 **Scope note:** sections 1–5 below were validated with **separate,
 targeted, single API calls** (one pipeline update, one Job run), made
@@ -17,10 +26,15 @@ fixes in sections 2–3 were being found and confirmed. **Section 8
 documents a later, separate milestone: a single `python -m lab09.cli
 run-all` command succeeding completely end-to-end**, landing a new month
 and driving the pipeline and the reconciliation Job itself, with no
-per-stage manual intervention. Both kinds of evidence are kept, clearly
-labeled, rather than one overwriting the other — see "What this does and
-does not prove" at the end of this document for exactly what remains
-open.
+per-stage manual intervention. **Section 9 documents a further, separate
+milestone in a different workspace (Azure PROD)**, involving one manual
+step (a cluster restart performed by the project's operator, not by this
+project's code) between two otherwise-automated stages — stated
+explicitly in that section rather than folded into "no manual
+intervention" language that would only be true of sections 1–8. All three
+kinds of evidence are kept, clearly labeled, rather than one overwriting
+another — see "What this does and does not prove" (section 10) for
+exactly what remains open.
 
 ## 1. Phase 0: classic compute is confirmed unsupported on this workspace
 
@@ -229,24 +243,147 @@ once — expected, not an error.
 The original v1 pipeline was confirmed unchanged both before and after
 this execution.
 
-## 9. What this does and does not prove
+## 9. Classic-compute demonstration in a separate Azure PROD workspace (2026-09-27)
+
+**This section documents a supplementary demonstration run in a different
+workspace than sections 1–8 above** — an Azure-hosted workspace this
+project's operator already had separate, pre-existing access to (the same
+workspace referenced as "Azure PROD" in this project's own README
+"Security model" section), not the Personal workspace whose classic-compute
+limitation is documented in section 1. This is exactly the "supplementary
+run in a separate workspace that does support classic clusters" option
+described as still-open in section 10's note below — with one explicit,
+important deviation from how that option was originally scoped, called out
+below rather than glossed over.
+
+**Authorization basis:** the workspace owner explicitly granted permission
+for this specific, scoped test before anything was created. Authentication
+used a dedicated OAuth user-to-machine profile created solely for this
+test; the operator's existing long-lived Personal Access Token for this
+workspace was never accessed, displayed, logged, or used at any point.
+
+**Explicit deviation from `evidence/CLASSIC_CLUSTER_REQUIREMENT_REVIEW.md`
+§8:** that document's own test plan was written with an explicit "No Azure
+PROD" safeguard, on the premise that any supplementary demonstration would
+run only in a confirmed non-production workspace. **This demonstration
+did not follow that constraint — it ran in Azure PROD itself**, under
+separate, specific, owner-granted authorization for this one test, using
+only newly created, uniquely-named/tagged resources, with every
+pre-existing resource in that workspace (including two other
+long-running personal clusters) explicitly never started, stopped,
+modified, or deleted by this project's automation at any point. This is
+recorded here plainly so a reviewer can weigh it accurately, not as
+something to treat as equivalent to the originally-planned
+non-production-only test.
+
+**What was demonstrated, live, using this project's own `compute.py` /
+`monitoring.py` functions and no reimplemented logic — including the
+manual step in the middle, stated plainly rather than smoothed over:**
+
+1. A real classic (non-serverless) cluster was created via
+   `compute.start_cluster_create()` under that workspace's `Personal
+   Compute` cluster policy: single-node (`num_workers=0`),
+   `Standard_D4ds_v5` node type, `SINGLE_USER` data security mode, a
+   dynamically resolved standard (non-Photon, non-aarch64) LTS Spark
+   runtime, and a 10-minute `autotermination_minutes` safety net.
+   - **A real bug was found and fixed first**: an earlier attempt at this
+     same step was rejected outright by the backend
+     (`INVALID_PARAMETER_VALUE: Invalid spark version
+     18.x-photon-scala2.13`) because `resolve_lts_spark_version()` did not
+     exclude Photon runtime variants, which this workspace's cluster
+     policy forbids. This was the same class of tie-breaking bug as the
+     earlier aarch64 issue (section 1's cross-reference); it is now fixed
+     and covered by three new regression tests, all passing (see
+     `compute.py` and `tests/test_compute.py`). No cluster object was
+     created by that rejected attempt.
+2. After the fix, cluster creation succeeded and returned a real cluster
+   id. **This project's own automated readiness poll (8-minute bound)
+   timed out while the cluster was still `PENDING`** — provisioning a
+   `Standard_D4ds_v5` node in this workspace runs on the order of
+   5–8.5 minutes based on historical events for the same node type,
+   longer than the window used in that attempt. Per this script's own
+   design (it always requests termination regardless of whether the
+   readiness poll succeeded), it then requested termination of that same
+   cluster and **independently confirmed `TERMINATED`** — a real,
+   completed create-and-tear-down cycle, but one that never itself
+   observed `RUNNING`.
+3. **The project's operator then manually restarted that exact same
+   cluster (same cluster id) via the Databricks UI**, independently of
+   and outside any of this project's own code, and it reached `RUNNING`.
+   **This manual step is the reason the create-to-`RUNNING` leg above was
+   not achieved by this project's automation alone** — the automated
+   attempt in step 2 terminated the cluster before observing `RUNNING`,
+   and it was a human, not this project's code, that subsequently started
+   it again.
+4. This project's automation then independently, read-only confirmed the
+   cluster's state (`RUNNING`) and full configuration (matching runtime,
+   node type, policy, and the original unique tags — confirming it was
+   the identical cluster resource, not a new one).
+5. **Only after that manual restart**, in a separate automated run
+   against that already-`RUNNING` cluster, this project's own automation:
+   uploaded a trivial notebook to a new, uniquely named path; created one
+   temporary Job with `existing_cluster_id` pointing at that cluster (no
+   `new_cluster`, no additional cluster created); triggered it with
+   `run_now()`; polled to completion via `monitoring.poll_job_run()`; and
+   retrieved its output, which matched the expected result exactly. It
+   then requested termination a second time and independently confirmed
+   `TERMINATED` via the same dedicated verification loop described in
+   `evidence/CLASSIC_CLUSTER_REQUIREMENT_REVIEW.md` §8 step 11, and
+   deleted the temporary Job and notebook it had created.
+
+**Conclusion, stated precisely:** this project's own automation
+successfully exercised, live, every Clusters-API and Jobs-API primitive
+relevant to the "create clusters" requirement — create, terminate,
+attach a Job to a running cluster via `existing_cluster_id`, run and
+verify a real notebook execution, terminate again, and independently
+verify termination each time. **The one leg not achieved by automation
+alone was the create-to-`RUNNING` transition**: the automated attempt
+terminated the cluster after its readiness poll timed out in `PENDING`,
+and a human manually restarted the same cluster afterward. The Jobs-API
+portion (step 5) that followed was fully automated against that
+human-started cluster.
+
+## 10. What this does and does not prove
 
 **Proven, live:**
-- Phase 0 capability checks and the classic-compute limitation.
+- Phase 0 capability checks and the classic-compute limitation on this
+  project's Personal workspace.
 - Every individual stage (sections 1–5), targeted and separate.
 - **A single `run-all` command succeeding completely end-to-end** on
   serverless compute (section 8) — landing a new month, updating the
   pipeline, and running the reconciliation Job, all from one invocation,
   all four tables populated, the reconciliation invariant holding against
   real, growing data.
+- **Classic cluster create and terminate (automated), and — against a
+  cluster a human subsequently, manually restarted — Job attachment via
+  `existing_cluster_id`, notebook execution, and confirmed termination
+  (fully automated)** (section 9) — demonstrated live in a separate Azure
+  PROD workspace, under explicit owner authorization, with the explicit
+  caveat that this deviates from this project's own previously-stated "no
+  Azure PROD" safeguard for that supplementary test. That deviation, and
+  the fact that reaching `RUNNING` required a manual restart rather than
+  being achieved by the automated poll itself, are what remain for a
+  reviewer/mentor to weigh — not the underlying code's correctness, which
+  section 9 shows working against a real backend in both the automated
+  and human-assisted portions.
 
-**Not yet proven:**
-- The literal "create clusters" portion of the Lab 9 task requirement.
-  This workspace has no classic-compute worker environment, and no
-  classic cluster has been created here at any point in this project, in
-  any of the validations above. Whether that requirement is satisfied by
-  proving everything else on serverless compute, or requires a
-  supplementary run in a separate workspace that does support classic
-  clusters, remains an open decision for a reviewer/mentor — see the main
-  README's "Lab requirement vs. Personal workspace reality" section. **This
-  document does not claim that requirement is fulfilled.**
+**Not yet proven / open for reviewer judgment:**
+
+- Whether a classic-cluster demonstration run in Azure PROD — rather than
+  the confirmed non-production workspace originally envisioned in
+  `evidence/CLASSIC_CLUSTER_REQUIREMENT_REVIEW.md` §8 — satisfies the
+  literal "create clusters" portion of the Lab 9 task requirement, or
+  whether Option A (accepting the serverless `run-all` proof as
+  sufficient) remains preferable regardless. This project does not
+  resolve that question on its own — see the main README's "Lab
+  requirement vs. Personal workspace reality" section and
+  `evidence/CLASSIC_CLUSTER_REQUIREMENT_REVIEW.md` §9 for the full,
+  honest framing. **This document does not claim the deviation from the
+  "no Azure PROD" safeguard was itself pre-approved by that document —
+  only that a separate, specific, owner-granted authorization for this
+  exact test existed before it ran.**
+- Whether a create-to-`RUNNING` cycle completed by automation alone, with
+  no manual restart in the middle, is required to fully satisfy the
+  requirement, given that section 9's automated attempt did complete a
+  real create-and-terminate cycle but did not itself observe `RUNNING`
+  before a human intervened.

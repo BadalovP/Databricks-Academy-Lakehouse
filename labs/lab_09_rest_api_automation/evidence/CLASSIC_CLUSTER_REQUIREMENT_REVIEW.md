@@ -189,9 +189,14 @@ workspace limitation rather than an open task.
 
 ## 8. If a separate demonstration is required: minimal test plan
 
-**Not executed. Requires your explicit approval of a specific,
-already-approved, confirmed-non-production workspace/profile before any
-of this runs.** This project will not select or guess a target workspace.
+**As originally written below: not yet executed, and scoped to a
+confirmed-non-production workspace only.** *(Update: this plan's
+Clusters-API and Jobs-API steps have since actually been executed — but
+against Azure PROD, not the confirmed-non-production workspace this plan
+required, and with a manual restart between the create and Jobs-API
+steps. See §9 below for exactly what ran, including that deviation,
+before treating this section as either fulfilled or superseded.)* This
+project will not select or guess a target workspace.
 
 ### Scope — deliberately narrower than `preflight --probe-cluster-create`
 
@@ -351,11 +356,106 @@ Job interaction of any kind** in the target workspace.
 
 ---
 
+## 9. Actual execution result (2026-09-27) — and an explicit deviation from §8's "No Azure PROD" safeguard
+
+**The plan in §8 has since been executed** — with one material,
+deliberate deviation from how it was scoped above, recorded here plainly
+rather than silently updated away.
+
+§8's "Explicit safeguards" state: *"No Azure PROD: hard pre-check in step
+3; the plan does not proceed without your explicit, named approval of
+profile, host, and identity together."* That safeguard assumed any
+supplementary demonstration would run against a confirmed
+**non-production** workspace. **What actually ran instead was executed
+against Azure PROD itself** — the same workspace referenced elsewhere in
+this project as "Azure PROD" — under a separate, specific, explicit
+authorization obtained directly from that workspace's owner for this one
+scoped test, given after being told the workspace would be treated as
+Azure PROD regardless of profile name or group membership. It was not an
+application of §8's plan as originally written; §8's own "No Azure PROD"
+premise did not hold for this execution, and this document does not
+represent otherwise.
+
+**Controls actually followed, despite running in Azure PROD:**
+
+- Authentication used a dedicated OAuth user-to-machine profile created
+  solely for this test; the operator's pre-existing long-lived Personal
+  Access Token for this workspace was never accessed, displayed, logged,
+  or used.
+- Only newly created, uniquely-named/tagged resources (one cluster, one
+  Job, one notebook) were ever created, started, or modified.
+- Every pre-existing resource in that workspace — including two other
+  long-running personal clusters — was independently, repeatedly
+  read-only-checked before and after every step and was never started,
+  stopped, modified, or deleted by this project's automation at any
+  point.
+- Exactly one application-level cluster-create attempt was made after a
+  real bug (a Photon-runtime tie-break in `resolve_lts_spark_version()`,
+  the same class of bug as the aarch64 issue in §4) was found, root-caused
+  from a genuine rejection, and fixed with regression-test coverage before
+  any retry — no blind retry loop was ever run.
+- Termination was independently, explicitly verified via the same
+  dedicated polling loop specified in §8 step 11 (never treating an
+  observed `RUNNING`/`TERMINATING` state as sufficient, only an exact
+  `TERMINATED`), both after the initial provisioning attempt and after
+  the Jobs-API test below.
+
+**Result — and the manual restart in the middle, stated explicitly:** a
+real classic cluster (`Personal Compute` policy, single-node,
+`Standard_D4ds_v5`, a dynamically resolved standard non-Photon LTS
+runtime, `SINGLE_USER`, 10-minute autotermination) was created by this
+project's own automation. That automated attempt's own readiness poll
+(8-minute bound) timed out while the cluster was still `PENDING` —
+provisioning a node of this type in this workspace runs 5–8.5 minutes
+based on historical data — so, per this script's own design, it requested
+termination and independently confirmed `TERMINATED` without ever having
+observed `RUNNING` itself. **The project's operator then manually
+restarted that same cluster (same cluster id) via the Databricks UI,
+outside any of this project's own code, and it reached `RUNNING`.** Only
+after that manual restart, in a separate automated run against the
+now-running cluster, did this project's own automation upload a trivial
+notebook, create one temporary Job with `existing_cluster_id` pointing at
+it, run it via `run_now()`, poll to completion, and retrieve output
+matching the expected result exactly. It then requested termination a
+second time, independently confirmed `TERMINATED`, and deleted the
+temporary Job and notebook it had created. Full detail:
+`evidence/LIVE_VALIDATION_SUMMARY.md` §9.
+
+**What this does and does not settle:** this project's own automation
+successfully exercised, live, cluster create, cluster terminate
+(twice, both independently confirmed), and — against a cluster a human
+had manually restarted — Job attachment via `existing_cluster_id`,
+notebook execution, and confirmed termination. **The create-to-`RUNNING`
+transition itself was not achieved by automation alone**: the automated
+readiness poll timed out and the cluster was terminated before it was
+ever observed `RUNNING`, and a human restarted it afterward. What this
+does **not** settle on its own is (a) whether a demonstration run against
+Azure PROD — under this specific, explicit, one-off owner authorization,
+but outside the non-production scope §8 was originally written for — is
+the right way to satisfy the requirement for grading purposes, versus
+treating the serverless `run-all` proof (§5 above) as sufficient on the
+Personal workspace where Lab 9 was otherwise built, and (b) whether the
+manual restart between steps disqualifies this as a fully-automated
+demonstration of the create-to-`RUNNING` leg specifically, even though
+every step was exercised by this project's own tested code individually.
+Both judgment calls are left to the reviewer/mentor, same as the
+still-open Option A vs. Option B question below.
+
+---
+
 ## Next step
 
 This package is ready for a mentor/reviewer to read. **No decision has
 been made on Option A vs. Option B** (see `README.md` "Lab requirement
-vs. Personal workspace reality"), and the classic-cluster requirement
-should continue to be described as unproven, not unsatisfiable, until
-that decision is made and (if Option B is chosen) the plan in §8 is
-explicitly approved and executed against a named workspace.
+vs. Personal workspace reality"). Section 9 above records that the
+classic-cluster capability has now been demonstrated live — automated
+create, automated terminate, a **manual restart by the project's operator
+in between**, then fully automated Job attachment via
+`existing_cluster_id`, notebook execution, and confirmed termination
+against the manually-restarted cluster — against Azure PROD rather than
+the confirmed non-production workspace this document originally scoped
+§8 for. The requirement should be described as **demonstrated, with two
+explicit deviations from the original §8 plan for the reviewer to
+weigh (the Azure PROD workspace, and the manual restart between the
+create and Jobs-API steps)** — not as cleanly and unconditionally
+satisfied by automation alone, and not as still unproven.
