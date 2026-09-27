@@ -255,6 +255,33 @@ def test_build_cluster_spec_is_single_node_and_autoterminating_by_default():
     assert kwargs["autotermination_minutes"] == 20
 
 
+def test_as_new_cluster_dict_omits_cluster_name_and_autotermination():
+    """Regression test for a real defect found live (2026-09-27): Databricks
+    rejects both fields outright for an automated (job) cluster --
+    "Cluster name should not be provided for jobs." and "Automated clusters
+    do not support autotermination." -- confirmed while creating a
+    persistent demonstration Job in Azure PROD. as_new_cluster_dict() used
+    to build its payload from as_create_kwargs() unmodified, which always
+    included both; every mocked test of the job_cluster fallback path
+    passed regardless, since a mock never validates field semantics the way
+    the real Jobs API does.
+    """
+    spec = compute.ClusterSpec(
+        spark_version="15.4.x-scala2.12",
+        node_type_id="small",
+        autotermination_minutes=20,
+        num_workers=1,
+        single_node=False,
+    )
+
+    payload = spec.as_new_cluster_dict()
+
+    assert "cluster_name" not in payload
+    assert "autotermination_minutes" not in payload
+    assert payload["node_type_id"] == "small"
+    assert payload["data_security_mode"] == "SINGLE_USER"
+
+
 def test_start_cluster_create_returns_cluster_id_without_waiting():
     client = _autospec_client()
     waiter = MagicMock()

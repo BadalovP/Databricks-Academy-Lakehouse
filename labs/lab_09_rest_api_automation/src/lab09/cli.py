@@ -284,7 +284,7 @@ def cmd_run_all(client: WorkspaceClient, cfg: dict[str, Any], args: argparse.Nam
                 report.classic_cluster_supported = False
                 report.classic_cluster_failure_reason = f"{type(rejection).__name__}: {rejection}"
                 compute_mode = "job_cluster"
-                new_cluster_dict = cluster_spec.as_new_cluster_dict("lab09-job-cluster")
+                new_cluster_dict = cluster_spec.as_new_cluster_dict()
                 logger.info(
                     "compute_mode=job_cluster: explicit cluster creation was rejected (%s). "
                     "Databricks will provision and tear down the job cluster itself.",
@@ -292,7 +292,7 @@ def cmd_run_all(client: WorkspaceClient, cfg: dict[str, Any], args: argparse.Nam
                 )
         elif compute_mode == "job_cluster":
             cluster_spec = compute.build_cluster_spec(client, cfg)
-            new_cluster_dict = cluster_spec.as_new_cluster_dict("lab09-job-cluster")
+            new_cluster_dict = cluster_spec.as_new_cluster_dict()
         elif compute_mode == "serverless_job":
             # No cluster of any kind is created or referenced. If this
             # mode was chosen via the config's declared preferred_mode
