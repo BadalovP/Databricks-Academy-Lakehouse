@@ -41,10 +41,26 @@ from databricks.sdk import WorkspaceClient
 # path -- this notebook works unmodified regardless of whose home directory
 # it was deployed under (this workspace is shared by 100+ students, each
 # with their own).
+#
+# notebookPath() is documented, historically, to return a path WITHOUT the
+# "/Workspace" prefix (e.g. "/Users/<id>/..." rather than
+# "/Workspace/Users/<id>/..."), even though every other API this project
+# uses (workspace.list/get_status/import_) requires and returns the
+# "/Workspace"-prefixed form. Confirmed live (2026-09-27) that this
+# mismatch is the actual cause of a ModuleNotFoundError even after the
+# uploaded source was verified, independently, to exist at the exact path
+# this cell computes -- the resulting sys.path entry simply pointed at a
+# path that does not exist. Normalized defensively here rather than
+# assumed, and the resolved paths are printed so any future failure is
+# diagnosable directly from this cell's own output, without needing
+# another live run just to see what path was actually computed.
 notebook_path = (
     dbutils.notebook.entry_point.getDbutils().notebook().getContext().notebookPath().get()
 )
+if not notebook_path.startswith("/Workspace"):
+    notebook_path = "/Workspace" + notebook_path
 project_root = "/".join(notebook_path.split("/")[:-2])
+print(f"notebook_path={notebook_path!r} project_root={project_root!r}")
 sys.path.insert(0, f"{project_root}/src")
 
 from lab09 import landing
