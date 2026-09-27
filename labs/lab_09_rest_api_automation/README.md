@@ -755,7 +755,17 @@ from Lab 8's `lab08_cicd.yml` (not modified by this PR), scoped to
   in GitHub's UI, which this workflow file cannot do itself) -- that alone
   is the approval gate; there is no separate dummy approval job, since a
   second job referencing the same protected environment would just make a
-  human approve the identical prompt twice for one dispatch. Before
+  human approve the identical prompt twice for one dispatch. **Confirmed
+  live (2026-09-27, read-only, via the GitHub API): this environment does
+  not exist in this repository yet** -- `GET
+  /repos/.../environments/lab09-live-approval` returns 404. GitHub
+  auto-creates a referenced environment with zero protection rules on its
+  first use unless one is configured beforehand, so as things currently
+  stand, a `workflow_dispatch` run would proceed straight to
+  `run-live-automation` with no required-reviewer gate at all --
+  contradicting this section's own design intent. **Do not dispatch this
+  workflow until `lab09-live-approval` has been created under Settings ->
+  Environments with at least one required reviewer configured.** Before
   running, an explicit shell step verifies `DATABRICKS_PERSONAL_HOST` /
   `DATABRICKS_PERSONAL_TOKEN` are actually set and fails with a clear
   `::error::` message if either is missing -- there is no hardcoded host
