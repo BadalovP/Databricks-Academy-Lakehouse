@@ -27,7 +27,7 @@ pipeline.prefer_serverless), independent of that shared cluster.
 
 Never triggers a run: this script only ensures the Job DEFINITION exists
 and is up to date. Running it is a separate, explicit action (see
-.github/workflows/lab09_azure_deployment.yml).
+.github/workflows/lab09.yml).
 """
 
 from __future__ import annotations

@@ -442,9 +442,10 @@ question below — that remains a reviewer/mentor judgment call.
 
 **Every prior live validation in sections 1–9 was driven by a locally-run
 CLI invocation.** This section documents the first time
-`.github/workflows/lab09_api_automation.yml`'s `workflow_dispatch` ->
-`run-live-automation` path was actually dispatched and completed, rather
-than just described.
+the former `.github/workflows/lab09_api_automation.yml`'s
+`workflow_dispatch` -> `run-live-automation` path was actually dispatched
+and completed, rather than just described. That historical workflow was
+later consolidated into `.github/workflows/lab09.yml`.
 
 Before this run, the workflow's live job referenced a `lab09-live-approval`
 GitHub Environment that had never actually been created in this
@@ -554,7 +555,8 @@ local CLI — has now been exercised live, successfully, end to end.
 `lab09_taxi_reconciliation_job` (three dependent tasks: ingestion →
 Lakeflow pipeline → reconciliation) and `lab09_taxi_pipeline_v2` — reaching
 a fully successful run, dispatched and monitored entirely through this
-repository's own `lab09_azure_deployment.yml` GitHub Actions workflow, with
+repository's then-active `lab09_azure_deployment.yml` GitHub Actions
+workflow (later consolidated into `.github/workflows/lab09.yml`), with
 every task, its output, and cleanup independently verified.** This is a
 different, stronger result than sections 9–10 above: those exercised a
 temporary, purpose-built demonstration script and resources created and
@@ -658,3 +660,42 @@ resolve the Azure-PROD-deviation judgment call itself, but it does mean the
 "create clusters" requirement is now additionally demonstrated by the
 project's actual, permanent, reviewer-visible Job — not only by a temporary
 demonstration script built solely to exercise that one API surface.
+
+## 14. Final ownership and CI housekeeping (2026-09-27)
+
+A short read-only current-state check confirmed the permanent Azure Job
+and pipeline still use the IDs and names recorded in section 13. Job run
+`280542073791998` remains `TERMINATED` / `SUCCESS`; its task graph is still
+`ingestion` -> `lakeflow_pipeline` -> `reconciliation`; the Job has no
+schedule, and the pipeline is `IDLE`. No Job or pipeline was triggered by
+this housekeeping.
+
+The existing Job's ACL was updated in place: user
+`parvinbadalov@softserve.academy` now has `IS_OWNER`, while
+`github-lab08-travelops` retains `CAN_MANAGE` for future OIDC deployment
+and triggering. The immutable `creator_user_name` remains the service
+principal, the Job ID and run history are unchanged, and the explicit Run
+as identity remains the user. The Job therefore appears under **Owned by
+me**, even though its historical creator label can still show the service
+principal.
+
+The same user is a workspace administrator and has `CAN_MANAGE` on the
+pipeline, but Databricks rejected an in-place pipeline owner transfer with
+`Only metastore admins can change pipeline owner`. The pipeline ACL,
+pipeline ID, `IDLE` state, and explicit Run as identity were read back and
+remain unchanged. It remains visible under **Accessible by me**. A
+metastore administrator may optionally assign the user `IS_OWNER` and keep
+the service principal at `CAN_MANAGE`; this ACL-only change does not require
+resource recreation or execution.
+
+The two former Lab 9 workflow files were consolidated into the single
+`.github/workflows/lab09.yml` workflow, displayed as
+`LAB 09 · Databricks CI/CD`. Pull requests and pushes run the mocked static
+suite once. Manual dispatch requires a `deployment_target` choice of
+`personal` or `azure` and routes exclusively to the selected target while
+retaining the existing `personal-prod-approval`,
+`azure-release-approval`, and `azure-prod` environment boundaries. The
+repository had no main-branch protection or ruleset requiring a status
+name at the time of consolidation; the established `Static Checks and
+Tests` name was retained regardless. Historical Actions runs and artifacts
+remain available under their original workflow records.

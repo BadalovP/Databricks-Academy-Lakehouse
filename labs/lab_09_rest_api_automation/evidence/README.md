@@ -107,7 +107,7 @@ whether an Azure PROD demonstration is the right way to satisfy the
 requirement at all.
 
 **GitHub Actions live workflow, first successful run (2026-09-27):** the
-actual `workflow_dispatch` -> `run-live-automation` CI/CD path (back on
+former `workflow_dispatch` -> `run-live-automation` CI/CD path (back on
 the Personal workspace) was dispatched and completed successfully for the
 first time -- previously every live result above was obtained via a
 locally-run CLI invocation, never through this repository's own GitHub
@@ -122,7 +122,8 @@ dispatch -- now points at the existing, already-protected
 **Permanent Azure Job, first fully successful run, all three tasks
 (2026-09-27):** `lab09_taxi_reconciliation_job` (ingestion -> Lakeflow
 pipeline -> reconciliation) succeeded end to end via
-`lab09_azure_deployment.yml`'s own GitHub Actions `workflow_dispatch` path,
+the then-active `lab09_azure_deployment.yml` GitHub Actions
+`workflow_dispatch` path (now consolidated into `.github/workflows/lab09.yml`),
 after finding and fixing three genuine live defects in sequence and
 validating each with a full test pass before the next attempt (a
 cross-identity workspace-path issue, a `notebookPath()` prefix quirk, and

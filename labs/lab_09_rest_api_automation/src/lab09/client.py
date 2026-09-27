@@ -202,7 +202,7 @@ def get_workspace_client(profile: str | None = None) -> WorkspaceClient:
          (no token at all) -- the OIDC federated-identity pattern the
          Azure GitHub Actions workflow uses instead of a PAT, matching
          Lab 8's own already-configured ``azure/login`` + ``azure-cli``
-         auth flow exactly (see .github/workflows/lab09_azure_deployment.yml
+         auth flow exactly (see .github/workflows/lab09.yml
          and lab08_azure_prod_manual_run.yml). Recognizing this is safe for
          the same reason branch 3 already is: there is no local profile
          choice to override in a GitHub Actions runner (no ~/.databrickscfg

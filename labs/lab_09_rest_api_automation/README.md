@@ -27,9 +27,9 @@ deliberately separate from Lab 8's.
 - An argparse CLI (`python -m lab09.cli ...`).
 - A pytest suite covering the high-value logic with a mocked
   `WorkspaceClient` -- no live Databricks resources in PR tests.
-- A separate GitHub Actions workflow
-  (`.github/workflows/lab09_api_automation.yml`) with PR-safe static gates
-  and a manually-dispatched, approval-gated live path.
+- One Lab 9 GitHub Actions workflow (`.github/workflows/lab09.yml`) with
+  PR-safe static gates and manually dispatched, approval-gated `personal`
+  and `azure` deployment targets.
 - This README, documenting exactly what has and has not been proven live
   (see "Known limitations").
 
@@ -749,37 +749,38 @@ package refuses to pick a default profile itself.
 
 ## 12. GitHub Actions integration
 
-`.github/workflows/lab09_api_automation.yml` is a **separate** workflow
-from Lab 8's `lab08_cicd.yml` (not modified by this PR), scoped to
+`.github/workflows/lab09.yml` is the single active Lab 9 workflow and is
+separate from Lab 8's workflows. It is scoped to
 `labs/lab_09_rest_api_automation/**` and its own workflow file:
 
-- `pull_request` / `push`: `static-checks` only -- Ruff, Black, pytest
-  against a mocked `WorkspaceClient`. No live Databricks call is possible
-  from this path.
-- `workflow_dispatch`: `static-checks` -> `run-live-automation`.
-  `run-live-automation` references the existing `personal-prod-approval`
-  GitHub Environment -- the same one `lab08_cicd.yml` already uses for its
-  own personal-workspace live steps -- that alone is the approval gate;
-  there is no separate dummy approval job, since a second job referencing
-  the same protected environment would just make a human approve the
-  identical prompt twice for one dispatch. **This workflow previously
-  referenced a placeholder `lab09-live-approval` environment that was never
-  actually created: confirmed live, read-only, 2026-09-27, a direct
-  GitHub API query (`GET /repos/.../environments/lab09-live-approval`)
-  returned 404. GitHub auto-creates a referenced environment with zero
-  protection rules on its first use unless one is configured beforehand,
-  so a dispatch would have proceeded straight to `run-live-automation`
-  with no required-reviewer gate at all -- caught before any dispatch was
-  ever made.** Fixed by pointing this job at `personal-prod-approval`
-  instead, confirmed (same date, read-only) to already carry a
-  `required_reviewers` protection rule (reviewer: the repository owner)
-  with no branch restriction. GitHub environments are checked
-  independently per workflow run, so this has no effect on Lab 8's own use
-  of the same environment or on `lab08_cicd.yml` itself. Before
-  `actions/upload-artifact` uploads the generated `lab09_report.json`.
-- `concurrency: { group: lab09-api-automation, cancel-in-progress: false
-  }` prevents two live demonstrations from running at once.
-- No step prints or logs a token; secrets only ever appear as step `env:`
+- `pull_request` / `push`: runs `static-checks` exactly once -- Ruff,
+  Black, and pytest against mocked `WorkspaceClient` instances. Every job
+  capable of authenticating to Databricks also requires
+  `workflow_dispatch`, so these events cannot create, update, or run a
+  live Databricks resource.
+- `workflow_dispatch`: requires a `deployment_target` choice of `personal`
+  or `azure`; only the selected target's jobs can run.
+- `personal`: after `static-checks`, `run-personal-automation` uses the
+  existing `personal-prod-approval` required-reviewer environment and the
+  existing `DATABRICKS_PERSONAL_HOST` / `DATABRICKS_PERSONAL_TOKEN`
+  configuration. It runs the unchanged serverless Personal-workspace
+  command, `python -m lab09.cli run-all`, then uploads its report.
+- `azure`: after `static-checks`, `approve-azure-deployment` uses the
+  existing `azure-release-approval` required-reviewer environment. The
+  deployment and execution jobs then use the existing `azure-prod`
+  environment, Azure OIDC variables, `DATABRICKS_AUTH_TYPE=azure-cli`, and
+  a literal pinned workspace host. The idempotent deployment reuses the
+  existing Job and pipeline; execution triggers that Job once, verifies
+  all task outputs and reconciliation, confirms compute shutdown, and
+  uploads its evidence.
+- The repository has no main-branch protection or repository ruleset with
+  a required status-check name (read-only GitHub API check on 2026-09-27),
+  so replacing the two former workflow files does not orphan a required
+  check. The static job retains its established display name,
+  `Static Checks and Tests`.
+- Historical Actions runs and their artifacts remain attached to the
+  former workflow records after the YAML files are removed.
+- No step prints or logs a token; secrets only appear as step `env:`
   values.
 
 ## 13. Security model
@@ -1030,11 +1031,11 @@ outcomes.
 5. Re-run `run-all` a second time and confirm the report's `status` is
    `NO_NEW_DATA` only once all configured 2024 months have landed --
    otherwise it lands the next month and reports `SUCCESS`.
-6. To watch the manual GitHub Actions path instead: dispatch
-   `.github/workflows/lab09_api_automation.yml` from the Actions tab (the
-   `personal-prod-approval` environment it uses already has a
-   required-reviewer rule configured -- see "GitHub Actions integration"
-   above) and approve the pending deployment when prompted.
+6. To watch the manual GitHub Actions path instead, dispatch
+   `.github/workflows/lab09.yml` from the Actions tab with
+   `deployment_target: personal`. The `personal-prod-approval` environment
+   already has a required-reviewer rule -- see "GitHub Actions integration"
+   above -- so approve the pending deployment when prompted.
 
 ## 17. Two-environment architecture (Personal workspace + Azure)
 
@@ -1064,8 +1065,8 @@ Unchanged by the Azure work described below. See sections 1-16 above and
 `evidence/LIVE_VALIDATION_SUMMARY.md` sections 1-8 and 11 for the full
 detail: `lab09_taxi_reconciliation_job` (a single-task, serverless-compute
 Job), `lab09_taxi_pipeline_v2`, the existing schemas/landing Volume/tables/
-notebook, and the existing `personal-prod-approval`-gated GitHub Actions
-workflow (`lab09_api_automation.yml`), all reused as-is.
+notebook, and the existing `personal-prod-approval`-gated Personal path in
+the consolidated `lab09.yml` workflow, all reused as-is.
 
 ### Azure deployment
 
@@ -1154,17 +1155,32 @@ confirm it reached `TERMINATED` afterward -- a successful run does not, by
 itself, count as overall success if that confirmation fails (mirroring the
 same fix applied to `scripts/validate_classic_e2e.py`'s cleanup reporting).
 
-**GitHub Actions.** `.github/workflows/lab09_azure_deployment.yml` is a
-separate workflow from the Personal-workspace one: static checks on every
-pull request/push (no live resource reachable from those events), then,
-only on an explicit `workflow_dispatch`, an approval gate
-(`azure-release-approval`, reused from Lab 8) followed by deployment and
-execution (`azure-prod`, also reused from Lab 8 -- both confirmed,
-read-only, to already carry the protection/credentials this workflow
-needs, before this file was written). Authentication is OIDC-based Azure
-service-principal federation (`azure/login` + `DATABRICKS_AUTH_TYPE=azure-cli`),
-the same already-configured mechanism Lab 8's own Azure workflows use --
-never a stored personal access token.
+**GitHub Actions.** `.github/workflows/lab09.yml` exposes the Azure path as
+`workflow_dispatch` with `deployment_target: azure`. Static checks run once,
+then the existing `azure-release-approval` environment gates deployment.
+Deployment and execution use the existing `azure-prod` environment. Both
+environment configurations were confirmed read-only before consolidation;
+no protection or credential setting was changed. Authentication remains
+OIDC-based Azure service-principal federation (`azure/login` plus
+`DATABRICKS_AUTH_TYPE=azure-cli`), the same already-configured mechanism
+Lab 8 uses, never a stored personal access token. Ordinary pull requests
+and pushes cannot reach any live deployment or execution job.
+
+**Ownership and visibility (2026-09-27).** The existing Azure Job keeps ID
+`374991019372414`, run history, and immutable creator
+`github-lab08-travelops`. Its current `IS_OWNER` ACL was transferred in
+place to `parvinbadalov@softserve.academy`, so it appears under **Owned by
+me**; the service principal retains `CAN_MANAGE` for future OIDC deployment
+and triggering. Its explicit Run as identity remains
+`parvinbadalov@softserve.academy`. The pipeline keeps ID
+`93a49a14-366e-4224-b2b3-587ef0b7a028`, remains owned by the service
+principal, grants the user `CAN_MANAGE`, and also continues to run as the
+same user. Databricks rejected the pipeline owner transfer because the
+authenticated workspace administrator is not a metastore administrator;
+it remains available under **Accessible by me**. A metastore administrator
+can optionally transfer its `IS_OWNER` ACL to the user while retaining the
+service principal's `CAN_MANAGE` grant. No resource recreation or execution
+is needed for that optional ACL-only change.
 
 **What is and is not proven by this section alone:** this section describes
 the architecture and code; live results are recorded separately in
