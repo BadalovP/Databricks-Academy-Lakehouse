@@ -111,17 +111,19 @@ def test_ensure_pipeline_run_as_is_none_when_not_configured():
     assert kwargs["run_as"] is None
 
 
-def test_ensure_pipeline_creation_passes_the_landing_trips_path_configuration():
-    """Regression test for a real defect found live (2026-09-27): bronze.py's
-    Auto Loader read from a module-level hardcoded default path
-    (dbr_dev.parvinbadalov, matching config/dev.yml's schema only by
-    coincidence) because nothing ever set the "lab09.landing_trips_path"
-    Spark configuration this pipeline is supposed to override it with. On
-    config/azure.yml, whose landing schema is instead
-    parvinbadalov_lab09_prod, this caused a live UC_VOLUME_NOT_FOUND
-    failure. The pipeline must always be created with this configuration
-    set from the deploying config's own catalog/schema/volume, not left to
-    bronze.py's fallback.
+def test_ensure_pipeline_creation_passes_the_landing_volume_configuration():
+    """Regression test for two real defects found live (2026-09-27), in two
+    successive failed runs: bronze.py's Auto Loader source AND silver.py's
+    zone-lookup reference read both used a module-level hardcoded default
+    path (dbr_dev.parvinbadalov, matching config/dev.yml's schema only by
+    coincidence) because nothing ever set the "lab09.landing_trips_path" /
+    "lab09.reference_csv_path" Spark configuration each is supposed to be
+    overridden by. On config/azure.yml, whose landing schema is instead
+    parvinbadalov_lab09_prod, this caused two successive live
+    UC_VOLUME_NOT_FOUND failures (bronze first, then silver once bronze was
+    fixed). The pipeline must always be created with both configuration
+    keys set from the deploying config's own catalog/schema/volume, not
+    left to either file's own hardcoded fallback.
     """
     client = _autospec_client()
     client.pipelines.list_pipelines.return_value = []
@@ -135,11 +137,14 @@ def test_ensure_pipeline_creation_passes_the_landing_trips_path_configuration():
 
     _, kwargs = client.pipelines.create.call_args
     assert kwargs["configuration"] == {
-        "lab09.landing_trips_path": "/Volumes/dbr_dev/parvinbadalov_lab09_prod/lab09_landing/trips/"
+        "lab09.landing_trips_path": "/Volumes/dbr_dev/parvinbadalov_lab09_prod/lab09_landing/trips/",
+        "lab09.reference_csv_path": (
+            "/Volumes/dbr_dev/parvinbadalov_lab09_prod/lab09_landing/reference/taxi_zone_lookup.csv"
+        ),
     }
 
 
-def test_ensure_pipeline_update_passes_the_landing_trips_path_configuration():
+def test_ensure_pipeline_update_passes_the_landing_volume_configuration():
     client = _autospec_client()
     existing = MagicMock()
     existing.name = "lab09_taxi_pipeline"
@@ -152,15 +157,18 @@ def test_ensure_pipeline_update_passes_the_landing_trips_path_configuration():
 
     _, kwargs = client.pipelines.update.call_args
     assert kwargs["configuration"] == {
-        "lab09.landing_trips_path": "/Volumes/dbr_dev/parvinbadalov_lab09_prod/lab09_landing/trips/"
+        "lab09.landing_trips_path": "/Volumes/dbr_dev/parvinbadalov_lab09_prod/lab09_landing/trips/",
+        "lab09.reference_csv_path": (
+            "/Volumes/dbr_dev/parvinbadalov_lab09_prod/lab09_landing/reference/taxi_zone_lookup.csv"
+        ),
     }
 
 
-def test_ensure_pipeline_landing_trips_path_uses_top_level_schema_not_target_schema():
+def test_ensure_pipeline_landing_volume_configuration_uses_top_level_schema_not_target_schema():
     """config/dev.yml deliberately splits the landing schema (top-level
     `schema:`) from the pipeline output schema (`pipeline.target_schema`) --
-    see that file's own comments. The Auto Loader source path must be built
-    from the former, never the latter, even when they differ.
+    see that file's own comments. Both Auto Loader source paths must be
+    built from the former, never the latter, even when they differ.
     """
     client = _autospec_client()
     client.pipelines.list_pipelines.return_value = []
@@ -174,7 +182,10 @@ def test_ensure_pipeline_landing_trips_path_uses_top_level_schema_not_target_sch
     _, kwargs = client.pipelines.create.call_args
     assert kwargs["target"] == "lab09"
     assert kwargs["configuration"] == {
-        "lab09.landing_trips_path": "/Volumes/dbr_dev/parvinbadalov/lab09_landing/trips/"
+        "lab09.landing_trips_path": "/Volumes/dbr_dev/parvinbadalov/lab09_landing/trips/",
+        "lab09.reference_csv_path": (
+            "/Volumes/dbr_dev/parvinbadalov/lab09_landing/reference/taxi_zone_lookup.csv"
+        ),
     }
 
 
