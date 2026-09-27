@@ -299,10 +299,44 @@ def test_get_workspace_client_falls_back_to_host_token_env_vars(monkeypatch):
     assert calls == [{}]
 
 
+def test_get_workspace_client_falls_back_to_host_and_azure_cli_auth_type(monkeypatch):
+    """The Azure GitHub Actions workflow authenticates via OIDC (azure/login
+    + `az` CLI), never a PAT -- DATABRICKS_HOST + DATABRICKS_AUTH_TYPE=azure-cli
+    with no DATABRICKS_TOKEN at all must resolve the same way the existing
+    host+token CI pattern does, matching Lab 8's own already-configured
+    azure-cli auth flow exactly.
+    """
+    calls = []
+    monkeypatch.setattr(client, "WorkspaceClient", lambda **kwargs: calls.append(kwargs) or kwargs)
+    monkeypatch.delenv("DATABRICKS_CONFIG_PROFILE", raising=False)
+    monkeypatch.delenv("DATABRICKS_TOKEN", raising=False)
+    monkeypatch.setenv("DATABRICKS_HOST", "https://example.azuredatabricks.net")
+    monkeypatch.setenv("DATABRICKS_AUTH_TYPE", "azure-cli")
+
+    client.get_workspace_client()
+
+    assert calls == [{}]
+
+
+def test_get_workspace_client_raises_when_host_set_but_no_token_or_azure_cli_auth(monkeypatch):
+    """DATABRICKS_HOST alone, with neither a token nor azure-cli auth type,
+    must still refuse to guess rather than silently attempting some other
+    ambient auth method.
+    """
+    monkeypatch.delenv("DATABRICKS_CONFIG_PROFILE", raising=False)
+    monkeypatch.delenv("DATABRICKS_TOKEN", raising=False)
+    monkeypatch.delenv("DATABRICKS_AUTH_TYPE", raising=False)
+    monkeypatch.setenv("DATABRICKS_HOST", "https://example.azuredatabricks.net")
+
+    with pytest.raises(client.ProfileNotSpecifiedError):
+        client.get_workspace_client()
+
+
 def test_get_workspace_client_raises_when_nothing_is_configured(monkeypatch):
     monkeypatch.delenv("DATABRICKS_CONFIG_PROFILE", raising=False)
     monkeypatch.delenv("DATABRICKS_HOST", raising=False)
     monkeypatch.delenv("DATABRICKS_TOKEN", raising=False)
+    monkeypatch.delenv("DATABRICKS_AUTH_TYPE", raising=False)
 
     with pytest.raises(client.ProfileNotSpecifiedError):
         client.get_workspace_client()

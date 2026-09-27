@@ -27,7 +27,7 @@ fallback behavior" for why the Personal workspace this project has tested
 against needs mode C).
 
 Independent of compute mode, every task also carries NotebookTask.base_parameters
-(see _notebook_base_parameters()) so the reconciliation notebook queries
+(see notebook_base_parameters()) so the reconciliation notebook queries
 cfg["pipeline"]["target_schema"] -- the pipeline's actual OUTPUT schema --
 instead of silently relying on its own hardcoded widget defaults. This
 matters because the pipeline's output schema (config/dev.yml's
@@ -56,7 +56,7 @@ def find_job_by_name(client: WorkspaceClient, name: str):
     return None
 
 
-def _notebook_base_parameters(cfg: dict[str, Any]) -> dict[str, str]:
+def notebook_base_parameters(cfg: dict[str, Any]) -> dict[str, str]:
     """Override the reconciliation notebook's hardcoded widget defaults so it
     queries the pipeline's actual OUTPUT schema (cfg["pipeline"]["target_schema"],
     e.g. "lab09") instead of silently falling back to its
@@ -65,6 +65,10 @@ def _notebook_base_parameters(cfg: dict[str, Any]) -> dict[str, str]:
     the pipeline itself writes to a different schema. Every value must be a
     plain str: NotebookTask.base_parameters is typed Dict[str, str] in the
     installed databricks-sdk==0.133.0.
+
+    Public: also used directly by scripts/deploy_azure_job.py to build the
+    Azure deployment's reconciliation task parameters against config/azure.yml,
+    rather than duplicating this exact mapping a second time.
     """
     tables = cfg["tables"]
     return {
@@ -86,7 +90,7 @@ def _task_settings(
 ) -> jobs_svc.Task:
     task_key = cfg["job"]["task_key"]
     notebook_task = jobs_svc.NotebookTask(
-        notebook_path=notebook_path, base_parameters=_notebook_base_parameters(cfg)
+        notebook_path=notebook_path, base_parameters=notebook_base_parameters(cfg)
     )
 
     modes_selected = sum([bool(cluster_id), bool(new_cluster), bool(serverless)])

@@ -74,8 +74,13 @@ def _mkparent(client: WorkspaceClient, workspace_path: str) -> None:
     client.workspace.mkdirs(parent)
 
 
-def _upload_workspace_file(client: WorkspaceClient, local_path: Path, workspace_path: str) -> None:
-    """Upload a plain, non-notebook Python module as a genuine ObjectType.FILE."""
+def upload_workspace_file(client: WorkspaceClient, local_path: Path, workspace_path: str) -> None:
+    """Upload a plain, non-notebook file (Python module, YAML config, etc.) as
+    a genuine ObjectType.FILE. Public: used both by upload_pipeline_sources()
+    below and directly by scripts/deploy_azure_job.py, which uploads this
+    project's own src/lab09 source and config/azure.yml the same way, rather
+    than duplicating this exact encode-and-import_ logic a second time.
+    """
     _mkparent(client, workspace_path)
     client.workspace.import_(
         workspace_path,
@@ -111,7 +116,7 @@ def upload_pipeline_sources(
         if not local_path.exists():
             raise FileNotFoundError(f"Expected pipeline source file not found: {local_path}")
         workspace_path = f"{target_dir}/{filename}"
-        _upload_workspace_file(client, local_path, workspace_path)
+        upload_workspace_file(client, local_path, workspace_path)
         uploaded.append(workspace_path)
     return uploaded
 
