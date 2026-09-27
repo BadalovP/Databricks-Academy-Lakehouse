@@ -1167,8 +1167,24 @@ the same already-configured mechanism Lab 8's own Azure workflows use --
 never a stored personal access token.
 
 **What is and is not proven by this section alone:** this section describes
-the architecture and code; live results (once an authorized deployment and
-validation run have actually happened) are recorded separately in
+the architecture and code; live results are recorded separately in
 `evidence/LIVE_VALIDATION_SUMMARY.md`, clearly labeled by which workspace
 actually produced them -- this section is never itself cited as evidence
 of a live result.
+
+### Live validation result
+
+**The permanent Azure Job succeeded end to end, all three tasks, via this
+repository's own GitHub Actions workflow (2026-09-27).** Getting there
+required finding and fixing three genuine, distinct live defects in
+sequence (a cross-identity workspace-path issue, a `notebookPath()` prefix
+quirk, and the pipeline's own source files each resolving their input
+volume from a hardcoded default instead of this environment's actual
+schema) -- each found via direct API investigation, fixed, tested, and
+merged before the next live attempt. See `evidence/LIVE_VALIDATION_SUMMARY.md`
+section 13 for the full account, including why a dedicated Azure identity
+could not be created (a tenant-policy restriction, not a workaround-able
+gap) and how "Run As" was used instead, the actual reconciliation numbers
+(`bronze_rows == silver_valid_rows + rejected_rows` held exactly:
+2,964,624 == 2,869,585 + 95,039), and independent confirmation that the
+Job's cluster reached `TERMINATED` afterward.
