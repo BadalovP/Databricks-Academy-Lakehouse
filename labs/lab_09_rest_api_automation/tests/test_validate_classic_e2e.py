@@ -302,7 +302,14 @@ def test_incorrect_notebook_output_marks_failed(monkeypatch):
 # --- cleanup edge cases ------------------------------------------------------
 
 
-def test_cluster_termination_unconfirmed_does_not_mask_an_otherwise_successful_run(monkeypatch):
+def test_cluster_termination_unconfirmed_preserves_status_but_fails_overall(monkeypatch):
+    """Regression test for a real defect: a successful notebook run must not
+    be reported as overall success when required cleanup failed.
+    `status` still preserves the actual execution result (the notebook DID
+    run and DID return the right output) -- `succeeded` is the separate,
+    combined signal that main()'s exit code is based on, and must be False
+    here even though `status` stays "SUCCESS".
+    """
     client = _client()
     _patch_resolution(monkeypatch, client)
     _patch_running(monkeypatch)
@@ -313,9 +320,11 @@ def test_cluster_termination_unconfirmed_does_not_mask_an_otherwise_successful_r
 
     assert report.status == "SUCCESS"
     assert report.cluster_terminated_confirmed is False
+    assert report.cleanup_confirmed is False
+    assert report.succeeded is False
 
 
-def test_job_and_notebook_deletion_failures_are_recorded_not_raised(monkeypatch):
+def test_job_and_notebook_deletion_failures_are_recorded_and_fail_overall(monkeypatch):
     client = _client()
     _patch_resolution(monkeypatch, client)
     _patch_running(monkeypatch)
@@ -329,6 +338,31 @@ def test_job_and_notebook_deletion_failures_are_recorded_not_raised(monkeypatch)
     assert report.status == "SUCCESS"
     assert report.job_deleted is False
     assert report.notebook_deleted is False
+    assert report.succeeded is False
+
+
+def test_fully_clean_run_succeeds_overall():
+    report = vce.ValidationReport(
+        status="SUCCESS",
+        job_deleted=True,
+        notebook_deleted=True,
+        cluster_terminated_confirmed=True,
+    )
+    assert report.cleanup_confirmed is True
+    assert report.succeeded is True
+
+
+def test_cleanup_fields_never_attempted_do_not_count_as_a_cleanup_failure():
+    """None (never attempted, e.g. a run that failed before creating that
+    resource) must never be conflated with an explicit False (attempted and
+    failed) -- only the latter should ever fail `cleanup_confirmed`.
+    """
+    report = vce.ValidationReport(status="FAILED")
+    assert report.job_deleted is None
+    assert report.notebook_deleted is None
+    assert report.cluster_terminated_confirmed is None
+    assert report.cleanup_confirmed is True
+    assert report.succeeded is False  # status alone still fails it here
 
 
 # --- CLI wiring --------------------------------------------------------------

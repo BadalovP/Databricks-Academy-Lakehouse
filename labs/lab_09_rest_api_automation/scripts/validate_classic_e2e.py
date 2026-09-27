@@ -132,8 +132,33 @@ class ValidationReport:
         return asdict(self)
 
     @property
+    def cleanup_confirmed(self) -> bool:
+        """True unless a resource this run actually created is known NOT to
+        have been cleaned up.
+
+        None means "not applicable" (this run never got far enough to
+        create that resource) and is never itself treated as a failure --
+        only an explicit False (job_deleted=False, notebook_deleted=False,
+        or cluster_terminated_confirmed=False) does. Mirrors the same
+        "confirmed vs. merely not raised" distinction already established in
+        cli.py's _finish() / compute.terminate_and_verify_cluster().
+        """
+        return (
+            self.job_deleted is not False
+            and self.notebook_deleted is not False
+            and self.cluster_terminated_confirmed is not False
+        )
+
+    @property
     def succeeded(self) -> bool:
-        return self.status == "SUCCESS"
+        """A successful notebook run must not, by itself, count as overall
+        success if required cleanup of this run's own temporary resources
+        failed. `status` above still preserves the actual execution
+        result unchanged (never overwritten to "FAILED" just because
+        cleanup fell short) -- this property is the separate, combined
+        signal main()'s exit code is based on.
+        """
+        return self.status == "SUCCESS" and self.cleanup_confirmed
 
 
 def write_report(report: ValidationReport, output_path: str | Path) -> Path:
