@@ -7,6 +7,7 @@ infrastructure and never triggers a run.
 from unittest.mock import MagicMock
 
 import deploy_azure_job as daj
+import pytest
 
 
 def _cfg() -> dict:
@@ -124,7 +125,9 @@ def test_ensure_three_task_job_creates_when_missing():
     client.jobs.list.return_value = []
     client.jobs.create.return_value = MagicMock(job_id=555)
 
-    job_id, created = daj.ensure_three_task_job(client, _cfg(), job_clusters=[], tasks=[])
+    job_id, created = daj.ensure_three_task_job(
+        client, _cfg(), job_clusters=[], tasks=[], identity="me@example.com"
+    )
 
     assert job_id == 555
     assert created is True
@@ -137,9 +140,12 @@ def test_ensure_three_task_job_resets_existing_job_instead_of_duplicating():
     existing = MagicMock()
     existing.job_id = 42
     existing.settings.name = "lab09_taxi_reconciliation_job"
+    existing.creator_user_name = "me@example.com"
     client.jobs.list.return_value = [existing]
 
-    job_id, created = daj.ensure_three_task_job(client, _cfg(), job_clusters=[], tasks=[])
+    job_id, created = daj.ensure_three_task_job(
+        client, _cfg(), job_clusters=[], tasks=[], identity="me@example.com"
+    )
 
     assert job_id == 42
     assert created is False
@@ -147,6 +153,42 @@ def test_ensure_three_task_job_resets_existing_job_instead_of_duplicating():
     client.jobs.reset.assert_called_once()
     _, kwargs = client.jobs.reset.call_args
     assert kwargs["job_id"] == 42
+
+
+def test_ensure_three_task_job_refuses_to_reset_a_job_owned_by_someone_else():
+    """Regression test: this Azure workspace is shared by 100+ other
+    students -- a same-named Job found by name must never be reset unless
+    its own creator_user_name positively matches the current identity.
+    """
+    client = _autospec_client()
+    existing = MagicMock()
+    existing.job_id = 42
+    existing.settings.name = "lab09_taxi_reconciliation_job"
+    existing.creator_user_name = "someone.else@example.com"
+    client.jobs.list.return_value = [existing]
+
+    with pytest.raises(daj.ResourceOwnershipError):
+        daj.ensure_three_task_job(
+            client, _cfg(), job_clusters=[], tasks=[], identity="me@example.com"
+        )
+
+    client.jobs.reset.assert_not_called()
+    client.jobs.create.assert_not_called()
+
+
+def test_verify_owned_by_current_identity_accepts_exact_match():
+    resource = MagicMock(creator_user_name="me@example.com")
+    daj.verify_owned_by_current_identity(resource, "me@example.com", "Job 'x'")  # no raise
+
+
+def test_verify_owned_by_current_identity_rejects_missing_creator_field():
+    """A resource object with no creator_user_name at all (e.g. a mock or a
+    genuinely malformed response) must never be treated as owned by
+    default -- getattr's fallback (None) must never equal a real identity.
+    """
+    resource = object()
+    with pytest.raises(daj.ResourceOwnershipError):
+        daj.verify_owned_by_current_identity(resource, "me@example.com", "Job 'x'")
 
 
 def test_deploy_never_triggers_a_run(monkeypatch):
@@ -166,6 +208,7 @@ def test_deploy_never_triggers_a_run(monkeypatch):
     monkeypatch.setattr(
         daj.workspace, "pipeline_source_dir", MagicMock(return_value="/Workspace/x/lab09/pipeline")
     )
+    monkeypatch.setattr(daj.pipelines, "find_pipeline_by_name", MagicMock(return_value=None))
     monkeypatch.setattr(
         daj.pipelines, "ensure_pipeline", MagicMock(return_value=("pipeline-1", True))
     )
@@ -183,3 +226,33 @@ def test_deploy_never_triggers_a_run(monkeypatch):
     assert report.pipeline_id == "pipeline-1"
     run_now_mock.assert_not_called()
     client.pipelines.start_update.assert_not_called()
+
+
+def test_deploy_refuses_to_update_a_pipeline_owned_by_someone_else(monkeypatch):
+    client = _autospec_client()
+    client.current_user.me.return_value.user_name = "me@example.com"
+    client.config.host = "https://adb-example.1.azuredatabricks.net"
+
+    monkeypatch.setattr(daj.volumes, "ensure_output_schema", MagicMock())
+    monkeypatch.setattr(daj.volumes, "ensure_volume", MagicMock())
+    monkeypatch.setattr(daj.workspace, "upload_pipeline_sources", MagicMock())
+    monkeypatch.setattr(
+        daj.workspace, "upload_notebook", MagicMock(side_effect=["/reconcile", "/ingest"])
+    )
+    monkeypatch.setattr(
+        daj.workspace, "pipeline_source_dir", MagicMock(return_value="/Workspace/x/lab09/pipeline")
+    )
+    existing_pipeline = MagicMock(creator_user_name="someone.else@example.com")
+    monkeypatch.setattr(
+        daj.pipelines, "find_pipeline_by_name", MagicMock(return_value=existing_pipeline)
+    )
+    ensure_pipeline_mock = MagicMock()
+    monkeypatch.setattr(daj.pipelines, "ensure_pipeline", ensure_pipeline_mock)
+    ensure_job_mock = MagicMock()
+    monkeypatch.setattr(daj, "ensure_three_task_job", ensure_job_mock)
+
+    with pytest.raises(daj.ResourceOwnershipError):
+        daj.deploy(client, _cfg(), config_path=daj.DEFAULT_CONFIG_PATH)
+
+    ensure_pipeline_mock.assert_not_called()
+    ensure_job_mock.assert_not_called()

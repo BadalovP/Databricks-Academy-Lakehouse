@@ -23,7 +23,7 @@ from typing import Any
 from databricks.sdk import WorkspaceClient
 
 from lab09 import jobs, monitoring
-from lab09.client import get_workspace_client, load_config
+from lab09.client import get_workspace_client, load_config, normalize_host
 
 logger = logging.getLogger(__name__)
 
@@ -156,6 +156,17 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--profile", default=None, help="Databricks CLI auth profile to use.")
     parser.add_argument(
+        "--confirm-host",
+        default=None,
+        help=(
+            "The exact Databricks host you intend to target. If given, the run aborts "
+            "before triggering anything if the resolved client does not match exactly -- "
+            "this triggers a real, billable run, so this is optional but strongly "
+            "recommended whenever the caller has an independent expected-host value "
+            "(see .github/workflows/lab09_azure_deployment.yml's AZURE_PROD_EXPECTED_HOST)."
+        ),
+    )
+    parser.add_argument(
         "--config", default=str(DEFAULT_CONFIG_PATH), help="Path to config/azure.yml."
     )
     parser.add_argument("--job-timeout-seconds", type=int, default=1800)
@@ -174,6 +185,17 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     client = get_workspace_client(args.profile)
+
+    if args.confirm_host is not None:
+        actual_host = normalize_host(client.config.host)
+        expected_host = normalize_host(args.confirm_host)
+        if actual_host != expected_host:
+            parser.error(
+                f"Profile {args.profile!r} resolved to a host that does not match "
+                f"--confirm-host {expected_host!r}. Refusing to trigger a run without "
+                "an exact match."
+            )
+
     cfg = load_config(args.config)
 
     report = run_and_verify(

@@ -51,6 +51,17 @@ concurrency:
 
 env:
   LAB09_ROOT: labs/lab_09_rest_api_automation
+  # Pinned independently of the vars.DATABRICKS_AZURE_HOST repository
+  # variable used to actually configure the connection below -- a literal,
+  # version-controlled, code-review-visible value, not sourced from the
+  # same mutable variable it is meant to check. If DATABRICKS_AZURE_HOST
+  # were ever repointed (misconfiguration, or a compromised/edited repo
+  # variable), --confirm-host below fails the run before any resource is
+  # touched instead of trivially comparing that variable to itself.
+  # Confirmed live (read-only, repeatedly, across this project's history)
+  # to be the one and only Azure Databricks workspace this project has
+  # access to -- see README.md "Two-environment architecture".
+  AZURE_PROD_EXPECTED_HOST: "adb-7405604503619901.1.azuredatabricks.net"
 
 jobs:
   static-checks:
@@ -125,10 +136,18 @@ jobs:
             exit 1
           fi
           python -c "
-          from lab09.client import get_workspace_client
+          from lab09.client import get_workspace_client, normalize_host
           client = get_workspace_client()
           print('Host:', client.config.host)
           print('Identity:', client.current_user.me().user_name)
+          expected = normalize_host('${AZURE_PROD_EXPECTED_HOST}')
+          actual = normalize_host(client.config.host)
+          if actual != expected:
+              raise SystemExit(
+                  f'DATABRICKS_AZURE_HOST resolved to {actual!r}, which does not match '
+                  f'the pinned AZURE_PROD_EXPECTED_HOST {expected!r}. Refusing to proceed.'
+              )
+          print('Host matches the pinned AZURE_PROD_EXPECTED_HOST.')
           "
 
       - name: Deploy the three-task Job idempotently (never triggers a run)
@@ -138,7 +157,7 @@ jobs:
           DATABRICKS_AUTH_TYPE: azure-cli
         run: |
           set -euo pipefail
-          python scripts/deploy_azure_job.py --confirm-host "${DATABRICKS_HOST}" \
+          python scripts/deploy_azure_job.py --confirm-host "${AZURE_PROD_EXPECTED_HOST}" \
             | tee azure-deploy-report.json
           job_id="$(python -c "import json; print(json.load(open('azure-deploy-report.json'))['job_id'])")"
           echo "job_id=$job_id" >> "$GITHUB_OUTPUT"
@@ -182,7 +201,7 @@ jobs:
         env:
           DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
           DATABRICKS_AUTH_TYPE: azure-cli
-        run: python scripts/run_azure_job.py
+        run: python scripts/run_azure_job.py --confirm-host "${AZURE_PROD_EXPECTED_HOST}"
 
       - name: Upload execution report
         if: always()

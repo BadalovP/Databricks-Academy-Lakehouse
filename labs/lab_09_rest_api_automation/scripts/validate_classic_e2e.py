@@ -65,7 +65,7 @@ from databricks.sdk.service.jobs import NotebookTask, Task
 from databricks.sdk.service.workspace import ImportFormat, Language
 
 from lab09 import compute, jobs, monitoring
-from lab09.client import get_workspace_client
+from lab09.client import get_workspace_client, normalize_host
 
 logger = logging.getLogger(__name__)
 
@@ -430,10 +430,8 @@ def main(argv: list[str] | None = None) -> int:
 
     client = get_workspace_client(args.profile)
 
-    actual_host = (client.config.host or "").rstrip("/").lower()
-    expected_host = args.confirm_host.strip().rstrip("/").lower()
-    if "://" not in expected_host:
-        expected_host = "https://" + expected_host
+    actual_host = normalize_host(client.config.host)
+    expected_host = normalize_host(args.confirm_host)
     if actual_host != expected_host:
         parser.error(
             f"Profile {args.profile!r} resolved to a host that does not match --confirm-host "

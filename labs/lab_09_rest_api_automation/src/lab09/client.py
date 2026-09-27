@@ -36,11 +36,16 @@ def _default_databrickscfg_path() -> Path:
     return Path.home() / ".databrickscfg"
 
 
-def _normalize_host(host: str | None) -> str | None:
+def normalize_host(host: str | None) -> str | None:
     """Loose normalization for comparing a raw ini host value against the
     SDK's own resolved, scheme-qualified host -- good enough for Databricks
     hosts specifically (never a non-default port), without depending on the
     SDK's own private host-normalization helper.
+
+    Public: also used directly by scripts/validate_classic_e2e.py,
+    scripts/deploy_azure_job.py, and scripts/run_azure_job.py's own
+    --confirm-host safety checks, instead of each duplicating this exact
+    normalization a second (and third, and fourth) time.
     """
     if not host:
         return host
@@ -152,8 +157,8 @@ def _verify_profile_resolution(
             "resolution to a different file than the canonical one."
         )
 
-    expected_host = _normalize_host(section.get("host"))
-    actual_host = _normalize_host(client.config.host)
+    expected_host = normalize_host(section.get("host"))
+    actual_host = normalize_host(client.config.host)
     if expected_host and expected_host != actual_host:
         raise ProfileResolutionMismatchError(
             f"Profile {resolved_profile!r} declares host {expected_host!r} in "

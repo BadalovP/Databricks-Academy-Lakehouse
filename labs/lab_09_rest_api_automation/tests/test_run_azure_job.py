@@ -5,6 +5,7 @@ mocked; this file never touches live infrastructure.
 
 from unittest.mock import MagicMock
 
+import pytest
 import run_azure_job as raj
 
 from lab09 import monitoring
@@ -177,3 +178,64 @@ def test_no_cluster_instance_found_does_not_count_as_a_termination_failure(monke
     assert report.job_cluster_id is None
     assert report.job_cluster_terminated_confirmed is None
     assert report.succeeded is False  # still fails, but because of result_state, not cleanup
+
+
+# --- --confirm-host safety check --------------------------------------------
+
+
+def test_confirm_host_mismatch_aborts_before_triggering_anything(monkeypatch, tmp_path):
+    client = MagicMock()
+    client.config.host = "https://actual-host.azuredatabricks.net"
+    monkeypatch.setattr(raj, "get_workspace_client", lambda profile: client)
+    run_mock = MagicMock(side_effect=AssertionError("must not run when the host does not match"))
+    monkeypatch.setattr(raj, "run_and_verify", run_mock)
+
+    with pytest.raises(SystemExit):
+        raj.main(
+            [
+                "--confirm-host",
+                "different-host.azuredatabricks.net",
+                "--report-path",
+                str(tmp_path / "report.json"),
+            ]
+        )
+
+    run_mock.assert_not_called()
+
+
+def test_confirm_host_match_allows_the_run_to_proceed(monkeypatch, tmp_path):
+    client = MagicMock()
+    client.config.host = "https://actual-host.azuredatabricks.net"
+    monkeypatch.setattr(raj, "get_workspace_client", lambda profile: client)
+    monkeypatch.setattr(raj, "load_config", lambda path: _cfg())
+    run_mock = MagicMock(return_value=raj.RunReport(result_state="SUCCESS", timed_out=False))
+    monkeypatch.setattr(raj, "run_and_verify", run_mock)
+
+    exit_code = raj.main(
+        [
+            "--confirm-host",
+            "actual-host.azuredatabricks.net",
+            "--report-path",
+            str(tmp_path / "report.json"),
+        ]
+    )
+
+    assert exit_code == 0
+    run_mock.assert_called_once()
+
+
+def test_confirm_host_omitted_skips_the_check(monkeypatch, tmp_path):
+    """--confirm-host is optional -- omitting it must not block a local,
+    profile-based invocation that has no independent expected-host value.
+    """
+    client = MagicMock()
+    client.config.host = "https://whatever-host.azuredatabricks.net"
+    monkeypatch.setattr(raj, "get_workspace_client", lambda profile: client)
+    monkeypatch.setattr(raj, "load_config", lambda path: _cfg())
+    run_mock = MagicMock(return_value=raj.RunReport(result_state="SUCCESS", timed_out=False))
+    monkeypatch.setattr(raj, "run_and_verify", run_mock)
+
+    exit_code = raj.main(["--report-path", str(tmp_path / "report.json")])
+
+    assert exit_code == 0
+    run_mock.assert_called_once()

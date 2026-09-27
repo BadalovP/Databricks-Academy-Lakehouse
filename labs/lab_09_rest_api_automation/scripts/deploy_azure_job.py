@@ -52,9 +52,36 @@ from databricks.sdk.service.jobs import (
 )
 
 from lab09 import compute, jobs, pipelines, volumes, workspace
-from lab09.client import get_workspace_client, load_config
+from lab09.client import get_workspace_client, load_config, normalize_host
 
 logger = logging.getLogger(__name__)
+
+
+class ResourceOwnershipError(RuntimeError):
+    """Raised when a Job or pipeline found by name was not created by the
+    identity running this deployment. This Azure workspace is shared by
+    100+ other students (confirmed via a read-only inventory before this
+    script was written) who could, in principle, name their own resources
+    identically -- matching by name alone is never sufficient proof that a
+    found resource is this project's own before resetting/updating it.
+    """
+
+
+def verify_owned_by_current_identity(resource: Any, identity: str, description: str) -> None:
+    """Refuse to proceed unless `resource.creator_user_name` matches `identity`
+    exactly. Called on every Job/pipeline this script finds by name, before
+    any reset/update call -- see ResourceOwnershipError's docstring for why
+    this check exists at all.
+    """
+    creator = getattr(resource, "creator_user_name", None)
+    if creator != identity:
+        raise ResourceOwnershipError(
+            f"{description} was found by name, but its creator ({creator!r}) does not "
+            f"match the current identity ({identity!r}). Refusing to reset/update it: "
+            "this workspace is shared by many other students, and a name match alone "
+            "is not positive proof of ownership."
+        )
+
 
 LAB_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG_PATH = LAB_ROOT / "config" / "azure.yml"
@@ -183,15 +210,19 @@ def ensure_three_task_job(
     cfg: dict[str, Any],
     job_clusters: list[JobCluster],
     tasks: list[Task],
+    identity: str,
 ) -> tuple[int, bool]:
     """Find-or-create the persistent, no-schedule reconciliation Job.
 
     Returns (job_id, created) -- created=True only when a new Job object
-    was made; an existing Job is reset in place, never duplicated.
+    was made; an existing Job is reset in place, never duplicated. Raises
+    ResourceOwnershipError instead of resetting a same-named Job this
+    identity did not create.
     """
     name = cfg["job"]["name"]
     existing = jobs.find_job_by_name(client, name)
     if existing is not None:
+        verify_owned_by_current_identity(existing, identity, f"Job {name!r}")
         client.jobs.reset(
             job_id=existing.job_id,
             new_settings=JobSettings(name=name, job_clusters=job_clusters, tasks=tasks),
@@ -223,6 +254,11 @@ def deploy(client: WorkspaceClient, cfg: dict[str, Any], config_path: Path) -> D
     report.uploaded_source_files = uploaded_source
 
     pipeline_dir_ws = workspace.pipeline_source_dir(client, cfg)
+    existing_pipeline = pipelines.find_pipeline_by_name(client, cfg["pipeline"]["name"])
+    if existing_pipeline is not None:
+        verify_owned_by_current_identity(
+            existing_pipeline, report.identity, f"Pipeline {cfg['pipeline']['name']!r}"
+        )
     pipeline_id, used_serverless = pipelines.ensure_pipeline(client, cfg, pipeline_dir_ws)
     report.pipeline_id = pipeline_id
     report.pipeline_serverless = used_serverless
@@ -231,7 +267,7 @@ def deploy(client: WorkspaceClient, cfg: dict[str, Any], config_path: Path) -> D
     job_clusters, tasks = build_task_graph(
         cfg, pipeline_id, ingestion_path, reconciliation_path, shared_cluster
     )
-    job_id, created = ensure_three_task_job(client, cfg, job_clusters, tasks)
+    job_id, created = ensure_three_task_job(client, cfg, job_clusters, tasks, report.identity)
     report.job_id = job_id
     report.job_created = created
 
@@ -275,10 +311,8 @@ def main(argv: list[str] | None = None) -> int:
 
     client = get_workspace_client(args.profile)
 
-    actual_host = (client.config.host or "").rstrip("/").lower()
-    expected_host = args.confirm_host.strip().rstrip("/").lower()
-    if "://" not in expected_host:
-        expected_host = "https://" + expected_host
+    actual_host = normalize_host(client.config.host)
+    expected_host = normalize_host(args.confirm_host)
     if actual_host != expected_host:
         parser.error(
             f"Profile {args.profile!r} resolved to a host that does not match --confirm-host "
