@@ -750,27 +750,25 @@ from Lab 8's `lab08_cicd.yml` (not modified by this PR), scoped to
   against a mocked `WorkspaceClient`. No live Databricks call is possible
   from this path.
 - `workflow_dispatch`: `static-checks` -> `run-live-automation`.
-  `run-live-automation` itself references the `lab09-live-approval`
-  GitHub Environment (its required-reviewers rule must be configured once
-  in GitHub's UI, which this workflow file cannot do itself) -- that alone
-  is the approval gate; there is no separate dummy approval job, since a
-  second job referencing the same protected environment would just make a
-  human approve the identical prompt twice for one dispatch. **Confirmed
-  live (2026-09-27, read-only, via the GitHub API): this environment does
-  not exist in this repository yet** -- `GET
-  /repos/.../environments/lab09-live-approval` returns 404. GitHub
-  auto-creates a referenced environment with zero protection rules on its
-  first use unless one is configured beforehand, so as things currently
-  stand, a `workflow_dispatch` run would proceed straight to
-  `run-live-automation` with no required-reviewer gate at all --
-  contradicting this section's own design intent. **Do not dispatch this
-  workflow until `lab09-live-approval` has been created under Settings ->
-  Environments with at least one required reviewer configured.** Before
-  running, an explicit shell step verifies `DATABRICKS_PERSONAL_HOST` /
-  `DATABRICKS_PERSONAL_TOKEN` are actually set and fails with a clear
-  `::error::` message if either is missing -- there is no hardcoded host
-  fallback, so this workflow can never silently resolve against an
-  unintended workspace. Then `python -m lab09.cli run-all` runs, and
+  `run-live-automation` references the existing `personal-prod-approval`
+  GitHub Environment -- the same one `lab08_cicd.yml` already uses for its
+  own personal-workspace live steps -- that alone is the approval gate;
+  there is no separate dummy approval job, since a second job referencing
+  the same protected environment would just make a human approve the
+  identical prompt twice for one dispatch. **This workflow previously
+  referenced a placeholder `lab09-live-approval` environment that was never
+  actually created: confirmed live, read-only, 2026-09-27, a direct
+  GitHub API query (`GET /repos/.../environments/lab09-live-approval`)
+  returned 404. GitHub auto-creates a referenced environment with zero
+  protection rules on its first use unless one is configured beforehand,
+  so a dispatch would have proceeded straight to `run-live-automation`
+  with no required-reviewer gate at all -- caught before any dispatch was
+  ever made.** Fixed by pointing this job at `personal-prod-approval`
+  instead, confirmed (same date, read-only) to already carry a
+  `required_reviewers` protection rule (reviewer: the repository owner)
+  with no branch restriction. GitHub environments are checked
+  independently per workflow run, so this has no effect on Lab 8's own use
+  of the same environment or on `lab08_cicd.yml` itself. Before
   `actions/upload-artifact` uploads the generated `lab09_report.json`.
 - `concurrency: { group: lab09-api-automation, cancel-in-progress: false
   }` prevents two live demonstrations from running at once.
@@ -1015,7 +1013,8 @@ outcomes.
 5. Re-run `run-all` a second time and confirm the report's `status` is
    `NO_NEW_DATA` only once all configured 2024 months have landed --
    otherwise it lands the next month and reports `SUCCESS`.
-6. To watch the manual GitHub Actions path instead: configure the
-   `lab09-live-approval` environment's required reviewers once, then
-   dispatch `.github/workflows/lab09_api_automation.yml` from the Actions
-   tab and approve the pending deployment when prompted.
+6. To watch the manual GitHub Actions path instead: dispatch
+   `.github/workflows/lab09_api_automation.yml` from the Actions tab (the
+   `personal-prod-approval` environment it uses already has a
+   required-reviewer rule configured -- see "GitHub Actions integration"
+   above) and approve the pending deployment when prompted.

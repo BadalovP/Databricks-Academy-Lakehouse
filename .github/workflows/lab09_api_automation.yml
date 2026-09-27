@@ -10,15 +10,22 @@
 #
 # A manual `workflow_dispatch` run additionally requires an approval gate
 # before running the live Lab 9 automation (`python -m lab09.cli run-all`).
-# `run-live-automation` itself references the `lab09-live-approval` GitHub
-# Environment -- that alone is what triggers the required-reviewers prompt,
-# so there is no separate dummy approval job duplicating the same gate (a
-# second job also referencing this environment would just make a human
-# approve the identical protected-environment prompt twice for one
-# dispatch). The `lab09-live-approval` environment's required-reviewers
-# rule must be configured once in the repository's GitHub UI (Settings ->
-# Environments) -- this workflow file only references the environment by
-# name and cannot create that protection rule itself.
+# `run-live-automation` references the existing `personal-prod-approval`
+# GitHub Environment -- the same one lab08_cicd.yml already uses for its own
+# personal-workspace live steps -- rather than a Lab-9-only environment, since
+# a `lab09-live-approval` placeholder referenced here earlier was never
+# actually created (confirmed live, read-only, 2026-09-27: a direct
+# environments API query returned 404), which meant GitHub would have
+# auto-created it with zero protection rules on first dispatch instead of
+# requiring approval at all. `personal-prod-approval` was confirmed (same
+# date, read-only) to already have a `required_reviewers` protection rule
+# with no branch restriction. GitHub environments are checked independently
+# per workflow run, so Lab 9 referencing this environment adds its own
+# separate approval prompt with no effect on Lab 8's own use of it or on
+# lab08_cicd.yml itself -- there is no separate dummy approval job
+# duplicating the gate (a second job also referencing this environment would
+# just make a human approve the identical protected-environment prompt twice
+# for one dispatch).
 #
 # The live job REQUIRES the DATABRICKS_PERSONAL_HOST repository variable
 # and DATABRICKS_PERSONAL_TOKEN repository secret to already be set -- the
@@ -82,7 +89,15 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     needs: static-checks
     runs-on: ubuntu-latest
-    environment: lab09-live-approval
+    # Reuses Lab 8's existing personal-prod-approval environment (confirmed
+    # live, read-only, 2026-09-27: required_reviewers protection rule already
+    # configured, reviewer BadalovP, no branch restriction) rather than the
+    # never-configured lab09-live-approval placeholder this referenced
+    # before -- GitHub environments are checked independently per workflow
+    # run, so a second workflow referencing the same environment name adds
+    # its own separate approval prompt with zero effect on Lab 8's own use
+    # of it or on lab08_cicd.yml itself.
+    environment: personal-prod-approval
     defaults:
       run:
         working-directory: labs/lab_09_rest_api_automation
