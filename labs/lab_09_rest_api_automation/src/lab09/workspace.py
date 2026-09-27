@@ -48,7 +48,30 @@ def resolve_current_user_home(client: WorkspaceClient) -> str:
 
 
 def lab09_root_path(client: WorkspaceClient, cfg: dict[str, Any]) -> str:
-    home = resolve_current_user_home(client)
+    """Uploaded content must be readable by whichever identity actually
+    EXECUTES it, not necessarily whichever identity deploys it -- these can
+    differ (see config/azure.yml's run_as_user_name). Confirmed live
+    (2026-09-27): a job-cluster task running under Databricks' "Run As" as
+    a different identity than the one that uploaded its own source could
+    not import it from that deploying identity's personal home directory
+    (`ModuleNotFoundError: No module named 'lab09'`), even though the
+    run_as identity is a workspace admin with full API-level read access --
+    cross-user personal home directories are not importable this way
+    regardless of admin status. If cfg declares a run_as_user_name, this
+    resolves the root under THAT identity's home directory instead of the
+    currently-authenticated (deploying) identity's own -- the deploying
+    identity must be separately granted write access to that specific
+    folder (a narrow, targeted grant, not broad home-directory access).
+    config/dev.yml has no run_as_user_name, so the Personal-workspace
+    deployment is entirely unaffected: it still resolves to the deploying
+    identity's own home, exactly as before.
+    """
+    run_as_user_name = cfg.get("run_as_user_name")
+    home = (
+        f"/Workspace/Users/{run_as_user_name}"
+        if run_as_user_name
+        else resolve_current_user_home(client)
+    )
     subpath = cfg.get("workspace", {}).get("root_subpath", "lab09")
     return f"{home}/{subpath}"
 
