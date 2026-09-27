@@ -1,79 +1,42 @@
-# LAB 09 - Azure Databricks Deployment and Execution
+# LAB 09 - Databricks CI/CD
 #
-# Separate from lab09_api_automation.yml (the Personal-workspace workflow,
-# left entirely unmodified by this file): this workflow deploys and runs
-# LAB 09's second deployment target, the shared Azure Databricks workspace
-# this project otherwise refers to as Azure PROD. It is never dispatched or
-# triggered by lab09_api_automation.yml, and does not touch it.
-#
-# Authentication: OIDC-based Azure service-principal federation via
-# azure/login, never a stored PAT -- reusing Lab 8's existing AZURE_CLIENT_ID
-# / github-lab08-travelops / AZURE_TENANT_ID / AZURE_SUBSCRIPTION_ID, exactly
-# as before. A dedicated Lab 9 service principal was investigated first (see
-# git history) and rejected: creating a new Entra ID application requires
-# administrator approval in this tenant ("Insufficient privileges to
-# complete the operation" -- confirmed live, not assumed), and waiting
-# indefinitely on that was rejected in favor of finishing with already-
-# authorized resources. github-lab08-travelops still only deploys and
-# triggers the Job/pipeline here -- it is NOT granted any new permission
-# (still just workspace-access + databricks-sql-access, unchanged). The
-# actual task execution (cluster creation, table reads/writes) runs under a
-# separate identity instead, via Databricks' own "Run As" feature: both the
-# Job and the pipeline have run_as set to an already-authorized human
-# identity (config/azure.yml's run_as_user_name) that is independently
-# confirmed able to create clusters under the Job Compute policy and
-# already holds CAN_MANAGE on both resources. See README.md "Two-environment
-# architecture" and config/azure.yml's own comment for the full account.
-# DATABRICKS_AUTH_TYPE=azure-cli tells both the Databricks CLI and this
-# project's own lab09.client.get_workspace_client() (see its docstring) to
-# obtain a token via the already-authenticated `az` CLI session rather than
-# any token/profile file.
-#
-# Approval gates: reuses Lab 8's existing azure-release-approval environment
-# (required_reviewers, confirmed live before this file was written) as a
-# lightweight approval job, then azure-prod (carries the OIDC vars, no
-# protection rules of its own -- the human gate is azure-release-approval)
-# for the actual Azure-touching steps -- exactly the same two-environment
-# pattern lab08_azure_prod_manual_run.yml already uses. No new GitHub
-# environment is created by this file.
-#
-# Static checks run on every pull_request/push -- no live Databricks
-# resource is ever reachable from those events. Deployment and execution
-# only ever happen on an explicit workflow_dispatch, behind the approval
-# gate above.
-name: LAB 09 Azure Deployment
+# Pull requests and pushes run one mocked, static validation job. Live work is
+# reachable only through workflow_dispatch, where deployment_target selects
+# exactly one approval-gated environment path.
+name: LAB 09 · Databricks CI/CD
 
 on:
   pull_request:
     paths:
       - "labs/lab_09_rest_api_automation/**"
-      - ".github/workflows/lab09_azure_deployment.yml"
+      - ".github/workflows/lab09.yml"
   push:
     branches: [main]
     paths:
       - "labs/lab_09_rest_api_automation/**"
-      - ".github/workflows/lab09_azure_deployment.yml"
-  workflow_dispatch: {}
+      - ".github/workflows/lab09.yml"
+  workflow_dispatch:
+    inputs:
+      deployment_target:
+        description: Databricks deployment target
+        required: true
+        default: personal
+        type: choice
+        options:
+          - personal
+          - azure
 
 permissions:
   contents: read
 
 concurrency:
-  group: lab09-azure-deployment
+  group: lab09-cicd-${{ github.event_name }}-${{ github.ref }}-${{ inputs.deployment_target || 'static' }}
   cancel-in-progress: false
 
 env:
   LAB09_ROOT: labs/lab_09_rest_api_automation
-  # Pinned independently of the vars.DATABRICKS_AZURE_HOST repository
-  # variable used to actually configure the connection below -- a literal,
-  # version-controlled, code-review-visible value, not sourced from the
-  # same mutable variable it is meant to check. If DATABRICKS_AZURE_HOST
-  # were ever repointed (misconfiguration, or a compromised/edited repo
-  # variable), --confirm-host below fails the run before any resource is
-  # touched instead of trivially comparing that variable to itself.
-  # Confirmed live (read-only, repeatedly, across this project's history)
-  # to be the one and only Azure Databricks workspace this project has
-  # access to -- see README.md "Two-environment architecture".
+  # Literal and reviewable. The Azure connection must match this host before
+  # either deployment or execution can touch a Databricks resource.
   AZURE_PROD_EXPECTED_HOST: "adb-7405604503619901.1.azuredatabricks.net"
 
 jobs:
@@ -99,9 +62,55 @@ jobs:
       - name: Pytest (mocked WorkspaceClient only -- no live Databricks resources)
         run: pytest
 
+  run-personal-automation:
+    name: Run Lab 9 Personal Automation
+    if: github.event_name == 'workflow_dispatch' && inputs.deployment_target == 'personal'
+    needs: static-checks
+    runs-on: ubuntu-latest
+    environment: personal-prod-approval
+    defaults:
+      run:
+        working-directory: labs/lab_09_rest_api_automation
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . -r requirements-dev.txt
+      - name: Verify required Databricks workspace configuration is set
+        env:
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_PERSONAL_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_PERSONAL_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DATABRICKS_HOST:-}" ]; then
+            echo "::error::DATABRICKS_PERSONAL_HOST is not set for the personal target. Refusing to guess a Databricks workspace."
+            exit 1
+          fi
+          if [ -z "${DATABRICKS_TOKEN:-}" ]; then
+            echo "::error::DATABRICKS_PERSONAL_TOKEN is not set for the personal target."
+            exit 1
+          fi
+          echo "Required Databricks workspace configuration is present."
+      - name: Run Lab 9 automation end to end
+        env:
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_PERSONAL_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_PERSONAL_TOKEN }}
+        run: python -m lab09.cli run-all
+      - name: Upload Lab 9 Personal run report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lab09-personal-report-${{ github.run_id }}
+          path: labs/lab_09_rest_api_automation/evidence/lab09_report.json
+          if-no-files-found: warn
+
   approve-azure-deployment:
     name: Approve Azure Deployment and Execution
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && inputs.deployment_target == 'azure'
     needs: static-checks
     runs-on: ubuntu-latest
     environment: azure-release-approval
@@ -111,8 +120,11 @@ jobs:
 
   deploy-azure-job:
     name: Deploy LAB 09 to Azure (idempotent)
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      inputs.deployment_target == 'azure' &&
+      needs.approve-azure-deployment.result == 'success'
     needs: approve-azure-deployment
-    if: needs.approve-azure-deployment.result == 'success'
     runs-on: ubuntu-latest
     environment: azure-prod
     permissions:
@@ -137,7 +149,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e . -r requirements-dev.txt
-
       - name: Verify Azure workspace and identity (read-only)
         env:
           DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
@@ -145,7 +156,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${DATABRICKS_HOST:-}" ]; then
-            echo "::error::DATABRICKS_AZURE_HOST repository variable is not set. Refusing to guess a workspace."
+            echo "::error::DATABRICKS_AZURE_HOST is not set. Refusing to guess a workspace."
             exit 1
           fi
           python -c "
@@ -162,7 +173,6 @@ jobs:
               )
           print('Host matches the pinned AZURE_PROD_EXPECTED_HOST.')
           "
-
       - name: Deploy the three-task Job idempotently (never triggers a run)
         id: deploy
         env:
@@ -174,7 +184,6 @@ jobs:
             | tee azure-deploy-report.json
           job_id="$(python -c "import json; print(json.load(open('azure-deploy-report.json'))['job_id'])")"
           echo "job_id=$job_id" >> "$GITHUB_OUTPUT"
-
       - name: Upload deployment report
         if: always()
         uses: actions/upload-artifact@v4
@@ -185,8 +194,11 @@ jobs:
 
   run-azure-job:
     name: Trigger and Monitor the Azure Job
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      inputs.deployment_target == 'azure' &&
+      needs.deploy-azure-job.result == 'success'
     needs: deploy-azure-job
-    if: needs.deploy-azure-job.result == 'success'
     runs-on: ubuntu-latest
     environment: azure-prod
     permissions:
@@ -209,13 +221,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e . -r requirements-dev.txt
-
       - name: Trigger the run, monitor to completion, collect output, verify cleanup
         env:
           DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
           DATABRICKS_AUTH_TYPE: azure-cli
         run: python scripts/run_azure_job.py --confirm-host "${AZURE_PROD_EXPECTED_HOST}"
-
       - name: Upload execution report
         if: always()
         uses: actions/upload-artifact@v4

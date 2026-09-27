@@ -285,7 +285,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
             "before triggering anything if the resolved client does not match exactly -- "
             "this triggers a real, billable run, so this is optional but strongly "
             "recommended whenever the caller has an independent expected-host value "
-            "(see .github/workflows/lab09_azure_deployment.yml's AZURE_PROD_EXPECTED_HOST)."
+            "(see .github/workflows/lab09.yml's AZURE_PROD_EXPECTED_HOST)."
         ),
     )
     parser.add_argument(
