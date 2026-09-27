@@ -960,11 +960,15 @@ from Lab 8's `lab08_cicd.yml` (not modified by this PR), scoped to
 **`evidence/LIVE_VALIDATION_SUMMARY.md`** is the sanitized, GitHub-suitable
 summary of everything proven live (Phase 0, the classic-compute
 limitation, why the pipeline was replaced, the `timestampNtz` fix, the
-staged targeted validations, and -- its main current milestone -- **a
-single `run-all` command succeeding completely end to end** with all four
-tables populated and the reconciliation invariant confirmed against real,
-five-month data). It also states plainly what remains *not* proven: the
-literal classic cluster-create requirement.
+staged targeted validations, **a single `run-all` command succeeding
+completely end to end** with all four tables populated and the
+reconciliation invariant confirmed against real data, a classic-compute
+demonstration on Azure PROD, and -- its latest milestone (section 10,
+2026-09-27) -- **the first successful run of the actual GitHub Actions
+`workflow_dispatch` live-automation path**, not just a locally-run CLI
+invocation). It also states plainly what remains *not* proven: whether
+the classic cluster-create requirement is cleanly satisfied given the
+manual restart and Azure PROD deviation involved in demonstrating it.
 
 Dated pipeline-update and reconciliation-Job evidence files from the
 targeted live validations summarized above exist locally only, containing

@@ -31,9 +31,12 @@ milestone in a different workspace (Azure PROD)**, involving one manual
 step (a cluster restart performed by the project's operator, not by this
 project's code) between two otherwise-automated stages — stated
 explicitly in that section rather than folded into "no manual
-intervention" language that would only be true of sections 1–8. All three
-kinds of evidence are kept, clearly labeled, rather than one overwriting
-another — see "What this does and does not prove" (section 10) for
+intervention" language that would only be true of sections 1–8. **Section
+10 documents the first successful run of the actual GitHub Actions
+`workflow_dispatch` live-automation path** (back on the Personal
+workspace), rather than a locally-run CLI invocation. All four kinds of
+evidence are kept, clearly labeled, rather than one overwriting
+another — see "What this does and does not prove" (section 11) for
 exactly what remains open.
 
 ## 1. Phase 0: classic compute is confirmed unsupported on this workspace
@@ -252,7 +255,7 @@ workspace referenced as "Azure PROD" in this project's own README
 "Security model" section), not the Personal workspace whose classic-compute
 limitation is documented in section 1. This is exactly the "supplementary
 run in a separate workspace that does support classic clusters" option
-described as still-open in section 10's note below — with one explicit,
+described as still-open in section 11's note below — with one explicit,
 important deviation from how that option was originally scoped, called out
 below rather than glossed over.
 
@@ -343,7 +346,70 @@ and a human manually restarted the same cluster afterward. The Jobs-API
 portion (step 5) that followed was fully automated against that
 human-started cluster.
 
-## 10. What this does and does not prove
+## 10. First successful GitHub Actions live workflow execution (2026-09-27)
+
+**Every prior live validation in sections 1–9 was driven by a locally-run
+CLI invocation.** This section documents the first time
+`.github/workflows/lab09_api_automation.yml`'s `workflow_dispatch` ->
+`run-live-automation` path was actually dispatched and completed, rather
+than just described.
+
+Before this run, the workflow's live job referenced a `lab09-live-approval`
+GitHub Environment that had never actually been created in this
+repository (confirmed by a direct, read-only GitHub API query returning
+404) — meaning a dispatch would have run the live job with no
+required-reviewer gate at all. This was found and fixed first: the job now
+references `personal-prod-approval`, an existing environment already
+carrying a `required_reviewers` protection rule, already used by
+`lab08_cicd.yml` for its own personal-workspace live steps. Pointing a
+second workflow at the same environment name has no effect on Lab 8's own
+use of it, since GitHub checks environment protection independently per
+workflow run.
+
+**Run:** GitHub Actions run
+[`36294786218`](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/36294786218),
+dispatched from `feature/lab09-rest-api-automation`, triggered by the
+repository owner (the same identity configured as `personal-prod-approval`'s
+required reviewer) after explicit, separate authorization for this
+specific dispatch. Both jobs succeeded: `Static Checks and Tests`
+(Ruff/Black/pytest) and `Run Lab 9 Live Automation` (`python -m
+lab09.cli run-all`), the latter in 3m49s.
+
+**Actual result, read directly from the run's own uploaded
+`lab09_report.json` artifact (not re-typed from memory or reused from an
+earlier run):**
+
+| Field | Value |
+|:--|--:|
+| `status` | `SUCCESS` |
+| `month` landed | `2024-06` (`59,859,922` bytes) |
+| `compute_mode` | `serverless_job` (`cluster_id: null` — no classic compute of any kind) |
+| `bronze_rows` | 20,332,093 |
+| `silver_valid_rows` | 19,669,204 |
+| `rejected_rows` | 662,889 |
+| `gold_rows` | 41,165 |
+| `reconciliation_passed` | `true` |
+
+**Reconciliation invariant confirmed:** `bronze_rows == silver_valid_rows + rejected_rows`
+-> `20,332,093 == 19,669,204 + 662,889` ✅
+
+Per-rule rejection counts: `INVALID_FARE` 324,080; `INVALID_DISTANCE`
+364,322; `INVALID_DATETIME_ORDER` 6,177; `INVALID_MONTH` 149 (these sum to
+more than the total rejected-row count, expected, since one row can
+violate more than one rule).
+
+The pipeline and persistent Job were both reused, not recreated
+(`ensure_pipeline()`/`ensure_job()`'s tested find-or-create logic, exactly
+as in every prior run). GP1, GP2, and the Azure PROD test cluster from
+section 9 are unrelated to this Personal-workspace run and were confirmed
+unaffected by a separate, independent read-only check immediately
+afterward.
+
+**What this proves that sections 1–9 did not:** the actual GitHub Actions
+CI/CD path a grader or CI system would use — not just this project's own
+local CLI — has now been exercised live, successfully, end to end.
+
+## 11. What this does and does not prove
 
 **Proven, live:**
 - Phase 0 capability checks and the classic-compute limitation on this
@@ -354,6 +420,9 @@ human-started cluster.
   pipeline, and running the reconciliation Job, all from one invocation,
   all four tables populated, the reconciliation invariant holding against
   real, growing data.
+- **The same, driven by GitHub Actions itself, not a local CLI invocation**
+  (section 10) — landing a further new month via the actual
+  `workflow_dispatch` live-automation path, first attempt.
 - **Classic cluster create and terminate (automated), and — against a
   cluster a human subsequently, manually restarted — Job attachment via
   `existing_cluster_id`, notebook execution, and confirmed termination

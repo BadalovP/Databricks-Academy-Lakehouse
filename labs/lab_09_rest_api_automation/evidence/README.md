@@ -94,3 +94,16 @@ claim the "create clusters" requirement is cleanly satisfied by that
 demonstration alone: it ran outside the non-production scope this
 project otherwise holds to, under its own explicit, one-off
 authorization, and a reviewer/mentor decision is still needed either way.
+
+**GitHub Actions live workflow, first successful run (2026-09-27):** the
+actual `workflow_dispatch` -> `run-live-automation` CI/CD path (back on
+the Personal workspace) was dispatched and completed successfully for the
+first time -- previously every live result above was obtained via a
+locally-run CLI invocation, never through this repository's own GitHub
+Actions live-automation job. Landed `2024-06`, reconciliation invariant
+held exactly. Also found and fixed along the way: the job had referenced
+a `lab09-live-approval` environment that was never actually created,
+which would have skipped the required-reviewer gate entirely on first
+dispatch -- now points at the existing, already-protected
+`personal-prod-approval` environment instead. See
+`LIVE_VALIDATION_SUMMARY.md` section 10.
