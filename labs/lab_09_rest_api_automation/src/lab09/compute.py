@@ -17,6 +17,8 @@ from databricks.sdk import WorkspaceClient
 from databricks.sdk.errors import DatabricksError, InvalidParameterValue, PermissionDenied
 from databricks.sdk.service import compute as compute_svc
 
+from . import monitoring
+
 logger = logging.getLogger(__name__)
 
 # Errors that genuinely signal "explicit cluster creation is not permitted
@@ -248,6 +250,38 @@ def try_start_cluster_create(
 
 def terminate_cluster(client: WorkspaceClient, cluster_id: str) -> None:
     client.clusters.delete(cluster_id=cluster_id)
+
+
+def terminate_and_verify_cluster(
+    client: WorkspaceClient,
+    cluster_id: str,
+    timeout_seconds: int = 600,
+    poll_interval_seconds: int = 10,
+) -> monitoring.ClusterTerminationOutcome:
+    """Request termination, then independently confirm the cluster reaches TERMINATED.
+
+    terminate_cluster() alone only issues the delete request -- it does not
+    poll to confirm the cluster actually stops. A termination request being
+    accepted is not the same claim as termination being confirmed (see
+    monitoring.poll_cluster_termination()'s docstring for the full
+    reasoning, proven live against a real Azure classic-compute cluster).
+    If clusters.delete() itself raises, that is reported as unconfirmed
+    rather than propagated, since this function is meant to be used from a
+    cleanup path that must not itself raise past its caller's safety net.
+    """
+    try:
+        terminate_cluster(client, cluster_id)
+    except Exception as exc:  # noqa: BLE001 - cleanup path must report, not raise
+        logger.warning("Failed to request termination for cluster %s: %s", cluster_id, exc)
+        return monitoring.ClusterTerminationOutcome(
+            cluster_id=cluster_id, state=None, confirmed=False, error=str(exc)
+        )
+    return monitoring.poll_cluster_termination(
+        client,
+        cluster_id,
+        timeout_seconds=timeout_seconds,
+        poll_interval_seconds=poll_interval_seconds,
+    )
 
 
 def cluster_exists_and_active(client: WorkspaceClient, cluster_id: str) -> bool:

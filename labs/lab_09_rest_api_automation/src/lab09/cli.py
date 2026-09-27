@@ -125,12 +125,36 @@ def cmd_status(client: WorkspaceClient, cfg: dict[str, Any], args: argparse.Name
 def _finish(
     client: WorkspaceClient, report: reporting.Report, cluster_id: str | None, cfg: dict[str, Any]
 ) -> int:
-    """OUTER SAFETY: always terminate the temporary cluster and always write the report."""
+    """OUTER SAFETY: always terminate the temporary cluster and always write the report.
+
+    cluster_cleaned_up is only ever True when termination was independently
+    confirmed (state actually observed as TERMINATED) -- not merely because
+    the delete request was accepted without raising. A termination request
+    being accepted is not the same claim as termination being confirmed;
+    see compute.terminate_and_verify_cluster()/monitoring.poll_cluster_termination().
+    """
     cluster_cleaned_up = True
     if cluster_id:
         try:
             if compute.cluster_exists_and_active(client, cluster_id):
-                compute.terminate_cluster(client, cluster_id)
+                monitoring_cfg = cfg.get("monitoring", {})
+                outcome = compute.terminate_and_verify_cluster(
+                    client,
+                    cluster_id,
+                    timeout_seconds=monitoring_cfg.get("termination_timeout_seconds", 600),
+                    poll_interval_seconds=monitoring_cfg.get(
+                        "termination_poll_interval_seconds", 10
+                    ),
+                )
+                cluster_cleaned_up = outcome.confirmed
+                if not outcome.confirmed:
+                    logger.warning(
+                        "Cluster %s termination not confirmed (last state=%s%s); "
+                        "may require manual investigation.",
+                        cluster_id,
+                        outcome.state,
+                        f", error={outcome.error}" if outcome.error else "",
+                    )
         except Exception as exc:  # noqa: BLE001 - cleanup must not mask the original outcome
             logger.warning("Failed to terminate cluster %s during cleanup: %s", cluster_id, exc)
             cluster_cleaned_up = False

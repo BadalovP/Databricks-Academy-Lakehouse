@@ -278,6 +278,51 @@ def test_terminate_cluster_calls_delete():
     client.clusters.delete.assert_called_once_with(cluster_id="cluster-123")
 
 
+def test_terminate_and_verify_cluster_confirms_termination():
+    client = _autospec_client()
+    terminated = MagicMock()
+    terminated.state = MagicMock(value="TERMINATED")
+    client.clusters.get.return_value = terminated
+
+    outcome = compute.terminate_and_verify_cluster(
+        client, "cluster-123", timeout_seconds=100, poll_interval_seconds=100
+    )
+
+    client.clusters.delete.assert_called_once_with(cluster_id="cluster-123")
+    assert outcome.confirmed is True
+    assert outcome.state == "TERMINATED"
+
+
+def test_terminate_and_verify_cluster_reports_unconfirmed_when_delete_raises():
+    """A cleanup path must report, not raise -- the caller's own outer
+    safety net must still be able to write its report afterward.
+    """
+    client = _autospec_client()
+    client.clusters.delete.side_effect = RuntimeError("network error")
+
+    outcome = compute.terminate_and_verify_cluster(
+        client, "cluster-123", timeout_seconds=100, poll_interval_seconds=100
+    )
+
+    assert outcome.confirmed is False
+    assert "network error" in outcome.error
+    client.clusters.get.assert_not_called()  # never polls for a delete that never happened
+
+
+def test_terminate_and_verify_cluster_reports_unconfirmed_when_never_reaches_terminated():
+    client = _autospec_client()
+    pending = MagicMock()
+    pending.state = MagicMock(value="TERMINATING")
+    client.clusters.get.return_value = pending
+
+    outcome = compute.terminate_and_verify_cluster(
+        client, "cluster-123", timeout_seconds=0, poll_interval_seconds=100
+    )
+
+    assert outcome.confirmed is False
+    assert outcome.requires_investigation is True
+
+
 def test_cluster_exists_and_active_false_for_terminated_state():
     client = _autospec_client()
     details = MagicMock()

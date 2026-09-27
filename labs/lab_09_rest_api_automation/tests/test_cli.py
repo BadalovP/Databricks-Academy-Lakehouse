@@ -133,8 +133,12 @@ def test_explicit_cluster_path_used_when_creation_succeeds(tmp_path, monkeypatch
     reset_job_cluster_mock = MagicMock()
     _patch_job_success_path(monkeypatch, ensure_job_mock, reset_job_cluster_mock)
 
-    terminate_mock = MagicMock()
-    monkeypatch.setattr(cli.compute, "terminate_cluster", terminate_mock)
+    terminate_mock = MagicMock(
+        return_value=monitoring.ClusterTerminationOutcome(
+            cluster_id="cluster-1", state="TERMINATED", confirmed=True
+        )
+    )
+    monkeypatch.setattr(cli.compute, "terminate_and_verify_cluster", terminate_mock)
     monkeypatch.setattr(cli.compute, "cluster_exists_and_active", lambda *a, **k: True)
 
     client = MagicMock()
@@ -155,7 +159,48 @@ def test_explicit_cluster_path_used_when_creation_succeeds(tmp_path, monkeypatch
     assert kwargs["cluster_id"] == "cluster-1"
     assert kwargs["new_cluster"] is None
 
-    terminate_mock.assert_called_once_with(client, "cluster-1")
+    terminate_mock.assert_called_once_with(
+        client, "cluster-1", timeout_seconds=600, poll_interval_seconds=10
+    )
+
+
+def test_explicit_cluster_termination_not_confirmed_marks_cleanup_unconfirmed(
+    tmp_path, monkeypatch
+):
+    """cluster_cleaned_up must reflect an actually-confirmed TERMINATED state,
+    never just that the delete request was accepted without raising.
+    """
+    cfg = _cfg(tmp_path)
+    _patch_common_success_path(monkeypatch)
+    monkeypatch.setattr(
+        cli.compute, "try_start_cluster_create", lambda *a, **k: ("cluster-1", None)
+    )
+    monkeypatch.setattr(
+        cli.monitoring,
+        "poll_cluster_state",
+        lambda *a, **k: monitoring.ClusterOutcome(cluster_id="cluster-1", state="RUNNING"),
+    )
+    ensure_job_mock = MagicMock(return_value=42)
+    reset_job_cluster_mock = MagicMock()
+    _patch_job_success_path(monkeypatch, ensure_job_mock, reset_job_cluster_mock)
+
+    monkeypatch.setattr(
+        cli.compute,
+        "terminate_and_verify_cluster",
+        MagicMock(
+            return_value=monitoring.ClusterTerminationOutcome(
+                cluster_id="cluster-1", state="PENDING", confirmed=False
+            )
+        ),
+    )
+    monkeypatch.setattr(cli.compute, "cluster_exists_and_active", lambda *a, **k: True)
+
+    client = MagicMock()
+    exit_code = cli.cmd_run_all(client, cfg, SimpleNamespace())
+
+    assert exit_code == 0  # the run itself still succeeded; only cleanup is unconfirmed
+    report = json.loads((tmp_path / "report.json").read_text())
+    assert report["cluster_cleaned_up"] is False
 
 
 def test_permitted_fallback_to_new_cluster_when_creation_is_rejected(tmp_path, monkeypatch):
@@ -177,7 +222,7 @@ def test_permitted_fallback_to_new_cluster_when_creation_is_rejected(tmp_path, m
     _patch_job_success_path(monkeypatch, ensure_job_mock, reset_job_cluster_mock)
 
     terminate_mock = MagicMock()
-    monkeypatch.setattr(cli.compute, "terminate_cluster", terminate_mock)
+    monkeypatch.setattr(cli.compute, "terminate_and_verify_cluster", terminate_mock)
     monkeypatch.setattr(
         cli.compute,
         "cluster_exists_and_active",
@@ -246,6 +291,7 @@ def _forbid_cluster_calls(monkeypatch):
         "build_cluster_spec",
         "try_start_cluster_create",
         "terminate_cluster",
+        "terminate_and_verify_cluster",
         "cluster_exists_and_active",
     ):
         monkeypatch.setattr(
@@ -343,7 +389,15 @@ def test_cli_override_takes_precedence_over_config_preferred_mode(tmp_path, monk
         "poll_cluster_state",
         lambda *a, **k: monitoring.ClusterOutcome(cluster_id="cluster-1", state="RUNNING"),
     )
-    monkeypatch.setattr(cli.compute, "terminate_cluster", MagicMock())
+    monkeypatch.setattr(
+        cli.compute,
+        "terminate_and_verify_cluster",
+        MagicMock(
+            return_value=monitoring.ClusterTerminationOutcome(
+                cluster_id="cluster-1", state="TERMINATED", confirmed=True
+            )
+        ),
+    )
     monkeypatch.setattr(cli.compute, "cluster_exists_and_active", lambda *a, **k: True)
 
     ensure_job_mock = MagicMock(return_value=42)

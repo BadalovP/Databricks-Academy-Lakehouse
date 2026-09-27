@@ -310,3 +310,128 @@ def test_poll_cluster_state_times_out_while_pending():
 
     assert outcome.timed_out is True
     assert outcome.usable is False
+
+
+# --- cluster termination verification -------------------------------------
+#
+# Dedicated logic, proven live (2026-09-27) confirming termination of a real
+# Azure classic-compute cluster: deliberately distinct from poll_cluster_state
+# above, which stops on RUNNING and would return prematurely if reused here.
+
+
+def test_poll_cluster_termination_confirms_terminated_after_terminating():
+    client = MagicMock()
+    running = MagicMock()
+    running.state = MagicMock(value="RUNNING")
+    terminating = MagicMock()
+    terminating.state = MagicMock(value="TERMINATING")
+    terminated = MagicMock()
+    terminated.state = MagicMock(value="TERMINATED")
+    client.clusters.get.side_effect = [running, terminating, terminated]
+
+    clock, sleep = _fake_clock()
+    outcome = monitoring.poll_cluster_termination(
+        client,
+        cluster_id="c1",
+        timeout_seconds=1000,
+        poll_interval_seconds=5,
+        sleep_fn=sleep,
+        clock_fn=clock,
+    )
+
+    assert outcome.confirmed is True
+    assert outcome.state == "TERMINATED"
+    assert outcome.requires_investigation is False
+    assert client.clusters.get.call_count == 3
+
+
+def test_poll_cluster_termination_never_stops_on_a_transient_running_read():
+    """The bug this specifically guards against: reusing poll_cluster_state
+    for termination verification could return immediately on an observed
+    RUNNING read taken before deletion has taken effect. This loop must
+    keep polling through RUNNING/TERMINATING no matter how many times they
+    are observed, stopping only on an exact TERMINATED.
+    """
+    client = MagicMock()
+    running = MagicMock()
+    running.state = MagicMock(value="RUNNING")
+    terminated = MagicMock()
+    terminated.state = MagicMock(value="TERMINATED")
+    client.clusters.get.side_effect = [running, running, running, terminated]
+
+    clock, sleep = _fake_clock()
+    outcome = monitoring.poll_cluster_termination(
+        client,
+        cluster_id="c1",
+        timeout_seconds=1000,
+        poll_interval_seconds=5,
+        sleep_fn=sleep,
+        clock_fn=clock,
+    )
+
+    assert outcome.confirmed is True
+    assert client.clusters.get.call_count == 4
+
+
+def test_poll_cluster_termination_reports_unconfirmed_on_anomalous_state():
+    client = MagicMock()
+    errored = MagicMock()
+    errored.state = MagicMock(value="ERROR")
+    client.clusters.get.return_value = errored
+
+    clock, sleep = _fake_clock()
+    outcome = monitoring.poll_cluster_termination(
+        client,
+        cluster_id="c1",
+        timeout_seconds=1000,
+        poll_interval_seconds=5,
+        sleep_fn=sleep,
+        clock_fn=clock,
+    )
+
+    assert outcome.confirmed is False
+    assert outcome.state == "ERROR"
+    assert outcome.requires_investigation is True
+
+
+def test_poll_cluster_termination_reports_unconfirmed_on_timeout():
+    client = MagicMock()
+    pending = MagicMock()
+    pending.state = MagicMock(value="TERMINATING")
+    client.clusters.get.return_value = pending
+
+    clock, sleep = _fake_clock()
+    outcome = monitoring.poll_cluster_termination(
+        client,
+        cluster_id="c1",
+        timeout_seconds=15,
+        poll_interval_seconds=10,
+        sleep_fn=sleep,
+        clock_fn=clock,
+    )
+
+    assert outcome.confirmed is False
+    assert outcome.state == "TERMINATING"
+    assert outcome.requires_investigation is True
+
+
+def test_poll_cluster_termination_reports_unconfirmed_when_get_raises():
+    """An API error while polling must never be assumed to mean the cluster
+    is already gone.
+    """
+    client = MagicMock()
+    client.clusters.get.side_effect = RuntimeError("transient API error")
+
+    clock, sleep = _fake_clock()
+    outcome = monitoring.poll_cluster_termination(
+        client,
+        cluster_id="c1",
+        timeout_seconds=1000,
+        poll_interval_seconds=5,
+        sleep_fn=sleep,
+        clock_fn=clock,
+    )
+
+    assert outcome.confirmed is False
+    assert outcome.error == "transient API error"
+    assert outcome.requires_investigation is True

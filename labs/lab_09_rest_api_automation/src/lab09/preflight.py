@@ -320,9 +320,18 @@ def _run_cluster_create_probe(
         report.add("cluster_create_probe", "FAIL", _format_exception_chain(exc))
     finally:
         if cluster_id:
-            try:
-                compute.terminate_cluster(client, cluster_id)
-            except Exception as exc:  # noqa: BLE001
+            monitoring_cfg = cfg.get("monitoring", {})
+            outcome = compute.terminate_and_verify_cluster(
+                client,
+                cluster_id,
+                timeout_seconds=monitoring_cfg.get("termination_timeout_seconds", 600),
+                poll_interval_seconds=monitoring_cfg.get("termination_poll_interval_seconds", 10),
+            )
+            if not outcome.confirmed:
                 logger.warning(
-                    "Failed to terminate preflight probe cluster %s: %s", cluster_id, exc
+                    "Preflight probe cluster %s termination not confirmed (last state=%s%s); "
+                    "may require manual investigation.",
+                    cluster_id,
+                    outcome.state,
+                    f", error={outcome.error}" if outcome.error else "",
                 )

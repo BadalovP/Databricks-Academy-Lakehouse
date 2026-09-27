@@ -30,7 +30,14 @@ def _no_op_cluster_probe():
         stack.enter_context(
             patch.object(preflight.monitoring, "poll_cluster_state", return_value=outcome)
         )
-        stack.enter_context(patch.object(preflight.compute, "terminate_cluster"))
+        termination_outcome = monitoring.ClusterTerminationOutcome(
+            cluster_id="probe-cluster", state="TERMINATED", confirmed=True
+        )
+        stack.enter_context(
+            patch.object(
+                preflight.compute, "terminate_and_verify_cluster", return_value=termination_outcome
+            )
+        )
         yield
 
 
@@ -197,6 +204,9 @@ def test_run_preflight_cluster_probe_success_terminates_cluster():
     outcome = monitoring.ClusterOutcome(
         cluster_id="probe-cluster", state="RUNNING", timed_out=False
     )
+    termination_outcome = monitoring.ClusterTerminationOutcome(
+        cluster_id="probe-cluster", state="TERMINATED", confirmed=True
+    )
 
     with (
         patch.object(preflight.compute, "build_cluster_spec", return_value=spec) as build_spec,
@@ -206,7 +216,9 @@ def test_run_preflight_cluster_probe_success_terminates_cluster():
         patch.object(
             preflight.monitoring, "poll_cluster_state", return_value=outcome
         ) as poll_state,
-        patch.object(preflight.compute, "terminate_cluster") as terminate,
+        patch.object(
+            preflight.compute, "terminate_and_verify_cluster", return_value=termination_outcome
+        ) as terminate,
     ):
         report = preflight.run_preflight(client, _cfg(), probe_cluster_create=True)
 
@@ -215,7 +227,9 @@ def test_run_preflight_cluster_probe_success_terminates_cluster():
     build_spec.assert_called_once()
     start_create.assert_called_once()
     poll_state.assert_called_once()
-    terminate.assert_called_once_with(client, "probe-cluster")
+    terminate.assert_called_once_with(
+        client, "probe-cluster", timeout_seconds=600, poll_interval_seconds=10
+    )
 
     probe_check = next(c for c in report.checks if c.name == "cluster_create_probe")
     assert probe_check.status == "PASS"
@@ -226,6 +240,9 @@ def test_run_preflight_cluster_probe_still_terminates_on_failure_after_create():
     spec = compute.ClusterSpec(
         spark_version="15.4.x-scala2.12", node_type_id="small", autotermination_minutes=20
     )
+    termination_outcome = monitoring.ClusterTerminationOutcome(
+        cluster_id="probe-cluster", state="TERMINATED", confirmed=True
+    )
 
     with (
         patch.object(preflight.compute, "build_cluster_spec", return_value=spec),
@@ -233,15 +250,46 @@ def test_run_preflight_cluster_probe_still_terminates_on_failure_after_create():
         patch.object(
             preflight.monitoring, "poll_cluster_state", side_effect=RuntimeError("polling exploded")
         ),
-        patch.object(preflight.compute, "terminate_cluster") as terminate,
+        patch.object(
+            preflight.compute, "terminate_and_verify_cluster", return_value=termination_outcome
+        ) as terminate,
     ):
         report = preflight.run_preflight(client, _cfg(), probe_cluster_create=True)
 
     assert report.cluster_create_supported is False
-    terminate.assert_called_once_with(client, "probe-cluster")
+    terminate.assert_called_once_with(
+        client, "probe-cluster", timeout_seconds=600, poll_interval_seconds=10
+    )
 
+
+def test_run_preflight_cluster_probe_termination_not_confirmed_is_logged_not_raised():
+    """An unconfirmed termination after a successful probe must not crash
+    run_preflight or be silently treated as success -- see
+    monitoring.poll_cluster_termination()'s docstring for why a request
+    being accepted is never, by itself, evidence of TERMINATED.
+    """
+    client = _passing_client()
+    spec = compute.ClusterSpec(
+        spark_version="15.4.x-scala2.12", node_type_id="small", autotermination_minutes=20
+    )
+    outcome = monitoring.ClusterOutcome(cluster_id="probe-cluster", state="RUNNING")
+    unconfirmed = monitoring.ClusterTerminationOutcome(
+        cluster_id="probe-cluster", state="PENDING", confirmed=False
+    )
+
+    with (
+        patch.object(preflight.compute, "build_cluster_spec", return_value=spec),
+        patch.object(preflight.compute, "start_cluster_create", return_value="probe-cluster"),
+        patch.object(preflight.monitoring, "poll_cluster_state", return_value=outcome),
+        patch.object(
+            preflight.compute, "terminate_and_verify_cluster", return_value=unconfirmed
+        ) as terminate,
+    ):
+        report = preflight.run_preflight(client, _cfg(), probe_cluster_create=True)
+
+    terminate.assert_called_once()
     probe_check = next(c for c in report.checks if c.name == "cluster_create_probe")
-    assert probe_check.status == "FAIL"
+    assert probe_check.status == "PASS"  # the create/poll leg itself still succeeded
 
 
 def test_run_preflight_cluster_probe_not_run_when_not_requested():

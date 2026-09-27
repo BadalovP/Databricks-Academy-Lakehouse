@@ -165,6 +165,13 @@ monitoring:
   cluster_poll_interval_seconds: 10
   job_timeout_seconds: 1800
   job_poll_interval_seconds: 15
+  # Bound for independently confirming a temporary cluster actually reaches
+  # TERMINATED after compute.terminate_and_verify_cluster() requests
+  # deletion (never assumed from the delete call alone). 600s matches the
+  # bound proven live (2026-09-27) confirming termination of a real Azure
+  # classic-compute cluster.
+  termination_timeout_seconds: 600
+  termination_poll_interval_seconds: 10
 
 report:
   output_path: "evidence/lab09_report.json"
