@@ -72,10 +72,11 @@ class ClusterSpec:
 
 
 def resolve_lts_spark_version(client: WorkspaceClient) -> str:
-    """Pick a current, non-deprecated, x86_64 LTS runtime rather than hardcoding one.
+    """Pick a current, non-deprecated, x86_64, non-Photon LTS runtime rather than hardcoding one.
 
     Excludes aarch64/Graviton-specific runtime variants (e.g.
-    "18.x-aarch64-scala2.13"). This function does not coordinate with
+    "18.x-aarch64-scala2.13") and Photon variants (e.g.
+    "18.x-photon-scala2.13"). This function does not coordinate with
     resolve_node_type(), so pairing an aarch64 runtime with an x86_64 node
     type (or vice versa) silently produces an incompatible cluster spec.
     Confirmed live: "18.x-scala2.13" and "18.x-aarch64-scala2.13" both
@@ -92,18 +93,36 @@ def resolve_lts_spark_version(client: WorkspaceClient) -> str:
     before raising `TimeoutError("Timed out after 0:05:00")` -- a timeout
     from the SDK's transport layer, unrelated to and not controlled by
     this project's own cluster_timeout_seconds polling config.
+
+    A second, separate instance of the exact same class of bug was
+    confirmed live later (2026-09-27, an Azure PROD workspace):
+    "18.x-scala2.13" (standard) and "18.x-photon-scala2.13" (Photon) tied
+    on the same sort key for the same reason -- Photon was never excluded
+    from the candidate filter -- and the stable sort kept the Photon
+    variant, since the API happened to list it first. That workspace's
+    `Personal Compute` cluster policy fixes `runtime_engine: STANDARD`
+    (hidden, enforced), so the resulting create call was rejected outright
+    with `BadRequest: INVALID_PARAMETER_VALUE: Invalid spark version
+    18.x-photon-scala2.13.` -- an immediate, unambiguous rejection (not a
+    timeout), and no cluster object was created. Photon is now excluded
+    from every candidate tier below, symmetric with the aarch64 exclusion.
     """
     versions = client.clusters.spark_versions().versions or []
+
+    def is_standard_x86(v: Any) -> bool:
+        key = (v.key or "").lower()
+        return "aarch64" not in key and "photon" not in key
+
     candidates = [
         v
         for v in versions
         if "LTS" in (v.name or "")
         and "ML" not in (v.name or "")
         and "GPU" not in (v.name or "")
-        and "aarch64" not in (v.key or "").lower()
+        and is_standard_x86(v)
     ]
     if not candidates:
-        candidates = [v for v in versions if "aarch64" not in (v.key or "").lower()]
+        candidates = [v for v in versions if is_standard_x86(v)]
     if not candidates:
         candidates = list(versions)
     if not candidates:

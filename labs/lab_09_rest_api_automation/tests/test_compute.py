@@ -93,6 +93,70 @@ def test_resolve_lts_spark_version_falls_back_to_aarch64_only_if_nothing_else_ex
     assert compute.resolve_lts_spark_version(client) == "18.x-aarch64-scala2.13"
 
 
+def test_resolve_lts_spark_version_excludes_photon_even_when_it_would_tie_for_highest():
+    """Root-cause regression test for the second, separate instance of this
+    same class of bug.
+
+    Confirmed live against an Azure PROD workspace (2026-09-27):
+    "18.x-scala2.13" (standard) and "18.x-photon-scala2.13" (Photon) are
+    BOTH labeled LTS and both parse to the identical sort key, exactly
+    like the aarch64 case above -- Photon was never excluded from the
+    candidate filter. Before this fix, the stable sort kept whichever the
+    API listed first, which selected the Photon variant here. That
+    workspace's `Personal Compute` cluster policy fixes
+    `runtime_engine: STANDARD` (hidden, enforced), so the resulting
+    create call was rejected outright with `BadRequest:
+    INVALID_PARAMETER_VALUE: Invalid spark version
+    18.x-photon-scala2.13.` -- an immediate rejection, not a timeout, and
+    no cluster was ever created.
+    """
+    client = _autospec_client()
+    client.clusters.spark_versions.return_value.versions = [
+        _spark_version("18.x-photon-scala2.13", "18 LTS Photon (Scala 2.13, Spark 4.1.0)"),
+        _spark_version("18.x-scala2.13", "18 LTS (Scala 2.13, Spark 4.1.0)"),
+    ]
+
+    result = compute.resolve_lts_spark_version(client)
+
+    assert result == "18.x-scala2.13"
+    assert "photon" not in result.lower()
+
+
+def test_resolve_lts_spark_version_falls_back_to_photon_only_if_nothing_else_exists():
+    client = _autospec_client()
+    client.clusters.spark_versions.return_value.versions = [
+        _spark_version("18.x-photon-scala2.13", "18 LTS Photon (Scala 2.13, Spark 4.1.0)"),
+    ]
+
+    # No non-Photon runtime exists at all -- better to return something
+    # than raise, but this is a real edge case worth being explicit about.
+    assert compute.resolve_lts_spark_version(client) == "18.x-photon-scala2.13"
+
+
+def test_resolve_lts_spark_version_picks_standard_among_ml_aarch64_and_photon_variants():
+    """Comprehensive regression test: ML, aarch64, and Photon variants of
+    the same LTS version all present at once, plus a genuinely older
+    standard LTS release -- the newest *standard* (non-ML, non-aarch64,
+    non-Photon) variant must win, not merely "whichever is highest by
+    version number" or "whichever the API lists first".
+    """
+    client = _autospec_client()
+    client.clusters.spark_versions.return_value.versions = [
+        _spark_version("18.x-cpu-ml-scala2.13", "18 LTS ML (Scala 2.13, Spark 4.1.0)"),
+        _spark_version("18.x-aarch64-scala2.13", "18 LTS aarch64 (Scala 2.13, Spark 4.1.0)"),
+        _spark_version("18.x-photon-scala2.13", "18 LTS Photon (Scala 2.13, Spark 4.1.0)"),
+        _spark_version(
+            "18.x-aarch64-photon-scala2.13", "18 LTS Photon aarch64 (Scala 2.13, Spark 4.1.0)"
+        ),
+        _spark_version("18.x-scala2.13", "18 LTS (Scala 2.13, Spark 4.1.0)"),
+        _spark_version("15.4.x-scala2.12", "15.4 LTS"),
+    ]
+
+    result = compute.resolve_lts_spark_version(client)
+
+    assert result == "18.x-scala2.13"
+
+
 def test_resolve_node_type_picks_smallest_non_deprecated():
     client = _autospec_client()
     client.clusters.list_node_types.return_value.node_types = [
