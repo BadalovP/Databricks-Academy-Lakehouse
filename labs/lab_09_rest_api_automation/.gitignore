@@ -1,0 +1,36 @@
+# LAB 09 - REST API Automation
+#
+# Keeps local build/test artifacts, downloaded datasets, and generated
+# evidence reports out of Git. taxi_tripdata parquet files are downloaded on
+# demand by src/lab09/landing.py and must never be committed -- only the
+# generated JSON report and any supervisor-captured screenshots belong under
+# evidence/.
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+__pycache__/
+*.pyc
+**/.databricks/
+.env
+.env.*
+!.env.example
+
+# Downloaded NYC TLC source data (never committed; landed into the Volume,
+# not the repo).
+*.parquet
+taxi_zone_lookup.csv
+
+# Generated/detailed run evidence -- these contain this project's real
+# workspace hostname, authenticated identity, and internal resource IDs
+# (pipeline/job/run/schema IDs), gathered from live validations against a
+# real Databricks workspace. This repository is public, so none of that
+# belongs in Git: every evidence/*.json file is ignored by default. Only a
+# file that has actually been reviewed and sanitized for public
+# consumption (masked identifiers, e.g. evidence/phase0_2026-09-24.json)
+# is explicitly un-ignored below, by exact name -- never by a wildcard,
+# so a new evidence file is never accidentally committed just because its
+# name happens to match an existing pattern. evidence/README.md and
+# evidence/LIVE_VALIDATION_SUMMARY.md are Markdown, not JSON, so they are
+# unaffected by this rule and tracked normally.
+evidence/*.json
+!evidence/phase0_2026-09-24.json

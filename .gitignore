@@ -10,3 +10,12 @@ __pycache__/
 .venv-lab07/
 .vscode/
 labs/lab_06_gold_analytics_external/evidence/*.txt
+
+# Claude Code's own local, per-machine settings/permissions -- not project source.
+.claude/
+
+# An accidental full nested clone of this same repository (its own .git,
+# same origin remote, checked out on main) that ended up inside the working
+# directory. Not a legitimate part of the source tree; excluded rather than
+# deleted so it is never accidentally committed as a directory of loose files.
+/Databricks-Academy-Lakehouse/

@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lab09"
+version = "0.1.0"
+description = "LAB 09 Databricks REST API / Python SDK automation"
+requires-python = ">=3.11"
+dependencies = [
+  # >=0.133.0 because this package relies on ImportFormat.RAW (plain
+  # workspace FILE uploads, as opposed to notebook imports) and
+  # PipelineLibrary.glob/PathPattern (glob-include pipeline source
+  # registration) -- both confirmed present in 0.133.0 and absent in the
+  # 0.30.0 this was originally (incorrectly) pinned to, which caused a
+  # real CI failure once code using them was added.
+  "databricks-sdk>=0.133.0",
+  "PyYAML>=6.0",
+  "requests>=2.31",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.5",
+  "black>=24.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+  "remote: requires deployed Databricks resources",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+builtins = ["dbutils", "display", "spark"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["lab09"]
+
+[tool.ruff.lint.per-file-ignores]
+# Databricks notebook-source format interleaves `# COMMAND ----------` cells
+# containing dbutils widget calls before later cells' imports -- that is the
+# normal, expected notebook structure, not a real import-order problem.
+"notebooks/*.py" = ["E402"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]

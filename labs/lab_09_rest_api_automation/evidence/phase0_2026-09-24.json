@@ -1,0 +1,52 @@
+{
+  "sanitization_note": "This file was originally committed with the real workspace hostname, authenticated identity, organization ID, and internal cluster-policy IDs -- a privacy oversight caught in a later review, since this repository is public. This is the sanitized replacement: sensitive values are masked below. It is still present in this branch's earlier Git history in its original, unsanitized form -- rewriting that history (to remove it from prior commits) is a separate, higher-risk decision not made here; see the accompanying report for details. The unsanitized original is preserved locally only, outside version control, for this project's own traceability.",
+  "run_type": "preflight --probe-cluster-create (full live probe)",
+  "executed_at_utc": "2026-09-24",
+  "profile": "<REDACTED_PROFILE_NAME> (a confirmed-safe, non-Azure-PROD Personal Databricks workspace)",
+  "host": "<REDACTED_WORKSPACE_HOST>",
+  "identity": "<REDACTED_EMAIL>",
+  "catalog": "dbr_dev",
+  "schema": "<REDACTED_SCHEMA_NAME>",
+  "volume": "dbr_dev.<REDACTED_SCHEMA_NAME>.lab09_landing",
+  "checks": {
+    "authenticated_identity": "PASS",
+    "spark_runtimes_listed": "PASS (47 versions)",
+    "node_types_listed": "PASS (631 node types)",
+    "cluster_policies_listed": "PASS (5 policies)",
+    "catalog_access": "PASS (dbr_dev)",
+    "schema_access": "PASS (<REDACTED_SCHEMA_NAME>)",
+    "volume_access": "PASS (ensured (created-or-existing): dbr_dev.<REDACTED_SCHEMA_NAME>.lab09_landing)",
+    "files_api_roundtrip": "PASS (upload/list/delete round trip ok)",
+    "pipeline_list_permission": "PASS (22 pipelines visible)",
+    "cluster_create_probe": "FAIL"
+  },
+  "selected_compute_spec": {
+    "spark_version": "18.x-photon-scala2.13",
+    "node_type_id": "m4.large",
+    "policy_id": null,
+    "data_security_mode": "SINGLE_USER",
+    "num_workers": 0,
+    "autotermination_minutes": 20,
+    "note": "Confirmed x86_64 (non-aarch64/non-Graviton) after this session's fix to resolve_lts_spark_version/resolve_node_type. This spec was NOT the cause of the failure below -- the same class of error occurred with a corrected, architecturally-compatible spec."
+  },
+  "available_cluster_policies": [
+    { "policy_id": "<REDACTED_POLICY_ID>", "name": "Personal Compute" },
+    { "policy_id": "<REDACTED_POLICY_ID>", "name": "Power User Compute" },
+    { "policy_id": "<REDACTED_POLICY_ID>", "name": "Shared Compute" },
+    { "policy_id": "<REDACTED_POLICY_ID>", "name": "Job Compute" },
+    { "policy_id": "<REDACTED_POLICY_ID>", "name": "Legacy Shared Compute" }
+  ],
+  "cluster_create_attempt": {
+    "cluster_id": null,
+    "result": "FAILED",
+    "exception": "TimeoutError: Timed out after 0:05:00 | caused by BadRequest: Current organization <REDACTED_ORG_ID> does not have any associated worker environments",
+    "root_cause": "The POST /api/2.1/clusters/create request itself was rejected by the Databricks backend with a BadRequest whose message ('does not have any associated worker environments') is one of the specific substrings databricks-sdk's own BaseClient._is_retryable() treats as transient. The SDK's HTTP client (databricks.sdk._base_client.BaseClient, default retry_timeout_seconds=300) silently retried this request for the full 5 minutes before giving up and raising TimeoutError -- so no cluster object was ever created on the backend at any point, and this specific 5-minute figure came entirely from the SDK's own transport-layer retry default, not from this project's own cluster_timeout_seconds polling config (which never had a chance to run, since create() itself never returned a cluster_id).",
+    "interpretation": "This is a genuine workspace/organization-level limitation, not a permission/entitlement problem (the identity has the allow-cluster-create entitlement) and not the earlier aarch64/x86_64 architecture-mismatch bug (already fixed and confirmed not to be the cause here, since the corrected spec still failed identically). This specific Databricks organization does not have a 'worker environment' provisioned for classic cluster compute."
+  },
+  "final_cluster_state": "N/A -- no cluster_id was ever obtained; the cluster never reached PENDING",
+  "cleanup_result": "Nothing to clean up. Confirmed via `databricks clusters list` (against the same profile) returning zero clusters both before and after this attempt.",
+  "recommended_compute_mode": "serverless_job",
+  "recommended_compute_mode_correction": "An earlier version of this evidence file recommended job_cluster. That was corrected: a Jobs new_cluster is STILL classic jobs compute under the hood (it goes through the same cluster-manager/worker-environment infrastructure as a standalone cluster, just job-scoped) and would be expected to fail identically to the explicit_cluster attempt above, for the same organization-level reason. It is therefore not a meaningfully different infrastructure path and is not the preferred next thing to try in this workspace.",
+  "recommended_compute_mode_rationale": "Explicit classic cluster creation (compute_mode=explicit_cluster) is proven unavailable in this specific workspace/organization due to the missing 'worker environment' backend condition above -- this is unrelated to and unaffected by ClusterSpec correctness. serverless_job (a job task with no existing_cluster_id, new_cluster, or job_cluster_key at all, so Databricks selects serverless compute) is the genuinely distinct, Databricks-managed compute path that does not depend on this organization's classic-compute worker-environment infrastructure. Because the classic-compute failure surfaces as TimeoutError (via the SDK's own retry-and-give-up behavior), not as PermissionDenied/InvalidParameterValue, LAB 09's automatic exception-driven fallback (compute.try_start_cluster_create) does not and should not self-select serverless_job or job_cluster from a bare timeout -- per this task's explicit instruction not to broadly catch TimeoutError and treat it as a permission-style rejection, since an ordinary timeout could just as easily mean something else entirely. Instead, this workspace's choice is recorded deliberately in config/dev.yml's compute.preferred_mode, which `run-all --compute-mode auto` reads directly rather than rediscovering the same failure on every run. (Serverless execution has since been confirmed live in separate, later, targeted validations -- see evidence/LIVE_VALIDATION_SUMMARY.md.)",
+  "cluster_requirement_compliance_note": "Lab 9's task literally says 'create clusters'. This workspace cannot do that for classic compute (proven above). Two compliance interpretations remain open pending human/mentor decision -- see README.md's 'Lab requirement vs. Personal workspace reality' section: (A) run this workspace end-to-end using serverless_job, which proves API automation, Files API, pipeline triggering, job execution, monitoring, and reconciliation, but NOT a successful Clusters API cluster creation; or (B) additionally run the cluster-create portion in a separate, approved academy/Azure DEV workspace that supports classic clusters, if 'create clusters' must be satisfied literally. This PR does not claim either option is complete or approved."
+}
