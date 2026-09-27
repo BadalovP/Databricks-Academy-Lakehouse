@@ -1,3 +1,6 @@
+import threading
+import time
+
 import pytest
 
 from lab09 import client
@@ -111,6 +114,93 @@ def test_get_workspace_client_suppresses_ambient_host_token_env_vars_around_prof
 
     assert os.environ["DATABRICKS_HOST"] == "https://ambient-env-host.example.com"
     assert os.environ["DATABRICKS_TOKEN"] == "ambient-env-token-should-never-be-used"
+
+
+def test_get_workspace_client_suppresses_the_full_identity_relevant_env_var_set(monkeypatch):
+    """Regression test for a second, broader instance of the same class of
+    bug: the original fix only suppressed DATABRICKS_HOST/DATABRICKS_TOKEN,
+    but the installed SDK resolves WHO a client authenticates as from many
+    more environment variables than just those two -- DATABRICKS_CLIENT_ID/
+    DATABRICKS_CLIENT_SECRET can redirect to a completely different OAuth
+    service principal, DATABRICKS_AUTH_TYPE can force a different auth
+    mechanism than the profile's own, DATABRICKS_CONFIG_FILE can make "the
+    profile" resolve against a different file entirely, and the ARM_* /
+    DATABRICKS_USERNAME / DATABRICKS_PASSWORD variables carry the same class
+    of risk. Every one of these must be suppressed for the duration of a
+    profile-based call and restored immediately afterward, not just
+    host/token.
+    """
+    seen_env_during_call = {}
+
+    def fake_workspace_client(**kwargs):
+        import os
+
+        for name in client._AUTH_IDENTITY_ENV_VARS:
+            seen_env_during_call[name] = os.environ.get(name)
+        return kwargs
+
+    monkeypatch.setattr(client, "WorkspaceClient", fake_workspace_client)
+    monkeypatch.delenv("DATABRICKS_CONFIG_PROFILE", raising=False)
+
+    ambient_values = {
+        name: f"ambient-{name.lower()}-value" for name in client._AUTH_IDENTITY_ENV_VARS
+    }
+    for name, value in ambient_values.items():
+        monkeypatch.setenv(name, value)
+
+    client.get_workspace_client(profile="lab09-azure-prod-oauth")
+
+    for name in client._AUTH_IDENTITY_ENV_VARS:
+        assert seen_env_during_call[name] is None, f"{name} was not suppressed during the call"
+
+    import os
+
+    for name, value in ambient_values.items():
+        assert os.environ[name] == value, f"{name} was not restored after the call"
+
+
+def test_get_workspace_client_calls_are_thread_safe_across_the_suppression_window(monkeypatch):
+    """Regression test for a real gap found during review: os.environ is
+    process-global mutable state, so two concurrent get_workspace_client()
+    calls in different threads could otherwise interleave their
+    suppress/restore windows -- e.g. thread A restores DATABRICKS_TOKEN
+    while thread B's WorkspaceClient(...) construction is still in
+    progress and depends on it staying suppressed, or vice versa.
+    _env_lock must serialize the critical section so the two calls' windows
+    never overlap in time.
+    """
+    intervals = []
+    intervals_lock = threading.Lock()
+
+    def fake_workspace_client(**kwargs):
+        start = time.monotonic()
+        time.sleep(0.05)
+        end = time.monotonic()
+        with intervals_lock:
+            intervals.append((start, end))
+        return kwargs
+
+    monkeypatch.setattr(client, "WorkspaceClient", fake_workspace_client)
+    monkeypatch.delenv("DATABRICKS_CONFIG_PROFILE", raising=False)
+    monkeypatch.delenv("DATABRICKS_HOST", raising=False)
+    monkeypatch.delenv("DATABRICKS_TOKEN", raising=False)
+
+    threads = [
+        threading.Thread(target=client.get_workspace_client, kwargs={"profile": f"profile-{i}"})
+        for i in range(2)
+    ]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=5)
+
+    assert len(intervals) == 2
+    (start1, end1), (start2, end2) = intervals
+    # The two calls' critical sections must not overlap: one must have
+    # fully finished before the other started.
+    assert (
+        end1 <= start2 or end2 <= start1
+    ), f"concurrent get_workspace_client() calls overlapped: {intervals}"
 
 
 def test_get_workspace_client_restores_env_vars_even_if_construction_raises(monkeypatch):
