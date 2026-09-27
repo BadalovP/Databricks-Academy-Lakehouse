@@ -26,7 +26,7 @@ from databricks.sdk.errors import InvalidParameterValue, PermissionDenied
 from databricks.sdk.service import pipelines as pipelines_svc
 
 from . import compute
-from .client import trips_path
+from .client import reference_path, trips_path
 
 logger = logging.getLogger(__name__)
 
@@ -110,21 +110,28 @@ def _build_run_as(cfg: dict[str, Any]) -> pipelines_svc.RunAs | None:
 
 
 def _pipeline_configuration(cfg: dict[str, Any]) -> dict[str, str]:
-    """Spark configuration handed to the pipeline's own compute so
-    bronze.py's Auto Loader reads from THIS environment's actual landing
-    volume (cfg["catalog"]/cfg["schema"]/cfg["volume"]), not the
-    module-level default hardcoded in bronze.py.
+    """Spark configuration handed to the pipeline's own compute so both
+    bronze.py's Auto Loader AND silver.py's zone-lookup read use THIS
+    environment's actual landing volume (cfg["catalog"]/cfg["schema"]/
+    cfg["volume"]), not the module-level defaults hardcoded in each file.
 
-    Confirmed live (2026-09-27): without this, the Azure pipeline silently
-    fell back to that hardcoded default -- which happens to match
-    config/dev.yml's schema (parvinbadalov) by coincidence, since it was
-    written against the Personal-workspace deployment -- instead of
-    config/azure.yml's actual dbr_dev.parvinbadalov_lab09_prod schema,
-    failing every update with UC_VOLUME_NOT_FOUND. Setting this explicitly
-    for every environment (not just Azure) removes that coincidental
-    dependency entirely, rather than patching it for Azure alone.
+    Confirmed live (2026-09-27), in two successive failures: without this,
+    the Azure pipeline silently fell back to those hardcoded defaults --
+    which happen to match config/dev.yml's schema (parvinbadalov) by
+    coincidence, since both were written against the Personal-workspace
+    deployment -- instead of config/azure.yml's actual
+    dbr_dev.parvinbadalov_lab09_prod schema. bronze.py's Auto Loader source
+    failed first (UC_VOLUME_NOT_FOUND on lab09_taxi_bronze); after fixing
+    that, silver.py's _read_zone_lookup() failed identically, reading the
+    reference CSV via its own separate hardcoded default
+    (lab09.reference_csv_path). Setting both explicitly for every
+    environment (not just Azure) removes the coincidental dependency
+    entirely, rather than patching each one individually as it's found.
     """
-    return {"lab09.landing_trips_path": f"{trips_path(cfg)}/"}
+    return {
+        "lab09.landing_trips_path": f"{trips_path(cfg)}/",
+        "lab09.reference_csv_path": f"{reference_path(cfg)}/taxi_zone_lookup.csv",
+    }
 
 
 def _library_specs(pipeline_source_dir: str) -> list[pipelines_svc.PipelineLibrary]:
