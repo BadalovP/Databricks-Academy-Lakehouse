@@ -19,6 +19,8 @@ def _cfg(prefer_serverless: bool = True, allow_classic_fallback: bool = True) ->
     """
     return {
         "catalog": "dbr_dev",
+        "schema": "parvinbadalov",
+        "volume": "lab09_landing",
         "pipeline": {
             "name": "lab09_taxi_pipeline",
             "target_schema": "parvinbadalov",
@@ -107,6 +109,73 @@ def test_ensure_pipeline_run_as_is_none_when_not_configured():
 
     _, kwargs = client.pipelines.create.call_args
     assert kwargs["run_as"] is None
+
+
+def test_ensure_pipeline_creation_passes_the_landing_trips_path_configuration():
+    """Regression test for a real defect found live (2026-09-27): bronze.py's
+    Auto Loader read from a module-level hardcoded default path
+    (dbr_dev.parvinbadalov, matching config/dev.yml's schema only by
+    coincidence) because nothing ever set the "lab09.landing_trips_path"
+    Spark configuration this pipeline is supposed to override it with. On
+    config/azure.yml, whose landing schema is instead
+    parvinbadalov_lab09_prod, this caused a live UC_VOLUME_NOT_FOUND
+    failure. The pipeline must always be created with this configuration
+    set from the deploying config's own catalog/schema/volume, not left to
+    bronze.py's fallback.
+    """
+    client = _autospec_client()
+    client.pipelines.list_pipelines.return_value = []
+    client.pipelines.create.return_value = MagicMock(pipeline_id="new-id")
+
+    cfg = _cfg()
+    cfg["catalog"] = "dbr_dev"
+    cfg["schema"] = "parvinbadalov_lab09_prod"
+    cfg["volume"] = "lab09_landing"
+    pipelines.ensure_pipeline(client, cfg, "/Workspace/Users/x/lab09/pipeline")
+
+    _, kwargs = client.pipelines.create.call_args
+    assert kwargs["configuration"] == {
+        "lab09.landing_trips_path": "/Volumes/dbr_dev/parvinbadalov_lab09_prod/lab09_landing/trips/"
+    }
+
+
+def test_ensure_pipeline_update_passes_the_landing_trips_path_configuration():
+    client = _autospec_client()
+    existing = MagicMock()
+    existing.name = "lab09_taxi_pipeline"
+    existing.pipeline_id = "existing-id"
+    client.pipelines.list_pipelines.return_value = [existing]
+
+    cfg = _cfg()
+    cfg["schema"] = "parvinbadalov_lab09_prod"
+    pipelines.ensure_pipeline(client, cfg, "/Workspace/Users/x/lab09/pipeline")
+
+    _, kwargs = client.pipelines.update.call_args
+    assert kwargs["configuration"] == {
+        "lab09.landing_trips_path": "/Volumes/dbr_dev/parvinbadalov_lab09_prod/lab09_landing/trips/"
+    }
+
+
+def test_ensure_pipeline_landing_trips_path_uses_top_level_schema_not_target_schema():
+    """config/dev.yml deliberately splits the landing schema (top-level
+    `schema:`) from the pipeline output schema (`pipeline.target_schema`) --
+    see that file's own comments. The Auto Loader source path must be built
+    from the former, never the latter, even when they differ.
+    """
+    client = _autospec_client()
+    client.pipelines.list_pipelines.return_value = []
+    client.pipelines.create.return_value = MagicMock(pipeline_id="new-id")
+
+    cfg = _cfg()
+    cfg["schema"] = "parvinbadalov"
+    cfg["pipeline"]["target_schema"] = "lab09"
+    pipelines.ensure_pipeline(client, cfg, "/Workspace/Users/x/lab09/pipeline")
+
+    _, kwargs = client.pipelines.create.call_args
+    assert kwargs["target"] == "lab09"
+    assert kwargs["configuration"] == {
+        "lab09.landing_trips_path": "/Volumes/dbr_dev/parvinbadalov/lab09_landing/trips/"
+    }
 
 
 def test_ensure_pipeline_falls_back_to_classic_when_serverless_creation_rejected():
