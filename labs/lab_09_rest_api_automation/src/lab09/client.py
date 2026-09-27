@@ -2,71 +2,13 @@
 
 from __future__ import annotations
 
-import contextlib
+import configparser
 import os
-import threading
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 import yaml
 from databricks.sdk import WorkspaceClient
-
-# Every environment variable the installed databricks-sdk (pinned to
-# ==0.133.0 -- see pyproject.toml) resolves into a Config attribute that
-# determines WHO a client authenticates as or WHICH workspace/config file it
-# resolves against, other than DATABRICKS_CONFIG_PROFILE itself (which maps
-# to the same `profile` attribute this module already sets via an explicit
-# kwarg -- kwargs are applied before env vars are loaded, and an attribute
-# already set from a kwarg is never overwritten by _load_from_env(), so that
-# one specific variable needs no suppression). Enumerated by reading
-# databricks.sdk.config.Config.attributes() directly, not guessed from
-# memory -- re-verify this list if the pinned SDK version ever changes.
-#
-# Deliberately excludes pure behavior/tuning knobs that do not change WHO or
-# WHICH workspace is targeted (DATABRICKS_CLUSTER_ID/WAREHOUSE_ID/
-# SERVERLESS_COMPUTE_ID, DATABRICKS_DEBUG_*, DATABRICKS_RATE_LIMIT,
-# DATABRICKS_METADATA_SERVICE_URL, DATABRICKS_DISABLE_*,
-# DATABRICKS_CLI_PATH) -- suppressing those would be scope creep unrelated
-# to the credential-hijack risk this guards against.
-_AUTH_IDENTITY_ENV_VARS = (
-    "DATABRICKS_HOST",
-    "DATABRICKS_TOKEN",
-    "DATABRICKS_ACCOUNT_ID",
-    "DATABRICKS_WORKSPACE_ID",
-    "DATABRICKS_CLOUD",
-    "DATABRICKS_DISCOVERY_URL",
-    "DATABRICKS_TOKEN_AUDIENCE",
-    "DATABRICKS_OIDC_TOKEN_ENV",
-    "DATABRICKS_OIDC_TOKEN_FILEPATH",
-    "DATABRICKS_OIDC_TOKEN_FILE",
-    "DATABRICKS_USERNAME",
-    "DATABRICKS_PASSWORD",
-    "DATABRICKS_CLIENT_ID",
-    "DATABRICKS_CLIENT_SECRET",
-    "DATABRICKS_CONFIG_FILE",
-    "DATABRICKS_GOOGLE_SERVICE_ACCOUNT",
-    "GOOGLE_CREDENTIALS",
-    "DATABRICKS_AZURE_RESOURCE_ID",
-    "ARM_USE_MSI",
-    "ARM_CLIENT_SECRET",
-    "ARM_CLIENT_ID",
-    "ARM_TENANT_ID",
-    "ARM_ENVIRONMENT",
-    "DATABRICKS_AUTH_TYPE",
-)
-
-# Serializes the suppress/restore critical section below across threads in
-# this process. This is a real but narrow guarantee: it only prevents two
-# concurrent get_workspace_client() calls in this process from stepping on
-# each other's suppression window. It cannot and does not protect against
-# unrelated code elsewhere in the same process reading os.environ during
-# that window -- os.environ is inherently process-global mutable state, and
-# no in-process lock can make a third party's unsynchronized read of it
-# safe. Lab 9's own call sites (cli.py's main(), one-off scripts) are all
-# single-threaded with exactly one call each, so this is currently a
-# defense-in-depth guarantee rather than one anything in this codebase
-# actually depends on today.
-_env_lock = threading.Lock()
 
 
 class ProfileNotSpecifiedError(RuntimeError):
@@ -82,24 +24,157 @@ class ProfileNotSpecifiedError(RuntimeError):
     """
 
 
-@contextlib.contextmanager
-def _env_suppressed(*names: str) -> Iterator[None]:
-    """Temporarily unset the given environment variables, restoring them after.
+class ProfileResolutionMismatchError(RuntimeError):
+    """Raised when a constructed client did not resolve the way its explicitly
+    requested profile, read directly from ~/.databrickscfg, says it should.
 
-    Never touches the real values beyond removing/restoring them in-process;
-    nothing is logged or displayed. Holds _env_lock for the duration, so two
-    concurrent calls from different threads in this process cannot interleave
-    their suppress/restore windows -- see _env_lock's own comment for the
-    precise (narrower-than-total) guarantee this does and does not provide.
+    See _verify_profile_resolution()'s docstring for the full reasoning.
     """
-    with _env_lock:
-        saved = {name: os.environ.pop(name, None) for name in names}
-        try:
-            yield
-        finally:
-            for name, value in saved.items():
-                if value is not None:
-                    os.environ[name] = value
+
+
+def _default_databrickscfg_path() -> Path:
+    return Path.home() / ".databrickscfg"
+
+
+def _normalize_host(host: str | None) -> str | None:
+    """Loose normalization for comparing a raw ini host value against the
+    SDK's own resolved, scheme-qualified host -- good enough for Databricks
+    hosts specifically (never a non-default port), without depending on the
+    SDK's own private host-normalization helper.
+    """
+    if not host:
+        return host
+    host = host.strip()
+    if "://" not in host:
+        host = "https://" + host
+    return host.rstrip("/").lower()
+
+
+def _read_profile_section(profile: str, config_path: Path) -> configparser.SectionProxy | None:
+    """Read one profile's raw section from a .databrickscfg-format file.
+
+    Returns None if the file or the section does not exist. Never reads or
+    returns anything beyond what configparser exposes for that one section;
+    callers must still only ever compare specific known keys (host,
+    presence of token/client_id), never dump or log the section's raw
+    contents (a token value must never be displayed -- see the credential-
+    safety memory this project has followed throughout).
+    """
+    if not config_path.exists():
+        return None
+    parser = configparser.ConfigParser()
+    parser.read(config_path)
+    if profile not in parser:
+        return None
+    return parser[profile]
+
+
+def _verify_profile_resolution(
+    resolved_profile: str,
+    client: WorkspaceClient,
+    config_path: Path | None = None,
+) -> None:
+    """Confirm a constructed client actually resolved the way the explicitly
+    requested profile, read directly from the canonical ~/.databrickscfg,
+    says it should -- and raise loudly rather than silently proceeding if not.
+
+    This replaces an earlier approach (suppressing DATABRICKS_HOST/
+    DATABRICKS_TOKEN, then an expanded list of ~19 identity-relevant
+    environment variables, in os.environ for the duration of the
+    WorkspaceClient(profile=...) call) that mutated process-global state.
+    That approach had a real, unfixable gap even with a threading.Lock
+    around the mutation: the lock only ever serialized calls that went
+    through this same function -- it could not and did not protect any
+    other, unrelated thread in the same process from observing those
+    environment variables as transiently absent, since os.environ has no
+    thread-local scoping in Python. Reviewing the installed SDK for a
+    supported alternative found no public API to construct a Config/
+    WorkspaceClient that resolves purely from a named profile file, ignoring
+    the environment entirely (no `from_profile` classmethod, no env-skip
+    flag on Config.__init__ -- confirmed by inspecting its signature).
+
+    This function instead performs a verify-AFTER-construction check using
+    only public, already-resolved client.config attributes, compared
+    against a fresh, independent, read-only parse of ~/.databrickscfg --
+    never mutating any process state, so there is nothing for a concurrent
+    thread to ever observe in an inconsistent state. It also closes a wider
+    class of risk than the environment-variable-enumeration approach did:
+    it does not need to know about every individual environment variable
+    the SDK might resolve identity from (including ones a future SDK
+    version could add), only whether the OUTCOME matches what the profile
+    itself declares.
+
+    Deliberately always reads the canonical ~/.databrickscfg path, ignoring
+    an ambient DATABRICKS_CONFIG_FILE override, even though the SDK itself
+    would honor that variable when resolving the profile actually used by
+    `client`. This is intentional, not an oversight: this project's own
+    documented usage (README.md "Security model", config/dev.yml's header
+    comment) is exclusively in terms of ~/.databrickscfg, so an ambient
+    DATABRICKS_CONFIG_FILE silently redirecting resolution to a different
+    file is itself exactly the kind of ambient-environment interference
+    this check exists to catch -- if that happened, the profile's
+    canonical entry (or the profile itself) will very likely not match
+    what got resolved, and this raises rather than silently trusting it.
+
+    Checks performed, all using only non-secret facts (never the token's
+    own value, consistent with never displaying or logging credentials):
+      - the resolved host matches the profile's own declared host;
+      - whether the profile declares a token line matches whether the
+        resolved client ended up with a token at all (catches, e.g., an
+        ambient DATABRICKS_TOKEN being used for a profile -- such as this
+        project's own OAuth-only profile -- that declares no token line of
+        its own);
+      - the same presence-only comparison for client_id (catches an
+        ambient DATABRICKS_CLIENT_ID/DATABRICKS_CLIENT_SECRET redirecting
+        authentication to a different OAuth service principal).
+    """
+    path = config_path or _default_databrickscfg_path()
+    section = _read_profile_section(resolved_profile, path)
+    if section is None:
+        raise ProfileResolutionMismatchError(
+            f"Could not independently verify profile {resolved_profile!r}: no such "
+            f"profile section found in {path}. Refusing to trust the constructed "
+            "client's resolution without this check -- this can happen if an "
+            "ambient DATABRICKS_CONFIG_FILE environment variable redirected "
+            "resolution to a different file than the canonical one."
+        )
+
+    expected_host = _normalize_host(section.get("host"))
+    actual_host = _normalize_host(client.config.host)
+    if expected_host and expected_host != actual_host:
+        raise ProfileResolutionMismatchError(
+            f"Profile {resolved_profile!r} declares host {expected_host!r} in "
+            f"{path}, but the constructed client resolved host {actual_host!r} "
+            "instead. Refusing to proceed -- this usually means an ambient "
+            "DATABRICKS_HOST (or DATABRICKS_CONFIG_FILE) environment variable "
+            "overrode the explicitly requested profile."
+        )
+
+    expects_token = "token" in section
+    actual_has_token = bool(client.config.token)
+    if expects_token != actual_has_token:
+        raise ProfileResolutionMismatchError(
+            f"Profile {resolved_profile!r} "
+            f"{'declares' if expects_token else 'does not declare'} a token in "
+            f"{path}, but the constructed client "
+            f"{'has none' if expects_token else 'resolved one anyway'}. Refusing "
+            "to proceed -- this usually means an ambient DATABRICKS_TOKEN "
+            "environment variable overrode the explicitly requested profile's "
+            "own authentication method."
+        )
+
+    expects_client_id = "client_id" in section
+    actual_has_client_id = bool(client.config.client_id)
+    if expects_client_id != actual_has_client_id:
+        raise ProfileResolutionMismatchError(
+            f"Profile {resolved_profile!r} "
+            f"{'declares' if expects_client_id else 'does not declare'} a client_id "
+            f"in {path}, but the constructed client "
+            f"{'has none' if expects_client_id else 'resolved one anyway'}. "
+            "Refusing to proceed -- this usually means an ambient "
+            "DATABRICKS_CLIENT_ID/DATABRICKS_CLIENT_SECRET environment variable "
+            "redirected authentication to a different OAuth service principal."
+        )
 
 
 def get_workspace_client(profile: str | None = None) -> WorkspaceClient:
@@ -116,25 +191,25 @@ def get_workspace_client(profile: str | None = None) -> WorkspaceClient:
     silently pick an unintended profile such as one of the "dev"-named
     profiles that actually point at Azure PROD.
 
-    This order is enforced explicitly, not just documented: reading the
-    installed ``databricks-sdk``'s own ``Config`` resolution
+    Reading the installed ``databricks-sdk``'s own ``Config`` resolution
     (``_load_from_env`` / ``_known_file_config_loader``) and confirming it
     empirically (with dummy values only) showed that ``WorkspaceClient(profile=...)``
     on its own does NOT protect a profile's own credentials from being
     silently overridden by an ambient environment variable -- the SDK loads
     env vars before the profile file and never overwrites an attribute env
     already populated. A stale ``DATABRICKS_TOKEN`` (e.g. exported for a
-    different profile earlier in the same shell session) would otherwise
+    different profile earlier in the same shell session) could otherwise
     silently win over an explicitly requested profile such as a dedicated
-    OAuth profile, with no error and no log message. This risk is not
-    limited to host/token: ``DATABRICKS_CLIENT_ID``/``DATABRICKS_CLIENT_SECRET``
-    can redirect authentication to an entirely different OAuth service
-    principal, ``DATABRICKS_AUTH_TYPE`` can force a different auth mechanism
-    than the profile's own, and ``DATABRICKS_CONFIG_FILE`` can make "the
-    profile" resolve against a different file altogether -- see
-    ``_AUTH_IDENTITY_ENV_VARS`` for the full, empirically-enumerated set this
-    suppresses for the duration of the profile-based call only, restoring
-    every one of them immediately afterward.
+    OAuth profile, with no error and no log message.
+
+    Rather than fighting this by suppressing environment variables (a
+    process-global mutation that cannot be made safe against unrelated
+    threads in the same process -- see ``_verify_profile_resolution``'s
+    docstring for why that approach was replaced), a profile-based
+    resolution here is independently verified against ~/.databrickscfg
+    immediately after construction, raising ``ProfileResolutionMismatchError``
+    loudly instead of silently proceeding if the outcome does not match
+    what the profile itself declares.
     """
     resolved_profile = profile or os.environ.get("DATABRICKS_CONFIG_PROFILE")
     has_explicit_host_token = bool(os.environ.get("DATABRICKS_HOST")) and bool(
@@ -142,8 +217,9 @@ def get_workspace_client(profile: str | None = None) -> WorkspaceClient:
     )
 
     if resolved_profile:
-        with _env_suppressed(*_AUTH_IDENTITY_ENV_VARS):
-            return WorkspaceClient(profile=resolved_profile)
+        ws_client = WorkspaceClient(profile=resolved_profile)
+        _verify_profile_resolution(resolved_profile, ws_client)
+        return ws_client
     if has_explicit_host_token:
         return WorkspaceClient()
     raise ProfileNotSpecifiedError(
