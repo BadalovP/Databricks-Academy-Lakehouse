@@ -118,3 +118,22 @@ which would have skipped the required-reviewer gate entirely on first
 dispatch -- now points at the existing, already-protected
 `personal-prod-approval` environment instead. See
 `LIVE_VALIDATION_SUMMARY.md` section 11.
+
+**Permanent Azure Job, first fully successful run, all three tasks
+(2026-09-27):** `lab09_taxi_reconciliation_job` (ingestion -> Lakeflow
+pipeline -> reconciliation) succeeded end to end via
+`lab09_azure_deployment.yml`'s own GitHub Actions `workflow_dispatch` path,
+after finding and fixing three genuine live defects in sequence and
+validating each with a full test pass before the next attempt (a
+cross-identity workspace-path issue, a `notebookPath()` prefix quirk, and
+two pipeline source files each falling back to a hardcoded, wrong-schema
+volume path). A dedicated Azure identity could not be created (a
+tenant-policy restriction on Entra ID app registration, confirmed via a
+direct Microsoft Graph query); Databricks' own "Run As" feature was used
+instead, keeping the existing shared GitHub Actions identity's permissions
+unchanged. See `LIVE_VALIDATION_SUMMARY.md` section 13 for the full
+account, actual reconciliation numbers, and independently confirmed
+compute termination. An earlier, never-triggered placeholder Job and its
+associated supervisor-review Workspace folders -- superseded by this
+permanent Job -- were deleted afterward, per the project owner's
+instruction; nothing in them was unique to that folder.

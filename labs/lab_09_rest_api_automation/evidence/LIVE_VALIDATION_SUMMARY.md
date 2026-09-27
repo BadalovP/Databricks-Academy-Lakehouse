@@ -39,10 +39,18 @@ restart of any kind (a separate, later, out-of-band manual restart by the
 operator did occur, but only after the automated result was already
 complete and verified). **Section 11 documents the first successful run of
 the actual GitHub Actions `workflow_dispatch` live-automation path** (back
-on the Personal workspace), rather than a locally-run CLI invocation. All
-of these are kept, clearly labeled, rather than one overwriting
-another — see "What this does and does not prove" (section 12) for
-exactly what remains open.
+on the Personal workspace), rather than a locally-run CLI invocation. **Section
+13 documents the permanent Azure Job/pipeline (`lab09_taxi_reconciliation_job`
+/ `lab09_taxi_pipeline_v2`) succeeding end to end, all three tasks, via this
+repository's own GitHub Actions Azure workflow** — a materially stronger
+result than sections 9–10's temporary demonstration script, since it is the
+project's actual, permanent, three-task Azure deployment (ingestion →
+Lakeflow pipeline → reconciliation), not a purpose-built one-off test, and it
+also runs its ingestion/reconciliation tasks on real classic (non-serverless)
+Job-cluster compute. All of these are kept, clearly labeled, rather than one
+overwriting another — see "What this does and does not prove" (section 12)
+for what remained open before section 13, and section 13 itself for how it
+changes that picture.
 
 ## 1. Phase 0: classic compute is confirmed unsupported on this workspace
 
@@ -539,3 +547,114 @@ local CLI — has now been exercised live, successfully, end to end.
   restart in the middle, was achievable at all — section 9's first attempt
   did not itself observe `RUNNING` before a human intervened, but section
   10's second attempt did, in one uninterrupted invocation.
+
+## 13. Permanent Azure Job succeeds end to end, all three tasks, via GitHub Actions (2026-09-27)
+
+**This section documents the project's actual, permanent Azure deployment —
+`lab09_taxi_reconciliation_job` (three dependent tasks: ingestion →
+Lakeflow pipeline → reconciliation) and `lab09_taxi_pipeline_v2` — reaching
+a fully successful run, dispatched and monitored entirely through this
+repository's own `lab09_azure_deployment.yml` GitHub Actions workflow, with
+every task, its output, and cleanup independently verified.** This is a
+different, stronger result than sections 9–10 above: those exercised a
+temporary, purpose-built demonstration script and resources created and
+deleted solely for that test; this section is the project's real,
+persistent Job succeeding at the actual work it was built to do, reused
+as-is, not recreated.
+
+**A dedicated Azure identity could not be created.** A tenant-policy
+restriction denied creating a new, dedicated Entra ID app registration
+(service principal) for this project, confirmed via a direct Microsoft
+Graph query showing no elevated directory role on the account requesting
+it — a genuine administrative restriction, not a workaround-able
+permissions gap. Rather than granting broader permissions to the existing
+shared GitHub Actions identity (already used by another lab) or waiting
+indefinitely on administrator action, this project's Job and pipeline were
+instead configured with Databricks' own **"Run As"** feature: the identity
+that deploys and triggers them (the existing GitHub Actions OIDC service
+principal) stays exactly as it was, while their actual task execution
+(cluster creation, table reads/writes) runs under an already-authorized
+human identity confirmed live to hold the necessary entitlements. Neither
+identity was granted any permission beyond what this required.
+
+**Three genuine, distinct defects were found and fixed live, in sequence,
+each confirmed via a direct, targeted Databricks API investigation before
+any fix was written, and each validated by a full test suite pass and a
+fresh live run before moving to the next:**
+
+1. A workspace-path resolution helper needed to resolve uploaded project
+   source under the *execution* identity's home directory rather than the
+   *deploying* identity's own — cross-identity personal home directories
+   are not importable across Databricks' "Run As" boundary, even by an
+   identity with full administrative read access.
+2. The ingestion notebook's own `notebookPath()` call returned a path
+   missing the `/Workspace` prefix every other workspace API in this
+   project requires — a documented but easy-to-miss platform quirk,
+   normalized defensively with a diagnostic print for any future failure.
+3. The Lakeflow pipeline's own source files (`bronze.py`, then `silver.py`)
+   each resolved their input volume path via a Spark configuration key that
+   nothing ever actually set, silently falling back to a hardcoded default
+   written for the Personal-workspace deployment. This surfaced as two
+   successive failures on the same class of bug (`UC_VOLUME_NOT_FOUND`) —
+   the fix sets both paths explicitly, from the deploying config's own
+   catalog/schema/volume, for every environment, removing the coincidental
+   dependency on a matching schema name entirely.
+
+**The successful run**, dispatched from `main` after each fix above was
+merged and its own CI passed: static checks and tests, a human approval at
+the existing `azure-release-approval` GitHub Environment gate, idempotent
+deployment (no live resources touched by that step), then the actual
+triggered run, monitored to completion by this project's own
+`scripts/run_azure_job.py` validation logic — which requires ALL of: every
+task reaching `SUCCESS`, both the ingestion and reconciliation tasks'
+output being retrievable and well-formed, the reconciliation invariant
+itself holding, and the shared Job cluster independently confirmed
+`TERMINATED` — before reporting overall success. None of those checks were
+loosened or bypassed to reach this result.
+
+**Actual result** (read directly from the run's own output, not re-typed
+from memory or reused from an earlier attempt):
+
+| Field | Value |
+|:--|--:|
+| `ingestion` task | `SUCCESS` (`NO_NEW_DATA` — the configured month was already landed by an earlier attempt in this same investigation; idempotent, correct behavior, not a failure) |
+| `lakeflow_pipeline` task | `SUCCESS` |
+| `reconciliation` task | `SUCCESS` |
+| `reconciliation_passed` | `true` |
+| Bronze rows | 2,964,624 |
+| Silver (valid) rows | 2,869,585 |
+| Quarantine (rejected) rows | 95,039 |
+| Gold (daily summary) rows | 6,803 |
+| Job cluster | independently confirmed `TERMINATED` after the run |
+
+**Reconciliation invariant confirmed:** `bronze_rows == silver_valid_rows + rejected_rows`
+→ `2,964,624 == 2,869,585 + 95,039` ✅
+
+Per-rule rejection counts (from the quarantine table's `failed_rules` — these
+sum to more than the total rejected-row count, expected, since a single row
+can violate more than one rule): `INVALID_DISTANCE` 60,371; `INVALID_FARE`
+38,341; `INVALID_DATETIME_ORDER` 870; `INVALID_MONTH` 18.
+
+**Compute note:** unlike sections 1–8's serverless-only Personal-workspace
+runs, this Job's `ingestion` and `reconciliation` tasks run on a real,
+non-serverless Job cluster (this workspace's `Job Compute` policy), created
+fresh for the run and torn down automatically afterward — independently
+confirmed `TERMINATED`, not merely assumed from the run's own success.
+
+**Cleanup performed after this success, per the project owner's explicit
+instruction that nothing supervisor-specific needed to be preserved:** an
+earlier, never-triggered placeholder Job created solely to give a course
+supervisor something to inspect before this permanent Job existed, and two
+Workspace folders holding a documentation/evidence package prepared for
+that same purpose, were deleted. Nothing in them was unique — the source
+code they contained is the same code already tracked in this Git
+repository, and their one evidence file is the unsanitized counterpart of
+`evidence/classic_e2e_report.json`, already preserved here in sanitized
+form. The real, permanent project folder (`.../lab09`) and every table,
+schema, Job, and pipeline described above were untouched by this cleanup.
+
+**What this section changes about section 12's open question:** it does not
+resolve the Azure-PROD-deviation judgment call itself, but it does mean the
+"create clusters" requirement is now additionally demonstrated by the
+project's actual, permanent, reviewer-visible Job — not only by a temporary
+demonstration script built solely to exercise that one API surface.
