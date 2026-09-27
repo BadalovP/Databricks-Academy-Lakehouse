@@ -50,23 +50,34 @@ def _normalize_host(host: str | None) -> str | None:
     return host.rstrip("/").lower()
 
 
-def _read_profile_section(profile: str, config_path: Path) -> configparser.SectionProxy | None:
+def _read_profile_section(profile: str, config_path: Path) -> dict[str, str] | None:
     """Read one profile's raw section from a .databrickscfg-format file.
 
-    Returns None if the file or the section does not exist. Never reads or
-    returns anything beyond what configparser exposes for that one section;
-    callers must still only ever compare specific known keys (host,
-    presence of token/client_id), never dump or log the section's raw
-    contents (a token value must never be displayed -- see the credential-
-    safety memory this project has followed throughout).
+    Returns None if the file or the section does not exist. Returns the raw
+    section dict directly from ConfigParser's own private `_sections`
+    mapping rather than the public `parser[profile]` proxy, deliberately:
+    the public proxy transparently merges in `[DEFAULT]` section values as
+    fallback, but the installed databricks-sdk's own profile resolution
+    (`Config._known_file_config_loader`) explicitly reads `_sections`
+    instead of using per-section DEFAULT merging, matching the Go SDK's
+    behavior (confirmed by reading its own inline comment). Using the
+    public proxy here could silently disagree with what the SDK itself
+    actually resolved for a profile whenever `~/.databrickscfg` happens to
+    have a `[DEFAULT]` section -- this mirrors the SDK's own semantics
+    exactly instead.
+
+    Never returns anything beyond what is present in the file; callers
+    still must never dump or log any value read here (a token value must
+    never be displayed -- see the credential-safety memory this project has
+    followed throughout). Comparing values in memory, without ever
+    displaying or logging them, is safe and is exactly what the checks
+    below do.
     """
     if not config_path.exists():
         return None
     parser = configparser.ConfigParser()
     parser.read(config_path)
-    if profile not in parser:
-        return None
-    return parser[profile]
+    return parser._sections.get(profile)  # noqa: SLF001 -- see docstring above
 
 
 def _verify_profile_resolution(
@@ -116,17 +127,19 @@ def _verify_profile_resolution(
     canonical entry (or the profile itself) will very likely not match
     what got resolved, and this raises rather than silently trusting it.
 
-    Checks performed, all using only non-secret facts (never the token's
-    own value, consistent with never displaying or logging credentials):
-      - the resolved host matches the profile's own declared host;
-      - whether the profile declares a token line matches whether the
-        resolved client ended up with a token at all (catches, e.g., an
-        ambient DATABRICKS_TOKEN being used for a profile -- such as this
-        project's own OAuth-only profile -- that declares no token line of
-        its own);
-      - the same presence-only comparison for client_id (catches an
-        ambient DATABRICKS_CLIENT_ID/DATABRICKS_CLIENT_SECRET redirecting
-        authentication to a different OAuth service principal).
+    Compares actual VALUES for host and every credential-bearing field the
+    profile might declare (token, client_id, client_secret, username,
+    password) -- not merely whether each one is present. An earlier version
+    of this check compared presence only (e.g. "the profile has *a* token"
+    vs. "the resolved client has *a* token"), which left a real gap: an
+    ambient DATABRICKS_TOKEN with a *different* value than the profile's
+    own, targeting the *same* host, has the identical presence shape as the
+    correct resolution and would pass a presence-only check silently.
+    Confirmed live (with synthetic values only, never this project's real
+    credentials) before this fix, and covered by a regression test after
+    it. Comparing values never requires displaying or logging them -- the
+    comparison happens entirely in memory, and every error message below
+    states only whether a mismatch occurred, never either value.
     """
     path = config_path or _default_databrickscfg_path()
     section = _read_profile_section(resolved_profile, path)
@@ -150,31 +163,25 @@ def _verify_profile_resolution(
             "overrode the explicitly requested profile."
         )
 
-    expects_token = "token" in section
-    actual_has_token = bool(client.config.token)
-    if expects_token != actual_has_token:
-        raise ProfileResolutionMismatchError(
-            f"Profile {resolved_profile!r} "
-            f"{'declares' if expects_token else 'does not declare'} a token in "
-            f"{path}, but the constructed client "
-            f"{'has none' if expects_token else 'resolved one anyway'}. Refusing "
-            "to proceed -- this usually means an ambient DATABRICKS_TOKEN "
-            "environment variable overrode the explicitly requested profile's "
-            "own authentication method."
-        )
-
-    expects_client_id = "client_id" in section
-    actual_has_client_id = bool(client.config.client_id)
-    if expects_client_id != actual_has_client_id:
-        raise ProfileResolutionMismatchError(
-            f"Profile {resolved_profile!r} "
-            f"{'declares' if expects_client_id else 'does not declare'} a client_id "
-            f"in {path}, but the constructed client "
-            f"{'has none' if expects_client_id else 'resolved one anyway'}. "
-            "Refusing to proceed -- this usually means an ambient "
-            "DATABRICKS_CLIENT_ID/DATABRICKS_CLIENT_SECRET environment variable "
-            "redirected authentication to a different OAuth service principal."
-        )
+    # (config_attr, human name, matching ambient env var(s) to name in the error)
+    _CREDENTIAL_FIELDS = (
+        ("token", "token", "DATABRICKS_TOKEN"),
+        ("client_id", "client_id", "DATABRICKS_CLIENT_ID/DATABRICKS_CLIENT_SECRET"),
+        ("client_secret", "client_secret", "DATABRICKS_CLIENT_SECRET"),
+        ("username", "username", "DATABRICKS_USERNAME"),
+        ("password", "password", "DATABRICKS_PASSWORD"),
+    )
+    for config_attr, human_name, env_hint in _CREDENTIAL_FIELDS:
+        expected_value = section.get(config_attr) or None
+        actual_value = getattr(client.config, config_attr, None) or None
+        if expected_value != actual_value:
+            raise ProfileResolutionMismatchError(
+                f"Profile {resolved_profile!r}'s declared {human_name} in {path} does "
+                f"not match what the constructed client actually resolved (values "
+                "withheld from this message). Refusing to proceed -- this usually "
+                f"means an ambient {env_hint} environment variable overrode the "
+                "explicitly requested profile's own authentication."
+            )
 
 
 def get_workspace_client(profile: str | None = None) -> WorkspaceClient:

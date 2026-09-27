@@ -68,13 +68,82 @@ def test_verify_profile_resolution_passes_for_a_matching_oauth_style_profile(tmp
 def test_verify_profile_resolution_passes_for_a_matching_pat_style_profile(tmp_path):
     path = _write_cfg(
         tmp_path,
-        "[dev]\nhost = https://example.azuredatabricks.net\ntoken = anything-not-compared\n",
+        "[dev]\nhost = https://example.azuredatabricks.net\ntoken = profile-own-token-value\n",
     )
     resolved = _fake_client(
-        host="https://example.azuredatabricks.net", token="whatever-the-sdk-resolved"
+        host="https://example.azuredatabricks.net", token="profile-own-token-value"
     )
 
     client._verify_profile_resolution("dev", resolved, config_path=path)  # no raise
+
+
+def test_verify_profile_resolution_raises_when_same_host_and_presence_but_different_token_value(
+    tmp_path,
+):
+    """The vulnerability this specific fix closes: an earlier version of
+    this check compared only whether a token was present, not its value.
+    An ambient DATABRICKS_TOKEN with a *different* value than the profile's
+    own -- while DATABRICKS_HOST is left unset, so the profile file's own
+    host still resolves correctly -- has an identical host and an identical
+    "has a token" presence shape as the correct resolution, and would pass
+    a presence-only check silently. Confirmed empirically (synthetic values
+    only) against the pre-fix implementation before this test was written.
+    """
+    path = _write_cfg(
+        tmp_path,
+        "[dev]\nhost = https://correct-host.azuredatabricks.net\ntoken = profile-own-real-token\n",
+    )
+    resolved = _fake_client(
+        host="https://correct-host.azuredatabricks.net",  # unchanged -- DATABRICKS_HOST wasn't set
+        token="WRONG-ambient-token-value",  # but DATABRICKS_TOKEN was, and won
+    )
+
+    with pytest.raises(client.ProfileResolutionMismatchError, match="token"):
+        client._verify_profile_resolution("dev", resolved, config_path=path)
+
+
+def test_verify_profile_resolution_raises_when_same_presence_but_different_client_id_value(
+    tmp_path,
+):
+    """Same class of vulnerability as the token case above, for client_id:
+    an ambient DATABRICKS_CLIENT_ID targeting a different OAuth service
+    principal than the profile's own, with the same host and the same
+    "has a client_id" presence shape.
+    """
+    path = _write_cfg(
+        tmp_path,
+        "[m2m-profile]\nhost = https://example.azuredatabricks.net\n"
+        "client_id = profile-own-service-principal\n",
+    )
+    resolved = _fake_client(
+        host="https://example.azuredatabricks.net",
+        client_id="WRONG-ambient-service-principal",
+    )
+
+    with pytest.raises(client.ProfileResolutionMismatchError, match="client_id"):
+        client._verify_profile_resolution("m2m-profile", resolved, config_path=path)
+
+
+def test_verify_profile_resolution_ignores_default_section_fallback_like_the_sdk_does(tmp_path):
+    """Mirrors a documented quirk of the installed SDK's own profile
+    resolution (Config._known_file_config_loader reads ConfigParser's raw
+    `_sections`, not the DEFAULT-merged per-section view, matching the Go
+    SDK's behavior): a [DEFAULT] section's values must NOT be silently
+    treated as part of a named profile's own declared values here, or this
+    check could disagree with what the SDK itself actually resolved.
+    """
+    path = _write_cfg(
+        tmp_path,
+        "[DEFAULT]\ntoken = default-section-token\n"
+        "[lab09-azure-prod-oauth]\nhost = https://example.azuredatabricks.net\n",
+    )
+    # The profile itself declares no token -- if DEFAULT were merged in, this
+    # would wrongly expect one.
+    resolved = _fake_client(host="https://example.azuredatabricks.net", token=None)
+
+    client._verify_profile_resolution(
+        "lab09-azure-prod-oauth", resolved, config_path=path
+    )  # no raise
 
 
 def test_verify_profile_resolution_normalizes_host_formatting_differences(tmp_path):
