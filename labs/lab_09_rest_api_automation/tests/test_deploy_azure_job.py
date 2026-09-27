@@ -153,6 +153,40 @@ def test_ensure_three_task_job_resets_existing_job_instead_of_duplicating():
     client.jobs.reset.assert_called_once()
     _, kwargs = client.jobs.reset.call_args
     assert kwargs["job_id"] == 42
+    assert kwargs["new_settings"].run_as is None
+
+
+def test_ensure_three_task_job_passes_run_as_when_configured_on_create():
+    client = _autospec_client()
+    client.jobs.list.return_value = []
+    client.jobs.create.return_value = MagicMock(job_id=555)
+
+    cfg = _cfg()
+    cfg["run_as_user_name"] = "parvinbadalov@softserve.academy"
+    daj.ensure_three_task_job(client, cfg, job_clusters=[], tasks=[], identity="me@example.com")
+
+    _, kwargs = client.jobs.create.call_args
+    assert kwargs["run_as"].user_name == "parvinbadalov@softserve.academy"
+
+
+def test_ensure_three_task_job_passes_run_as_when_configured_on_reset():
+    """Explicitly set on every reset call -- confirmed live that
+    jobs.reset() does not silently revert an already-set run_as when it is
+    omitted, but this must never rely on that alone.
+    """
+    client = _autospec_client()
+    existing = MagicMock()
+    existing.job_id = 42
+    existing.settings.name = "lab09_taxi_reconciliation_job"
+    existing.creator_user_name = "me@example.com"
+    client.jobs.list.return_value = [existing]
+
+    cfg = _cfg()
+    cfg["run_as_user_name"] = "parvinbadalov@softserve.academy"
+    daj.ensure_three_task_job(client, cfg, job_clusters=[], tasks=[], identity="me@example.com")
+
+    _, kwargs = client.jobs.reset.call_args
+    assert kwargs["new_settings"].run_as.user_name == "parvinbadalov@softserve.academy"
 
 
 def test_ensure_three_task_job_refuses_to_reset_a_job_owned_by_someone_else():
@@ -189,6 +223,87 @@ def test_verify_owned_by_current_identity_rejects_missing_creator_field():
     resource = object()
     with pytest.raises(daj.ResourceOwnershipError):
         daj.verify_owned_by_current_identity(resource, "me@example.com", "Job 'x'")
+
+
+# --- explicit, ID-based identity-migration allowlist ------------------------
+
+
+def test_migration_allowlist_permits_the_two_known_approved_resources():
+    """The two resources actually migrated from github-lab08-travelops to
+    the dedicated Lab 9 identity must be allowed through -- by exact id AND
+    exact recorded prior creator, never by id alone.
+    """
+    old_creator = "3ec7e8df-66a2-4102-ab57-e4448b4e0e01"
+    job = MagicMock(creator_user_name=old_creator)
+    daj.verify_owned_by_current_identity(
+        job, "new-identity", "Job 'lab09_taxi_reconciliation_job'", resource_id="374991019372414"
+    )  # no raise
+
+    pipeline = MagicMock(creator_user_name=old_creator)
+    daj.verify_owned_by_current_identity(
+        pipeline,
+        "new-identity",
+        "Pipeline 'lab09_taxi_pipeline_v2'",
+        resource_id="93a49a14-366e-4224-b2b3-587ef0b7a028",
+    )  # no raise
+
+
+def test_migration_allowlist_rejects_a_listed_id_with_the_wrong_actual_creator():
+    """Listing an id is not enough by itself -- the resource's actual
+    creator must also exactly match that entry's own recorded prior
+    creator. A different creator at the same id must still be refused.
+    """
+    with pytest.raises(daj.ResourceOwnershipError):
+        daj.verify_owned_by_current_identity(
+            MagicMock(creator_user_name="someone.else@example.com"),
+            "new-identity",
+            "Job 'lab09_taxi_reconciliation_job'",
+            resource_id="374991019372414",
+        )
+
+
+def test_migration_allowlist_never_applies_to_an_unlisted_id():
+    """A resource id that is not on the explicit allowlist must always
+    require an exact creator match, even if its creator happens to match
+    some other allowlisted entry's prior creator by coincidence.
+    """
+    old_creator = "3ec7e8df-66a2-4102-ab57-e4448b4e0e01"
+    with pytest.raises(daj.ResourceOwnershipError):
+        daj.verify_owned_by_current_identity(
+            MagicMock(creator_user_name=old_creator),
+            "new-identity",
+            "Job 'some-other-job'",
+            resource_id="9999999999999",
+        )
+
+
+def test_migration_allowlist_never_applies_when_resource_id_is_not_provided():
+    """Omitting resource_id entirely (as every pre-migration call site did)
+    must fall back to requiring an exact creator match -- the allowlist is
+    opt-in per call site, never a default bypass.
+    """
+    old_creator = "3ec7e8df-66a2-4102-ab57-e4448b4e0e01"
+    with pytest.raises(daj.ResourceOwnershipError):
+        daj.verify_owned_by_current_identity(
+            MagicMock(creator_user_name=old_creator), "new-identity", "Job 'x'"
+        )
+
+
+def test_ensure_three_task_job_allows_reset_of_the_approved_migrated_job():
+    client = _autospec_client()
+    existing = MagicMock()
+    existing.job_id = 374991019372414
+    existing.settings.name = "lab09_taxi_reconciliation_job"
+    existing.creator_user_name = "3ec7e8df-66a2-4102-ab57-e4448b4e0e01"
+    client.jobs.list.return_value = [existing]
+
+    job_id, created = daj.ensure_three_task_job(
+        client, _cfg(), job_clusters=[], tasks=[], identity="new-identity"
+    )
+
+    assert job_id == 374991019372414
+    assert created is False
+    client.jobs.reset.assert_called_once()
 
 
 def test_deploy_never_triggers_a_run(monkeypatch):

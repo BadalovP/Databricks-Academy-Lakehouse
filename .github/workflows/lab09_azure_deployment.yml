@@ -7,14 +7,27 @@
 # triggered by lab09_api_automation.yml, and does not touch it.
 #
 # Authentication: OIDC-based Azure service-principal federation via
-# azure/login, never a stored PAT -- reusing the exact AZURE_CLIENT_ID /
-# AZURE_TENANT_ID / AZURE_SUBSCRIPTION_ID / DATABRICKS_AZURE_HOST repository
-# variables Lab 8's own Azure workflows (lab08_cicd.yml,
-# lab08_azure_prod_manual_run.yml) already have configured -- no new Azure
-# credential is introduced. DATABRICKS_AUTH_TYPE=azure-cli tells both the
-# Databricks CLI and this project's own lab09.client.get_workspace_client()
-# (see its docstring) to obtain a token via the already-authenticated `az`
-# CLI session rather than any token/profile file.
+# azure/login, never a stored PAT -- reusing Lab 8's existing AZURE_CLIENT_ID
+# / github-lab08-travelops / AZURE_TENANT_ID / AZURE_SUBSCRIPTION_ID, exactly
+# as before. A dedicated Lab 9 service principal was investigated first (see
+# git history) and rejected: creating a new Entra ID application requires
+# administrator approval in this tenant ("Insufficient privileges to
+# complete the operation" -- confirmed live, not assumed), and waiting
+# indefinitely on that was rejected in favor of finishing with already-
+# authorized resources. github-lab08-travelops still only deploys and
+# triggers the Job/pipeline here -- it is NOT granted any new permission
+# (still just workspace-access + databricks-sql-access, unchanged). The
+# actual task execution (cluster creation, table reads/writes) runs under a
+# separate identity instead, via Databricks' own "Run As" feature: both the
+# Job and the pipeline have run_as set to an already-authorized human
+# identity (config/azure.yml's run_as_user_name) that is independently
+# confirmed able to create clusters under the Job Compute policy and
+# already holds CAN_MANAGE on both resources. See README.md "Two-environment
+# architecture" and config/azure.yml's own comment for the full account.
+# DATABRICKS_AUTH_TYPE=azure-cli tells both the Databricks CLI and this
+# project's own lab09.client.get_workspace_client() (see its docstring) to
+# obtain a token via the already-authenticated `az` CLI session rather than
+# any token/profile file.
 #
 # Approval gates: reuses Lab 8's existing azure-release-approval environment
 # (required_reviewers, confirmed live before this file was written) as a

@@ -93,6 +93,21 @@ def find_pipeline_by_name(client: WorkspaceClient, name: str):
     return None
 
 
+def _build_run_as(cfg: dict[str, Any]) -> pipelines_svc.RunAs | None:
+    """Optional Databricks "Run As" identity for this pipeline's actual
+    execution, read from cfg["run_as_user_name"] -- absent by default, so
+    config/dev.yml's Personal-workspace deployment (which has no such key)
+    is entirely unaffected; only config/azure.yml sets it. See that file's
+    own comment for the full reasoning: the identity that deploys/triggers
+    this pipeline (a CI service principal) is deliberately kept separate
+    from the identity its tasks actually execute as.
+    """
+    user_name = cfg.get("run_as_user_name")
+    if not user_name:
+        return None
+    return pipelines_svc.RunAs(user_name=user_name)
+
+
 def _library_specs(pipeline_source_dir: str) -> list[pipelines_svc.PipelineLibrary]:
     """One typed glob-include library covering the whole pipeline source directory.
 
@@ -149,6 +164,7 @@ def _create_pipeline(
     """
     prefer_serverless = bool(cfg["pipeline"].get("prefer_serverless", True))
     allow_classic_fallback = bool(cfg["pipeline"].get("allow_classic_fallback", False))
+    run_as = _build_run_as(cfg)
 
     if prefer_serverless:
         try:
@@ -159,6 +175,7 @@ def _create_pipeline(
                 libraries=libraries,
                 serverless=True,
                 continuous=False,
+                run_as=run_as,
             )
             logger.info("Created serverless pipeline %s (id=%s).", name, created.pipeline_id)
             return created.pipeline_id, True
@@ -190,6 +207,7 @@ def _create_pipeline(
         serverless=False,
         clusters=clusters,
         continuous=False,
+        run_as=run_as,
     )
     logger.info("Created classic-compute pipeline %s (id=%s).", name, created.pipeline_id)
     return created.pipeline_id, False
@@ -210,6 +228,7 @@ def _update_pipeline(
     """
     prefer_serverless = bool(cfg["pipeline"].get("prefer_serverless", True))
     allow_classic_fallback = bool(cfg["pipeline"].get("allow_classic_fallback", False))
+    run_as = _build_run_as(cfg)
 
     if prefer_serverless:
         try:
@@ -221,6 +240,7 @@ def _update_pipeline(
                 libraries=libraries,
                 serverless=True,
                 continuous=False,
+                run_as=run_as,
             )
             logger.info("Updated pipeline %s (id=%s) to serverless compute.", name, pipeline_id)
             return True
@@ -253,6 +273,7 @@ def _update_pipeline(
         serverless=False,
         clusters=clusters,
         continuous=False,
+        run_as=run_as,
     )
     logger.info("Updated pipeline %s (id=%s) to classic-compute.", name, pipeline_id)
     return False

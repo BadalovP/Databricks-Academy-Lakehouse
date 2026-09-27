@@ -18,6 +18,29 @@
 # pipeline *display names*) do not carry this same collision risk and use
 # the plain "lab09" naming requested for this project.
 
+# Identity the Job's and pipeline's tasks actually execute as (Databricks'
+# own "Run As" feature) -- deliberately separate from whichever identity
+# deploys/triggers them (the GitHub Actions OIDC service principal,
+# github-lab08-travelops, reused from Lab 8 -- see below for why a new,
+# dedicated identity was not created). That deploying/triggering identity
+# was never granted cluster-creation rights, and creating a new dedicated
+# service principal for Lab 9 was blocked by tenant policy (Entra ID app
+# registration requires administrator approval, denied for this account:
+# "Insufficient privileges to complete the operation"). Rather than
+# granting broader permissions to a shared identity also used by Lab 8, or
+# waiting indefinitely on administrator action, this already-authorized
+# human identity (confirmed live: it can create clusters under the Job
+# Compute policy, and already holds CAN_MANAGE on this exact Job and
+# pipeline) is set as run_as instead -- the deploying identity still
+# manages the Job/pipeline definitions and still triggers runs; only the
+# actual task execution (cluster creation, table reads/writes) happens
+# under this identity's own permissions. See README.md "Two-environment
+# architecture" for the full account. Confirmed live that neither
+# jobs.reset() nor pipelines.update() silently revert this field when it
+# is omitted from their own call -- src/lab09/deploy code still sets it
+# explicitly on every call rather than relying on that alone.
+run_as_user_name: "parvinbadalov@softserve.academy"
+
 catalog: dbr_dev
 
 # Dedicated OUTPUT schema for this project's bronze/silver/quarantine/gold

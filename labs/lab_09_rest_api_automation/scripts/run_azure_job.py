@@ -8,6 +8,25 @@ job-cluster instance actually reached TERMINATED afterward -- a run
 finishing is not, by itself, treated as proof its compute is gone (the same
 "confirmed vs. merely not raised" distinction already established in
 compute.terminate_and_verify_cluster()).
+
+`succeeded` is deliberately strict: this Job's ingestion and reconciliation
+tasks are always expected to run on the shared job cluster (never
+serverless), so a SUCCESS result with no observed job-cluster id is treated
+as an anomaly in its own right (monitoring failed to identify the cluster
+that must have existed), not as "nothing to clean up." Every one of
+ingestion output, the pipeline task's own result, reconciliation output
+(including its own reconciliation_passed field, not just "some JSON came
+back"), and confirmed cluster termination must each independently hold --
+`result_state` and `life_cycle_state` are never overwritten by any of this,
+so the actual Databricks-reported status is always visible even when the
+combined verdict is False.
+
+A poll timeout is never assumed to mean the underlying Databricks run (or
+its compute) has stopped: it means only that this script's own polling
+loop gave up waiting. On a timeout, one further read-only status check is
+made immediately and surfaced as an explicit warning -- the caller must
+still investigate and, if necessary, escalate to a human rather than
+silently walking away from what may be a still-running, still-billing job.
 """
 
 from __future__ import annotations
@@ -16,7 +35,7 @@ import argparse
 import json
 import logging
 import sys
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +50,12 @@ LAB_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG_PATH = LAB_ROOT / "config" / "azure.yml"
 
 
+def _state_name(value: Any) -> str | None:
+    if value is None:
+        return None
+    return getattr(value, "value", value) or None
+
+
 @dataclass
 class RunReport:
     job_id: int | None = None
@@ -38,13 +63,26 @@ class RunReport:
     life_cycle_state: str | None = None
     result_state: str | None = None
     timed_out: bool | None = None
+
+    ingestion_task_life_cycle_state: str | None = None
+    ingestion_task_result_state: str | None = None
+    pipeline_task_life_cycle_state: str | None = None
+    pipeline_task_result_state: str | None = None
+    reconciliation_task_life_cycle_state: str | None = None
+    reconciliation_task_result_state: str | None = None
+
     ingestion_output: dict[str, Any] | None = None
     ingestion_output_error: str | None = None
     reconciliation_output: dict[str, Any] | None = None
     reconciliation_output_error: str | None = None
+    reconciliation_passed: bool | None = None
+
     job_cluster_id: str | None = None
     job_cluster_terminated_confirmed: bool | None = None
     job_cluster_final_state: str | None = None
+
+    post_timeout_live_state: str | None = None
+    warnings: list[str] = field(default_factory=list)
     error: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
@@ -52,18 +90,45 @@ class RunReport:
 
     @property
     def succeeded(self) -> bool:
-        """Mirrors validate_classic_e2e.ValidationReport.succeeded's fix: a
-        successful run must not count as overall success if its own
-        job-cluster instance is known NOT to have terminated. None (no
-        job-cluster instance found at all, e.g. the run failed before any
-        task started) is never itself treated as a cleanup failure -- only
-        an explicit False is.
+        """Every one of these must independently hold -- see module
+        docstring for the full reasoning behind each check.
         """
-        return (
-            self.result_state == "SUCCESS"
-            and not self.timed_out
-            and self.job_cluster_terminated_confirmed is not False
-        )
+        if self.error is not None:
+            return False
+        if self.result_state != "SUCCESS" or self.timed_out:
+            return False
+        if self.ingestion_task_result_state != "SUCCESS":
+            return False
+        if self.pipeline_task_result_state != "SUCCESS":
+            return False
+        if self.reconciliation_task_result_state != "SUCCESS":
+            return False
+        if self.ingestion_output is None or self.ingestion_output_error is not None:
+            return False
+        if self.reconciliation_output is None or self.reconciliation_output_error is not None:
+            return False
+        if self.reconciliation_passed is not True:
+            return False
+        if self.job_cluster_id is None:
+            # This Job's ingestion/reconciliation tasks always use the shared
+            # job cluster -- a SUCCESS result with no observed cluster id
+            # means this script's own monitoring failed to identify it, not
+            # that there was nothing to verify.
+            return False
+        if self.job_cluster_terminated_confirmed is not True:
+            return False
+        return True
+
+
+def _task_states(task_runs: list[Any], task_key: str) -> tuple[str | None, str | None]:
+    for t in task_runs:
+        if t.task_key == task_key:
+            life_cycle = (
+                _state_name(getattr(t.state, "life_cycle_state", None)) if t.state else None
+            )
+            result = _state_name(getattr(t.state, "result_state", None)) if t.state else None
+            return life_cycle, result
+    return None, None
 
 
 def run_and_verify(
@@ -76,6 +141,9 @@ def run_and_verify(
 ) -> RunReport:
     report = RunReport()
     job_cfg = cfg["job"]
+    ingestion_key = job_cfg["ingestion_task_key"]
+    pipeline_key = job_cfg["pipeline_task_key"]
+    reconciliation_key = job_cfg["reconciliation_task_key"]
 
     job = jobs.find_job_by_name(client, job_cfg["name"])
     if job is None:
@@ -98,32 +166,76 @@ def run_and_verify(
     report.result_state = outcome.result_state
     report.timed_out = outcome.timed_out
 
-    run_details = client.jobs.get_run(run_id=run_id)
-    task_runs = run_details.tasks or []
+    # Fetched exactly once, with error handling, and reused below for both the
+    # timeout-escalation check and the per-task inspection -- a lookup
+    # failure here must never crash reporting, whether it happens as part of
+    # a timeout escalation or an ordinary terminal-state run.
+    run_details = None
+    run_details_error: str | None = None
+    try:
+        run_details = client.jobs.get_run(run_id=run_id)
+    except Exception as exc:  # noqa: BLE001 - a lookup failure must not crash reporting
+        run_details_error = str(exc)
+
+    if outcome.timed_out:
+        # This script's own polling gave up -- that is never the same claim
+        # as "the Databricks run has stopped". This lookup (already made
+        # above) is surfaced loudly, so a human knows to investigate (and,
+        # if necessary, manually cancel) a run that may still be active and
+        # billing rather than this simply going unnoticed.
+        if run_details is not None:
+            live_state = _state_name(getattr(run_details.state, "life_cycle_state", None))
+        else:
+            live_state = f"<lookup failed: {run_details_error}>"
+        report.post_timeout_live_state = live_state
+        warning = (
+            f"Polling timed out after {job_timeout_seconds}s, but run {run_id} was last "
+            f"observed as life_cycle_state={live_state!r} -- this is NOT confirmation the "
+            "run has stopped. It may still be active and billing. Investigate and cancel "
+            "manually if necessary; do not assume this timeout ended it, and do not "
+            "automatically retry or dispatch another run."
+        )
+        report.warnings.append(warning)
+        logger.warning(warning)
+
+    task_runs = run_details.tasks or [] if run_details is not None else []
+
+    report.ingestion_task_life_cycle_state, report.ingestion_task_result_state = _task_states(
+        task_runs, ingestion_key
+    )
+    report.pipeline_task_life_cycle_state, report.pipeline_task_result_state = _task_states(
+        task_runs, pipeline_key
+    )
+    (
+        report.reconciliation_task_life_cycle_state,
+        report.reconciliation_task_result_state,
+    ) = _task_states(task_runs, reconciliation_key)
+
     cluster_ids = {
         t.task_key: getattr(t.cluster_instance, "cluster_id", None)
         for t in task_runs
         if getattr(t, "cluster_instance", None) is not None
     }
-    report.job_cluster_id = cluster_ids.get(job_cfg["ingestion_task_key"]) or cluster_ids.get(
-        job_cfg["reconciliation_task_key"]
-    )
+    report.job_cluster_id = cluster_ids.get(ingestion_key) or cluster_ids.get(reconciliation_key)
 
-    if outcome.succeeded:
+    if report.ingestion_task_result_state == "SUCCESS":
         try:
-            report.ingestion_output = jobs.get_run_output_json(
-                client, run_id, job_cfg["ingestion_task_key"]
-            )
+            report.ingestion_output = jobs.get_run_output_json(client, run_id, ingestion_key)
         except (
             Exception
         ) as exc:  # noqa: BLE001 - a retrieval failure must not mask the run's own result
             report.ingestion_output_error = str(exc)
+            logger.warning("Failed to retrieve ingestion output for run %s: %s", run_id, exc)
+
+    if report.reconciliation_task_result_state == "SUCCESS":
         try:
             report.reconciliation_output = jobs.get_run_output_json(
-                client, run_id, job_cfg["reconciliation_task_key"]
+                client, run_id, reconciliation_key
             )
+            report.reconciliation_passed = report.reconciliation_output.get("reconciliation_passed")
         except Exception as exc:  # noqa: BLE001
             report.reconciliation_output_error = str(exc)
+            logger.warning("Failed to retrieve reconciliation output for run %s: %s", run_id, exc)
 
     if report.job_cluster_id:
         termination_outcome = monitoring.poll_cluster_termination(
@@ -135,13 +247,23 @@ def run_and_verify(
         report.job_cluster_terminated_confirmed = termination_outcome.confirmed
         report.job_cluster_final_state = termination_outcome.state
         if not termination_outcome.confirmed:
-            logger.warning(
-                "Job cluster %s termination not confirmed (state=%s%s) -- "
-                "requires manual investigation.",
-                report.job_cluster_id,
-                termination_outcome.state,
-                f", error={termination_outcome.error}" if termination_outcome.error else "",
+            warning = (
+                f"Job cluster {report.job_cluster_id} termination not confirmed "
+                f"(last state={termination_outcome.state}"
+                f"{f', error={termination_outcome.error}' if termination_outcome.error else ''}) "
+                "-- requires manual investigation. Do not assume it has stopped billing."
             )
+            report.warnings.append(warning)
+            logger.warning(warning)
+    elif report.result_state == "SUCCESS" and not report.timed_out:
+        warning = (
+            "Run reported SUCCESS but no job-cluster instance was observed on the "
+            f"{ingestion_key!r}/{reconciliation_key!r} tasks -- this Job always uses a "
+            "shared job cluster for those tasks, so this is treated as a monitoring "
+            "anomaly, not as evidence there was nothing to clean up."
+        )
+        report.warnings.append(warning)
+        logger.warning(warning)
 
     return report
 
@@ -211,6 +333,8 @@ def main(argv: list[str] | None = None) -> int:
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(json.dumps(report.as_dict(), indent=2, sort_keys=True), encoding="utf-8")
     print(json.dumps(report.as_dict(), indent=2, sort_keys=True))
+    for warning in report.warnings:
+        print(f"WARNING: {warning}", file=sys.stderr)
     return 0 if report.succeeded else 1
 
 
