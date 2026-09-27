@@ -132,29 +132,41 @@ def _finish(
     the delete request was accepted without raising. A termination request
     being accepted is not the same claim as termination being confirmed;
     see compute.terminate_and_verify_cluster()/monitoring.poll_cluster_termination().
+
+    Deliberately does NOT gate the call below on
+    compute.cluster_exists_and_active() first: that function returns False
+    both when a cluster is confirmed in a terminal state AND when its own
+    lookup call raised (a transient network/auth error, or any other
+    exception) -- collapsing "confirmed gone" and "unknown" into the same
+    signal. Using that return value to decide whether to even attempt
+    termination meant a transient lookup failure on a cluster that might
+    still be very much RUNNING caused termination to never be attempted at
+    all, while cluster_cleaned_up stayed at its default True -- a cleanup
+    failure silently reported as success. terminate_and_verify_cluster()
+    itself already handles an already-terminated cluster gracefully
+    (Databricks' terminate/delete call is a safe no-op on a cluster already
+    in a terminal state, and the very next poll observes TERMINATED
+    immediately), so no such pre-check is needed for correctness.
     """
     cluster_cleaned_up = True
     if cluster_id:
         try:
-            if compute.cluster_exists_and_active(client, cluster_id):
-                monitoring_cfg = cfg.get("monitoring", {})
-                outcome = compute.terminate_and_verify_cluster(
-                    client,
+            monitoring_cfg = cfg.get("monitoring", {})
+            outcome = compute.terminate_and_verify_cluster(
+                client,
+                cluster_id,
+                timeout_seconds=monitoring_cfg.get("termination_timeout_seconds", 600),
+                poll_interval_seconds=monitoring_cfg.get("termination_poll_interval_seconds", 10),
+            )
+            cluster_cleaned_up = outcome.confirmed
+            if not outcome.confirmed:
+                logger.warning(
+                    "Cluster %s termination not confirmed (last state=%s%s); "
+                    "may require manual investigation.",
                     cluster_id,
-                    timeout_seconds=monitoring_cfg.get("termination_timeout_seconds", 600),
-                    poll_interval_seconds=monitoring_cfg.get(
-                        "termination_poll_interval_seconds", 10
-                    ),
+                    outcome.state,
+                    f", error={outcome.error}" if outcome.error else "",
                 )
-                cluster_cleaned_up = outcome.confirmed
-                if not outcome.confirmed:
-                    logger.warning(
-                        "Cluster %s termination not confirmed (last state=%s%s); "
-                        "may require manual investigation.",
-                        cluster_id,
-                        outcome.state,
-                        f", error={outcome.error}" if outcome.error else "",
-                    )
         except Exception as exc:  # noqa: BLE001 - cleanup must not mask the original outcome
             logger.warning("Failed to terminate cluster %s during cleanup: %s", cluster_id, exc)
             cluster_cleaned_up = False

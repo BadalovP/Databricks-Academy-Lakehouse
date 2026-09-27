@@ -61,6 +61,14 @@ class PreflightReport:
     checks: list[CheckResult] = field(default_factory=list)
     cluster_create_tested: bool = False
     cluster_create_supported: bool | None = None
+    # None means the probe cluster was never created (nothing to clean up,
+    # e.g. cluster_create_tested=False, or start_cluster_create() itself
+    # never returned an id). Only ever True when termination was
+    # independently confirmed (state actually observed as TERMINATED) --
+    # never merely because the delete request was accepted without raising.
+    # Never invented: a cleanup outcome this report cannot vouch for stays
+    # None rather than being silently omitted or assumed successful.
+    cluster_create_probe_cleanup_confirmed: bool | None = None
     ci_identity_caveat: str = (
         "Phase 0 was executed under the identity resolved from the profile "
         "passed to this run. If GitHub Actions CI authenticates as a "
@@ -95,6 +103,7 @@ class PreflightReport:
             ],
             "cluster_create_tested": self.cluster_create_tested,
             "cluster_create_supported": self.cluster_create_supported,
+            "cluster_create_probe_cleanup_confirmed": self.cluster_create_probe_cleanup_confirmed,
             "ci_identity_caveat": self.ci_identity_caveat,
         }
 
@@ -327,6 +336,7 @@ def _run_cluster_create_probe(
                 timeout_seconds=monitoring_cfg.get("termination_timeout_seconds", 600),
                 poll_interval_seconds=monitoring_cfg.get("termination_poll_interval_seconds", 10),
             )
+            report.cluster_create_probe_cleanup_confirmed = outcome.confirmed
             if not outcome.confirmed:
                 logger.warning(
                     "Preflight probe cluster %s termination not confirmed (last state=%s%s); "

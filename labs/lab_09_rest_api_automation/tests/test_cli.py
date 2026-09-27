@@ -15,7 +15,7 @@ from unittest.mock import MagicMock
 import pytest
 from databricks.sdk.errors import InvalidParameterValue
 
-from lab09 import cli, compute, monitoring
+from lab09 import cli, compute, monitoring, reporting
 from lab09.landing import LandingResult
 
 
@@ -139,7 +139,6 @@ def test_explicit_cluster_path_used_when_creation_succeeds(tmp_path, monkeypatch
         )
     )
     monkeypatch.setattr(cli.compute, "terminate_and_verify_cluster", terminate_mock)
-    monkeypatch.setattr(cli.compute, "cluster_exists_and_active", lambda *a, **k: True)
 
     client = MagicMock()
     exit_code = cli.cmd_run_all(client, cfg, SimpleNamespace())
@@ -193,7 +192,6 @@ def test_explicit_cluster_termination_not_confirmed_marks_cleanup_unconfirmed(
             )
         ),
     )
-    monkeypatch.setattr(cli.compute, "cluster_exists_and_active", lambda *a, **k: True)
 
     client = MagicMock()
     exit_code = cli.cmd_run_all(client, cfg, SimpleNamespace())
@@ -398,7 +396,6 @@ def test_cli_override_takes_precedence_over_config_preferred_mode(tmp_path, monk
             )
         ),
     )
-    monkeypatch.setattr(cli.compute, "cluster_exists_and_active", lambda *a, **k: True)
 
     ensure_job_mock = MagicMock(return_value=42)
     reset_job_cluster_mock = MagicMock()
@@ -510,3 +507,75 @@ def test_build_parser_accepts_compute_mode_choices():
 
     with pytest.raises(SystemExit):
         parser.parse_args(["run-all", "--compute-mode", "not-a-real-mode"])
+
+
+# --- _finish(): cleanup failures must never be reported as success ---------
+
+
+def _finish_cfg(tmp_path) -> dict:
+    return {"report": {"output_path": str(tmp_path / "report.json")}, "monitoring": {}}
+
+
+def test_finish_reports_cleanup_failure_when_existence_check_cannot_confirm_state(tmp_path):
+    """Regression test for a real defect found during review: the removed
+    `compute.cluster_exists_and_active()` pre-check returned False both when
+    a cluster was confirmed terminal AND when its own lookup call raised (a
+    transient network/auth error, or any other exception) -- collapsing
+    "confirmed gone" and "unknown" into the same signal. _finish() used to
+    gate termination on that return value, so a lookup failure on a cluster
+    that might still be RUNNING caused termination to never be attempted at
+    all, while cluster_cleaned_up stayed at its default True in the written
+    report -- a cleanup failure silently reported as success. _finish() must
+    always attempt compute.terminate_and_verify_cluster() whenever a
+    cluster_id is present, and its own confirmed/unconfirmed outcome (not a
+    separate existence pre-check) must be what cluster_cleaned_up reflects.
+    """
+    client = MagicMock()
+    client.clusters.get.side_effect = RuntimeError("transient network error")
+    report = reporting.Report()
+
+    cli._finish(client, report, "cluster-1", _finish_cfg(tmp_path))
+
+    written = json.loads((tmp_path / "report.json").read_text())
+    assert written["cluster_cleaned_up"] is False
+
+
+def test_finish_confirms_cleanup_for_an_already_terminated_cluster(tmp_path):
+    """The removed pre-check's only legitimate purpose (skip a redundant
+    delete call when the cluster is already gone) is not needed for
+    correctness: terminating an already-terminated cluster is a safe no-op,
+    and the very next state read confirms TERMINATED immediately.
+    """
+    client = MagicMock()
+    terminated = MagicMock()
+    terminated.state = MagicMock(value="TERMINATED")
+    client.clusters.get.return_value = terminated
+    report = reporting.Report()
+
+    cli._finish(client, report, "cluster-1", _finish_cfg(tmp_path))
+
+    written = json.loads((tmp_path / "report.json").read_text())
+    assert written["cluster_cleaned_up"] is True
+    client.clusters.delete.assert_called_once_with(cluster_id="cluster-1")
+
+
+def test_finish_reports_cleanup_failure_when_delete_itself_raises(tmp_path):
+    client = MagicMock()
+    client.clusters.delete.side_effect = RuntimeError("permission denied")
+    report = reporting.Report()
+
+    cli._finish(client, report, "cluster-1", _finish_cfg(tmp_path))
+
+    written = json.loads((tmp_path / "report.json").read_text())
+    assert written["cluster_cleaned_up"] is False
+
+
+def test_finish_reports_no_cleanup_needed_when_no_cluster_was_created(tmp_path):
+    client = MagicMock()
+    report = reporting.Report()
+
+    cli._finish(client, report, None, _finish_cfg(tmp_path))
+
+    written = json.loads((tmp_path / "report.json").read_text())
+    assert written["cluster_cleaned_up"] is True
+    client.clusters.delete.assert_not_called()

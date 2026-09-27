@@ -224,6 +224,7 @@ def test_run_preflight_cluster_probe_success_terminates_cluster():
 
     assert report.cluster_create_tested is True
     assert report.cluster_create_supported is True
+    assert report.cluster_create_probe_cleanup_confirmed is True
     build_spec.assert_called_once()
     start_create.assert_called_once()
     poll_state.assert_called_once()
@@ -257,9 +258,37 @@ def test_run_preflight_cluster_probe_still_terminates_on_failure_after_create():
         report = preflight.run_preflight(client, _cfg(), probe_cluster_create=True)
 
     assert report.cluster_create_supported is False
+    assert report.cluster_create_probe_cleanup_confirmed is True
     terminate.assert_called_once_with(
         client, "probe-cluster", timeout_seconds=600, poll_interval_seconds=10
     )
+
+
+def test_run_preflight_cluster_probe_not_created_leaves_cleanup_confirmed_as_none():
+    """No cluster object was ever created (start_cluster_create() itself
+    raised before returning an id), so there is nothing to clean up --
+    cluster_create_probe_cleanup_confirmed must stay None, never True (that
+    would falsely claim a confirmed cleanup that never happened) and never
+    False (that would falsely suggest a cleanup was attempted and failed).
+    """
+    client = _passing_client()
+    spec = compute.ClusterSpec(
+        spark_version="15.4.x-scala2.12", node_type_id="small", autotermination_minutes=20
+    )
+
+    with (
+        patch.object(preflight.compute, "build_cluster_spec", return_value=spec),
+        patch.object(
+            preflight.compute,
+            "start_cluster_create",
+            side_effect=RuntimeError("create rejected before an id was returned"),
+        ),
+        patch.object(preflight.compute, "terminate_and_verify_cluster") as terminate,
+    ):
+        report = preflight.run_preflight(client, _cfg(), probe_cluster_create=True)
+
+    assert report.cluster_create_probe_cleanup_confirmed is None
+    terminate.assert_not_called()
 
 
 def test_run_preflight_cluster_probe_termination_not_confirmed_is_logged_not_raised():
@@ -290,6 +319,7 @@ def test_run_preflight_cluster_probe_termination_not_confirmed_is_logged_not_rai
     terminate.assert_called_once()
     probe_check = next(c for c in report.checks if c.name == "cluster_create_probe")
     assert probe_check.status == "PASS"  # the create/poll leg itself still succeeded
+    assert report.cluster_create_probe_cleanup_confirmed is False
 
 
 def test_run_preflight_cluster_probe_not_run_when_not_requested():
