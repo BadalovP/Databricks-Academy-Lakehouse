@@ -443,19 +443,68 @@ still-open Option A vs. Option B question below.
 
 ---
 
+## 10. Second attempt (2026-09-27) — the create-to-`RUNNING` gap closed by automation alone
+
+A second, later attempt was made the same day in the same Azure PROD
+workspace, using a new, dedicated script (`scripts/validate_classic_e2e.py`)
+built specifically to close the one gap section 9 left open: reaching
+`RUNNING` through automation alone, with no manual restart, inside a single
+uninterrupted invocation. Same authorization basis and controls as section
+9 (the `lab09-azure-prod-oauth` profile only; only a newly created,
+uniquely-tagged cluster/Job/notebook ever touched; GP1, GP2, and every
+other pre-existing resource independently confirmed untouched before and
+after).
+
+**Result: the cluster reached `RUNNING` on its own, automatically, about 11
+minutes after the create call** — well within a widened 20-minute readiness
+bound (section 9's 8-minute bound had proven too tight for this node type
+in this workspace). No manual restart of any kind was needed for the
+create-to-`RUNNING` leg this time. The same single invocation then uploaded
+a trivial notebook, created one temporary Job with `existing_cluster_id`,
+ran it to `SUCCESS`, confirmed its output was exactly `OK:42`, requested
+termination, and independently confirmed `TERMINATED` — then deleted the
+temporary Job and notebook. Total duration: 730 seconds, one script
+invocation, start to finish, no manual step anywhere in the sequence
+itself. Full detail: `evidence/LIVE_VALIDATION_SUMMARY.md` section 10.
+
+**A separate, later, out-of-band event, reported plainly rather than
+omitted:** about 12 seconds after the script's own poll had already
+independently confirmed `TERMINATED` and the script had exited, the same
+cluster showed a `STARTING` event in its own Databricks event log. This was
+investigated immediately, before anything was assumed: the timing ruled
+out this project's own subsequent read-only verification calls (none of
+`clusters.list`/`clusters.get`/`jobs.get` can start a cluster, and they ran
+measurably later than the 12-second window). The project's operator
+confirmed directly that this was their own manual "Start/Restart" click in
+the Databricks UI, made after the automated result was already complete
+and independently verified — not a defect in the automation, and not a
+second test. The cluster was re-terminated immediately upon discovering
+this and independently reconfirmed `TERMINATED`; it did not restart again.
+
+**Conclusion:** the create-to-`RUNNING` gap identified in section 9 is now
+closed by automation alone, in Azure PROD, under the same one-off owner
+authorization. What remains open is unchanged from section 9: whether a
+demonstration run in Azure PROD (rather than a confirmed non-production
+workspace) is the right way to satisfy the requirement for grading
+purposes at all — a reviewer/mentor judgment call this document does not
+make for itself.
+
+---
+
 ## Next step
 
 This package is ready for a mentor/reviewer to read. **No decision has
 been made on Option A vs. Option B** (see `README.md` "Lab requirement
-vs. Personal workspace reality"). Section 9 above records that the
-classic-cluster capability has now been demonstrated live — automated
-create, automated terminate, a **manual restart by the project's operator
-in between**, then fully automated Job attachment via
-`existing_cluster_id`, notebook execution, and confirmed termination
-against the manually-restarted cluster — against Azure PROD rather than
-the confirmed non-production workspace this document originally scoped
-§8 for. The requirement should be described as **demonstrated, with two
-explicit deviations from the original §8 plan for the reviewer to
-weigh (the Azure PROD workspace, and the manual restart between the
-create and Jobs-API steps)** — not as cleanly and unconditionally
-satisfied by automation alone, and not as still unproven.
+vs. Personal workspace reality"). Section 9 recorded a first attempt where
+automated create-and-terminate succeeded but reaching `RUNNING` needed a
+**manual restart by the project's operator**; section 10 recorded a second
+attempt, the same day, where the full create-to-`RUNNING`-to-terminate
+cycle succeeded **in one uninterrupted automated invocation, with no
+manual restart of any kind** (a separate, later, out-of-band manual
+restart by the operator did occur, but only after the automated result was
+already complete and verified — see section 10 for the full account). The
+requirement should be described as **demonstrated by automation alone, in
+Azure PROD, under a one-off owner authorization** — with the single
+remaining explicit deviation for the reviewer to weigh being the Azure
+PROD workspace itself, not the manual-restart caveat from section 9, which
+section 10 supersedes.

@@ -351,14 +351,21 @@ workspace's owner for this exact test (never blanket permission, and never
 treated as superseding the standing "Never Azure PROD" convention for
 anything else), using only newly created, uniquely-named resources, with
 GP1/GP2 and every other pre-existing resource in that workspace never
-started, stopped, modified, or deleted. Full detail, including a fully
-automated create-and-terminate cycle and a **manual restart performed by
-the project operator, not this project's code**, between the automated
-cluster-creation attempt and the automated Jobs API test that followed:
-`evidence/CLASSIC_CLUSTER_REQUIREMENT_REVIEW.md` section 9 and
-`evidence/LIVE_VALIDATION_SUMMARY.md` section 9. This still does not, on
-its own, resolve the Option A vs. Option B choice above -- it adds a new,
-honestly-caveated data point for whoever makes that call.
+started, stopped, modified, or deleted. A first attempt achieved a fully
+automated create-and-terminate cycle but needed a **manual restart
+performed by the project operator, not this project's code**, between the
+automated cluster-creation attempt and the automated Jobs API test that
+followed. **A second attempt the same day closed that gap**: the full
+create-to-`RUNNING`-to-terminate cycle, including the Jobs API test and
+verified `OK:42` output, succeeded in one uninterrupted automated script
+invocation, with no manual restart needed for any leg of the sequence
+itself (a separate, later, out-of-band manual restart by the operator did
+occur, but only after the automated result was already complete and
+verified -- immediately caught and cleaned up). Full detail:
+`evidence/CLASSIC_CLUSTER_REQUIREMENT_REVIEW.md` sections 9-10 and
+`evidence/LIVE_VALIDATION_SUMMARY.md` sections 9-10. This still does not,
+on its own, resolve the Option A vs. Option B choice above -- it adds a
+new, honestly-caveated data point for whoever makes that call.
 
 ### Landing schema vs. pipeline output schema
 
@@ -797,8 +804,10 @@ from Lab 8's `lab08_cicd.yml` (not modified by this PR), scoped to
   not a change to this standing convention, and not something later
   live work should treat as precedent. See "Lab requirement vs. Personal
   workspace reality" above and `evidence/CLASSIC_CLUSTER_REQUIREMENT_REVIEW.md`
-  section 9 for the full, honest account, including the manual step
-  involved and exactly what was and wasn't confirmed by automation alone.
+  sections 9-10 for the full, honest account, including the manual step a
+  first attempt needed, the second attempt that closed that gap by
+  automation alone, and exactly what was and wasn't confirmed by
+  automation alone in each.
 - Every Unity Catalog / Volume / Files API path this code touches is
   prefixed by the configured `catalog.schema.volume` (`dbr_dev.
   parvinbadalov.lab09_landing` in `config/dev.yml`); `reset_landing()`
@@ -962,13 +971,17 @@ summary of everything proven live (Phase 0, the classic-compute
 limitation, why the pipeline was replaced, the `timestampNtz` fix, the
 staged targeted validations, **a single `run-all` command succeeding
 completely end to end** with all four tables populated and the
-reconciliation invariant confirmed against real data, a classic-compute
-demonstration on Azure PROD, and -- its latest milestone (section 10,
-2026-09-27) -- **the first successful run of the actual GitHub Actions
-`workflow_dispatch` live-automation path**, not just a locally-run CLI
-invocation). It also states plainly what remains *not* proven: whether
-the classic cluster-create requirement is cleanly satisfied given the
-manual restart and Azure PROD deviation involved in demonstrating it.
+reconciliation invariant confirmed against real data, a first
+classic-compute demonstration on Azure PROD needing a manual restart, a
+**second Azure PROD attempt (section 10, 2026-09-27) that closed that gap
+in one uninterrupted automated invocation**, and -- its latest milestone
+(section 11, 2026-09-27) -- **the first successful run of the actual
+GitHub Actions `workflow_dispatch` live-automation path**, not just a
+locally-run CLI invocation). It also states plainly what remains *not*
+proven: whether the classic cluster-create requirement is cleanly satisfied
+given the Azure PROD deviation involved in demonstrating it -- the manual
+restart from the first attempt is no longer the open question, since the
+second attempt closed it by automation alone.
 
 Dated pipeline-update and reconciliation-Job evidence files from the
 targeted live validations summarized above exist locally only, containing

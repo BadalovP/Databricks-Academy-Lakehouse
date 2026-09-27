@@ -32,11 +32,16 @@ step (a cluster restart performed by the project's operator, not by this
 project's code) between two otherwise-automated stages — stated
 explicitly in that section rather than folded into "no manual
 intervention" language that would only be true of sections 1–8. **Section
-10 documents the first successful run of the actual GitHub Actions
-`workflow_dispatch` live-automation path** (back on the Personal
-workspace), rather than a locally-run CLI invocation. All four kinds of
-evidence are kept, clearly labeled, rather than one overwriting
-another — see "What this does and does not prove" (section 11) for
+10 documents a second, later attempt in the same Azure PROD workspace**
+that closed that specific gap: the full create-to-`RUNNING`-to-terminate
+cycle succeeded in one uninterrupted automated invocation, with no manual
+restart of any kind (a separate, later, out-of-band manual restart by the
+operator did occur, but only after the automated result was already
+complete and verified). **Section 11 documents the first successful run of
+the actual GitHub Actions `workflow_dispatch` live-automation path** (back
+on the Personal workspace), rather than a locally-run CLI invocation. All
+of these are kept, clearly labeled, rather than one overwriting
+another — see "What this does and does not prove" (section 12) for
 exactly what remains open.
 
 ## 1. Phase 0: classic compute is confirmed unsupported on this workspace
@@ -255,7 +260,7 @@ workspace referenced as "Azure PROD" in this project's own README
 "Security model" section), not the Personal workspace whose classic-compute
 limitation is documented in section 1. This is exactly the "supplementary
 run in a separate workspace that does support classic clusters" option
-described as still-open in section 11's note below — with one explicit,
+described as still-open in section 12's note below — with one explicit,
 important deviation from how that option was originally scoped, called out
 below rather than glossed over.
 
@@ -344,9 +349,88 @@ alone was the create-to-`RUNNING` transition**: the automated attempt
 terminated the cluster after its readiness poll timed out in `PENDING`,
 and a human manually restarted the same cluster afterward. The Jobs-API
 portion (step 5) that followed was fully automated against that
-human-started cluster.
+human-started cluster. **This specific gap was closed by a second attempt
+the same day — see section 10 below**, which reached `RUNNING`
+automatically with a widened readiness timeout, with no manual restart
+needed for any leg of that later run.
 
-## 10. First successful GitHub Actions live workflow execution (2026-09-27)
+## 10. Second Azure PROD attempt (2026-09-27) — the create-to-`RUNNING` gap closed by automation alone
+
+**This section documents a second, later attempt in the same Azure PROD
+workspace as section 9 above, using a new, dedicated script
+(`scripts/validate_classic_e2e.py`) built specifically to close the one
+gap section 9 left open: reaching `RUNNING` through automation alone, with
+no manual restart, in a single uninterrupted invocation.**
+
+Same authorization basis and controls as section 9: the dedicated
+`lab09-azure-prod-oauth` profile only (the operator's own long-lived PAT
+for this workspace was never accessed, displayed, or used); only a newly
+created, uniquely-tagged cluster, Job, and notebook were ever touched;
+GP1, GP2, and every other pre-existing resource were independently
+confirmed untouched before and after.
+
+**What the one script invocation did, automatically, start to finish:**
+
+1. Resolved the same, already-proven configuration as section 9: the
+   target workspace's `Personal Compute` cluster policy, a
+   `Standard_D4ds_v5` node type, and a dynamically resolved standard
+   (non-Photon, non-aarch64) LTS Spark runtime (`18.x-scala2.13`).
+2. Created one uniquely named, uniquely tagged cluster via
+   `compute.start_cluster_create()`.
+3. Polled with `monitoring.poll_cluster_state()` using a 20-minute bound
+   (widened from section 9's 8-minute bound, which historical event data
+   showed was too tight for this node type in this workspace). **The
+   cluster reached `RUNNING` on its own in this attempt — about 11 minutes
+   after the create call — with no manual restart of any kind.** This is
+   the gap section 9 left open; it is now closed.
+4. Uploaded a trivial notebook to a new, uniquely named workspace path.
+5. Created one temporary Job with `existing_cluster_id` pointing at the
+   now-running cluster, triggered it with `run_now()`, and polled it via
+   `monitoring.poll_job_run()` to `SUCCESS`.
+6. Retrieved the notebook's own output via `jobs.get_run_output_json()`
+   and confirmed it read exactly `"OK:42"` — the actual, live, computed
+   result (`6 * 7`), not a hardcoded value.
+7. Requested termination via `compute.terminate_and_verify_cluster()` and
+   independently confirmed `TERMINATED`.
+8. Deleted the temporary Job and notebook it had created.
+
+Every one of these steps, and the actual observed states/ids at each one,
+is recorded in the run's own generated report (kept local-only, like every
+other detailed evidence file — see `evidence/README.md`). Total duration:
+730 seconds (~12 minutes) for the entire automated sequence, one
+invocation, start to finish.
+
+**A separate, later, out-of-band event — reported here plainly rather than
+omitted:** approximately 12 seconds after the script's own poll had
+already independently confirmed `TERMINATED` and the script had exited,
+the same cluster (same cluster id) showed a `STARTING` event in its own
+Databricks event log, reaching `RUNNING` again about 100 seconds later.
+This was investigated immediately via the cluster's own event history
+(`clusters.events()`) before anything was assumed: the timing ruled out
+this project's own subsequent read-only verification calls
+(`clusters.list`/`clusters.get`/`jobs.get` — none of which can start a
+cluster, and which ran measurably later than the 12-second window). The
+project's operator confirmed directly that this was their own manual
+"Start/Restart" click in the Databricks UI, made after the automated test
+had already completed and been verified — not a defect in the automation,
+not a second test, and not something the automation's own success/failure
+depended on. The cluster was re-terminated immediately upon discovering
+this (`compute.terminate_and_verify_cluster()` again, same cluster id) and
+independently reconfirmed `TERMINATED`; it did not restart again.
+
+**Conclusion:** the literal "create clusters" requirement — create, wait
+for `RUNNING`, attach and run a Job, verify its output, terminate, and
+independently confirm cleanup — has now been demonstrated in Azure PROD
+**in one uninterrupted automated script invocation, with no manual step
+required for any leg of the automated sequence itself.** The only manual
+action involved was a later, separate, out-of-band restart by the operator
+after the automated result was already complete and verified, immediately
+caught and cleaned up. This closes the specific gap section 9 identified
+(the create-to-`RUNNING` leg needing a human). It does not, on its own,
+resolve the still-open Option A vs. Option B / Azure-PROD-deviation
+question below — that remains a reviewer/mentor judgment call.
+
+## 11. First successful GitHub Actions live workflow execution (2026-09-27)
 
 **Every prior live validation in sections 1–9 was driven by a locally-run
 CLI invocation.** This section documents the first time
@@ -409,7 +493,7 @@ afterward.
 CI/CD path a grader or CI system would use — not just this project's own
 local CLI — has now been exercised live, successfully, end to end.
 
-## 11. What this does and does not prove
+## 12. What this does and does not prove
 
 **Proven, live:**
 - Phase 0 capability checks and the classic-compute limitation on this
@@ -421,20 +505,19 @@ local CLI — has now been exercised live, successfully, end to end.
   all four tables populated, the reconciliation invariant holding against
   real, growing data.
 - **The same, driven by GitHub Actions itself, not a local CLI invocation**
-  (section 10) — landing a further new month via the actual
+  (section 11) — landing a further new month via the actual
   `workflow_dispatch` live-automation path, first attempt.
-- **Classic cluster create and terminate (automated), and — against a
-  cluster a human subsequently, manually restarted — Job attachment via
-  `existing_cluster_id`, notebook execution, and confirmed termination
-  (fully automated)** (section 9) — demonstrated live in a separate Azure
-  PROD workspace, under explicit owner authorization, with the explicit
-  caveat that this deviates from this project's own previously-stated "no
-  Azure PROD" safeguard for that supplementary test. That deviation, and
-  the fact that reaching `RUNNING` required a manual restart rather than
-  being achieved by the automated poll itself, are what remain for a
-  reviewer/mentor to weigh — not the underlying code's correctness, which
-  section 9 shows working against a real backend in both the automated
-  and human-assisted portions.
+- **Classic cluster create, wait-for-`RUNNING`, Job attachment via
+  `existing_cluster_id`, notebook execution, verified output, terminate,
+  and independently confirmed cleanup — all in one uninterrupted automated
+  script invocation, with no manual step anywhere in the sequence itself**
+  (section 10) — demonstrated live in a separate Azure PROD workspace,
+  under explicit owner authorization. Section 9 recorded an earlier attempt
+  where reaching `RUNNING` needed a manual restart; section 10 closed that
+  specific gap. The one caveat that remains for a reviewer/mentor to weigh
+  is the Azure PROD workspace deviation itself (see below) — not the
+  automation's completeness, which section 10 shows working end to end
+  without manual intervention.
 
 **Not yet proven / open for reviewer judgment:**
 
@@ -446,13 +529,13 @@ local CLI — has now been exercised live, successfully, end to end.
   sufficient) remains preferable regardless. This project does not
   resolve that question on its own — see the main README's "Lab
   requirement vs. Personal workspace reality" section and
-  `evidence/CLASSIC_CLUSTER_REQUIREMENT_REVIEW.md` §9 for the full,
+  `evidence/CLASSIC_CLUSTER_REQUIREMENT_REVIEW.md` §§9–10 for the full,
   honest framing. **This document does not claim the deviation from the
   "no Azure PROD" safeguard was itself pre-approved by that document —
   only that a separate, specific, owner-granted authorization for this
   exact test existed before it ran.**
-- Whether a create-to-`RUNNING` cycle completed by automation alone, with
-  no manual restart in the middle, is required to fully satisfy the
-  requirement, given that section 9's automated attempt did complete a
-  real create-and-terminate cycle but did not itself observe `RUNNING`
-  before a human intervened.
+- **Resolved by section 10, not open any longer:** whether a
+  create-to-`RUNNING` cycle completed by automation alone, with no manual
+  restart in the middle, was achievable at all — section 9's first attempt
+  did not itself observe `RUNNING` before a human intervened, but section
+  10's second attempt did, in one uninterrupted invocation.

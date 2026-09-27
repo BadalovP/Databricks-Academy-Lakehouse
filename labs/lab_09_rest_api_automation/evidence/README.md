@@ -86,14 +86,25 @@ created here at any point, in any validation. See the main README's "Lab
 requirement vs. Personal workspace reality" for the two open compliance
 interpretations this leaves.
 
-**Separately demonstrated on Azure PROD (2026-09-27):** classic cluster
-create, terminate, and (after a manual restart) automated Job attachment
-and execution -- see `LIVE_VALIDATION_SUMMARY.md` section 9 and
-`CLASSIC_CLUSTER_REQUIREMENT_REVIEW.md` section 9. This index does not
-claim the "create clusters" requirement is cleanly satisfied by that
-demonstration alone: it ran outside the non-production scope this
-project otherwise holds to, under its own explicit, one-off
-authorization, and a reviewer/mentor decision is still needed either way.
+**Separately demonstrated on Azure PROD (2026-09-27):** a first attempt
+achieved classic cluster create and terminate automatically, but reaching
+`RUNNING` needed a manual restart before Job attachment and execution
+could be exercised -- see `LIVE_VALIDATION_SUMMARY.md` section 9 and
+`CLASSIC_CLUSTER_REQUIREMENT_REVIEW.md` section 9. **A second attempt the
+same day closed that gap**: create, wait-for-`RUNNING`, Job attachment,
+verified output (`OK:42`), terminate, and independently confirmed cleanup
+all succeeded in one uninterrupted automated script invocation, with no
+manual restart needed for any leg of the sequence itself -- see
+`LIVE_VALIDATION_SUMMARY.md` section 10 and
+`CLASSIC_CLUSTER_REQUIREMENT_REVIEW.md` section 10 (including a separate,
+later, out-of-band manual restart by the operator, after the automated
+result was already complete and verified, immediately caught and cleaned
+up). This index does not claim the "create clusters" requirement is
+cleanly satisfied by these demonstrations alone: they ran outside the
+non-production scope this project otherwise holds to, under explicit,
+one-off authorization, and a reviewer/mentor decision is still needed on
+whether an Azure PROD demonstration is the right way to satisfy the
+requirement at all.
 
 **GitHub Actions live workflow, first successful run (2026-09-27):** the
 actual `workflow_dispatch` -> `run-live-automation` CI/CD path (back on
@@ -106,4 +117,4 @@ a `lab09-live-approval` environment that was never actually created,
 which would have skipped the required-reviewer gate entirely on first
 dispatch -- now points at the existing, already-protected
 `personal-prod-approval` environment instead. See
-`LIVE_VALIDATION_SUMMARY.md` section 10.
+`LIVE_VALIDATION_SUMMARY.md` section 11.
