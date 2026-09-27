@@ -68,6 +68,34 @@ def test_upload_pipeline_sources_registers_all_three_files_at_expected_paths():
     assert called_paths == expected
 
 
+# --- lab09_root_path: run_as override ---------------------------------------
+
+
+def test_lab09_root_path_uses_deploying_identity_by_default():
+    client = _autospec_client()
+    assert workspace.lab09_root_path(client, _cfg()) == "/Workspace/Users/someone@example.com/lab09"
+
+
+def test_lab09_root_path_uses_run_as_identity_when_configured():
+    """Regression test for a real defect found live (2026-09-27): content
+    uploaded under the deploying identity's home directory was not
+    importable by a job task running under a DIFFERENT run_as identity
+    (ModuleNotFoundError), even though that run_as identity is a workspace
+    admin with full API-level read access. When cfg declares
+    run_as_user_name, the root must resolve under THAT identity's home
+    directory instead of whichever identity is currently deploying.
+    """
+    client = _autospec_client()
+    cfg = _cfg()
+    cfg["run_as_user_name"] = "parvinbadalov@softserve.academy"
+
+    root = workspace.lab09_root_path(client, cfg)
+
+    assert root == "/Workspace/Users/parvinbadalov@softserve.academy/lab09"
+    # Must not even need to resolve the deploying identity in this case.
+    client.current_user.me.assert_not_called()
+
+
 def test_upload_pipeline_sources_base64_encodes_content_faithfully():
     client = _autospec_client()
     workspace.upload_pipeline_sources(client, PIPELINE_DIR, _cfg())
