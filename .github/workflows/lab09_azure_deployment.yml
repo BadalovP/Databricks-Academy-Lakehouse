@@ -1,0 +1,193 @@
+# LAB 09 - Azure Databricks Deployment and Execution
+#
+# Separate from lab09_api_automation.yml (the Personal-workspace workflow,
+# left entirely unmodified by this file): this workflow deploys and runs
+# LAB 09's second deployment target, the shared Azure Databricks workspace
+# this project otherwise refers to as Azure PROD. It is never dispatched or
+# triggered by lab09_api_automation.yml, and does not touch it.
+#
+# Authentication: OIDC-based Azure service-principal federation via
+# azure/login, never a stored PAT -- reusing the exact AZURE_CLIENT_ID /
+# AZURE_TENANT_ID / AZURE_SUBSCRIPTION_ID / DATABRICKS_AZURE_HOST repository
+# variables Lab 8's own Azure workflows (lab08_cicd.yml,
+# lab08_azure_prod_manual_run.yml) already have configured -- no new Azure
+# credential is introduced. DATABRICKS_AUTH_TYPE=azure-cli tells both the
+# Databricks CLI and this project's own lab09.client.get_workspace_client()
+# (see its docstring) to obtain a token via the already-authenticated `az`
+# CLI session rather than any token/profile file.
+#
+# Approval gates: reuses Lab 8's existing azure-release-approval environment
+# (required_reviewers, confirmed live before this file was written) as a
+# lightweight approval job, then azure-prod (carries the OIDC vars, no
+# protection rules of its own -- the human gate is azure-release-approval)
+# for the actual Azure-touching steps -- exactly the same two-environment
+# pattern lab08_azure_prod_manual_run.yml already uses. No new GitHub
+# environment is created by this file.
+#
+# Static checks run on every pull_request/push -- no live Databricks
+# resource is ever reachable from those events. Deployment and execution
+# only ever happen on an explicit workflow_dispatch, behind the approval
+# gate above.
+name: LAB 09 Azure Deployment
+
+on:
+  pull_request:
+    paths:
+      - "labs/lab_09_rest_api_automation/**"
+      - ".github/workflows/lab09_azure_deployment.yml"
+  push:
+    branches: [main]
+    paths:
+      - "labs/lab_09_rest_api_automation/**"
+      - ".github/workflows/lab09_azure_deployment.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lab09-azure-deployment
+  cancel-in-progress: false
+
+env:
+  LAB09_ROOT: labs/lab_09_rest_api_automation
+
+jobs:
+  static-checks:
+    name: Static Checks and Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: labs/lab_09_rest_api_automation
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package and dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . -r requirements-dev.txt
+      - name: Ruff
+        run: ruff check .
+      - name: Black
+        run: black --check .
+      - name: Pytest (mocked WorkspaceClient only -- no live Databricks resources)
+        run: pytest
+
+  approve-azure-deployment:
+    name: Approve Azure Deployment and Execution
+    if: github.event_name == 'workflow_dispatch'
+    needs: static-checks
+    runs-on: ubuntu-latest
+    environment: azure-release-approval
+    steps:
+      - name: Approved
+        run: echo "Azure LAB 09 deployment and execution approved."
+
+  deploy-azure-job:
+    name: Deploy LAB 09 to Azure (idempotent)
+    needs: approve-azure-deployment
+    if: needs.approve-azure-deployment.result == 'success'
+    runs-on: ubuntu-latest
+    environment: azure-prod
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      job_id: ${{ steps.deploy.outputs.job_id }}
+    defaults:
+      run:
+        working-directory: labs/lab_09_rest_api_automation
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . -r requirements-dev.txt
+
+      - name: Verify Azure workspace and identity (read-only)
+        env:
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
+          DATABRICKS_AUTH_TYPE: azure-cli
+        run: |
+          set -euo pipefail
+          if [ -z "${DATABRICKS_HOST:-}" ]; then
+            echo "::error::DATABRICKS_AZURE_HOST repository variable is not set. Refusing to guess a workspace."
+            exit 1
+          fi
+          python -c "
+          from lab09.client import get_workspace_client
+          client = get_workspace_client()
+          print('Host:', client.config.host)
+          print('Identity:', client.current_user.me().user_name)
+          "
+
+      - name: Deploy the three-task Job idempotently (never triggers a run)
+        id: deploy
+        env:
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
+          DATABRICKS_AUTH_TYPE: azure-cli
+        run: |
+          set -euo pipefail
+          python scripts/deploy_azure_job.py --confirm-host "${DATABRICKS_HOST}" \
+            | tee azure-deploy-report.json
+          job_id="$(python -c "import json; print(json.load(open('azure-deploy-report.json'))['job_id'])")"
+          echo "job_id=$job_id" >> "$GITHUB_OUTPUT"
+
+      - name: Upload deployment report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lab09-azure-deploy-report-${{ github.run_id }}
+          path: labs/lab_09_rest_api_automation/azure-deploy-report.json
+          if-no-files-found: warn
+
+  run-azure-job:
+    name: Trigger and Monitor the Azure Job
+    needs: deploy-azure-job
+    if: needs.deploy-azure-job.result == 'success'
+    runs-on: ubuntu-latest
+    environment: azure-prod
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: labs/lab_09_rest_api_automation
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . -r requirements-dev.txt
+
+      - name: Trigger the run, monitor to completion, collect output, verify cleanup
+        env:
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
+          DATABRICKS_AUTH_TYPE: azure-cli
+        run: python scripts/run_azure_job.py
+
+      - name: Upload execution report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lab09-azure-run-report-${{ github.run_id }}
+          path: labs/lab_09_rest_api_automation/evidence/azure_run_report.json
+          if-no-files-found: warn
