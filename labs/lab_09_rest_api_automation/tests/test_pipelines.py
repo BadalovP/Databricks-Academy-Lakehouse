@@ -79,6 +79,36 @@ def test_ensure_pipeline_creates_serverless_when_missing_and_preferred():
     assert kwargs["libraries"][0].glob.include == "/Workspace/Users/x/lab09/pipeline/**"
 
 
+def test_ensure_pipeline_passes_run_as_when_configured():
+    """config/azure.yml sets run_as_user_name so the pipeline's tasks execute
+    under an already-authorized human identity, separate from whichever
+    identity deploys/triggers it -- see that file's own comment. Absent by
+    default (config/dev.yml has no such key), confirmed by every other test
+    in this file passing `run_as=None` implicitly via the shared _cfg().
+    """
+    client = _autospec_client()
+    client.pipelines.list_pipelines.return_value = []
+    client.pipelines.create.return_value = MagicMock(pipeline_id="new-id")
+
+    cfg = _cfg()
+    cfg["run_as_user_name"] = "parvinbadalov@softserve.academy"
+    pipelines.ensure_pipeline(client, cfg, "/Workspace/Users/x/lab09/pipeline")
+
+    _, kwargs = client.pipelines.create.call_args
+    assert kwargs["run_as"].user_name == "parvinbadalov@softserve.academy"
+
+
+def test_ensure_pipeline_run_as_is_none_when_not_configured():
+    client = _autospec_client()
+    client.pipelines.list_pipelines.return_value = []
+    client.pipelines.create.return_value = MagicMock(pipeline_id="new-id")
+
+    pipelines.ensure_pipeline(client, _cfg(), "/Workspace/Users/x/lab09/pipeline")
+
+    _, kwargs = client.pipelines.create.call_args
+    assert kwargs["run_as"] is None
+
+
 def test_ensure_pipeline_falls_back_to_classic_when_serverless_creation_rejected():
     client = _autospec_client()
     client.pipelines.list_pipelines.return_value = []
@@ -152,6 +182,22 @@ def test_ensure_pipeline_updates_existing_pipeline_to_serverless_when_it_succeed
     assert kwargs["pipeline_id"] == "existing-id"
     assert kwargs["name"] == "lab09_taxi_pipeline"
     assert kwargs["serverless"] is True
+    assert kwargs["run_as"] is None
+
+
+def test_ensure_pipeline_update_passes_run_as_when_configured():
+    client = _autospec_client()
+    existing = MagicMock()
+    existing.name = "lab09_taxi_pipeline"
+    existing.pipeline_id = "existing-id"
+    client.pipelines.list_pipelines.return_value = [existing]
+
+    cfg = _cfg()
+    cfg["run_as_user_name"] = "parvinbadalov@softserve.academy"
+    pipelines.ensure_pipeline(client, cfg, "/Workspace/Users/x/lab09/pipeline")
+
+    _, kwargs = client.pipelines.update.call_args
+    assert kwargs["run_as"].user_name == "parvinbadalov@softserve.academy"
 
 
 def test_ensure_pipeline_creates_v2_without_touching_v1_when_only_v1_exists():

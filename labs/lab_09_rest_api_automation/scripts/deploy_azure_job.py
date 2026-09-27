@@ -44,6 +44,7 @@ from databricks.sdk import WorkspaceClient
 from databricks.sdk.service import compute as compute_svc
 from databricks.sdk.service.jobs import (
     JobCluster,
+    JobRunAs,
     JobSettings,
     NotebookTask,
     PipelineTask,
@@ -262,8 +263,18 @@ def ensure_three_task_job(
     was made; an existing Job is reset in place, never duplicated. Raises
     ResourceOwnershipError instead of resetting a same-named Job this
     identity did not create.
+
+    Always explicitly sets run_as from cfg["run_as_user_name"] (if present)
+    on both create and reset -- confirmed live that jobs.reset() does NOT
+    silently revert an already-set run_as when it is omitted from the call,
+    but this is set explicitly on every call regardless, rather than
+    relying on that undocumented behavior alone. See config/azure.yml's own
+    comment for why a separate "Run As" identity is used here at all.
     """
     name = cfg["job"]["name"]
+    run_as_user_name = cfg.get("run_as_user_name")
+    run_as = JobRunAs(user_name=run_as_user_name) if run_as_user_name else None
+
     existing = jobs.find_job_by_name(client, name)
     if existing is not None:
         verify_owned_by_current_identity(
@@ -271,10 +282,12 @@ def ensure_three_task_job(
         )
         client.jobs.reset(
             job_id=existing.job_id,
-            new_settings=JobSettings(name=name, job_clusters=job_clusters, tasks=tasks),
+            new_settings=JobSettings(
+                name=name, job_clusters=job_clusters, tasks=tasks, run_as=run_as
+            ),
         )
         return existing.job_id, False
-    created = client.jobs.create(name=name, job_clusters=job_clusters, tasks=tasks)
+    created = client.jobs.create(name=name, job_clusters=job_clusters, tasks=tasks, run_as=run_as)
     return created.job_id, True
 
 

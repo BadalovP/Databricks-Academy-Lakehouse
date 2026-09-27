@@ -153,6 +153,40 @@ def test_ensure_three_task_job_resets_existing_job_instead_of_duplicating():
     client.jobs.reset.assert_called_once()
     _, kwargs = client.jobs.reset.call_args
     assert kwargs["job_id"] == 42
+    assert kwargs["new_settings"].run_as is None
+
+
+def test_ensure_three_task_job_passes_run_as_when_configured_on_create():
+    client = _autospec_client()
+    client.jobs.list.return_value = []
+    client.jobs.create.return_value = MagicMock(job_id=555)
+
+    cfg = _cfg()
+    cfg["run_as_user_name"] = "parvinbadalov@softserve.academy"
+    daj.ensure_three_task_job(client, cfg, job_clusters=[], tasks=[], identity="me@example.com")
+
+    _, kwargs = client.jobs.create.call_args
+    assert kwargs["run_as"].user_name == "parvinbadalov@softserve.academy"
+
+
+def test_ensure_three_task_job_passes_run_as_when_configured_on_reset():
+    """Explicitly set on every reset call -- confirmed live that
+    jobs.reset() does not silently revert an already-set run_as when it is
+    omitted, but this must never rely on that alone.
+    """
+    client = _autospec_client()
+    existing = MagicMock()
+    existing.job_id = 42
+    existing.settings.name = "lab09_taxi_reconciliation_job"
+    existing.creator_user_name = "me@example.com"
+    client.jobs.list.return_value = [existing]
+
+    cfg = _cfg()
+    cfg["run_as_user_name"] = "parvinbadalov@softserve.academy"
+    daj.ensure_three_task_job(client, cfg, job_clusters=[], tasks=[], identity="me@example.com")
+
+    _, kwargs = client.jobs.reset.call_args
+    assert kwargs["new_settings"].run_as.user_name == "parvinbadalov@softserve.academy"
 
 
 def test_ensure_three_task_job_refuses_to_reset_a_job_owned_by_someone_else():
