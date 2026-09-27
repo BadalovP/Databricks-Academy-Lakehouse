@@ -7,14 +7,22 @@
 # triggered by lab09_api_automation.yml, and does not touch it.
 #
 # Authentication: OIDC-based Azure service-principal federation via
-# azure/login, never a stored PAT -- reusing the exact AZURE_CLIENT_ID /
-# AZURE_TENANT_ID / AZURE_SUBSCRIPTION_ID / DATABRICKS_AZURE_HOST repository
-# variables Lab 8's own Azure workflows (lab08_cicd.yml,
-# lab08_azure_prod_manual_run.yml) already have configured -- no new Azure
-# credential is introduced. DATABRICKS_AUTH_TYPE=azure-cli tells both the
-# Databricks CLI and this project's own lab09.client.get_workspace_client()
-# (see its docstring) to obtain a token via the already-authenticated `az`
-# CLI session rather than any token/profile file.
+# azure/login, never a stored PAT and never Lab 8's own identity --
+# AZURE_LAB09_CLIENT_ID is a dedicated Lab 9 service principal
+# (github-lab09-taxi-automation), federated to this exact repository and
+# this exact azure-prod environment, entirely separate from Lab 8's
+# AZURE_CLIENT_ID / github-lab08-travelops (left untouched -- see README.md
+# "Two-environment architecture" for why a dedicated identity was created:
+# the first live validation using the shared Lab 8 identity failed because
+# that identity was never granted cluster-creation rights, and granting a
+# shared identity broader rights than its own project needs was rejected in
+# favor of a narrowly-scoped, dedicated identity instead). AZURE_TENANT_ID
+# and AZURE_SUBSCRIPTION_ID are reused from Lab 8's existing configuration
+# (org-wide values, not identity-specific). DATABRICKS_AUTH_TYPE=azure-cli
+# tells both the Databricks CLI and this project's own
+# lab09.client.get_workspace_client() (see its docstring) to obtain a token
+# via the already-authenticated `az` CLI session rather than any
+# token/profile file.
 #
 # Approval gates: reuses Lab 8's existing azure-release-approval environment
 # (required_reviewers, confirmed live before this file was written) as a
@@ -114,7 +122,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: azure/login@v2
         with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          client-id: ${{ vars.AZURE_LAB09_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       - uses: actions/setup-python@v5
@@ -186,7 +194,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: azure/login@v2
         with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          client-id: ${{ vars.AZURE_LAB09_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       - uses: actions/setup-python@v5

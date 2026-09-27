@@ -67,20 +67,64 @@ class ResourceOwnershipError(RuntimeError):
     """
 
 
-def verify_owned_by_current_identity(resource: Any, identity: str, description: str) -> None:
+#: Explicit, narrow, ID-based allowlist for resources whose recorded creator
+#: is expected to differ from the identity now running this script, because
+#: of a specific, already-verified, one-off identity migration -- never a
+#: name-based or blanket bypass. Each entry records the exact immutable
+#: resource id together with the specific prior-creator identity this
+#: project itself independently verified (via a read-only Databricks check)
+#: before approving that migration. Adding an entry here is itself a
+#: reviewable code change, never a runtime decision: a resource id that is
+#: not listed still requires an exact creator_user_name match, with no
+#: exception.
+#:
+#: 2026-09-27: github-lab08-travelops (Lab 8's existing, shared service
+#: principal) created these two resources while deploying Lab 9's Azure
+#: target, before the dedicated github-lab09-taxi-automation identity
+#: existed. Both are confirmed, by this project's own read-only inspection,
+#: to be the real, singular Lab 9 Job/pipeline this session itself deployed
+#: (not another student's resource) -- see README.md "Two-environment
+#: architecture" for the full account.
+APPROVED_IDENTITY_MIGRATIONS: dict[str, str] = {
+    "374991019372414": "3ec7e8df-66a2-4102-ab57-e4448b4e0e01",  # lab09_taxi_reconciliation_job
+    "93a49a14-366e-4224-b2b3-587ef0b7a028": "3ec7e8df-66a2-4102-ab57-e4448b4e0e01",  # lab09_taxi_pipeline_v2
+}
+
+
+def verify_owned_by_current_identity(
+    resource: Any, identity: str, description: str, resource_id: str | None = None
+) -> None:
     """Refuse to proceed unless `resource.creator_user_name` matches `identity`
-    exactly. Called on every Job/pipeline this script finds by name, before
-    any reset/update call -- see ResourceOwnershipError's docstring for why
-    this check exists at all.
+    exactly -- unless `resource_id` is listed in APPROVED_IDENTITY_MIGRATIONS
+    AND the resource's actual creator matches that entry's own recorded
+    prior creator exactly (never just any creator). Called on every
+    Job/pipeline this script finds by name, before any reset/update call --
+    see ResourceOwnershipError's and APPROVED_IDENTITY_MIGRATIONS' own
+    docstrings for why this check, and its one narrow exception, exist.
     """
     creator = getattr(resource, "creator_user_name", None)
-    if creator != identity:
-        raise ResourceOwnershipError(
-            f"{description} was found by name, but its creator ({creator!r}) does not "
-            f"match the current identity ({identity!r}). Refusing to reset/update it: "
-            "this workspace is shared by many other students, and a name match alone "
-            "is not positive proof of ownership."
-        )
+    if creator == identity:
+        return
+    if resource_id is not None:
+        expected_prior_creator = APPROVED_IDENTITY_MIGRATIONS.get(resource_id)
+        if expected_prior_creator is not None and creator == expected_prior_creator:
+            logger.info(
+                "%s (id=%s): creator %r does not match the current identity %r, but this "
+                "exact resource id is on the explicit, reviewed identity-migration "
+                "allowlist with that exact prior creator -- allowed.",
+                description,
+                resource_id,
+                creator,
+                identity,
+            )
+            return
+    raise ResourceOwnershipError(
+        f"{description} was found by name, but its creator ({creator!r}) does not "
+        f"match the current identity ({identity!r}), and its id is not on the explicit "
+        "identity-migration allowlist. Refusing to reset/update it: this workspace is "
+        "shared by many other students, and a name match alone is not positive proof "
+        "of ownership."
+    )
 
 
 LAB_ROOT = Path(__file__).resolve().parents[1]
@@ -222,7 +266,9 @@ def ensure_three_task_job(
     name = cfg["job"]["name"]
     existing = jobs.find_job_by_name(client, name)
     if existing is not None:
-        verify_owned_by_current_identity(existing, identity, f"Job {name!r}")
+        verify_owned_by_current_identity(
+            existing, identity, f"Job {name!r}", resource_id=str(existing.job_id)
+        )
         client.jobs.reset(
             job_id=existing.job_id,
             new_settings=JobSettings(name=name, job_clusters=job_clusters, tasks=tasks),
@@ -257,7 +303,10 @@ def deploy(client: WorkspaceClient, cfg: dict[str, Any], config_path: Path) -> D
     existing_pipeline = pipelines.find_pipeline_by_name(client, cfg["pipeline"]["name"])
     if existing_pipeline is not None:
         verify_owned_by_current_identity(
-            existing_pipeline, report.identity, f"Pipeline {cfg['pipeline']['name']!r}"
+            existing_pipeline,
+            report.identity,
+            f"Pipeline {cfg['pipeline']['name']!r}",
+            resource_id=existing_pipeline.pipeline_id,
         )
     pipeline_id, used_serverless = pipelines.ensure_pipeline(client, cfg, pipeline_dir_ws)
     report.pipeline_id = pipeline_id
