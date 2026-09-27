@@ -1,14 +1,24 @@
 # LAB 09 - Evidence index
 
 **Start with `LIVE_VALIDATION_SUMMARY.md`** -- a sanitized, GitHub-suitable
-write-up of everything proven live against a confirmed-safe, non-Azure-PROD
-Personal Databricks workspace: Phase 0 and the classic-compute limitation,
-why the original pipeline was replaced, the `timestampNtz` table-feature
-fix, the staged targeted validations, and -- its headline result -- **a
-single `run-all` command succeeding completely end to end**, with all four
-output tables populated and the reconciliation invariant confirmed against
-real, five-month data. It also states plainly what remains *not* proven --
-the literal classic cluster-create requirement.
+write-up of everything proven live. **Sections 1-8 of that document** cover
+a confirmed-safe, non-Azure-PROD Personal Databricks workspace: Phase 0 and
+the classic-compute limitation, why the original pipeline was replaced, the
+`timestampNtz` table-feature fix, the staged targeted validations, and --
+its headline result -- **a single `run-all` command succeeding completely
+end to end**, with all four output tables populated and the reconciliation
+invariant confirmed against real, five-month data.
+
+**Section 9 of that document is the deliberate exception to that scope**:
+a supplementary classic-compute demonstration performed against Azure PROD
+itself (2026-09-27), under a separate, specific, one-off owner
+authorization, including an automated create-and-terminate cycle, a
+**manual cluster restart performed by the project's operator** (not this
+project's code), and a fully automated Jobs API test against the
+resulting running cluster. See `CLASSIC_CLUSTER_REQUIREMENT_REVIEW.md`
+section 9 for the full account, including exactly how this deviates from
+this project's own standing "never Azure PROD" convention (see the main
+README's "Security model").
 
 This repository's local `~/.databrickscfg` has profiles literally named
 `dev` / `AZURE_DEV` that resolve to the same host as Lab 8's Azure PROD
@@ -69,9 +79,18 @@ failed pipeline attempts is documented separately in
 `LIVE_VALIDATION_SUMMARY.md` and was never something this project's code
 triggered or controlled).
 
-**Still not proven:** the literal "create clusters" portion of the Lab 9
-task requirement -- this workspace has no classic-compute worker
-environment, and no classic cluster has been created here at any point,
-in any validation. See the main README's "Lab requirement vs. Personal
-workspace reality" for the two open compliance interpretations this
-leaves; this index does not claim that requirement is satisfied.
+**Still not proven on this Personal workspace:** the literal "create
+clusters" portion of the Lab 9 task requirement -- this workspace has no
+classic-compute worker environment, and no classic cluster has been
+created here at any point, in any validation. See the main README's "Lab
+requirement vs. Personal workspace reality" for the two open compliance
+interpretations this leaves.
+
+**Separately demonstrated on Azure PROD (2026-09-27):** classic cluster
+create, terminate, and (after a manual restart) automated Job attachment
+and execution -- see `LIVE_VALIDATION_SUMMARY.md` section 9 and
+`CLASSIC_CLUSTER_REQUIREMENT_REVIEW.md` section 9. This index does not
+claim the "create clusters" requirement is cleanly satisfied by that
+demonstration alone: it ran outside the non-production scope this
+project otherwise holds to, under its own explicit, one-off
+authorization, and a reviewer/mentor decision is still needed either way.

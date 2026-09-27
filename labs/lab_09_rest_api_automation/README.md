@@ -341,6 +341,25 @@ described as fully satisfied.** Everything else Lab 9 asks for remains
 demonstrable, and is tracked separately in "Known limitations" by what
 has and has not actually been run live.
 
+**Update (2026-09-27): a classic-compute demonstration satisfying Option B
+above has since been performed** -- but against Azure PROD, not a
+separate confirmed-non-production DEV/academy workspace, which is an
+explicit deviation from both this section's own Option B wording and
+"Security model" below's "Never Azure PROD" convention. It happened under
+a separate, specific, one-off authorization obtained directly from that
+workspace's owner for this exact test (never blanket permission, and never
+treated as superseding the standing "Never Azure PROD" convention for
+anything else), using only newly created, uniquely-named resources, with
+GP1/GP2 and every other pre-existing resource in that workspace never
+started, stopped, modified, or deleted. Full detail, including a fully
+automated create-and-terminate cycle and a **manual restart performed by
+the project operator, not this project's code**, between the automated
+cluster-creation attempt and the automated Jobs API test that followed:
+`evidence/CLASSIC_CLUSTER_REQUIREMENT_REVIEW.md` section 9 and
+`evidence/LIVE_VALIDATION_SUMMARY.md` section 9. This still does not, on
+its own, resolve the Option A vs. Option B choice above -- it adds a new,
+honestly-caveated data point for whoever makes that call.
+
 ### Landing schema vs. pipeline output schema
 
 Confirmed live (against the same confirmed-safe Personal workspace,
@@ -762,7 +781,16 @@ from Lab 8's `lab08_cicd.yml` (not modified by this PR), scoped to
   relying on an unspecified default.
 - Live mutations are restricted by convention (not by a technical guard in
   this code, which cannot itself verify which workspace a given token
-  belongs to) to the Personal/academy workspace. **Never Azure PROD.**
+  belongs to) to the Personal/academy workspace. **Never Azure PROD.** This
+  convention was deviated from exactly once, deliberately and
+  transparently: a supplementary classic-compute demonstration
+  (2026-09-27) was run against Azure PROD under a separate, specific,
+  one-off authorization from that workspace's owner for that exact test --
+  not a change to this standing convention, and not something later
+  live work should treat as precedent. See "Lab requirement vs. Personal
+  workspace reality" above and `evidence/CLASSIC_CLUSTER_REQUIREMENT_REVIEW.md`
+  section 9 for the full, honest account, including the manual step
+  involved and exactly what was and wasn't confirmed by automation alone.
 - Every Unity Catalog / Volume / Files API path this code touches is
   prefixed by the configured `catalog.schema.volume` (`dbr_dev.
   parvinbadalov.lab09_landing` in `config/dev.yml`); `reset_landing()`
@@ -843,11 +871,14 @@ from Lab 8's `lab08_cicd.yml` (not modified by this PR), scoped to
   single-command `run-all` execution (2026-09-26) that landed a new month,
   drove the pipeline to `COMPLETED`, and ran the reconciliation Job to
   `SUCCESS` end to end (see "Delta `timestampNtz` table feature" above and
-  `evidence/LIVE_VALIDATION_SUMMARY.md` section 8). Only the classic
-  cluster-create requirement itself remains unfulfilled -- see "Lab
-  requirement vs. Personal workspace reality" for the two open compliance
-  interpretations this leaves for the literal "create clusters" task
-  requirement. **This document does not claim that requirement is
+  `evidence/LIVE_VALIDATION_SUMMARY.md` section 8). The classic
+  cluster-create requirement itself remains unfulfilled **on this specific
+  Personal workspace** -- see "Lab requirement vs. Personal workspace
+  reality" for the two open compliance interpretations this leaves for the
+  literal "create clusters" task requirement, and its 2026-09-27 update for
+  a separate demonstration since performed against Azure PROD instead
+  (with its own explicit caveats, not a substitute for a reviewer decision
+  here). **This document does not claim that requirement is cleanly
   satisfied.**
 - Phase 0 was run under one specific identity via a confirmed-safe
   Personal workspace profile. This only proves that identity's
