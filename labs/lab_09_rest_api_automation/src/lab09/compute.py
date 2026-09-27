@@ -62,13 +62,26 @@ class ClusterSpec:
             kwargs["policy_id"] = self.policy_id
         return kwargs
 
-    def as_new_cluster_dict(self, cluster_name: str) -> dict[str, Any]:
+    def as_new_cluster_dict(self) -> dict[str, Any]:
         """Shape suitable for jobs.submit(new_cluster=...) / job task new_cluster.
 
         Used both for the persistent job's fallback task definition and for
         documenting the "explicit cluster creation forbidden" fallback path.
+
+        Deliberately excludes two fields as_create_kwargs() sets for an
+        interactive/all-purpose cluster but that Databricks rejects outright
+        for an automated (job) cluster -- confirmed live (2026-09-27) while
+        creating a persistent, manually-triggered demonstration Job in Azure
+        PROD: "cluster_name" ("Cluster name should not be provided for
+        jobs.") and "autotermination_minutes" ("Automated clusters do not
+        support autotermination." -- Databricks tears a job cluster down
+        itself the moment its run finishes, so the field has no meaning
+        here). No cluster_name is accepted as a parameter at all, since any
+        value passed would only ever need to be discarded.
         """
-        payload = self.as_create_kwargs(cluster_name)
+        payload = self.as_create_kwargs("")
+        payload.pop("cluster_name", None)
+        payload.pop("autotermination_minutes", None)
         payload["data_security_mode"] = self.data_security_mode
         return payload
 
