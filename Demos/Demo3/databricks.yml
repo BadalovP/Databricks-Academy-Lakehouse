@@ -1,0 +1,37 @@
+bundle:
+  name: demo3_urbanflow
+
+variables:
+  workspace_user:
+    description: Workspace user whose folder contains the bundle files.
+    default: parvinbadalov@softserve.academy
+  catalog:
+    default: dbr_dev
+  schema:
+    default: parvinbadalov_urbanflow
+  volume:
+    default: urbanflow_landing
+
+sync:
+  include:
+    - notebooks/**
+    - pipeline/**
+    - src/**
+    - config/**
+    - data/samples/**
+
+targets:
+  dev:
+    default: true
+    mode: development
+    workspace:
+      host: https://adb-7405604503619901.1.azuredatabricks.net
+      root_path: /Workspace/Users/${var.workspace_user}/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      schema: parvinbadalov_urbanflow_dev
+
+  azure:
+    mode: production
+    workspace:
+      host: https://adb-7405604503619901.1.azuredatabricks.net
+      root_path: /Workspace/Users/${var.workspace_user}/.bundle/${bundle.name}/${bundle.target}

@@ -1,0 +1,9 @@
+{
+  "discovery_url": "https://gbfs.citibikenyc.com/gbfs/2.3/gbfs.json",
+  "feeds": {
+    "station_information": "https://gbfs.lyft.com/gbfs/2.3/bkn/en/station_information.json",
+    "station_status": "https://gbfs.lyft.com/gbfs/2.3/bkn/en/station_status.json"
+  },
+  "sample_station_count": 40,
+  "verified_at": "2026-09-28T19:53:31.139009Z"
+}
