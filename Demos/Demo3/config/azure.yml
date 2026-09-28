@@ -1,0 +1,68 @@
+project:
+  name: urbanflow
+  environment: academy-azure
+
+business_rules:
+  low_bike_threshold: 2
+  low_dock_threshold: 2
+
+sources:
+  gbfs_discovery_url: https://gbfs.citibikenyc.com/gbfs/2.3/gbfs.json
+  gbfs_language: en
+  open_meteo_url: https://api.open-meteo.com/v1/forecast
+  weather_latitude: 40.7128
+  weather_longitude: -74.0060
+  historical_object: 202401-citibike-tripdata.zip
+
+azure:
+  expected_databricks_host: https://adb-7405604503619901.1.azuredatabricks.net
+  catalog: dbr_dev
+  schema: parvinbadalov_urbanflow
+  volume: urbanflow_landing
+  event_hubs_namespace: evhpl24databricks
+  event_hub_name: parvinbadalov_evh
+  consumer_group: parvinbadalov
+  key_vault_name: kvpl24databricks2
+  event_hubs_secret_name: parvinbadalov-eventhub-cs
+
+streaming:
+  max_events_per_trigger: 5000
+  bounded_trigger: availableNow
+  checkpoint_subpath: checkpoints/station_status
+  schema_subpath: schemas/station_status
+  minimum_poll_interval_seconds: 60
+
+compute:
+  preferred: gp1
+  fallback: gp2
+  required_state: RUNNING
+  allow_start: false
+  allow_restart: false
+  allow_resize: false
+  allow_terminate: false
+  educational_cluster_creation_enabled: false
+  protected_from_termination: true
+  clusters:
+    gp1:
+      cluster_id: 0702-132442-toro5spu
+      expected_name: GP1
+      expected_spark_version: 17.3.x-scala2.13
+      expected_data_security_mode: USER_ISOLATION
+      verified_state: TERMINATED
+      verified_at: 2026-09-28
+      unity_catalog_compatible: true
+      kafka_compatible: true
+    gp2:
+      cluster_id: 0702-171207-xo9bbc0y
+      expected_name: GP2
+      expected_spark_version: 17.3.x-scala2.13
+      expected_data_security_mode: USER_ISOLATION
+      verified_state: TERMINATED
+      verified_at: 2026-09-28
+      unity_catalog_compatible: true
+      kafka_compatible: true
+
+lakeflow:
+  compute_mode: serverless
+  continuous: false
+  shared_cluster_id: null

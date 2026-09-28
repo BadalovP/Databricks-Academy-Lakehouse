@@ -1,0 +1,16 @@
+.coverage
+.databricks/
+.pytest_cache/
+.ruff_cache/
+.venv/
+build/
+dist/
+*.egg-info/
+__pycache__/
+*.py[cod]
+
+# Runtime reports and local credentials must never be committed.
+reports/*.json
+.env
+.env.*
+!.env.example

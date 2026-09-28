@@ -1,0 +1,50 @@
+name: Demo 3 · UrbanFlow static validation
+
+on:
+  pull_request:
+    paths:
+      - "Demos/Demo3/**"
+      - ".github/workflows/demo3_urbanflow.yml"
+  push:
+    branches: [main]
+    paths:
+      - "Demos/Demo3/**"
+      - ".github/workflows/demo3_urbanflow.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: demo3-urbanflow-static-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static-validation:
+    name: Ruff, Black, pytest, and bundle validation
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Demos/Demo3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: Demos/Demo3/pyproject.toml
+      - name: Install package and test tools
+        run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
+      - name: Ruff
+        run: ruff check .
+      - name: Black
+        run: black --check .
+      - name: Pytest (offline and mocked only)
+        run: pytest
+      - name: Install Databricks CLI
+        uses: databricks/setup-cli@main
+      - name: Validate bundle structure without workspace authentication
+        run: python scripts/validate_bundle.py
+
+      # This workflow deliberately has no deploy or run job. A future live
+      # job will require an approval-protected environment and explicit input.

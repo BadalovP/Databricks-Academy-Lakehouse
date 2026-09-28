@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "urbanflow"
+version = "0.1.0"
+description = "UrbanFlow real-time bike-sharing lakehouse educational project"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "azure-eventhub>=5.12,<6",
+  "databricks-sdk>=0.68",
+  "PyYAML>=6.0",
+  "requests>=2.31",
+]
+
+[project.optional-dependencies]
+dev = [
+  "black>=24,<26",
+  "chispa>=0.11,<1",
+  "jsonschema>=4.23,<5",
+  "pyspark>=3.5,<4.1",
+  "pre-commit>=4,<5",
+  "pytest>=8,<10",
+  "ruff>=0.9,<1",
+]
+
+[project.scripts]
+urbanflow = "urbanflow.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+  "spark: requires a local Spark session",
+  "remote: requires explicitly approved Azure resources",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+builtins = ["dbutils", "display", "spark"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["urbanflow"]
+
+[tool.ruff.lint.per-file-ignores]
+"notebooks/*.py" = ["E402"]
+"pipeline/*.py" = ["E402"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]

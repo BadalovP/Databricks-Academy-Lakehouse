@@ -1,0 +1,23 @@
+resources:
+  jobs:
+    urbanflow_bounded_stream_test:
+      name: "[${bundle.target}] urbanflow_bounded_stream_test"
+      max_concurrent_runs: 1
+      timeout_seconds: 1200
+      parameters:
+        - name: run_stream
+          default: "false"
+        - name: secret_scope
+          default: ${var.secret_scope}
+      tasks:
+        - task_key: bounded_event_hubs_stream
+          existing_cluster_id: ${var.compute_cluster_id}
+          notebook_task:
+            notebook_path: ../notebooks/03_streaming.py
+            base_parameters:
+              run_stream: "{{job.parameters.run_stream}}"
+              secret_scope: "{{job.parameters.secret_scope}}"
+      tags:
+        project: urbanflow
+        compute: existing_shared_cluster
+        safety: requires_already_running_cluster
