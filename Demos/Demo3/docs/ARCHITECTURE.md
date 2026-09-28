@@ -127,8 +127,10 @@ specific station shortage.
 - The notebook never prints Kafka options because they contain SASL credentials.
 - Proposed objects use the `parvinbadalov_urbanflow` schema and `urbanflow` prefix.
 - Existing Lab 8, Lab 9, GP1, GP2, other students' schemas, Event Hubs, and compute are outside the
-  project boundary.
+  project ownership boundary. Notebook Jobs may attach to GP1 or GP2 only when the selected cluster
+  is already running; UrbanFlow never manages their lifecycle.
 - The CLI refuses a Databricks profile whose resolved host differs from the configured host.
+- Lakeflow uses its own serverless managed compute and never receives a GP1 or GP2 cluster ID.
 
 ## Operational failure handling
 
@@ -142,11 +144,13 @@ specific station shortage.
 | Job or pipeline timeout | Report timeout explicitly; do not label it success |
 | Cluster cleanup | Accept cleanup only after the API reports exact `TERMINATED` |
 
+The cluster-cleanup rule above applies only to an explicitly created, isolated educational cluster.
+GP1 and GP2 are hard-coded protected IDs: cleanup stops the UrbanFlow query and leaves those shared
+clusters unchanged.
+
 ## Why Lakeflow remains a later stage
 
-The Bronze stream and local transformation contracts exist, but Lakeflow resources are omitted
-until the approved schema, Volume, compute mode, source paths, and secret access are exercised.
-This avoids producing a syntactically impressive bundle that silently assumes shared-workspace
-permissions. The final Lakeflow source will stay readable: Bronze streaming tables, Silver valid
-and quarantine materialized views, Gold aggregates, explicit expectations, and a reconciliation
-gate.
+The bundle now contains a serverless, triggered Lakeflow configuration and a Bronze Kafka streaming
+table declaration. It has not been deployed or executed. Serverless Lakeflow manages its own
+compute and checkpoints, independently of GP1/GP2. Silver valid/quarantine tables, Gold aggregates,
+expectations, and the reconciliation gate remain later implementation stages.

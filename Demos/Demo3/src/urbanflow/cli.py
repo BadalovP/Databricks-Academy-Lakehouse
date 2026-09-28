@@ -5,10 +5,15 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+from dataclasses import asdict
 from pathlib import Path
 from typing import Sequence
 
-from urbanflow.automation import verify_workspace, workspace_client
+from urbanflow.automation import (
+    select_ready_existing_cluster,
+    verify_workspace,
+    workspace_client,
+)
 from urbanflow.config import load_config
 from urbanflow.gbfs_client import GBFSClient
 from urbanflow.producer import EventHubsPublisher, run_bounded
@@ -24,6 +29,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     status = subcommands.add_parser("workspace-status", help="Read-only Databricks identity check.")
     status.add_argument("--profile", required=True)
+
+    compute = subcommands.add_parser(
+        "compute-status", help="Read-only GP1/GP2 compatibility and readiness check."
+    )
+    compute.add_argument("--profile", required=True)
+    compute.add_argument("--require-ready", action="store_true")
 
     produce = subcommands.add_parser("produce", help="Publish a small bounded Event Hubs sample.")
     produce.add_argument("--poll-count", type=int, default=1)
@@ -71,6 +82,29 @@ def main(argv: Sequence[str] | None = None) -> int:
         client = workspace_client(args.profile, cfg.azure.expected_databricks_host)
         identity = verify_workspace(client, cfg.azure.expected_databricks_host)
         print(json.dumps(identity.__dict__, indent=2))
+        return 0
+
+    if args.command == "compute-status":
+        client = workspace_client(args.profile, cfg.azure.expected_databricks_host)
+        verify_workspace(client, cfg.azure.expected_databricks_host)
+        selected, assessments = select_ready_existing_cluster(client, cfg.compute)
+        print(
+            json.dumps(
+                {
+                    "selected": asdict(selected) if selected else None,
+                    "clusters": [asdict(assessment) for assessment in assessments],
+                    "mutation_policy": {
+                        "allow_start": cfg.compute.allow_start,
+                        "allow_restart": cfg.compute.allow_restart,
+                        "allow_resize": cfg.compute.allow_resize,
+                        "allow_terminate": cfg.compute.allow_terminate,
+                    },
+                },
+                indent=2,
+            )
+        )
+        if args.require_ready and selected is None:
+            raise SystemExit("No compatible shared cluster is already RUNNING.")
         return 0
 
     if args.command == "produce":

@@ -1,6 +1,9 @@
 bundle:
   name: demo3_urbanflow
 
+include:
+  - resources/*.yml
+
 variables:
   workspace_user:
     description: Workspace user whose folder contains the bundle files.
@@ -11,6 +14,12 @@ variables:
     default: parvinbadalov_urbanflow
   volume:
     default: urbanflow_landing
+  compute_cluster_id:
+    description: Existing shared cluster for notebook tasks; GP1 is preferred after read-only verification.
+    default: 0702-132442-toro5spu
+  secret_scope:
+    description: Existing Key Vault-backed Databricks secret scope.
+    default: azure-secrets
 
 sync:
   include:

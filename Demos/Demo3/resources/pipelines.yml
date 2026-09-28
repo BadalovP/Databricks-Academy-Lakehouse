@@ -1,0 +1,24 @@
+resources:
+  pipelines:
+    urbanflow_pipeline:
+      name: "[${bundle.target}] urbanflow_pipeline"
+      catalog: ${var.catalog}
+      schema: ${var.schema}
+      root_path: ../src
+      serverless: true
+      continuous: false
+      channel: CURRENT
+      edition: ADVANCED
+      configuration:
+        urbanflow.catalog: ${var.catalog}
+        urbanflow.schema: ${var.schema}
+        urbanflow.volume: ${var.volume}
+        urbanflow.secret_scope: ${var.secret_scope}
+        urbanflow.event_hubs_secret_name: parvinbadalov-eventhub-cs
+        urbanflow.event_hubs_namespace: evhpl24databricks
+        urbanflow.event_hub_name: parvinbadalov_evh
+        urbanflow.consumer_group: parvinbadalov
+        urbanflow.max_events_per_trigger: "5000"
+      libraries:
+        - file:
+            path: ../pipeline/bronze.py

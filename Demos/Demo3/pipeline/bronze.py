@@ -1,5 +1,6 @@
-# Databricks notebook source
-"""UrbanFlow Bronze streaming source used by the Stage 2 notebook and future pipeline."""
+"""UrbanFlow Bronze Lakeflow declaration; it runs only when the pipeline is started."""
+
+from pyspark import pipelines as dp
 
 from urbanflow.streaming import (
     event_hubs_kafka_options,
@@ -29,4 +30,31 @@ def build_bronze_station_stream(
     return parse_station_events(read_event_hubs_stream(spark, options))
 
 
-__all__ = ["build_bronze_station_stream", "start_bronze_available_now"]
+@dp.table(
+    name="bronze_station_status",
+    comment=(
+        "Raw UrbanFlow station observations with Kafka partition, offset, broker timestamp, "
+        "source JSON, and ingestion timestamp."
+    ),
+    table_properties={"quality": "bronze", "project": "urbanflow"},
+)
+def bronze_station_status():
+    """Use Lakeflow-managed checkpoints and compute; GP1 and GP2 are never attached here."""
+    secret_scope = spark.conf.get("urbanflow.secret_scope")
+    secret_key = spark.conf.get("urbanflow.event_hubs_secret_name")
+    connection_string = dbutils.secrets.get(scope=secret_scope, key=secret_key)
+    return build_bronze_station_stream(
+        spark,
+        namespace=spark.conf.get("urbanflow.event_hubs_namespace"),
+        connection_string=connection_string,
+        event_hub_name=spark.conf.get("urbanflow.event_hub_name"),
+        consumer_group=spark.conf.get("urbanflow.consumer_group"),
+        max_offsets_per_trigger=int(spark.conf.get("urbanflow.max_events_per_trigger")),
+    )
+
+
+__all__ = [
+    "bronze_station_status",
+    "build_bronze_station_stream",
+    "start_bronze_available_now",
+]

@@ -31,3 +31,38 @@ streaming:
   checkpoint_subpath: checkpoints/station_status
   schema_subpath: schemas/station_status
   minimum_poll_interval_seconds: 60
+
+compute:
+  preferred: gp1
+  fallback: gp2
+  required_state: RUNNING
+  allow_start: false
+  allow_restart: false
+  allow_resize: false
+  allow_terminate: false
+  educational_cluster_creation_enabled: false
+  protected_from_termination: true
+  clusters:
+    gp1:
+      cluster_id: 0702-132442-toro5spu
+      expected_name: GP1
+      expected_spark_version: 17.3.x-scala2.13
+      expected_data_security_mode: USER_ISOLATION
+      verified_state: TERMINATED
+      verified_at: 2026-09-28
+      unity_catalog_compatible: true
+      kafka_compatible: true
+    gp2:
+      cluster_id: 0702-171207-xo9bbc0y
+      expected_name: GP2
+      expected_spark_version: 17.3.x-scala2.13
+      expected_data_security_mode: USER_ISOLATION
+      verified_state: TERMINATED
+      verified_at: 2026-09-28
+      unity_catalog_compatible: true
+      kafka_compatible: true
+
+lakeflow:
+  compute_mode: serverless
+  continuous: false
+  shared_cluster_id: null

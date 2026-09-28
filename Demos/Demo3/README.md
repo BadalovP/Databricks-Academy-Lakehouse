@@ -8,8 +8,10 @@ Event Hubs stream, Spark, Delta Lake, Unity Catalog, testing, CI/CD, and Databri
 > **Milestone status — local foundation complete.** Public sources and existing cloud resources
 > have been verified read-only. The API client, bounded producer, Kafka consumer helpers,
 > transformations, quality rules, automation safety primitives, real-data fixtures, tests, and
-> two educational notebooks are implemented. No UrbanFlow Azure resource has been created or
-> modified, no event has been published, and no Databricks compute has been started.
+> two educational notebooks are implemented. GP1 and GP2 were inspected read-only and GP1 is the
+> preferred existing-cluster target, but both were `TERMINATED` during inspection. No UrbanFlow
+> Azure resource has been created or modified, no event has been published, and no Databricks
+> compute has been started.
 
 ## Business problem
 
@@ -51,6 +53,30 @@ join.
 - Databricks Asset Bundles
 - pytest, Ruff, Black, chispa-ready Spark test configuration
 - GitHub Actions with static-only PR and push validation
+
+## Shared academy compute selection
+
+UrbanFlow does not define a notebook job cluster. Ordinary notebook tasks use the DAB variable
+`compute_cluster_id`, whose verified default is GP1. Changing that variable to the verified GP2 ID
+switches compute without editing a notebook.
+
+| Cluster | Verified ID | State on 2026-09-28 | Runtime / access mode | Effective permission | Decision |
+|---|---|---|---|---|---|
+| GP1 | `0702-132442-toro5spu` | `TERMINATED` | DBR `17.3.x-scala2.13`, `USER_ISOLATION` | `CAN_MANAGE` through `admins`; `users` has `CAN_RESTART` | Preferred configuration; currently blocked by the must-already-be-running rule |
+| GP2 | `0702-171207-xo9bbc0y` | `TERMINATED` | DBR `17.3.x-scala2.13`, `USER_ISOLATION` | `CAN_MANAGE` through `admins`; `users` has `CAN_RESTART` | Compatible fallback; currently blocked by the same rule |
+
+DBR 17.3 and standard access mode meet the documented
+[Unity Catalog compute requirements](https://learn.microsoft.com/en-us/azure/databricks/data-governance/unity-catalog/requirements)
+and support Structured Streaming from Kafka. The UrbanFlow options do not use the callback
+settings listed in the
+[standard-compute Kafka limitations](https://learn.microsoft.com/en-us/azure/databricks/compute/standard-limitations).
+This is a compatibility assessment, not live network evidence. The preflight accepts a cluster
+only when its ID, name, runtime, access mode, attach permission, and current `RUNNING` state all
+match. It never starts, restarts, resizes, or terminates GP1 or GP2.
+
+The Job resource defaults `run_stream=false` and uses `existing_cluster_id`. A manual run against a
+terminated all-purpose cluster could start it, so deployment and execution remain blocked until an
+academy operator already has the selected cluster running and the live test is approved.
 
 ## 1. Overall solution architecture
 
@@ -156,13 +182,13 @@ flowchart LR
     INGEST --> PIPE["urbanflow_pipeline"]
     PIPE --> RECON["Reconciliation and DQ gate"]
     RECON --> VALIDATE["Dashboard-source validation"]
-    VALIDATE --> CLEANUP["Verify temporary compute terminated"]
+    VALIDATE --> CLEANUP["Stop query; leave shared cluster unchanged"]
     CLEANUP --> REPORT["JSON execution report"]
 ```
 
-This graph is the intended orchestration, not live evidence. The permanent Job and Lakeflow
-resources do not exist yet. The SDK module already implements host verification, notebook upload,
-explicit polling, timeout reporting, and exact termination verification for later use.
+This graph is the intended orchestration, not live evidence. Local DAB Job and Lakeflow definitions
+now exist, but no corresponding workspace resource has been deployed. The SDK module implements
+host verification, read-only shared-compute assessment, notebook upload, and bounded polling.
 
 ## Implemented modules
 
@@ -173,8 +199,8 @@ explicit polling, timeout reporting, and exact termination verification for late
 | `streaming.py` | Builds Kafka/SASL options, defines the explicit Spark schema, preserves partition/offset metadata, and starts an `availableNow` Bronze write. |
 | `transformations.py` | Classifies shortages, deduplicates, joins station reference data, summarizes availability, and demonstrates SCD2 transitions. |
 | `quality.py` | Routes valid and invalid observations with named completeness, validity, consistency, referential-integrity, and freshness rules. |
-| `automation.py` | Verifies the exact workspace host, uploads source notebooks, polls Jobs/pipelines, and independently confirms cluster termination. |
-| `cli.py` | Validates configuration and public sources, checks workspace identity read-only, and protects Event Hubs publishing behind an explicit confirmation flag. |
+| `automation.py` | Verifies the exact workspace host, assesses GP1 then GP2 read-only, blocks shared-cluster termination, uploads notebooks, and polls Jobs/pipelines. |
+| `cli.py` | Validates configuration and public sources, reports GP1/GP2 readiness read-only, and protects Event Hubs publishing behind an explicit confirmation flag. |
 
 ## Educational notebooks
 
@@ -215,6 +241,15 @@ Refresh samples deliberately with:
 The offline bundle check validates `databricks.yml` against the schema shipped by the installed
 Databricks CLI. An authenticated `databricks bundle validate --target dev` is a separate read-only
 workspace check; it is not required by pull-request CI and never deploys the bundle.
+
+Read-only GP1/GP2 preflight is available through:
+
+```powershell
+urbanflow --config config\azure.yml compute-status --profile URBANFLOW_AZURE_READONLY
+```
+
+Adding `--require-ready` makes the command fail unless GP1 or GP2 is compatible and already
+`RUNNING`. It never changes cluster state.
 
 ## Event producer safety
 
@@ -257,15 +292,20 @@ The detailed, evidence-based matrix is in
 - No UrbanFlow cloud object has been created or executed yet.
 - The existing Event Hub has only one hour of retention, suitable for a short demonstration rather
   than durable history.
+- GP1 and GP2 are technically compatible but were both terminated during the latest read-only
+  inspection. UrbanFlow will not start either cluster.
 - The consumer group and secret scope exist, but access has not been exercised by UrbanFlow.
 - The proposed `parvinbadalov_urbanflow` schema and `urbanflow_landing` Volume do not yet exist.
 - Current and historical station identifiers require the documented `short_name` crosswalk.
-- Dashboard, alerts, Lakeflow declarations, full medallion tables, approximately 1,000-file
-  Auto Loader experiment, governance policies, and real execution evidence belong to later stages.
+- Dashboard, alerts, Silver/Gold Lakeflow declarations, full medallion tables, approximately
+  1,000-file Auto Loader experiment, governance policies, and real execution evidence belong to
+  later stages.
 
 ## Cost and safety boundary
 
 The first live test is intentionally small: one GBFS poll, up to about 2,520 small JSON events,
-one bounded `availableNow` consumer, and immediate compute termination verification. It will reuse
-the existing Event Hub, Key Vault secret, catalog, and authorized storage path. Nothing live will
-run until the user approves the combined request in [the cost and safety plan](docs/COST_AND_SAFETY.md).
+and one bounded `availableNow` consumer on GP1 only if GP1 is already running. GP2 is the fallback
+under the same rule. Cleanup stops the query and verifies it is inactive; it never stops shared
+compute. The test reuses the existing Event Hub, Key Vault secret, catalog, and authorized storage
+path. Nothing live will run until the user approves the combined request in
+[the cost and safety plan](docs/COST_AND_SAFETY.md).

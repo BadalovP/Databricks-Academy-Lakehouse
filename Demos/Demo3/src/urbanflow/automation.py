@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from urbanflow.config import normalize_host
+from urbanflow.config import ComputeSettings, ExistingCluster, normalize_host
 from urbanflow.monitoring import PollResult, poll_state, state_name
 
 
@@ -26,6 +26,28 @@ class ClusterExecution:
     cluster_id: str
     start: PollResult
     cleanup: PollResult | None = None
+
+
+@dataclass(frozen=True)
+class ExistingClusterAssessment:
+    alias: str
+    cluster_id: str
+    name: str
+    state: str
+    spark_version: str
+    data_security_mode: str
+    permission_levels: tuple[str, ...]
+    compatible: bool
+    ready: bool
+    reasons: tuple[str, ...]
+
+
+PROTECTED_SHARED_CLUSTER_IDS = frozenset(
+    {
+        "0702-132442-toro5spu",  # GP1
+        "0702-171207-xo9bbc0y",  # GP2
+    }
+)
 
 
 def workspace_client(profile: str, expected_host: str) -> Any:
@@ -53,6 +75,97 @@ def verify_workspace(client: Any, expected_host: str) -> WorkspaceIdentity:
         )
     current_user = client.current_user.me()
     return WorkspaceIdentity(host=actual_host, user_name=str(current_user.user_name))
+
+
+def assess_existing_cluster(
+    client: Any,
+    configured: ExistingCluster,
+    *,
+    required_state: str = "RUNNING",
+) -> ExistingClusterAssessment:
+    """Inspect one shared cluster without starting, restarting, editing, or terminating it."""
+    actual = client.clusters.get(cluster_id=configured.cluster_id)
+    identity = client.current_user.me()
+    principals = {str(identity.user_name)}
+    principals.update(str(group.display) for group in (getattr(identity, "groups", None) or []))
+    permission_response = client.permissions.get("clusters", configured.cluster_id)
+    effective_permissions: set[str] = set()
+    for entry in permission_response.access_control_list or []:
+        entry_principals = {
+            str(value)
+            for value in (
+                getattr(entry, "user_name", None),
+                getattr(entry, "group_name", None),
+                getattr(entry, "service_principal_name", None),
+            )
+            if value
+        }
+        if principals.isdisjoint(entry_principals):
+            continue
+        effective_permissions.update(
+            state_name(permission.permission_level) for permission in (entry.all_permissions or [])
+        )
+    if "CAN_MANAGE" in effective_permissions:
+        effective_permissions.update({"CAN_RESTART", "CAN_ATTACH_TO"})
+    elif "CAN_RESTART" in effective_permissions:
+        effective_permissions.add("CAN_ATTACH_TO")
+    permission_levels = tuple(sorted(effective_permissions))
+    name = str(actual.cluster_name)
+    state = state_name(actual.state)
+    spark_version = str(actual.spark_version)
+    security_mode = state_name(actual.data_security_mode)
+
+    reasons: list[str] = []
+    if name != configured.expected_name:
+        reasons.append(f"name is {name!r}, expected {configured.expected_name!r}")
+    if spark_version != configured.expected_spark_version:
+        reasons.append(
+            f"runtime is {spark_version!r}, expected {configured.expected_spark_version!r}"
+        )
+    if security_mode != configured.expected_data_security_mode:
+        reasons.append(
+            f"access mode is {security_mode!r}, "
+            f"expected {configured.expected_data_security_mode!r}"
+        )
+    if not configured.unity_catalog_compatible:
+        reasons.append("configuration does not mark the cluster Unity Catalog compatible")
+    if not configured.kafka_compatible:
+        reasons.append("configuration does not mark the cluster Kafka compatible")
+    if "CAN_ATTACH_TO" not in permission_levels:
+        reasons.append("identity does not have CAN_ATTACH_TO")
+
+    compatible = not reasons
+    ready = compatible and state == required_state.upper()
+    if compatible and not ready:
+        reasons.append(f"state is {state}, required {required_state.upper()}")
+    return ExistingClusterAssessment(
+        alias=configured.alias,
+        cluster_id=configured.cluster_id,
+        name=name,
+        state=state,
+        spark_version=spark_version,
+        data_security_mode=security_mode,
+        permission_levels=permission_levels,
+        compatible=compatible,
+        ready=ready,
+        reasons=tuple(reasons),
+    )
+
+
+def select_ready_existing_cluster(
+    client: Any, compute: ComputeSettings
+) -> tuple[ExistingClusterAssessment | None, tuple[ExistingClusterAssessment, ...]]:
+    """Prefer GP1, fall back to GP2, and return none unless one is already running."""
+    assessments = tuple(
+        assess_existing_cluster(
+            client,
+            compute.clusters[alias],
+            required_state=compute.required_state,
+        )
+        for alias in (compute.preferred, compute.fallback)
+    )
+    selected = next((assessment for assessment in assessments if assessment.ready), None)
+    return selected, assessments
 
 
 def upload_source_notebook(client: Any, local_path: str | Path, workspace_path: str) -> None:
@@ -117,6 +230,8 @@ def terminate_and_verify_cluster(
     poll_interval_seconds: float = 10,
 ) -> PollResult:
     """Request deletion and accept success only after an exact TERMINATED state."""
+    if cluster_id in PROTECTED_SHARED_CLUSTER_IDS:
+        raise WorkspaceSafetyError(f"Refusing to terminate protected shared cluster {cluster_id}.")
     client.clusters.delete(cluster_id=cluster_id)
 
     def fetch() -> str:
@@ -138,8 +253,13 @@ def create_demonstration_cluster(
     node_type_id: str,
     policy_id: str,
     timeout_seconds: float = 1200,
+    enabled: bool = False,
 ) -> ClusterExecution:
-    """Create one tagged single-node cluster; caller must always invoke cleanup."""
+    """Optional Lab 9 example; disabled unless a caller makes an explicit code-level choice."""
+    if not enabled:
+        raise WorkspaceSafetyError(
+            "Educational cluster creation is disabled. UrbanFlow uses GP1 or GP2 only."
+        )
     response = client.clusters.create(
         cluster_name=cluster_name,
         spark_version=spark_version,
