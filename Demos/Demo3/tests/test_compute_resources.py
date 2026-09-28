@@ -15,6 +15,8 @@ def test_notebook_job_uses_existing_cluster_and_defaults_to_dry_run() -> None:
     assert task["existing_cluster_id"] == "${var.compute_cluster_id}"
     assert "new_cluster" not in task
     assert job["parameters"][0] == {"name": "run_stream", "default": "false"}
+    assert task["notebook_task"]["notebook_path"].endswith("03_eventhubs_to_bronze.py")
+    assert "schedule" not in job
 
 
 def test_lakeflow_uses_managed_serverless_compute_without_gp_cluster() -> None:
@@ -32,3 +34,13 @@ def test_lakeflow_uses_managed_serverless_compute_without_gp_cluster() -> None:
         .read_text(encoding="utf-8")
         .startswith("# Databricks notebook source")
     )
+
+
+def test_storage_bootstrap_is_isolated_and_non_destructive() -> None:
+    text = (PROJECT_ROOT / "sql/00_prepare_urbanflow_storage.sql").read_text(encoding="utf-8")
+
+    assert "dbr_dev.parvinbadalov_urbanflow" in text
+    assert "urbanflow_landing" in text
+    assert "IF NOT EXISTS" in text
+    assert "DROP " not in text.upper()
+    assert "REPLACE " not in text.upper()

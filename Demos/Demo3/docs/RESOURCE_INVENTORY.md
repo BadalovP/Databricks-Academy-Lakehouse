@@ -76,7 +76,7 @@ messages/checkpoints will not interfere.
 | Item | GP1 | GP2 |
 |---|---|---|
 | Cluster ID | `0702-132442-toro5spu` | `0702-171207-xo9bbc0y` |
-| State on 2026-09-28 | `TERMINATED` | `TERMINATED` |
+| Latest read-only state on 2026-09-28 | `PENDING` (`Starting Spark`) | `TERMINATED` |
 | Runtime | `17.3.x-scala2.13` | `17.3.x-scala2.13` |
 | Access mode | `USER_ISOLATION` | `USER_ISOLATION` |
 | Worker shape | Standard_F4, autoscale 1–2 | Standard_F4, autoscale 1–2 |
@@ -91,9 +91,9 @@ DBR 11.3 LTS or later plus standard/dedicated access mode. Their DBR and standar
 support Kafka Structured Streaming subject to the documented option restrictions. Live Event Hubs
 network and secret access have not been tested.
 
-GP1 showed pending compute-scoped `azure-eventhub`, `databricks-labs-dqx`, and `pytest` libraries
-because the cluster is terminated. UrbanFlow will not change or wait for those libraries. The Spark
-consumer uses the runtime Kafka data source rather than the Python `azure-eventhub` package.
+GP1 showed pending compute-scoped `azure-eventhub`, `databricks-labs-dqx`, and `pytest` libraries.
+UrbanFlow did not start GP1 and will not change or wait for those libraries. The Spark consumer
+uses the runtime Kafka data source rather than the Python `azure-eventhub` package.
 
 ## Compute policies
 
@@ -115,3 +115,8 @@ visible does not itself authorize creation or prove available capacity.
 - A dedicated Lakeflow pipeline and Job under UrbanFlow names.
 - SQL warehouse, dashboard, alert, email destination, row filter, and mask permissions.
 - A second authorized environment for genuine DEV-to-PROD promotion.
+
+The latest read-only secret metadata check confirmed that `azure-secrets` is backed by
+`kvpl24databricks2` and contains `parvinbadalov-eventhub-cs`. The scope ACL returned one unrelated
+principal and did not name the current user. No secret value was requested, so the Job identity's
+ability to read that exact key remains unproven and may require an administrator ACL change.

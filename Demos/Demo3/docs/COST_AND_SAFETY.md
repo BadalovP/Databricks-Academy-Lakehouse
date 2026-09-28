@@ -48,12 +48,18 @@ required for this first test. The DAB Job and Lakeflow definitions remain local 
 
 ### Code to execute
 
-1. Publish one GBFS poll to the existing Event Hub, at most roughly the current station count.
-2. Run the read-only shared-compute preflight. Stop if neither GP1 nor GP2 is already `RUNNING`.
-3. Run the guarded streaming notebook once with `availableNow` on the selected existing cluster.
-4. Validate explicit schema, Kafka partition/offset metadata, event-ID uniqueness, source and
-   collection timestamps, and input/output reconciliation.
-5. Stop the query, verify it is inactive, and confirm the shared cluster was not modified.
+1. Run the read-only shared-compute preflight. Stop if neither GP1 nor GP2 is already `RUNNING`.
+2. Create only the isolated UrbanFlow schema and Volume with the prepared idempotent SQL, or verify
+   that an administrator created them.
+3. Confirm the execution identity can read only the named Event Hubs secret without displaying it.
+4. Publish one validated GBFS poll, capped at 5,000 events, and save the secret-free producer JSON
+   report locally.
+5. Run `03_eventhubs_to_bronze.py` once with `availableNow`, the producer execution ID, expected
+   count, and source timestamp on the selected existing cluster.
+6. Validate explicit schema, Kafka partition/offset metadata, event-ID uniqueness, source,
+   collection and broker timestamps, rejects, duplicates, and exact count reconciliation.
+7. Persist the Bronze JSON report, verify the query is inactive, compare both reports offline, and
+   confirm the shared cluster was not modified.
 
 ### Expected duration
 
@@ -67,12 +73,14 @@ required for this first test. The DAB Job and Lakeflow definitions remain local 
 The Event Hubs namespace already exists, so the incremental message volume is negligible relative
 to its standing namespace cost. Databricks compute is the main incremental cost. Exact DBU and VM
 prices depend on the academy contract and current Azure pricing. For approval planning, retain the
-conservative **USD 2 maximum incremental budget** for at most 20 minutes on an already-running
-shared cluster; this is a ceiling, not a price quote. Recalculate it in the
-[Azure pricing calculator](https://azure.microsoft.com/pricing/calculator/) after the exact mode is
-selected. Limit cost with one bounded run and immediate query cleanup. UrbanFlow does not change
-the shared clusters' existing auto-termination settings. Stop rather than extend the run if the
-20-minute window is reached.
+conservative **USD 2 stop limit** for at most 20 minutes on an already-running shared cluster. This
+is an operator budget threshold, not a guaranteed price.
+[Microsoft's Azure Databricks pricing page](https://azure.microsoft.com/en-us/pricing/details/databricks/)
+states that charges combine VM usage and DBUs and vary with the agreement, workload, instance,
+region, and currency. The academy contract and actual DBU draw are unavailable locally, so a
+defensible exact USD forecast is impossible. Limit exposure with one snapshot, a 5,000-event cap,
+`availableNow`, immediate query verification, and a hard stop at 20 minutes. UrbanFlow does not
+change the shared clusters' auto-termination settings.
 
 ### Required permissions
 
@@ -93,7 +101,7 @@ the shared clusters' existing auto-termination settings. Stop rather than extend
 
 ### Success evidence
 
-- Producer report with count only, no credential or message payload dump.
+- Producer report with count and deterministic event IDs, no credential or message payload dump.
 - Bronze count, distinct event-ID count, partition/offset range, timestamp completeness, and
   reconciliation result.
 - Screenshot of the bounded query or Job task after success.

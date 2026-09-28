@@ -8,6 +8,8 @@ from datetime import UTC, datetime
 from typing import Any, Iterable
 
 REQUIRED_STATUS_FIELDS = (
+    "event_id",
+    "execution_id",
     "station_id",
     "num_bikes_available",
     "num_docks_available",
@@ -15,7 +17,9 @@ REQUIRED_STATUS_FIELDS = (
     "is_renting",
     "is_returning",
     "last_reported",
+    "source_last_updated",
     "collected_at",
+    "source_url",
 )
 
 
@@ -46,6 +50,10 @@ def validate_observation(
         return failures
 
     station_id = str(row["station_id"]).strip()
+    if not str(row["event_id"]).strip():
+        failures.append("EMPTY_EVENT_ID")
+    if not str(row["execution_id"]).strip():
+        failures.append("EMPTY_EXECUTION_ID")
     if not station_id:
         failures.append("EMPTY_STATION_ID")
     if known_station_ids is not None and station_id not in known_station_ids:

@@ -62,7 +62,7 @@ switches compute without editing a notebook.
 
 | Cluster | Verified ID | State on 2026-09-28 | Runtime / access mode | Effective permission | Decision |
 |---|---|---|---|---|---|
-| GP1 | `0702-132442-toro5spu` | `TERMINATED` | DBR `17.3.x-scala2.13`, `USER_ISOLATION` | `CAN_MANAGE` through `admins`; `users` has `CAN_RESTART` | Preferred configuration; currently blocked by the must-already-be-running rule |
+| GP1 | `0702-132442-toro5spu` | `PENDING` (`Starting Spark`) | DBR `17.3.x-scala2.13`, `USER_ISOLATION` | `CAN_MANAGE` through `admins`; `users` has `CAN_RESTART` | Preferred configuration; wait for an independent operator start to reach `RUNNING` before any approved test |
 | GP2 | `0702-171207-xo9bbc0y` | `TERMINATED` | DBR `17.3.x-scala2.13`, `USER_ISOLATION` | `CAN_MANAGE` through `admins`; `users` has `CAN_RESTART` | Compatible fallback; currently blocked by the same rule |
 
 DBR 17.3 and standard access mode meet the documented
@@ -197,6 +197,8 @@ host verification, read-only shared-compute assessment, notebook upload, and bou
 | `gbfs_client.py` | Discovers current feed URLs, handles HTTP errors, validates envelopes and required fields, and preserves source/collection timestamps. |
 | `producer.py` | Builds stable event IDs, suppresses duplicate observations within a bounded run, honors the GBFS TTL, and publishes without logging credentials. |
 | `streaming.py` | Builds Kafka/SASL options, defines the explicit Spark schema, preserves partition/offset metadata, and starts an `availableNow` Bronze write. |
+| `reporting.py` | Produces secret-free Bronze and end-to-end JSON reconciliation with IDs, counts, rejects, duplicates, offsets, and timestamps. |
+| `medallion.py` | Prepares deterministic Silver records, Quarantine rows, duplicate accounting, shortage flags, and Bronze reconciliation locally. |
 | `transformations.py` | Classifies shortages, deduplicates, joins station reference data, summarizes availability, and demonstrates SCD2 transitions. |
 | `quality.py` | Routes valid and invalid observations with named completeness, validity, consistency, referential-integrity, and freshness rules. |
 | `automation.py` | Verifies the exact workspace host, assesses GP1 then GP2 read-only, blocks shared-cluster termination, uploads notebooks, and polls Jobs/pipelines. |
@@ -209,6 +211,9 @@ host verification, read-only shared-compute assessment, notebook upload, and bou
   shortages, prepares an opt-in idempotent MERGE, and runs a dashboard-ready SQL query.
 - [`03_streaming.py`](notebooks/03_streaming.py) explains topics, partitions, offsets, consumer
   groups, checkpoints, micro-batches, restart semantics, and a guarded bounded Event Hubs read.
+- [`03_eventhubs_to_bronze.py`](notebooks/03_eventhubs_to_bronze.py) is the prepared first live
+  test: one execution ID, `availableNow`, exact Bronze reconciliation, a JSON report, and a local
+  Silver/Quarantine/shortage preview. It has not been run.
 
 Every code cell has a preceding Markdown cell covering what, why, input, output, key concepts,
 expected result, presentation wording, and rerun/cost implications.
@@ -263,6 +268,9 @@ urbanflow --config config\azure.yml produce --poll-count 1 --confirm-publish
 ```
 
 Do not run this command until the combined Azure execution request is approved.
+The approved command will also pass an execution ID and `--report-path`; the report contains event
+IDs and counts but no connection string or raw payloads. The matching notebook Job defaults to
+`run_stream=false`, has no schedule, and uses the existing GP1 ID through `existing_cluster_id`.
 
 ## Academy coverage
 
@@ -284,6 +292,7 @@ The detailed, evidence-based matrix is in
 - [Labs 1–9 coverage matrix](docs/LABS_1_TO_9_COVERAGE.md)
 - [Read-only Azure resource inventory](docs/RESOURCE_INVENTORY.md)
 - [Cost and safety plan](docs/COST_AND_SAFETY.md)
+- [First bounded streaming test runbook](docs/FIRST_STREAMING_TEST.md)
 - [20–25 minute presentation guide](docs/PRESENTATION_GUIDE.md)
 - [Evidence policy and future screenshots](docs/evidence/README.md)
 
@@ -292,9 +301,11 @@ The detailed, evidence-based matrix is in
 - No UrbanFlow cloud object has been created or executed yet.
 - The existing Event Hub has only one hour of retention, suitable for a short demonstration rather
   than durable history.
-- GP1 and GP2 are technically compatible but were both terminated during the latest read-only
-  inspection. UrbanFlow will not start either cluster.
+- GP1 and GP2 are technically compatible. GP1 was `PENDING` and GP2 was `TERMINATED` during the
+  latest read-only inspection. UrbanFlow did not start either cluster and will not change them.
 - The consumer group and secret scope exist, but access has not been exercised by UrbanFlow.
+- The `azure-secrets` scope metadata is visible, but its returned ACL does not name the current
+  user; secret-value access remains an explicit live preflight or administrator item.
 - The proposed `parvinbadalov_urbanflow` schema and `urbanflow_landing` Volume do not yet exist.
 - Current and historical station identifiers require the documented `short_name` crosswalk.
 - Dashboard, alerts, Silver/Gold Lakeflow declarations, full medallion tables, approximately

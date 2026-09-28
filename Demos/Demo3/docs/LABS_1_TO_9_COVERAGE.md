@@ -32,13 +32,13 @@ execution.
 | 2 | Ingestion Job | Planned bounded orchestration | README Job diagram | Job absent | Pending live |
 | 2 | Legacy mounts exercise | Explanation deliberately separated from core design | Architecture security boundary | No deprecated mount created | Pending live |
 | 3 | Auto Loader | Historical contract and Volume layout planned | `ARCHITECTURE.md` | Source verified; loader pending | Pending live |
-| 3 | Structured Streaming | Kafka reader, parser, bounded writer | `streaming.py`, `03_streaming.py` | Options/tests pass | Implemented locally |
+| 3 | Structured Streaming | Kafka reader, parser, bounded writer | `streaming.py`, `03_eventhubs_to_bronze.py` | Options/schema/path tests pass | Implemented locally |
 | 3 | Event Hubs / Kafka | Existing Standard namespace/hub plus GP1/GP2 compatibility contract | inventory/config/streaming | Kafka enabled; DBR/access mode compatible; no message read | Implemented locally |
 | 3 | Real Python producer | TTL-aware, duplicate-aware, finite Event Hubs producer | `producer.py`, CLI | Mocked tests | Implemented locally |
 | 3 | Explicit schema | `StructType` station event contract | `streaming.py` | Static/tests | Implemented locally |
 | 3 | Schema inference/evolution/rescue | Strategy documented | `ARCHITECTURE.md` | Controlled exercise absent | Pending live |
 | 3 | schemaLocation/checkpoint | Isolated paths configured; checkpoint used by writer | config and notebook | Path validation only | Implemented locally |
-| 3 | availableNow / micro-batches | Bounded trigger and safe progress output | `03_streaming.py` | No live query | Implemented locally |
+| 3 | availableNow / micro-batches | Bounded trigger and safe progress output | `03_eventhubs_to_bronze.py` | No live query | Implemented locally |
 | 3 | Replay and semantics | Exactly-once/at-least-once explanation | README / architecture | Documentation review | Implemented locally |
 | 3 | Approximately 1,000 files | Local generator planned | Coverage matrix | Generator absent | Pending live |
 | 4 | Cleaning, explicit schemas, deduplication | Pure and Spark deterministic functions | `transformations.py`, `quality.py` | Unit tests | Implemented locally |
@@ -50,7 +50,7 @@ execution.
 | 4 | OPTIMIZE/VACUUM/liquid clustering | Comparison and safe maintenance exercise still required | Coverage matrix | None | Pending live |
 | 5 | Lakeflow pipeline | Serverless triggered resource and Bronze Kafka streaming table declared | pipeline and `resources/pipelines.yml` | Bundle schema validation; not deployed | Implemented locally |
 | 5 | Streaming tables / materialized views | Physical model specified | `ARCHITECTURE.md` | None | Pending live |
-| 5 | Bronze/Silver/Quarantine/Gold | Local routing and planned objects | `quality.py`, architecture | Unit tests only | Implemented locally |
+| 5 | Bronze/Silver/Quarantine/Gold | Bronze report plus local Silver, Quarantine, duplicate, and shortage preparation | `reporting.py`, `medallion.py`, architecture | Unit tests only | Implemented locally |
 | 5 | Expectations, lineage, monitoring | Requirements identified | Architecture | Live evidence absent | Pending live |
 | 5 | DAB deployment | Bundle targets plus undeployed Job and serverless Lakeflow resources | `databricks.yml`, `resources/` | Static validation | Implemented locally |
 | 6 | Fact/dimension model | Proposed operational star model with grains | README / architecture | Tables absent | Implemented locally |
@@ -69,7 +69,7 @@ execution.
 | 7 | Reconciliation / anomaly gates | Local input routing reconciles; table volume gates pending | `quality.py` | Unit test | Implemented locally |
 | 7 | Databricks Connect / monitoring | Environment capability not yet tested | Coverage matrix | None | Pending live |
 | 8 | DAB and GitHub Actions | Static workflow, two targets, existing-cluster Job, managed-compute pipeline | workflow / bundle/resources | Static local validation | Implemented locally |
-| 8 | PR static checks | Ruff, Black, pytest, bundle validation | workflow | Not pushed/run yet | Implemented locally |
+| 8 | PR static checks | Ruff, Black, pytest, bundle validation | workflow | Milestone 1 PR #34 passed and merged | Implemented locally |
 | 8 | Environment config | `dev.yml`, `azure.yml`, DAB targets | config / bundle | Static only | Implemented locally |
 | 8 | Idempotent deployment / approvals | Live job deliberately absent pending resource approval | cost plan | None | Pending live |
 | 8 | DEV-to-PROD promotion | Second authorized environment not established | resource inventory | One real target confirmed | Pending live |
@@ -79,7 +79,7 @@ execution.
 | 9 | Notebook upload | Base64 SOURCE import helper | `automation.py` | Mock/live test pending | Implemented locally |
 | 9 | Jobs API / pipeline trigger | Polling primitives implemented | automation/monitoring | Create/reset/trigger orchestration pending | Pending live |
 | 9 | Explicit polling/timeouts/errors | Generic bounded polling and domain errors | monitoring/client/tests | Unit tests | Implemented locally |
-| 9 | JSON reports | CLI JSON and evidence design | CLI / cost plan | Full execution report pending | Implemented locally |
+| 9 | JSON reports | Producer, Bronze, and offline end-to-end reconciliation reports | CLI / `reporting.py` / runbook | Offline tests; live report pending | Implemented locally |
 | 9 | Termination verification | Exact `TERMINATED` required | `automation.py` | Mocked test | Implemented locally |
 | 9 | CI integration | Static CI only; live integration requires approval | workflow | No live workflow | Pending live |
 

@@ -34,7 +34,7 @@ def _is_markdown(cell: str) -> bool:
 
 @pytest.mark.parametrize(
     "notebook",
-    [Path("notebooks/01_fundamentals.py"), Path("notebooks/03_streaming.py")],
+    sorted(path.relative_to(PROJECT_ROOT) for path in (PROJECT_ROOT / "notebooks").glob("*.py")),
 )
 def test_every_code_cell_has_complete_preceding_markdown(notebook: Path) -> None:
     cells = _cells(PROJECT_ROOT / notebook)
@@ -53,7 +53,7 @@ def test_every_code_cell_has_complete_preceding_markdown(notebook: Path) -> None
 
 @pytest.mark.parametrize(
     "notebook",
-    [Path("notebooks/01_fundamentals.py"), Path("notebooks/03_streaming.py")],
+    sorted(path.relative_to(PROJECT_ROOT) for path in (PROJECT_ROOT / "notebooks").glob("*.py")),
 )
 def test_notebook_has_intro_and_teaching_summary(notebook: Path) -> None:
     text = (PROJECT_ROOT / notebook).read_text(encoding="utf-8")

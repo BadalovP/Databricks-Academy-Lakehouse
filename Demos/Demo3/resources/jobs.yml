@@ -9,14 +9,26 @@ resources:
           default: "false"
         - name: secret_scope
           default: ${var.secret_scope}
+        - name: execution_id
+          default: NOT_APPROVED
+        - name: expected_published_events
+          default: "0"
+        - name: expected_source_last_updated
+          default: "0"
+        - name: starting_offsets
+          default: earliest
       tasks:
         - task_key: bounded_event_hubs_stream
           existing_cluster_id: ${var.compute_cluster_id}
           notebook_task:
-            notebook_path: ../notebooks/03_streaming.py
+            notebook_path: ../notebooks/03_eventhubs_to_bronze.py
             base_parameters:
               run_stream: "{{job.parameters.run_stream}}"
               secret_scope: "{{job.parameters.secret_scope}}"
+              execution_id: "{{job.parameters.execution_id}}"
+              expected_published_events: "{{job.parameters.expected_published_events}}"
+              expected_source_last_updated: "{{job.parameters.expected_source_last_updated}}"
+              starting_offsets: "{{job.parameters.starting_offsets}}"
       tags:
         project: urbanflow
         compute: existing_shared_cluster

@@ -23,6 +23,9 @@ def test_dev_config_is_safe_and_identity_prefixed() -> None:
     assert config.compute.allow_terminate is False
     assert config.compute.educational_cluster_creation_enabled is False
     assert config.compute.protected_from_termination is True
+    assert config.streaming.starting_offsets == "earliest"
+    assert config.streaming.max_publish_events == 5000
+    assert config.streaming.checkpoint_subpath.startswith("checkpoints/")
     assert config.lakeflow.compute_mode == "serverless"
     assert config.lakeflow.shared_cluster_id is None
 

@@ -25,6 +25,7 @@ sync:
   include:
     - notebooks/**
     - pipeline/**
+    - sql/**
     - src/**
     - config/**
     - data/samples/**

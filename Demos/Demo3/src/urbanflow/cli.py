@@ -16,7 +16,13 @@ from urbanflow.automation import (
 )
 from urbanflow.config import load_config
 from urbanflow.gbfs_client import GBFSClient
-from urbanflow.producer import EventHubsPublisher, run_bounded
+from urbanflow.producer import (
+    EventHubsPublisher,
+    new_execution_id,
+    publish_snapshot,
+    run_bounded,
+)
+from urbanflow.reporting import reconcile_producer_and_bronze, write_json_report
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -38,7 +44,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     produce = subcommands.add_parser("produce", help="Publish a small bounded Event Hubs sample.")
     produce.add_argument("--poll-count", type=int, default=1)
+    produce.add_argument("--execution-id")
+    produce.add_argument("--report-path", type=Path)
     produce.add_argument("--confirm-publish", action="store_true")
+
+    reconcile = subcommands.add_parser(
+        "reconcile-reports", help="Compare producer and Bronze JSON reports offline."
+    )
+    reconcile.add_argument("--producer-report", type=Path, required=True)
+    reconcile.add_argument("--bronze-report", type=Path, required=True)
+    reconcile.add_argument("--output", type=Path)
     return parser
 
 
@@ -112,14 +127,53 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise SystemExit("Refusing to publish without --confirm-publish.")
         client = GBFSClient(cfg.sources.gbfs_discovery_url, language=cfg.sources.gbfs_language)
         publisher = EventHubsPublisher.from_environment()
+        if publisher.event_hub_name != cfg.azure.event_hub_name:
+            raise SystemExit(
+                "AZURE_EVENTHUB_NAME does not match the configured UrbanFlow Event Hub."
+            )
+        execution_id = args.execution_id or new_execution_id()
+        if args.poll_count == 1:
+            report = publish_snapshot(
+                client,
+                publisher,
+                execution_id=execution_id,
+                max_publish_events=cfg.streaming.max_publish_events,
+            )
+            report_data = report.as_dict()
+            if args.report_path:
+                write_json_report(report_data, args.report_path)
+            print(json.dumps(report_data, indent=2))
+            return 0
+        if args.report_path:
+            raise SystemExit("--report-path is supported only for the one-snapshot live test.")
         total = run_bounded(
             client,
             publisher,
             poll_count=args.poll_count,
             minimum_interval_seconds=cfg.streaming.minimum_poll_interval_seconds,
+            max_publish_events=cfg.streaming.max_publish_events,
+            execution_id=execution_id,
         )
-        print(json.dumps({"published_events": total, "poll_count": args.poll_count}, indent=2))
+        print(
+            json.dumps(
+                {
+                    "execution_id": execution_id,
+                    "published_events": total,
+                    "poll_count": args.poll_count,
+                },
+                indent=2,
+            )
+        )
         return 0
+
+    if args.command == "reconcile-reports":
+        producer_report = json.loads(args.producer_report.read_text(encoding="utf-8"))
+        bronze_report = json.loads(args.bronze_report.read_text(encoding="utf-8"))
+        report = reconcile_producer_and_bronze(producer_report, bronze_report)
+        if args.output:
+            write_json_report(report, args.output)
+        print(json.dumps(report, indent=2))
+        return 0 if report["status"] == "PASS" else 1
 
     raise AssertionError(f"Unhandled command: {args.command}")
 
