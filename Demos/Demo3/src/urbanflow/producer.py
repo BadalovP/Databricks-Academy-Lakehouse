@@ -19,9 +19,104 @@ logger = logging.getLogger(__name__)
 DEFAULT_EVENTHUB_RETRY_TOTAL = 3
 DEFAULT_EVENTHUB_RETRY_BACKOFF_SECONDS = 0.5
 
+# One batch is one send_batch call, so this also bounds how much data a single
+# network write has to move. 300 events of roughly 680 bytes is about 204 KiB,
+# leaving a wide margin under the 1 MiB Event Hubs batch ceiling.
+DEFAULT_EVENTS_PER_BATCH = 300
+
+# The Azure SDK's own default socket timeout is short. A slow or lossy uplink can
+# exceed it on a large write, so it is configurable rather than fixed.
+DEFAULT_SOCKET_TIMEOUT_SECONDS = 120.0
+
+TRANSPORT_AMQP = "amqp"
+TRANSPORT_WEBSOCKET = "websocket"
+SUPPORTED_TRANSPORTS = (TRANSPORT_AMQP, TRANSPORT_WEBSOCKET)
+
+# Delivery status of one batch. "uncertain" is the important one: a send that
+# raised may still have reached the broker, because the failure can happen after
+# the frame left this machine but before the acknowledgement came back.
+BATCH_CONFIRMED = "confirmed"
+BATCH_UNCERTAIN = "uncertain"
+BATCH_NOT_ATTEMPTED = "not_attempted"
+
 
 class Publisher(Protocol):
-    def send(self, events: Iterable[dict[str, Any]]) -> int: ...
+    def send(self, events: Iterable[dict[str, Any]]) -> "PublishOutcome": ...
+
+
+@dataclass(frozen=True)
+class BatchOutcome:
+    """What happened to one batch, and exactly which event IDs it carried."""
+
+    index: int
+    event_ids: tuple[str, ...]
+    status: str
+
+    @property
+    def size(self) -> int:
+        return len(self.event_ids)
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "index": self.index,
+            "status": self.status,
+            "size": self.size,
+            "event_ids": list(self.event_ids),
+        }
+
+
+@dataclass(frozen=True)
+class PublishOutcome:
+    """Per-batch delivery evidence for one publish attempt.
+
+    Separating confirmed from uncertain from never-attempted is what lets a retry
+    resend only the uncertain and unsent batches. Because event IDs are a pure
+    function of the observation, a resent event keeps its original ID and the
+    Bronze layer can recognise it as a duplicate rather than a new observation.
+    """
+
+    batches: tuple[BatchOutcome, ...]
+
+    def _ids(self, status: str) -> tuple[str, ...]:
+        return tuple(i for b in self.batches if b.status == status for i in b.event_ids)
+
+    @property
+    def confirmed_event_ids(self) -> tuple[str, ...]:
+        return self._ids(BATCH_CONFIRMED)
+
+    @property
+    def uncertain_event_ids(self) -> tuple[str, ...]:
+        return self._ids(BATCH_UNCERTAIN)
+
+    @property
+    def not_attempted_event_ids(self) -> tuple[str, ...]:
+        return self._ids(BATCH_NOT_ATTEMPTED)
+
+    @property
+    def confirmed_events(self) -> int:
+        return len(self.confirmed_event_ids)
+
+    @property
+    def uncertain_events(self) -> int:
+        return len(self.uncertain_event_ids)
+
+    @property
+    def not_attempted_events(self) -> int:
+        return len(self.not_attempted_event_ids)
+
+    @property
+    def complete(self) -> bool:
+        return all(b.status == BATCH_CONFIRMED for b in self.batches)
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "batch_count": len(self.batches),
+            "confirmed_events": self.confirmed_events,
+            "uncertain_events": self.uncertain_events,
+            "not_attempted_events": self.not_attempted_events,
+            "complete": self.complete,
+            "batches": [b.as_dict() for b in self.batches],
+        }
 
 
 def event_id(row: dict[str, Any]) -> str:
@@ -72,21 +167,30 @@ class OversizedEventError(ValueError):
     """One prepared event is larger than a single Event Hubs batch can hold."""
 
 
-class PartialPublishError(RuntimeError):
-    """An Event Hubs send failed; `published_events` says how many events were accepted first."""
+class BatchTooLargeError(ValueError):
+    """A whole batch exceeded the Event Hubs size limit, so max_events_per_batch is too high."""
 
-    def __init__(self, published_events: int, cause: BaseException) -> None:
-        if published_events:
-            message = (
-                f"Event Hubs send failed after {published_events} events were already published "
-                f"({type(cause).__name__}); reconcile those orphan events before retrying."
-            )
-        else:
-            message = (
-                f"Event Hubs send failed before any event was confirmed ({type(cause).__name__})."
-            )
+
+class PartialPublishError(RuntimeError):
+    """An Event Hubs send failed part-way; `outcome` says exactly which batches got through.
+
+    Carries no SDK exception message, because an upstream message could echo
+    connection details. Only the exception type name is surfaced.
+    """
+
+    def __init__(self, outcome: PublishOutcome, cause: BaseException) -> None:
+        message = (
+            f"Event Hubs send failed ({type(cause).__name__}): "
+            f"{outcome.confirmed_events} events confirmed, "
+            f"{outcome.uncertain_events} of uncertain delivery, "
+            f"{outcome.not_attempted_events} never attempted. "
+            "Resend only the uncertain and not-attempted batches, keeping their original "
+            "event IDs so duplicates stay detectable."
+        )
         super().__init__(message)
-        self.published_events = published_events
+        self.outcome = outcome
+        # Retained for callers that only care about the confirmed count.
+        self.published_events = outcome.confirmed_events
 
 
 @dataclass
@@ -98,9 +202,40 @@ class EventHubsPublisher:
     event_hub_name: str
     retry_total: int = DEFAULT_EVENTHUB_RETRY_TOTAL
     retry_backoff_seconds: float = DEFAULT_EVENTHUB_RETRY_BACKOFF_SECONDS
+    max_events_per_batch: int = DEFAULT_EVENTS_PER_BATCH
+    # "websocket" tunnels AMQP over port 443, which traverses firewalls and proxies
+    # that interfere with raw AMQP on 5671.
+    transport: str = TRANSPORT_AMQP
+    socket_timeout_seconds: float | None = DEFAULT_SOCKET_TIMEOUT_SECONDS
+
+    def __post_init__(self) -> None:
+        if self.transport not in SUPPORTED_TRANSPORTS:
+            raise ValueError(f"transport must be one of {SUPPORTED_TRANSPORTS}.")
+        if self.max_events_per_batch < 1:
+            raise ValueError("max_events_per_batch must be positive.")
+        if self.socket_timeout_seconds is not None and self.socket_timeout_seconds <= 0:
+            raise ValueError("socket_timeout_seconds must be positive when set.")
+
+    def _client_kwargs(self) -> dict[str, Any]:
+        """Build the SDK keyword arguments, including transport and socket timeout."""
+        kwargs: dict[str, Any] = {
+            "conn_str": self.connection_string,
+            "eventhub_name": self.event_hub_name,
+            "retry_total": self.retry_total,
+            "retry_backoff_factor": self.retry_backoff_seconds,
+        }
+        if self.transport == TRANSPORT_WEBSOCKET:
+            # Imported only on the path that needs it, so the default AMQP path does
+            # not depend on this symbol existing.
+            from azure.eventhub import TransportType
+
+            kwargs["transport_type"] = TransportType.AmqpOverWebsocket
+        if self.socket_timeout_seconds is not None:
+            kwargs["socket_timeout"] = self.socket_timeout_seconds
+        return kwargs
 
     @classmethod
-    def from_environment(cls) -> "EventHubsPublisher":
+    def from_environment(cls, **options: Any) -> "EventHubsPublisher":
         """Read the credential from the process environment.
 
         Kept for non-interactive callers such as CI, but `from_key_vault` is the
@@ -115,7 +250,7 @@ class EventHubsPublisher:
             raise RuntimeError(
                 "AZURE_EVENTHUB_CONNECTION_STRING and AZURE_EVENTHUB_NAME are required."
             )
-        return cls(connection_string=connection_string, event_hub_name=event_hub_name)
+        return cls(connection_string=connection_string, event_hub_name=event_hub_name, **options)
 
     @classmethod
     def from_key_vault(
@@ -125,6 +260,7 @@ class EventHubsPublisher:
         secret_name: str,
         event_hub_name: str,
         credential: Any | None = None,
+        **options: Any,
     ) -> "EventHubsPublisher":
         """Fetch the connection string from Azure Key Vault for this run only.
 
@@ -153,52 +289,88 @@ class EventHubsPublisher:
             vault_name,
             secret_name,
         )
-        return cls(connection_string=secret.value, event_hub_name=event_hub_name)
+        return cls(connection_string=secret.value, event_hub_name=event_hub_name, **options)
 
-    def send(self, events: Iterable[dict[str, Any]]) -> int:
-        """Publish events in batches and report how many were accepted before any failure."""
+    def send(self, events: Iterable[dict[str, Any]]) -> PublishOutcome:
+        """Publish events in small batches, recording each batch's delivery status.
+
+        One chunk is one batch is one send_batch call, so a single network write
+        never has to move more than max_events_per_batch events. If a send raises,
+        that batch's delivery is UNCERTAIN (it may have reached the broker before
+        the failure) and later batches were never attempted; both are reported so a
+        retry can resend exactly those, unchanged event IDs included.
+        """
         from azure.eventhub import EventData, EventHubProducerClient
 
-        client = EventHubProducerClient.from_connection_string(
-            conn_str=self.connection_string,
-            eventhub_name=self.event_hub_name,
-            retry_total=self.retry_total,
-            retry_backoff_factor=self.retry_backoff_seconds,
-        )
-        sent = 0
+        pairs = [
+            (
+                str(event.get("event_id", "")),
+                json.dumps(event, separators=(",", ":"), sort_keys=True),
+            )
+            for event in events
+        ]
+        chunks = [
+            pairs[start : start + self.max_events_per_batch]
+            for start in range(0, len(pairs), self.max_events_per_batch)
+        ]
+
+        client = EventHubProducerClient.from_connection_string(**self._client_kwargs())
+        outcomes: list[BatchOutcome] = []
         failure: BaseException | None = None
+        failed_index: int | None = None
         try:
-            batch = client.create_batch()
-            for event in events:
-                message = EventData(json.dumps(event, separators=(",", ":"), sort_keys=True))
-                try:
-                    batch.add(message)
-                except ValueError as error:
-                    if len(batch) == 0:
-                        raise OversizedEventError(
-                            "One UrbanFlow event exceeds the Event Hubs batch limit."
+            for index, chunk in enumerate(chunks):
+                batch = client.create_batch()
+                for _, text in chunk:
+                    try:
+                        batch.add(EventData(text))
+                    except ValueError as error:
+                        if len(batch) == 0:
+                            raise OversizedEventError(
+                                "One UrbanFlow event exceeds the Event Hubs batch limit."
+                            ) from error
+                        raise BatchTooLargeError(
+                            f"A batch of {len(chunk)} events exceeded the Event Hubs size "
+                            f"limit; lower max_events_per_batch (currently "
+                            f"{self.max_events_per_batch})."
                         ) from error
-                    client.send_batch(batch)
-                    sent += len(batch)
-                    batch = client.create_batch()
-                    batch.add(message)
-            if len(batch):
                 client.send_batch(batch)
-                sent += len(batch)
+                outcomes.append(BatchOutcome(index, tuple(i for i, _ in chunk), BATCH_CONFIRMED))
         except Exception as error:
-            # Remember the failure so the client is closed before it is re-raised.
             failure = error
+            failed_index = len(outcomes)
         finally:
             client.close()
+
         if failure is not None:
-            if isinstance(failure, OversizedEventError):
-                # Our own message about our own data, so it is safe to surface unchanged.
+            if isinstance(failure, (OversizedEventError, BatchTooLargeError)):
+                # Our own messages about our own data; safe to surface unchanged.
                 raise failure
-            # Suppress the SDK exception chain because an upstream exception message could echo
-            # connection details. The sanitized error preserves the type and confirmed count.
-            raise PartialPublishError(sent, failure) from None
-        logger.info("Published %s UrbanFlow station observations.", sent)
-        return sent
+            assert failed_index is not None
+            for index in range(failed_index, len(chunks)):
+                status = BATCH_UNCERTAIN if index == failed_index else BATCH_NOT_ATTEMPTED
+                outcomes.append(BatchOutcome(index, tuple(i for i, _ in chunks[index]), status))
+            outcome = PublishOutcome(tuple(outcomes))
+            logger.warning(
+                "Event Hubs publish incomplete: %s confirmed, %s uncertain, %s not attempted "
+                "across %s batches.",
+                outcome.confirmed_events,
+                outcome.uncertain_events,
+                outcome.not_attempted_events,
+                len(outcome.batches),
+            )
+            # Suppress the SDK exception chain: an upstream message could echo
+            # connection details. Only the type name and the outcome survive.
+            raise PartialPublishError(outcome, failure) from None
+
+        outcome = PublishOutcome(tuple(outcomes))
+        logger.info(
+            "Published %s UrbanFlow station observations in %s batches of at most %s.",
+            outcome.confirmed_events,
+            len(outcome.batches),
+            self.max_events_per_batch,
+        )
+        return outcome
 
 
 @dataclass(frozen=True)
@@ -215,9 +387,10 @@ class PublishReport:
     duplicate_events_skipped: int
     published_events: int
     event_ids: tuple[str, ...]
+    outcome: PublishOutcome | None = None
 
     def as_dict(self) -> dict[str, Any]:
-        return {
+        data: dict[str, Any] = {
             "execution_id": self.execution_id,
             "feed_name": self.feed_name,
             "source_url": self.source_url,
@@ -229,6 +402,9 @@ class PublishReport:
             "published_events": self.published_events,
             "event_ids": list(self.event_ids),
         }
+        if self.outcome is not None:
+            data["delivery"] = self.outcome.as_dict()
+        return data
 
 
 def publish_snapshot(
@@ -248,10 +424,11 @@ def publish_snapshot(
         raise RuntimeError(
             f"Refusing to publish {len(events)} events; limit is {max_publish_events}."
         )
-    published = publisher.send(events)
+    outcome = publisher.send(events)
+    published = outcome.confirmed_events
     if published != len(events):
         raise RuntimeError(
-            f"Publisher reported {published} events, but {len(events)} were prepared."
+            f"Publisher confirmed {published} events, but {len(events)} were prepared."
         )
     return PublishReport(
         execution_id=execution_id,
@@ -264,6 +441,7 @@ def publish_snapshot(
         duplicate_events_skipped=len(feed.stations) - len(events),
         published_events=published,
         event_ids=tuple(str(event["event_id"]) for event in events),
+        outcome=outcome,
     )
 
 

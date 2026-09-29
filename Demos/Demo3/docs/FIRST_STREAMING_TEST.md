@@ -81,6 +81,12 @@ lifecycle action, library changes, Event Hub deletion or clearing, or any change
 
 ## Exact execution sequence after approval
 
+**For attempt 2, steps 2 and 3 are already satisfied and must be skipped.** The schema, the Volume
+and the Job all exist, and the consumer path (`src/urbanflow/streaming.py`, the notebooks, the
+pipeline sources, `resources/`, `config/`) is byte-identical to the deployed commit — only
+producer-side files changed — so there is nothing to redeploy. Attempt 2 runs steps 1, 4, 5, 6, 7
+and 8 only.
+
 1. Run `urbanflow compute-status --require-ready` against the pinned Azure workspace profile and
    stop unless GP1 is exactly `RUNNING`.
 2. Apply the prepared storage SQL only if the two isolated objects are absent.
@@ -107,6 +113,48 @@ one schema and a Volume in the other.
 Starting offsets are `earliest` only when the dedicated checkpoint has no saved position. Retained
 messages are not deleted. The execution ID isolates this snapshot during reconciliation, and the
 checkpoint advances normally for later approved reruns.
+
+## Attempt 1 (2026-09-29): stopped during publication
+
+The first live attempt reached Event Hubs publication and stopped there. **No retry was made.**
+
+What succeeded: the GP1/permission/plan preflight; creation of the schema
+`dbr_dev.parvinbadalov_urbanflow` and the managed Volume `urbanflow_landing`; a Job-only bundle
+deployment (`404404108673495`, Lakeflow absent); and Key Vault credential retrieval — the AMQP link
+reached `ATTACHED`, which proves the secret, TLS and SASL auth all worked.
+
+What failed: the batch write.
+
+```text
+ConnectError('Can not send frame out due to exception: The write operation timed out')
+ErrorCondition.SocketError ... operation has exhausted retry
+```
+
+**Zero events were published**, verified three independent ways: the producer's own error reported
+none confirmed, no producer manifest was written, and the Azure `IncomingMessages` metric for the
+hub was `0` over the surrounding 30 minutes. So there were no orphan events to reconcile.
+
+**The cause is not proven.** The payload was 2,520 events totalling 1.62 MiB, which exceeds the
+1 MiB batch ceiling and so was sent as two roughly 1 MiB frames — a plausible trigger for a write
+timeout on a slow or lossy uplink. But TCP connects to 5671, 443 and 9093 all succeeded and the
+AMQP link attached, so a hard port block is ruled out while middlebox interference, uplink
+bandwidth and frame size all remain candidates. The producer changes below therefore address
+several candidates at once rather than betting on one diagnosis.
+
+## Producer changes made for attempt 2
+
+| Change | Why |
+|---|---|
+| Batches of 300 events (`--max-events-per-batch`) | One batch is one `send_batch`, so a single write moves about 198 KiB instead of 1 MiB — measured against the live feed, 5.2x headroom under the limit. **All 2,520 stations are still published**, in 9 batches; the snapshot is never truncated. |
+| `--transport websocket` | Tunnels AMQP over port 443, which traverses proxies and firewalls that interfere with raw AMQP on 5671. Default stays `amqp`. |
+| `--socket-timeout-seconds` | The SDK's own default is short; a slow uplink can exceed it on a large write. Defaults to 120s and is overridable. |
+| Per-batch delivery outcomes | Each batch is recorded `confirmed`, `uncertain` or `not_attempted`, with its event IDs. A send that raises is **uncertain, not failed**, because the frame may have reached the broker before the error. |
+
+A retry resends **only** the uncertain and not-attempted batches, and because event IDs are a pure
+function of the observation, resent events keep their original IDs so the Bronze layer can recognise
+duplicates instead of seeing new observations. The producer never republishes the whole snapshot
+automatically, and it never deduplicates on the publish side — deduplication belongs in
+Bronze-to-Silver.
 
 ## Secret handling
 

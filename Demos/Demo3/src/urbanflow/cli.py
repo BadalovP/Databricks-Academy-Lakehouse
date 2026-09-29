@@ -48,6 +48,30 @@ def build_parser() -> argparse.ArgumentParser:
     produce.add_argument("--report-path", type=Path)
     produce.add_argument("--confirm-publish", action="store_true")
     produce.add_argument(
+        "--transport",
+        choices=("amqp", "websocket"),
+        default="amqp",
+        help=(
+            "Event Hubs transport. 'amqp' uses port 5671. 'websocket' tunnels AMQP over port 443, "
+            "which gets through firewalls and proxies that interfere with raw AMQP."
+        ),
+    )
+    produce.add_argument(
+        "--socket-timeout-seconds",
+        type=float,
+        default=None,
+        help="Override the Event Hubs socket timeout, in seconds. Useful on a slow uplink.",
+    )
+    produce.add_argument(
+        "--max-events-per-batch",
+        type=int,
+        default=None,
+        help=(
+            "Events per Event Hubs batch, which bounds how much one network write moves. "
+            "Every station in the snapshot is still published; only the batch size changes."
+        ),
+    )
+    produce.add_argument(
         "--secret-source",
         choices=("key-vault", "environment"),
         default="key-vault",
@@ -137,14 +161,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         if not args.confirm_publish:
             raise SystemExit("Refusing to publish without --confirm-publish.")
         client = GBFSClient(cfg.sources.gbfs_discovery_url, language=cfg.sources.gbfs_language)
+        transport_options: dict[str, object] = {"transport": args.transport}
+        if args.socket_timeout_seconds is not None:
+            transport_options["socket_timeout_seconds"] = args.socket_timeout_seconds
+        if args.max_events_per_batch is not None:
+            transport_options["max_events_per_batch"] = args.max_events_per_batch
         if args.secret_source == "key-vault":
             publisher = EventHubsPublisher.from_key_vault(
                 vault_name=cfg.azure.key_vault_name,
                 secret_name=cfg.azure.event_hubs_secret_name,
                 event_hub_name=cfg.azure.event_hub_name,
+                **transport_options,
             )
         else:
-            publisher = EventHubsPublisher.from_environment()
+            publisher = EventHubsPublisher.from_environment(**transport_options)
         if publisher.event_hub_name != cfg.azure.event_hub_name:
             raise SystemExit(
                 "The resolved Event Hub name does not match the configured UrbanFlow Event Hub."

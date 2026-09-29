@@ -11,9 +11,12 @@ import pytest
 
 from urbanflow.gbfs_client import GBFSFeed
 from urbanflow.producer import (
+    DEFAULT_SOCKET_TIMEOUT_SECONDS,
+    BatchTooLargeError,
     EventHubsPublisher,
     OversizedEventError,
     PartialPublishError,
+    PublishOutcome,
     build_events,
     event_id,
     publish_snapshot,
@@ -54,6 +57,14 @@ def install_fake_eventhub_sdk(
     return factory, fake_client
 
 
+def confirmed_outcome(rows: object) -> PublishOutcome:
+    """Stand in for a fully successful publish of every supplied row."""
+    from urbanflow.producer import BatchOutcome
+
+    ids = tuple(str(row["event_id"]) for row in list(rows))
+    return PublishOutcome((BatchOutcome(0, ids, "confirmed"),))
+
+
 def feed(last_reported: int = 100) -> GBFSFeed:
     return GBFSFeed(
         name="station_status",
@@ -90,7 +101,7 @@ def test_snapshot_report_records_deterministic_ids_and_counts() -> None:
     client = Mock()
     client.fetch_station_status.return_value = feed()
     publisher = Mock()
-    publisher.send.side_effect = lambda rows: len(list(rows))
+    publisher.send.side_effect = confirmed_outcome
 
     report = publish_snapshot(
         client,
@@ -140,13 +151,14 @@ def test_event_hubs_adapter_uses_mocked_sdk_without_logging_secret(
     # Without this the urbanflow logger stays at WARNING, caplog.text is empty, and the
     # "secret was not logged" assertion below would pass even for an INFO-level leak.
     caplog.set_level(logging.DEBUG, logger="urbanflow")
-    assert publisher.send([{"event_id": "one"}]) == 1
+    assert publisher.send([{"event_id": "one"}]).confirmed_events == 1
 
     factory.assert_called_once_with(
         conn_str=FAKE_CONNECTION_STRING,
         eventhub_name="parvinbadalov_evh",
         retry_total=3,
         retry_backoff_factor=0.5,
+        socket_timeout=DEFAULT_SOCKET_TIMEOUT_SECONDS,
     )
     fake_client.send_batch.assert_called_once()
     serialized = fake_client.send_batch.call_args.args[0][0]
@@ -167,18 +179,24 @@ def test_azure_retry_arguments_are_configurable(monkeypatch: pytest.MonkeyPatch)
         FAKE_CONNECTION_STRING, "parvinbadalov_evh", retry_total=5, retry_backoff_seconds=1.5
     )
 
-    assert publisher.send([]) == 0
+    assert publisher.send([]).confirmed_events == 0
 
     assert factory.call_args.kwargs["retry_total"] == 5
     assert factory.call_args.kwargs["retry_backoff_factor"] == 1.5
 
 
 def test_multi_batch_send_returns_the_total_published(monkeypatch: pytest.MonkeyPatch) -> None:
-    _, fake_client = install_fake_eventhub_sdk(monkeypatch, batch_capacity=2)
-    publisher = EventHubsPublisher(FAKE_CONNECTION_STRING, "parvinbadalov_evh")
+    """Batches are cut by max_events_per_batch, so one write never carries everything."""
+    _, fake_client = install_fake_eventhub_sdk(monkeypatch)
+    publisher = EventHubsPublisher(
+        FAKE_CONNECTION_STRING, "parvinbadalov_evh", max_events_per_batch=2
+    )
 
-    assert publisher.send([{"event_id": str(index)} for index in range(5)]) == 5
+    outcome = publisher.send([{"event_id": str(index)} for index in range(5)])
 
+    assert outcome.confirmed_events == 5
+    assert outcome.complete is True
+    assert [b.size for b in outcome.batches] == [2, 2, 1]
     assert fake_client.send_batch.call_count == 3
     fake_client.close.assert_called_once()
 
@@ -186,15 +204,29 @@ def test_multi_batch_send_returns_the_total_published(monkeypatch: pytest.Monkey
 def test_failure_after_partial_send_reports_the_published_count(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _, fake_client = install_fake_eventhub_sdk(monkeypatch, batch_capacity=2)
+    _, fake_client = install_fake_eventhub_sdk(monkeypatch)
     fake_client.send_batch.side_effect = [None, RuntimeError("Event Hubs is unavailable.")]
-    publisher = EventHubsPublisher(FAKE_CONNECTION_STRING, "parvinbadalov_evh")
+    publisher = EventHubsPublisher(
+        FAKE_CONNECTION_STRING, "parvinbadalov_evh", max_events_per_batch=2
+    )
 
     with pytest.raises(PartialPublishError) as error:
         publisher.send([{"event_id": str(index)} for index in range(5)])
 
+    outcome = error.value.outcome
     assert error.value.published_events == 2
-    assert "2 events were already published" in str(error.value)
+    assert (outcome.confirmed_events, outcome.uncertain_events) == (2, 2)
+    assert outcome.not_attempted_events == 1
+    assert outcome.complete is False
+    # The batch that raised is UNCERTAIN, not failed: it may have reached the broker.
+    assert [b.status for b in outcome.batches] == [
+        "confirmed",
+        "uncertain",
+        "not_attempted",
+    ]
+    assert outcome.confirmed_event_ids == ("0", "1")
+    assert outcome.uncertain_event_ids == ("2", "3")
+    assert outcome.not_attempted_event_ids == ("4",)
     fake_client.close.assert_called_once()
 
 
@@ -223,6 +255,7 @@ def test_event_hubs_failure_is_sanitized_and_client_is_closed(
         EventHubsPublisher(fake_secret, "hub").send([{"event_id": "one"}])
 
     assert error.value.published_events == 0
+    assert error.value.outcome.uncertain_events == 1
     assert "not-a-secret" not in str(error.value)
     fake_client.close.assert_called_once()
 
@@ -231,7 +264,7 @@ def test_bounded_run_respects_ttl_and_does_not_publish_duplicates() -> None:
     client = Mock()
     client.fetch_station_status.side_effect = [feed(), feed()]
     publisher = Mock()
-    publisher.send.side_effect = lambda rows: len(list(rows))
+    publisher.send.side_effect = confirmed_outcome
     sleep = Mock()
     assert run_bounded(client, publisher, poll_count=2, sleep_fn=sleep) == 1
     sleep.assert_called_once_with(60)
@@ -319,3 +352,182 @@ def test_from_key_vault_rejects_an_empty_secret(monkeypatch: pytest.MonkeyPatch)
             secret_name="parvinbadalov-eventhub-cs",
             event_hub_name="parvinbadalov_evh",
         )
+
+
+# --- transport, timeout and batch-size configuration -------------------------
+
+
+def test_websocket_transport_is_passed_to_the_sdk(monkeypatch: pytest.MonkeyPatch) -> None:
+    """AMQP over WebSocket uses port 443, which survives proxies that break raw AMQP."""
+    factory, _ = install_fake_eventhub_sdk(monkeypatch)
+    # The websocket path is the only one that touches TransportType, so the fake
+    # module only needs it here.
+    sys.modules["azure.eventhub"].TransportType = SimpleNamespace(
+        AmqpOverWebsocket="AmqpOverWebsocketSentinel"
+    )
+    publisher = EventHubsPublisher(
+        FAKE_CONNECTION_STRING, "parvinbadalov_evh", transport="websocket"
+    )
+
+    publisher.send([{"event_id": "one"}])
+
+    assert factory.call_args.kwargs["transport_type"] == "AmqpOverWebsocketSentinel"
+
+
+def test_default_transport_stays_amqp_and_sets_no_transport_type(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    factory, _ = install_fake_eventhub_sdk(monkeypatch)
+    publisher = EventHubsPublisher(FAKE_CONNECTION_STRING, "parvinbadalov_evh")
+
+    publisher.send([{"event_id": "one"}])
+
+    assert publisher.transport == "amqp"
+    assert "transport_type" not in factory.call_args.kwargs
+
+
+def test_socket_timeout_is_configurable_and_can_be_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    factory, _ = install_fake_eventhub_sdk(monkeypatch)
+
+    EventHubsPublisher(FAKE_CONNECTION_STRING, "hub", socket_timeout_seconds=45.5).send(
+        [{"event_id": "one"}]
+    )
+    assert factory.call_args.kwargs["socket_timeout"] == 45.5
+
+    # None means "leave the SDK default alone" rather than "use zero".
+    EventHubsPublisher(FAKE_CONNECTION_STRING, "hub", socket_timeout_seconds=None).send(
+        [{"event_id": "one"}]
+    )
+    assert "socket_timeout" not in factory.call_args.kwargs
+
+
+def test_invalid_publisher_options_are_rejected() -> None:
+    with pytest.raises(ValueError, match="transport must be one of"):
+        EventHubsPublisher(FAKE_CONNECTION_STRING, "hub", transport="carrier-pigeon")
+    with pytest.raises(ValueError, match="max_events_per_batch must be positive"):
+        EventHubsPublisher(FAKE_CONNECTION_STRING, "hub", max_events_per_batch=0)
+    with pytest.raises(ValueError, match="socket_timeout_seconds must be positive"):
+        EventHubsPublisher(FAKE_CONNECTION_STRING, "hub", socket_timeout_seconds=0)
+
+
+def test_default_batch_size_is_in_the_intended_range() -> None:
+    """The live retry targets roughly 200-400 events per network write."""
+    assert 200 <= EventHubsPublisher(FAKE_CONNECTION_STRING, "hub").max_events_per_batch <= 400
+
+
+def test_a_batch_that_exceeds_the_size_limit_asks_for_a_smaller_batch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A size overflow must name the fix rather than silently resplitting."""
+    _, fake_client = install_fake_eventhub_sdk(monkeypatch, batch_capacity=2)
+    publisher = EventHubsPublisher(FAKE_CONNECTION_STRING, "hub", max_events_per_batch=5)
+
+    with pytest.raises(BatchTooLargeError, match="lower max_events_per_batch"):
+        publisher.send([{"event_id": str(i)} for i in range(5)])
+
+    fake_client.close.assert_called_once()
+
+
+# --- the whole snapshot must survive batching --------------------------------
+
+
+def test_every_station_in_the_snapshot_is_published_across_batches(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Batching must never truncate the snapshot: all 2,520 stations are published.
+
+    This is the regression guard for the tempting-but-wrong fix of shrinking the
+    snapshot instead of shrinking the batch.
+    """
+    # Fake batch capacity is raised above max_events_per_batch so this test exercises
+    # count-based batching rather than the fake's stand-in for the 1 MiB size limit.
+    _, fake_client = install_fake_eventhub_sdk(monkeypatch, batch_capacity=1000)
+    station_count = 2520
+    events = [{"event_id": f"evt-{i:05d}", "station_id": str(i)} for i in range(station_count)]
+    publisher = EventHubsPublisher(
+        FAKE_CONNECTION_STRING, "parvinbadalov_evh", max_events_per_batch=300
+    )
+
+    outcome = publisher.send(events)
+
+    assert outcome.confirmed_events == station_count
+    assert outcome.complete is True
+    # 2520 / 300 = 8 full batches plus a remainder of 120.
+    assert [b.size for b in outcome.batches] == [300] * 8 + [120]
+    assert sum(b.size for b in outcome.batches) == station_count
+    # Every original ID is present exactly once, in order.
+    assert outcome.confirmed_event_ids == tuple(e["event_id"] for e in events)
+    assert len(set(outcome.confirmed_event_ids)) == station_count
+    assert fake_client.send_batch.call_count == 9
+
+
+# --- retry semantics: identical IDs so duplicates stay detectable -------------
+
+
+def test_retrying_the_unconfirmed_batches_reuses_the_original_event_ids(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A retry must resend the SAME event IDs, so Bronze can spot duplicates.
+
+    Event IDs are a pure function of the observation, so an event resent after an
+    uncertain delivery keeps its identity instead of looking like a new station
+    reading. That is what makes downstream deduplication possible.
+    """
+    _, fake_client = install_fake_eventhub_sdk(monkeypatch)
+    events = [{"event_id": f"evt-{i}"} for i in range(5)]
+    publisher = EventHubsPublisher(FAKE_CONNECTION_STRING, "hub", max_events_per_batch=2)
+
+    fake_client.send_batch.side_effect = [None, RuntimeError("uplink stalled")]
+    with pytest.raises(PartialPublishError) as first:
+        publisher.send(events)
+    outcome = first.value.outcome
+
+    # Resend only what was not confirmed, preserving order and identity.
+    unconfirmed = outcome.uncertain_event_ids + outcome.not_attempted_event_ids
+    assert unconfirmed == ("evt-2", "evt-3", "evt-4")
+    resend = [e for e in events if e["event_id"] in set(unconfirmed)]
+    assert [e["event_id"] for e in resend] == list(unconfirmed)
+
+    fake_client.send_batch.side_effect = None
+    second = publisher.send(resend)
+
+    assert second.complete is True
+    assert second.confirmed_event_ids == ("evt-2", "evt-3", "evt-4")
+    # Union of both attempts covers the snapshot exactly once, with no ID invented.
+    assert set(outcome.confirmed_event_ids) | set(second.confirmed_event_ids) == {
+        e["event_id"] for e in events
+    }
+
+
+def test_duplicate_event_ids_within_one_send_are_reported_verbatim(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The publisher does not silently dedupe; Bronze/Silver is where dedup belongs."""
+    _, fake_client = install_fake_eventhub_sdk(monkeypatch)
+    publisher = EventHubsPublisher(FAKE_CONNECTION_STRING, "hub", max_events_per_batch=2)
+
+    outcome = publisher.send([{"event_id": "same"}, {"event_id": "same"}])
+
+    assert outcome.confirmed_events == 2
+    assert outcome.confirmed_event_ids == ("same", "same")
+
+
+def test_outcome_as_dict_is_json_safe_and_secret_free(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The delivery evidence is written to the producer report, so it must be clean."""
+    _, fake_client = install_fake_eventhub_sdk(monkeypatch)
+    fake_client.send_batch.side_effect = [None, RuntimeError("uplink stalled")]
+    publisher = EventHubsPublisher(FAKE_CONNECTION_STRING, "hub", max_events_per_batch=2)
+
+    with pytest.raises(PartialPublishError) as error:
+        publisher.send([{"event_id": f"evt-{i}"} for i in range(4)])
+
+    payload = json.dumps(error.value.outcome.as_dict())
+    assert FAKE_CONNECTION_STRING not in payload
+    assert "do-not-log" not in payload
+    restored = json.loads(payload)
+    assert restored["confirmed_events"] == 2
+    assert restored["uncertain_events"] == 2
+    assert restored["complete"] is False
+    assert [b["status"] for b in restored["batches"]] == ["confirmed", "uncertain"]
