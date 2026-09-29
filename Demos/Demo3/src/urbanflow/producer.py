@@ -7,7 +7,7 @@ import json
 import logging
 import os
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Callable, Iterable, Protocol
 from uuid import uuid4
@@ -15,6 +15,9 @@ from uuid import uuid4
 from urbanflow.gbfs_client import GBFSClient, GBFSFeed
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_EVENTHUB_RETRY_TOTAL = 3
+DEFAULT_EVENTHUB_RETRY_BACKOFF_SECONDS = 0.5
 
 
 class Publisher(Protocol):
@@ -65,12 +68,32 @@ def build_events(
     return events
 
 
+class PartialPublishError(RuntimeError):
+    """A batch send failed after earlier events had already reached the Event Hub."""
+
+    def __init__(self, published_events: int, cause: BaseException) -> None:
+        if published_events:
+            message = (
+                f"Event Hubs send failed after {published_events} events were already published "
+                f"({type(cause).__name__}); reconcile those orphan events before retrying."
+            )
+        else:
+            message = (
+                f"Event Hubs send failed before any event was confirmed ({type(cause).__name__})."
+            )
+        super().__init__(message)
+        self.published_events = published_events
+
+
 @dataclass
 class EventHubsPublisher:
-    """Azure SDK adapter; credentials stay in memory and are never logged."""
+    """Azure SDK adapter; credentials stay in memory and are never logged or rendered."""
 
-    connection_string: str
+    # repr=False keeps the SAS key out of repr(), str(), f-strings and pytest tracebacks.
+    connection_string: str = field(repr=False)
     event_hub_name: str
+    retry_total: int = DEFAULT_EVENTHUB_RETRY_TOTAL
+    retry_backoff_seconds: float = DEFAULT_EVENTHUB_RETRY_BACKOFF_SECONDS
 
     @classmethod
     def from_environment(cls) -> "EventHubsPublisher":
@@ -83,12 +106,17 @@ class EventHubsPublisher:
         return cls(connection_string=connection_string, event_hub_name=event_hub_name)
 
     def send(self, events: Iterable[dict[str, Any]]) -> int:
+        """Publish events in batches and report how many were accepted before any failure."""
         from azure.eventhub import EventData, EventHubProducerClient
 
         client = EventHubProducerClient.from_connection_string(
-            conn_str=self.connection_string, eventhub_name=self.event_hub_name
+            conn_str=self.connection_string,
+            eventhub_name=self.event_hub_name,
+            retry_total=self.retry_total,
+            retry_backoff_factor=self.retry_backoff_seconds,
         )
         sent = 0
+        failure: BaseException | None = None
         try:
             batch = client.create_batch()
             for event in events:
@@ -107,8 +135,15 @@ class EventHubsPublisher:
             if len(batch):
                 client.send_batch(batch)
                 sent += len(batch)
+        except Exception as error:
+            # Remember the failure so the client is closed before it is re-raised.
+            failure = error
         finally:
             client.close()
+        if failure is not None:
+            # Suppress the SDK exception chain because an upstream exception message could echo
+            # connection details. The sanitized error preserves the type and confirmed count.
+            raise PartialPublishError(sent, failure) from None
         logger.info("Published %s UrbanFlow station observations.", sent)
         return sent
 

@@ -12,6 +12,7 @@ def test_dev_config_is_safe_and_identity_prefixed() -> None:
     config = load_config(path)
     assert config.azure.schema == "parvinbadalov_urbanflow_dev"
     assert config.azure.event_hub_name == "parvinbadalov_evh"
+    assert config.sources.gbfs_discovery_url == "https://gbfs.citibikenyc.com/gbfs/2.3/gbfs.json"
     assert config.azure.volume_root.startswith("/Volumes/dbr_dev/parvinbadalov_")
     assert config.compute.preferred == "gp1"
     assert config.compute.preferred_cluster.cluster_id == "0702-132442-toro5spu"

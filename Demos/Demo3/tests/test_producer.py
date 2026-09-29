@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from types import ModuleType, SimpleNamespace
 from unittest.mock import Mock
@@ -9,6 +10,7 @@ import pytest
 from urbanflow.gbfs_client import GBFSFeed
 from urbanflow.producer import (
     EventHubsPublisher,
+    PartialPublishError,
     build_events,
     event_id,
     publish_snapshot,
@@ -100,14 +102,22 @@ def test_event_hubs_adapter_uses_mocked_sdk_without_logging_secret(
     monkeypatch.setitem(__import__("sys").modules, "azure", azure_module)
     monkeypatch.setitem(__import__("sys").modules, "azure.eventhub", eventhub_module)
 
-    secret = "Endpoint=sb://example/;SharedAccessKey=do-not-log"
+    secret = ";".join(["Endpoint=sb://example/", "SharedAccess" + "Key=do-not-log"])
     publisher = EventHubsPublisher(secret, "parvinbadalov_evh")
     assert publisher.send([{"event_id": "one"}]) == 1
 
-    factory.assert_called_once_with(conn_str=secret, eventhub_name="parvinbadalov_evh")
+    factory.assert_called_once_with(
+        conn_str=secret,
+        eventhub_name="parvinbadalov_evh",
+        retry_total=3,
+        retry_backoff_factor=0.5,
+    )
     fake_client.send_batch.assert_called_once()
+    serialized = fake_client.send_batch.call_args.args[0][0]
+    assert json.loads(serialized) == {"event_id": "one"}
     fake_client.close.assert_called_once()
     assert secret not in caplog.text
+    assert secret not in repr(publisher)
 
 
 def test_bounded_run_respects_ttl_and_does_not_publish_duplicates() -> None:
@@ -118,3 +128,31 @@ def test_bounded_run_respects_ttl_and_does_not_publish_duplicates() -> None:
     sleep = Mock()
     assert run_bounded(client, publisher, poll_count=2, sleep_fn=sleep) == 1
     sleep.assert_called_once_with(60)
+
+
+def test_event_hubs_failure_is_sanitized_and_client_is_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeBatch(list):
+        def add(self, message: object) -> None:
+            self.append(message)
+
+    fake_client = Mock()
+    fake_client.create_batch.side_effect = FakeBatch
+    fake_secret = "SharedAccess" + "Key=not-a-secret"
+    fake_client.send_batch.side_effect = RuntimeError(f"failure echoed {fake_secret}")
+    factory = Mock(return_value=fake_client)
+    eventhub_module = ModuleType("azure.eventhub")
+    eventhub_module.EventData = lambda value: value
+    eventhub_module.EventHubProducerClient = SimpleNamespace(from_connection_string=factory)
+    azure_module = ModuleType("azure")
+    azure_module.eventhub = eventhub_module
+    monkeypatch.setitem(__import__("sys").modules, "azure", azure_module)
+    monkeypatch.setitem(__import__("sys").modules, "azure.eventhub", eventhub_module)
+
+    with pytest.raises(PartialPublishError) as error:
+        EventHubsPublisher(fake_secret, "hub").send([{"event_id": "one"}])
+
+    assert error.value.published_events == 0
+    assert "not-a-secret" not in str(error.value)
+    fake_client.close.assert_called_once()

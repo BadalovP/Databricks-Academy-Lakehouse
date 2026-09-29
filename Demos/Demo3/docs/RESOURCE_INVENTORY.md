@@ -2,7 +2,8 @@
 
 [← Main README](../README.md) · [Cost and safety](COST_AND_SAFETY.md)
 
-Discovery was performed read-only on **2026-09-28**. No Azure secret value, token, connection
+Discovery began read-only on **2026-09-28** and Event Hubs/compute metadata was refreshed on
+**2026-09-29**. No Azure secret value, token, connection
 string, Event Hubs event, Databricks table, Job, pipeline, cluster, or workspace file was created,
 retrieved, modified, or deleted.
 
@@ -55,9 +56,14 @@ identity container, exposed through a dedicated UrbanFlow Volume. That write has
 | Kafka enabled | `true` |
 | Existing identity Event Hub | `parvinbadalov_evh` |
 | Partitions | 1 |
-| Retention | 1 hour |
+| Retention | 1 day |
 | Existing consumer groups | `$Default`, `parvinbadalov` |
 | Event-level policy | `parvinbadalov_policy` with Listen and Send |
+
+The 2026-09-29 Azure CLI refresh confirmed the namespace is `Active`, Standard tier, in East US,
+and Kafka-enabled. The Event Hub is `Active` with one partition and one-day retention. The named
+consumer group exists, and the event-level rule still has `Listen` and `Send`. Only metadata and
+rights were read; no key or connection string was requested.
 
 Other students' Event Hubs are visible and excluded. UrbanFlow can probably reuse
 `parvinbadalov_evh` for a short demonstration, subject to approval and validation that existing
@@ -76,7 +82,7 @@ messages/checkpoints will not interfere.
 | Item | GP1 | GP2 |
 |---|---|---|
 | Cluster ID | `0702-132442-toro5spu` | `0702-171207-xo9bbc0y` |
-| Latest read-only state on 2026-09-28 | `PENDING` (`Starting Spark`) | `TERMINATED` |
+| Latest read-only state on 2026-09-29 | `TERMINATED` (inactivity) | `TERMINATED` (inactivity) |
 | Runtime | `17.3.x-scala2.13` | `17.3.x-scala2.13` |
 | Access mode | `USER_ISOLATION` | `USER_ISOLATION` |
 | Worker shape | Standard_F4, autoscale 1–2 | Standard_F4, autoscale 1–2 |
@@ -91,9 +97,10 @@ DBR 11.3 LTS or later plus standard/dedicated access mode. Their DBR and standar
 support Kafka Structured Streaming subject to the documented option restrictions. Live Event Hubs
 network and secret access have not been tested.
 
-GP1 showed pending compute-scoped `azure-eventhub`, `databricks-labs-dqx`, and `pytest` libraries.
-UrbanFlow did not start GP1 and will not change or wait for those libraries. The Spark consumer
-uses the runtime Kafka data source rather than the Python `azure-eventhub` package.
+GP1 had briefly been started by another operator, then auto-terminated after 60 minutes of
+inactivity. UrbanFlow did not start or stop it. Earlier checks showed pending compute-scoped
+`azure-eventhub`, `databricks-labs-dqx`, and `pytest` libraries; UrbanFlow did not modify them. The
+Spark consumer uses the runtime Kafka data source rather than the Python `azure-eventhub` package.
 
 ## Compute policies
 

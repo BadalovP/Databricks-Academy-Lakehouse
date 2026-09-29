@@ -29,7 +29,7 @@ demand, weather, and recency before producing a station-priority indicator.
 
 | Source | Verified use | Current observation |
 |---|---|---|
-| [Citi Bike GBFS](https://gbfs.citibikenyc.com/gbfs/2.3/gbfs.json) | Feed discovery, station reference, station status | GBFS 2.3 discovery currently points to Lyft-hosted feeds; station feeds reported 2,520 stations and a 60-second TTL during discovery. |
+| [Citi Bike GBFS](https://gbfs.citibikenyc.com/gbfs/2.3/gbfs.json) | Feed discovery, station reference, station status | The working versioned discovery URL resolves current feeds instead of hard-coding them; the legacy `/gbfs/en/gbfs.json` URL returned HTTP 403 on 2026-09-29. |
 | [Citi Bike trip history](https://citibikenyc.com/system-data) | January 2024 historical demand sample | The official archive uses the modern 13-column ride schema and is 369,035,302 bytes. UrbanFlow reads a bounded ZIP range and keeps only 40 attributed rows. |
 | [Open-Meteo](https://open-meteo.com/en/docs) | New York weather enrichment | Current response contains observation time, temperature at 2 m, precipitation, and wind speed at 10 m. |
 
@@ -60,9 +60,9 @@ UrbanFlow does not define a notebook job cluster. Ordinary notebook tasks use th
 `compute_cluster_id`, whose verified default is GP1. Changing that variable to the verified GP2 ID
 switches compute without editing a notebook.
 
-| Cluster | Verified ID | State on 2026-09-28 | Runtime / access mode | Effective permission | Decision |
+| Cluster | Verified ID | Latest state on 2026-09-29 | Runtime / access mode | Effective permission | Decision |
 |---|---|---|---|---|---|
-| GP1 | `0702-132442-toro5spu` | `PENDING` (`Starting Spark`) | DBR `17.3.x-scala2.13`, `USER_ISOLATION` | `CAN_MANAGE` through `admins`; `users` has `CAN_RESTART` | Preferred configuration; wait for an independent operator start to reach `RUNNING` before any approved test |
+| GP1 | `0702-132442-toro5spu` | `TERMINATED` (inactivity) | DBR `17.3.x-scala2.13`, `USER_ISOLATION` | `CAN_MANAGE` through `admins`; `users` has `CAN_RESTART` | Preferred configuration; blocked until an independent operator has it `RUNNING` |
 | GP2 | `0702-171207-xo9bbc0y` | `TERMINATED` | DBR `17.3.x-scala2.13`, `USER_ISOLATION` | `CAN_MANAGE` through `admins`; `users` has `CAN_RESTART` | Compatible fallback; currently blocked by the same rule |
 
 DBR 17.3 and standard access mode meet the documented
@@ -299,10 +299,10 @@ The detailed, evidence-based matrix is in
 ## Known limitations
 
 - No UrbanFlow cloud object has been created or executed yet.
-- The existing Event Hub has only one hour of retention, suitable for a short demonstration rather
+- The existing Event Hub has one day of retention, suitable for a short demonstration rather
   than durable history.
-- GP1 and GP2 are technically compatible. GP1 was `PENDING` and GP2 was `TERMINATED` during the
-  latest read-only inspection. UrbanFlow did not start either cluster and will not change them.
+- GP1 and GP2 are technically compatible but both were `TERMINATED` during the latest read-only
+  inspection. UrbanFlow did not start or stop either cluster and will not change them.
 - The consumer group and secret scope exist, but access has not been exercised by UrbanFlow.
 - The `azure-secrets` scope metadata is visible, but its returned ACL does not name the current
   user; secret-value access remains an explicit live preflight or administrator item.

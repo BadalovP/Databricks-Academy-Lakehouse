@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Iterable
 
 from urbanflow.quality import QualityResult, split_quality
-from urbanflow.transformations import classify_availability
+from urbanflow.transformations import classify_availability, summarize_availability
 
 
 @dataclass(frozen=True)
@@ -16,6 +16,7 @@ class PreparedStationBatch:
     quarantine: list[dict[str, Any]]
     duplicates: list[dict[str, Any]]
     shortages: list[dict[str, Any]]
+    shortage_counts: dict[str, int]
     rule_counts: dict[str, int]
 
     @property
@@ -31,6 +32,8 @@ def _deduplicate_event_ids(
     seen: set[str] = set()
     for row in rows:
         identifier = str(row.get("event_id") or "")
+        # First arrival wins: a repeated event ID is a redelivery of the same observation, so the
+        # first copy goes to Silver and every later copy is recorded instead of silently dropped.
         if identifier in seen:
             duplicate = dict(row)
             duplicate["failed_rules"] = ["DUPLICATE_EVENT_ID"]
@@ -75,6 +78,7 @@ def prepare_station_batch(
         quarantine=quality.quarantine,
         duplicates=duplicates,
         shortages=shortages,
+        shortage_counts=summarize_availability(shortages),
         rule_counts=dict(sorted(rule_counts.items())),
     )
     if not prepared.reconciles:

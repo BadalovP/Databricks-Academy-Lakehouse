@@ -4,12 +4,15 @@
 
 ## Current readiness
 
-- GP1 `0702-132442-toro5spu` was `PENDING` with `Starting Spark` during the latest read-only check.
+- GP1 `0702-132442-toro5spu` was `TERMINATED` after inactivity during the latest read-only check.
 - GP2 `0702-171207-xo9bbc0y` was `TERMINATED`.
 - Both use DBR `17.3.x-scala2.13`, standard `USER_ISOLATION`, and are compatible with Unity
   Catalog and Kafka Structured Streaming. The identity has effective attach permission.
 - `dbr_dev.parvinbadalov_urbanflow` and its `urbanflow_landing` Volume do not exist yet.
 - The intended Key Vault-backed scope and secret metadata exist. Secret-value access is unproven.
+- Fresh Azure metadata confirms `evhpl24databricks` is Active, Standard, Kafka-enabled; the Active
+  `parvinbadalov_evh` has one partition and one-day retention; consumer group `parvinbadalov`
+  exists; and `parvinbadalov_policy` has Listen and Send.
 
 Cluster state is ephemeral. A fresh read-only preflight immediately before approval must select
 GP1 only if it is exactly `RUNNING`; otherwise it may select GP2 only if GP2 is exactly `RUNNING`.
@@ -30,6 +33,10 @@ The existing Lakeflow resource remains serverless and triggered. It is neither a
 GP2 nor included in this first execution.
 
 ## One combined approval request
+
+This is a prepared request, not an active approval request. It must not be submitted until a fresh
+read-only preflight names GP1 or GP2 as already `RUNNING`. At present neither cluster is running,
+the isolated schema and Volume are absent, and the secret-scope ACL does not name the user.
 
 Approve one execution window of at most 20 minutes with a USD 2 operator stop limit to:
 

@@ -42,12 +42,37 @@ class ExistingClusterAssessment:
     reasons: tuple[str, ...]
 
 
+# DENYLIST - "never terminate these". Only terminate_and_verify_cluster reads this set.
+# Adding an id here takes a destructive power away; it never grants permission to run.
 PROTECTED_SHARED_CLUSTER_IDS = frozenset(
     {
         "0702-132442-toro5spu",  # GP1
         "0702-171207-xo9bbc0y",  # GP2
     }
 )
+
+# ALLOWLIST - "a live, billable UrbanFlow run may attach here". The bounded-stream
+# notebook reads this set. It is deliberately a SECOND set with the same members today:
+# protecting a newly found cluster from deletion must not authorize billable runs on it,
+# and allowing a cluster to be terminated must not block legitimate runs on it.
+# The two lists mean different things, so never merge them back into one.
+APPROVED_RUN_CLUSTER_IDS = frozenset(
+    {
+        "0702-132442-toro5spu",  # GP1
+        "0702-171207-xo9bbc0y",  # GP2
+    }
+)
+
+
+def resolve_protected_cluster_ids(compute: ComputeSettings | None = None) -> frozenset[str]:
+    """Return every never-terminate id: the hardcoded floor plus anything the YAML declares.
+
+    Single source of truth for termination protection. Configuration can only ADD ids,
+    so editing a YAML file can never remove protection from GP1 or GP2.
+    """
+    if compute is None:
+        return PROTECTED_SHARED_CLUSTER_IDS
+    return PROTECTED_SHARED_CLUSTER_IDS | compute.declared_protected_cluster_ids
 
 
 def workspace_client(profile: str, expected_host: str) -> Any:
@@ -168,8 +193,43 @@ def select_ready_existing_cluster(
     return selected, assessments
 
 
-def upload_source_notebook(client: Any, local_path: str | Path, workspace_path: str) -> None:
-    """Upload one Databricks source notebook with overwrite made explicit."""
+def require_running_cluster(client: Any, cluster_id: str) -> str:
+    """Read-only preflight: refuse to proceed unless the cluster is already RUNNING.
+
+    A Databricks job task pointed at a terminated all-purpose cluster makes Databricks
+    START that cluster, so a dispatcher must call this before submitting any run against
+    shared academy compute. This function only reads (clusters.get); it never starts,
+    restarts, edits, resizes, or deletes a cluster, and installs no libraries.
+    """
+    state = state_name(client.clusters.get(cluster_id=cluster_id).state)
+    if state != "RUNNING":
+        raise WorkspaceSafetyError(
+            f"Cluster {cluster_id} is {state}, not RUNNING. UrbanFlow never starts a shared "
+            "academy cluster: wait until its owner starts it, then run this again."
+        )
+    return state
+
+
+def upload_source_notebook(
+    client: Any,
+    local_path: str | Path,
+    workspace_path: str,
+    *,
+    expected_user_name: str,
+) -> None:
+    """Upload one source notebook, but only inside the expected user's own Workspace folder.
+
+    The academy workspace is shared and ``overwrite=True`` cannot be undone, so a mistyped
+    destination would silently replace another student's notebook.
+    """
+    if not expected_user_name:
+        raise WorkspaceSafetyError("An expected workspace user name is required before upload.")
+    home_folder = f"/Workspace/Users/{expected_user_name}"
+    if not workspace_path.startswith(f"{home_folder}/") or ".." in workspace_path.split("/"):
+        raise WorkspaceSafetyError(
+            f"Refusing to upload to {workspace_path!r}: the destination must be a path "
+            f"inside {home_folder}/."
+        )
     from databricks.sdk.service.workspace import ImportFormat, Language
 
     content = base64.b64encode(Path(local_path).read_bytes()).decode("ascii")
@@ -226,11 +286,12 @@ def terminate_and_verify_cluster(
     client: Any,
     cluster_id: str,
     *,
+    compute: ComputeSettings | None = None,
     timeout_seconds: float = 900,
     poll_interval_seconds: float = 10,
 ) -> PollResult:
     """Request deletion and accept success only after an exact TERMINATED state."""
-    if cluster_id in PROTECTED_SHARED_CLUSTER_IDS:
+    if cluster_id in resolve_protected_cluster_ids(compute):
         raise WorkspaceSafetyError(f"Refusing to terminate protected shared cluster {cluster_id}.")
     client.clusters.delete(cluster_id=cluster_id)
 

@@ -21,7 +21,10 @@ def classify_availability(
     operational = all(bool(result.get(field)) for field in ("is_installed", "is_renting"))
     returnable = bool(result.get("is_returning"))
 
+    # The threshold is inclusive on purpose: a station sitting exactly at the configured number
+    # is already the shortage an operator wants to see, so 2 bikes with a threshold of 2 is LOW.
     result["is_low_bikes"] = operational and bikes <= low_bike_threshold
+    # A station that is not accepting returns cannot have a dock shortage worth reporting.
     result["is_low_docks"] = operational and returnable and docks <= low_dock_threshold
     if not operational:
         result["availability_status"] = "OUT_OF_SERVICE"
@@ -122,6 +125,7 @@ def with_shortage_flags(
     from pyspark.sql import functions as F
 
     operational = F.col("is_installed").cast("boolean") & F.col("is_renting").cast("boolean")
+    # Same inclusive <= rule and same returning requirement as classify_availability above.
     low_bikes = operational & (F.col("num_bikes_available") <= F.lit(low_bike_threshold))
     low_docks = (
         operational

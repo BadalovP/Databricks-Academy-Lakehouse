@@ -19,6 +19,11 @@ def _json_safe(value: Any) -> Any:
     return value
 
 
+def _is_rejected(row: Mapping[str, Any]) -> bool:
+    """A Bronze row is unusable when the payload failed to parse or carries no event ID."""
+    return bool(row.get("parse_error")) or not str(row.get("event_id") or "").strip()
+
+
 def build_bronze_execution_report(
     records: Iterable[Mapping[str, Any]],
     *,
@@ -30,13 +35,12 @@ def build_bronze_execution_report(
 ) -> dict[str, Any]:
     """Reconcile one execution ID without including credentials or raw payloads."""
     rows = [dict(record) for record in records]
+    # Safety-critical filter: the shared Event Hub also holds messages from other producers and
+    # from earlier runs, and the consumer starts at the earliest offset, so this single line is
+    # what makes every count below belong to this execution only. Never remove it.
     matching_rows = [row for row in rows if str(row.get("execution_id")) == execution_id]
-    rejected_rows = [
-        row
-        for row in matching_rows
-        if bool(row.get("parse_error")) or not str(row.get("event_id") or "").strip()
-    ]
-    accepted_rows = [row for row in matching_rows if row not in rejected_rows]
+    rejected_rows = [row for row in matching_rows if _is_rejected(row)]
+    accepted_rows = [row for row in matching_rows if not _is_rejected(row)]
     event_ids = [str(row["event_id"]) for row in accepted_rows]
     distinct_event_ids = sorted(set(event_ids))
     source_timestamps = {
@@ -113,17 +117,22 @@ def reconcile_producer_and_bronze(
     producer_ids = {str(value) for value in producer_report.get("event_ids", [])}
     bronze_ids = {str(value) for value in bronze_report.get("event_ids", [])}
     execution_ids_match = producer_report.get("execution_id") == bronze_report.get("execution_id")
+    # A missing count stays negative so an incomplete report can never look reconciled.
     published = int(producer_report.get("published_events", -1))
     consumed = int(bronze_report.get("consumed_rows", -1))
+    duplicate_bronze_rows = int(bronze_report.get("duplicate_rows", 0))
+    bronze_status = str(bronze_report.get("status", "MISSING"))
     missing = sorted(producer_ids - bronze_ids)
     unexpected = sorted(bronze_ids - producer_ids)
     passed = all(
         (
             execution_ids_match,
+            published >= 0,
             published == consumed,
             not missing,
             not unexpected,
-            bronze_report.get("status") == "PASS",
+            duplicate_bronze_rows == 0,
+            bronze_status == "PASS",
         )
     )
     return {
@@ -133,6 +142,8 @@ def reconcile_producer_and_bronze(
         "execution_ids_match": execution_ids_match,
         "published_events": published,
         "consumed_rows": consumed,
+        "duplicate_bronze_rows": duplicate_bronze_rows,
+        "bronze_status": bronze_status,
         "missing_event_ids": missing,
         "unexpected_event_ids": unexpected,
     }

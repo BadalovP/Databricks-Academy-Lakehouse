@@ -159,3 +159,15 @@ def start_bronze_available_now(
         .trigger(availableNow=True)
         .toTable(table_name)
     )
+
+
+def await_bounded_completion(query: Any, *, timeout_seconds: float) -> dict[str, Any]:
+    """Wait for a streaming query for a finite time and report an honest timeout state."""
+    if timeout_seconds <= 0:
+        raise ValueError("timeout_seconds must be positive.")
+    terminated = bool(query.awaitTermination(timeout_seconds))
+    return {
+        "terminated": terminated,
+        "timed_out": not terminated,
+        "timeout_seconds": timeout_seconds,
+    }

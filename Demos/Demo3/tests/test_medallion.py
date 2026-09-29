@@ -35,5 +35,6 @@ def test_medallion_preparation_routes_deduplicates_and_calculates_shortages() ->
     assert len(prepared.quarantine) == 1
     assert len(prepared.duplicates) == 1
     assert len(prepared.shortages) == 1
+    assert prepared.shortage_counts == {"LOW_BIKES": 1}
     assert prepared.reconciles is True
     assert prepared.rule_counts["DUPLICATE_EVENT_ID"] == 1

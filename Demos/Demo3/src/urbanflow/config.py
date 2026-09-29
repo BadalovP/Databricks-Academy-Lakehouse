@@ -102,7 +102,13 @@ class ComputeSettings:
         return self.clusters[self.fallback]
 
     @property
-    def protected_cluster_ids(self) -> frozenset[str]:
+    def declared_protected_cluster_ids(self) -> frozenset[str]:
+        """Cluster ids this YAML file asks to protect from termination.
+
+        This is only the configuration's contribution. Termination protection is decided by
+        ``urbanflow.automation.resolve_protected_cluster_ids``, which unions these ids with a
+        hardcoded floor, so a YAML edit can add protection but never remove it.
+        """
         return frozenset(cluster.cluster_id for cluster in self.clusters.values())
 
 

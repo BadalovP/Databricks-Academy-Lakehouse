@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from unittest.mock import Mock
+
 import pytest
 
 from urbanflow.streaming import (
     REQUIRED_EVENT_FIELDS,
+    await_bounded_completion,
     event_hubs_kafka_options,
     isolated_stream_paths,
     redacted_kafka_options,
@@ -69,3 +72,27 @@ def test_stream_paths_reject_directory_escape() -> None:
             report_subpath="reports",
             execution_id="run-1",
         )
+
+
+def test_bounded_completion_records_success() -> None:
+    query = Mock()
+    query.awaitTermination.return_value = True
+
+    result = await_bounded_completion(query, timeout_seconds=15)
+
+    assert result == {"terminated": True, "timed_out": False, "timeout_seconds": 15}
+    query.awaitTermination.assert_called_once_with(15)
+
+
+def test_bounded_completion_records_timeout_without_claiming_success() -> None:
+    query = Mock()
+    query.awaitTermination.return_value = False
+
+    result = await_bounded_completion(query, timeout_seconds=15)
+
+    assert result == {"terminated": False, "timed_out": True, "timeout_seconds": 15}
+
+
+def test_bounded_completion_rejects_non_positive_timeout() -> None:
+    with pytest.raises(ValueError, match="positive"):
+        await_bounded_completion(Mock(), timeout_seconds=0)
