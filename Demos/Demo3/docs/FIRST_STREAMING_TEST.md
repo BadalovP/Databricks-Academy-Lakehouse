@@ -4,8 +4,26 @@
 
 ## Current readiness
 
-- GP1 `0702-132442-toro5spu` was `TERMINATED` after inactivity during the latest read-only check.
-- GP2 `0702-171207-xo9bbc0y` was `TERMINATED`.
+Refreshed by read-only checks on **2026-09-29**. The compute precondition is now met for the
+first time, and a hard code blocker found the same day has been fixed.
+
+- GP1 `0702-132442-toro5spu` is **`RUNNING`**, started by the project operator. Cluster ID, DBR
+  `17.3.x-scala2.13`, `USER_ISOLATION` access mode and `Standard_F4` nodes were all re-verified.
+  Its 60-minute auto-termination is the practical deadline for the run.
+- GP2 `0702-171207-xo9bbc0y` is `TERMINATED` and is not needed while GP1 is running.
+- **A blocker was found and fixed before proposing any run.** `parse_station_events` selected
+  `"kafka_*"`, and Spark expands only `*` and `<struct>.*`, so a prefix pattern is read as a literal
+  column name. Reproduced locally against real pyspark: `AnalysisException:
+  [UNRESOLVED_COLUMN.WITH_SUGGESTION] ... kafka_* cannot be resolved`. Analysis fails before any row
+  moves, so a live run started before this fix would have consumed shared compute and produced
+  nothing. The Kafka lineage columns are now named explicitly and a regression test analyses the
+  query plan, verified to fail if the glob returns.
+- **No UrbanFlow Job exists in either workspace yet**, so the sequence below must deploy the bundle
+  before it can run anything. This step was missing from the earlier version of this plan.
+- The second workspace `dbr_dev_trial` is **deliberately not used for this test**. It shares the
+  Unity Catalog metastore and can read this project's data, but Databricks secret scopes are
+  workspace-local and `azure-secrets` does not exist there, so the Event Hubs connection string is
+  unreachable. See [RESOURCE_INVENTORY.md](RESOURCE_INVENTORY.md#two-workspace-topology).
 - Both use DBR `17.3.x-scala2.13`, standard `USER_ISOLATION`, and are compatible with Unity
   Catalog and Kafka Structured Streaming. The identity has effective attach permission.
 - `dbr_dev.parvinbadalov_urbanflow` and its `urbanflow_landing` Volume do not exist yet.
@@ -57,14 +75,24 @@ lifecycle action, library changes, Event Hub deletion or clearing, or any change
 
 ## Exact execution sequence after approval
 
-1. Run `urbanflow compute-status --require-ready` against the pinned Azure workspace profile.
+1. Run `urbanflow compute-status --require-ready` against the pinned Azure workspace profile and
+   stop unless GP1 is exactly `RUNNING`.
 2. Apply the prepared storage SQL only if the two isolated objects are absent.
-3. Generate one execution ID and run the producer with `--poll-count 1`, `--execution-id`,
+3. **Deploy the bundle to the `azure` target.** No UrbanFlow Job exists yet, so nothing is runnable
+   before this. Deploying also creates the Lakeflow pipeline **definition**
+   (`[azure] urbanflow_pipeline`, serverless, `continuous: false`); creating a definition does not
+   start it, and this test never starts it.
+4. Generate one execution ID and run the producer with `--poll-count 1`, `--execution-id`,
    `--report-path`, and `--confirm-publish`.
-4. Pass the report's execution ID, published count, and source timestamp to the unscheduled Job.
-5. Run the Job once with `run_stream=true`; do not start the Lakeflow pipeline.
-6. Download the Bronze JSON report and run `urbanflow reconcile-reports` locally.
-7. Record the final query state and a read-only after-state for the selected cluster.
+5. Pass the report's execution ID, published count, and source timestamp to the unscheduled Job.
+6. Run the Job once with `run_stream=true`; do not start the Lakeflow pipeline.
+7. Download the Bronze JSON report and run `urbanflow reconcile-reports` locally.
+8. Record the final query state and a read-only after-state for GP1, without stopping it.
+
+The `azure` target is the correct one for this test because its `schema` variable resolves to
+`parvinbadalov_urbanflow`, which is exactly what the prepared storage SQL creates. The `dev` target
+resolves to `parvinbadalov_urbanflow_dev` instead, so mixing the two would create a Bronze table in
+one schema and a Volume in the other.
 
 Starting offsets are `earliest` only when the dedicated checkpoint has no saved position. Retained
 messages are not deleted. The execution ID isolates this snapshot during reconciliation, and the
