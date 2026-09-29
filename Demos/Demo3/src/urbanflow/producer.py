@@ -68,8 +68,12 @@ def build_events(
     return events
 
 
+class OversizedEventError(ValueError):
+    """One prepared event is larger than a single Event Hubs batch can hold."""
+
+
 class PartialPublishError(RuntimeError):
-    """A batch send failed after earlier events had already reached the Event Hub."""
+    """An Event Hubs send failed; `published_events` says how many events were accepted first."""
 
     def __init__(self, published_events: int, cause: BaseException) -> None:
         if published_events:
@@ -125,7 +129,7 @@ class EventHubsPublisher:
                     batch.add(message)
                 except ValueError as error:
                     if len(batch) == 0:
-                        raise ValueError(
+                        raise OversizedEventError(
                             "One UrbanFlow event exceeds the Event Hubs batch limit."
                         ) from error
                     client.send_batch(batch)
@@ -141,6 +145,9 @@ class EventHubsPublisher:
         finally:
             client.close()
         if failure is not None:
+            if isinstance(failure, OversizedEventError):
+                # Our own message about our own data, so it is safe to surface unchanged.
+                raise failure
             # Suppress the SDK exception chain because an upstream exception message could echo
             # connection details. The sanitized error preserves the type and confirmed count.
             raise PartialPublishError(sent, failure) from None
