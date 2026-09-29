@@ -49,7 +49,12 @@ def isolated_stream_paths(
         candidate = PurePosixPath(subpath)
         if candidate.is_absolute() or ".." in candidate.parts:
             raise ValueError("Streaming subpaths must be relative and may not contain '..'.")
-    checkpoint = root / checkpoint_subpath
+    # The checkpoint is scoped to the execution, not shared across runs. A shared
+    # checkpoint silently defeats startingOffsets: once it has advanced past our
+    # messages a later bounded run reads nothing and the reconciliation fails for a
+    # reason that has nothing to do with the data. Per-execution means every bounded
+    # test starts from a genuinely fresh position and "earliest" is always honoured.
+    checkpoint = root / checkpoint_subpath / execution_id
     report = root / report_subpath / f"{execution_id}.bronze.json"
     return StreamPaths(checkpoint=str(checkpoint), report=str(report))
 
@@ -86,10 +91,17 @@ def event_hubs_kafka_options(
     connection_string: str,
     event_hub_name: str,
     consumer_group: str,
-    starting_offsets: str = "latest",
+    starting_offsets: str = "earliest",
     max_offsets_per_trigger: int = 5000,
 ) -> dict[str, str]:
-    """Build Kafka options without logging or returning a redacted fake credential."""
+    """Build Kafka options without logging or returning a redacted fake credential.
+
+    starting_offsets defaults to "earliest" on purpose. This project publishes a
+    snapshot and only then starts the bounded consumer, so "latest" on a fresh
+    checkpoint would position the reader past our own messages and consume nothing.
+    "earliest" is safe here because the Event Hub retains one hour, the checkpoint is
+    per-execution, and the write is filtered to this run's execution_id.
+    """
     if not connection_string:
         raise ValueError("A non-empty Event Hubs connection string is required.")
     login = (
@@ -152,6 +164,28 @@ def parse_station_events(kafka_dataframe: Any) -> Any:
         (F.col(field).isNull() for field in REQUIRED_EVENT_FIELDS),
     )
     return flattened.withColumn("parse_error", missing_required)
+
+
+def filter_to_execution(dataframe: Any, execution_id: str) -> Any:
+    """Keep only the rows this bounded run published, before anything is written.
+
+    The Event Hub is shared, and reading from "earliest" means the stream also sees
+    whatever else was published in the retention window. Filtering here rather than
+    at reporting time is what keeps unrelated messages out of the UrbanFlow Bronze
+    table altogether, instead of storing them and excluding them from a count later.
+
+    A row that failed to parse has a null execution_id, so it cannot match and is not
+    written. Rejected and foreign records are therefore accounted for by comparing the
+    query's own input row count against the rows written, not by scanning the table.
+    """
+    from pyspark.sql import functions as F
+
+    if not re.fullmatch(r"[A-Za-z0-9._-]+", execution_id):
+        raise ValueError(
+            "execution_id may contain only letters, numbers, dot, underscore, or dash."
+        )
+    # A column comparison, never string interpolation into SQL.
+    return dataframe.where(F.col("execution_id") == execution_id)
 
 
 def start_bronze_available_now(

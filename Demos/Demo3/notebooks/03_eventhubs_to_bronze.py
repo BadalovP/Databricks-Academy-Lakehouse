@@ -61,6 +61,7 @@ from urbanflow.streaming import (
     REQUIRED_EVENT_FIELDS,
     await_bounded_completion,
     event_hubs_kafka_options,
+    filter_to_execution,
     isolated_stream_paths,
     parse_station_events,
     read_event_hubs_stream,
@@ -273,6 +274,35 @@ if run_stream:
     bronze_stream_df.printSchema()
 else:
     print("Dry run: Kafka plan was not constructed.")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Step 6b - Keep other people's messages out of our Bronze table
+# MAGIC
+# MAGIC **What:** Restrict the stream to rows whose `execution_id` equals this run's ID, before a single row is written.
+# MAGIC
+# MAGIC **Why:** The Event Hub `parvinbadalov_evh` is ours, but it is reachable by anything holding the credential, and we read from `earliest`, so the stream also sees whatever else was published during the one-hour retention window. Filtering here rather than at reporting time means unrelated messages are never stored in the UrbanFlow Bronze table at all, instead of being written and then excluded from a count.
+# MAGIC
+# MAGIC **Input:** The parsed streaming DataFrame and the `execution_id` widget.
+# MAGIC
+# MAGIC **Output:** The same DataFrame restricted to this execution's rows.
+# MAGIC
+# MAGIC **Key concepts:** Shared topics, logical isolation by correlation ID, filtering before writing versus filtering when reporting, and why a Kafka consumer-group name alone cannot recover one specific batch (the group name does not partition the data; it only tracks offsets).
+# MAGIC
+# MAGIC **Expected result:** A filtered plan. Rows that failed to parse carry a null `execution_id`, so they cannot match and are not written; they are still accounted for by comparing the query's own input-row count with the rows actually written.
+# MAGIC
+# MAGIC **How to explain it to my supervisor:** "We stamp every event with a unique run ID, and the consumer only writes rows carrying that ID. So even though the Event Hub is shared and we deliberately read from the beginning of the retention window, our Bronze table contains exactly our own bounded snapshot and nothing else."
+# MAGIC
+# MAGIC **Rerun and cost considerations:** A filter is a lazy plan change and costs nothing extra. Because the checkpoint is also per-execution, a rerun with a new ID starts from a genuinely fresh offset position rather than inheriting a checkpoint that already advanced past our data.
+
+# COMMAND ----------
+
+if run_stream:
+    bronze_stream_df = filter_to_execution(bronze_stream_df, execution_id)
+    print({"filtered_to_execution_id": execution_id})
+else:
+    print("Dry run: no execution filter was applied.")
 
 # COMMAND ----------
 

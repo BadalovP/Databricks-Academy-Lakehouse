@@ -8,6 +8,7 @@ from urbanflow.streaming import (
     REQUIRED_EVENT_FIELDS,
     await_bounded_completion,
     event_hubs_kafka_options,
+    filter_to_execution,
     isolated_stream_paths,
     redacted_kafka_options,
     station_status_schema,
@@ -29,7 +30,7 @@ def test_kafka_options_use_event_hubs_protocol_and_bounded_rate() -> None:
     assert options["kafka.security.protocol"] == "SASL_SSL"
     assert options["kafka.sasl.mechanism"] == "PLAIN"
     assert options["maxOffsetsPerTrigger"] == "250"
-    assert options["startingOffsets"] == "latest"
+    assert options["startingOffsets"] == "earliest"
     # These two options are what keep a run inside our OWN Event Hub and our OWN
     # consumer group on a namespace shared with other students. Without asserting
     # them, switching to "$Default" or another hub would not fail any test.
@@ -64,7 +65,10 @@ def test_stream_paths_are_isolated_to_the_configured_volume() -> None:
         report_subpath="reports/first_streaming_test",
         execution_id="urbanflow-20260928T210000Z-abcd1234",
     )
-    assert paths.checkpoint.endswith("/checkpoints/station_status")
+    # The checkpoint is scoped per execution, so it ends with the execution id.
+    assert paths.checkpoint.endswith(
+        "/checkpoints/station_status/urbanflow-20260928T210000Z-abcd1234"
+    )
     assert paths.report.endswith(".bronze.json")
     assert paths.report.startswith("/Volumes/dbr_dev/parvinbadalov_urbanflow/")
 
@@ -173,3 +177,80 @@ def test_parse_station_events_plan_resolves_and_keeps_kafka_lineage(spark_sessio
     for lineage_column in ("kafka_topic", "kafka_partition", "kafka_offset"):
         assert lineage_column in columns
     assert not any("*" in column for column in columns)
+
+
+# --- offset and execution-isolation strategy ---------------------------------
+
+
+def test_starting_offsets_defaults_to_earliest_not_latest() -> None:
+    """Regression guard for a real correctness trap.
+
+    This project publishes a snapshot and only THEN starts the bounded consumer.
+    With a fresh checkpoint, startingOffsets=latest positions the reader past our
+    own messages, so the run would consume nothing and reconciliation would fail
+    for a reason unrelated to the data. "earliest" is safe here because the hub
+    retains one hour, the checkpoint is per-execution, and the write is filtered
+    to this run's execution_id.
+    """
+    options = event_hubs_kafka_options(
+        namespace="ns",
+        connection_string="Endpoint=sb://example/;SharedAccess" + "Key=v",
+        event_hub_name="parvinbadalov_evh",
+        consumer_group="parvinbadalov",
+    )
+    assert options["startingOffsets"] == "earliest"
+
+
+def test_checkpoint_is_scoped_per_execution() -> None:
+    """A shared checkpoint silently defeats startingOffsets on a later run."""
+    first = isolated_stream_paths(
+        volume_root="/Volumes/dbr_dev/parvinbadalov_urbanflow/urbanflow_landing",
+        checkpoint_subpath="checkpoints/station_status",
+        report_subpath="reports/first_streaming_test",
+        execution_id="run-A",
+    )
+    second = isolated_stream_paths(
+        volume_root="/Volumes/dbr_dev/parvinbadalov_urbanflow/urbanflow_landing",
+        checkpoint_subpath="checkpoints/station_status",
+        report_subpath="reports/first_streaming_test",
+        execution_id="run-B",
+    )
+
+    assert first.checkpoint.endswith("/checkpoints/station_status/run-A")
+    assert second.checkpoint.endswith("/checkpoints/station_status/run-B")
+    assert first.checkpoint != second.checkpoint
+    # Still inside the configured Volume, never escaping it.
+    for path in (first.checkpoint, second.checkpoint):
+        assert path.startswith("/Volumes/dbr_dev/parvinbadalov_urbanflow/urbanflow_landing/")
+
+
+def test_filter_to_execution_rejects_a_malformed_execution_id() -> None:
+    """Validated at the point of use, so no caller ordering can make it injectable."""
+    for bad in ("run 1", "run';DROP TABLE x--", "", "../escape"):
+        with pytest.raises(ValueError, match="letters, numbers"):
+            filter_to_execution(Mock(), bad)
+
+
+@pytest.mark.spark
+def test_filter_to_execution_keeps_only_our_rows_and_drops_unparsed(spark_session) -> None:
+    """Unrelated and unparsed messages must never reach the Bronze table.
+
+    Reading from "earliest" on a shared Event Hub means the stream sees other
+    traffic in the retention window. This is the guard that keeps it out of our
+    table entirely, rather than storing it and excluding it from a count later.
+    """
+    # Built through Spark SQL rather than createDataFrame so the whole plan stays in
+    # the JVM; the local Python worker path is unreliable on this machine.
+    frame = spark_session.sql(
+        "SELECT * FROM VALUES "
+        "('ours-1','run-A'), "
+        "('ours-2','run-A'), "
+        "('someone-elses','run-B'), "
+        "('unparsed', NULL) "  # from_json yields nulls for a malformed payload
+        "AS t(event_id, execution_id)"
+    )
+
+    kept = filter_to_execution(frame, "run-A").collect()
+
+    assert sorted(r["event_id"] for r in kept) == ["ours-1", "ours-2"]
+    assert all(r["execution_id"] == "run-A" for r in kept)
