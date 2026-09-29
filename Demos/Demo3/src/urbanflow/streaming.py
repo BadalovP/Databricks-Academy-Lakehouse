@@ -135,7 +135,18 @@ def parse_station_events(kafka_dataframe: Any) -> Any:
         F.current_timestamp().alias("ingested_at"),
         F.col("value").cast("string").alias("raw_json"),
     )
-    flattened = parsed.select("event.*", "kafka_*", "ingested_at", "raw_json")
+    # Spark's select() expands only "*" and "<struct>.*". A prefix pattern such as
+    # "kafka_*" is read as a literal column name and fails analysis with
+    # UNRESOLVED_COLUMN, so every Kafka lineage column is named explicitly here.
+    flattened = parsed.select(
+        "event.*",
+        "kafka_topic",
+        "kafka_partition",
+        "kafka_offset",
+        "kafka_timestamp",
+        "ingested_at",
+        "raw_json",
+    )
     missing_required = reduce(
         lambda left, right: left | right,
         (F.col(field).isNull() for field in REQUIRED_EVENT_FIELDS),

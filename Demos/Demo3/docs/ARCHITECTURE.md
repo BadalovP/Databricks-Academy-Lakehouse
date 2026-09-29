@@ -120,6 +120,38 @@ specific station shortage.
 6. `mergeSchema` or `autoMerge` is enabled only in the controlled exercise, not globally.
 7. Column mapping is demonstrated before renaming a Delta column.
 
+## Two-workspace topology and the role of each
+
+UrbanFlow now has two Databricks workspaces available, and they are deliberately given different
+jobs. Full verified detail is in [RESOURCE_INVENTORY.md](RESOURCE_INVENTORY.md#two-workspace-topology);
+this section records the design decision.
+
+| Workspace | SKU | Compute | UrbanFlow role |
+|---|---|---|---|
+| `dbr_dev` | premium | shared interactive clusters GP1/GP2 | **The first live Event Hubs to Bronze test.** It is the only workspace where the Event Hubs secret is readable. |
+| `dbr_dev_trial` | trial | serverless Jobs and one serverless SQL warehouse; no clusters | Later development, serverless notebooks, and a genuine second environment for CI/CD promotion. |
+
+The two workspaces **share one Unity Catalog metastore**
+(`7af05576-c79e-4f56-b84f-ead80be5c8b6`), the `dbr_dev` catalog is `OPEN` rather than
+workspace-bound, and Unity Catalog grants are metastore-level. A read-only probe confirmed the
+trial workspace can list this project's schemas, tables and Volumes in `dbr_dev`. That is what makes
+the trial workspace useful as a promotion target: it can reach the same data without copying it.
+
+What they do **not** share is just as important to the design:
+
+- **Secret scopes are workspace-local.** `azure-secrets` exists only in `dbr_dev`. The trial
+  workspace cannot read the Event Hubs connection string at all, which is why the first live
+  streaming test must run in `dbr_dev` on GP1 and cannot simply be moved to serverless.
+- **The `dbr_dev_trial` catalog is `ISOLATED`**, so it is reachable only from the trial workspace.
+  Cross-workspace reads work in one direction only.
+- **The trial workspace defaults to the `dbr_dev_trial` catalog**, so UrbanFlow code running there
+  must fully qualify `dbr_dev.<schema>` instead of relying on the default namespace.
+- **The `trial` SKU is a time-limited Azure offer.** Its serverless compute is neither free nor
+  guaranteed to persist, so nothing load-bearing depends on it.
+
+`dbr_dev_trial` is also shared with other students (nine of their Jobs already exist there), so the
+same non-interference rules that govern `dbr_dev` apply to it.
+
 ## Security boundaries
 
 - No PAT, connection string, SAS key, or client secret is stored in Git.

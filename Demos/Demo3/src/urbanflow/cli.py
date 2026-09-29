@@ -47,6 +47,17 @@ def build_parser() -> argparse.ArgumentParser:
     produce.add_argument("--execution-id")
     produce.add_argument("--report-path", type=Path)
     produce.add_argument("--confirm-publish", action="store_true")
+    produce.add_argument(
+        "--secret-source",
+        choices=("key-vault", "environment"),
+        default="key-vault",
+        help=(
+            "Where to read the Event Hubs connection string. 'key-vault' (default) reads it "
+            "straight from the configured Azure Key Vault using your existing Azure CLI login, "
+            "so the secret is never typed, stored in a shell variable, or committed. "
+            "'environment' reads AZURE_EVENTHUB_CONNECTION_STRING instead, for CI."
+        ),
+    )
 
     reconcile = subcommands.add_parser(
         "reconcile-reports", help="Compare producer and Bronze JSON reports offline."
@@ -126,10 +137,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         if not args.confirm_publish:
             raise SystemExit("Refusing to publish without --confirm-publish.")
         client = GBFSClient(cfg.sources.gbfs_discovery_url, language=cfg.sources.gbfs_language)
-        publisher = EventHubsPublisher.from_environment()
+        if args.secret_source == "key-vault":
+            publisher = EventHubsPublisher.from_key_vault(
+                vault_name=cfg.azure.key_vault_name,
+                secret_name=cfg.azure.event_hubs_secret_name,
+                event_hub_name=cfg.azure.event_hub_name,
+            )
+        else:
+            publisher = EventHubsPublisher.from_environment()
         if publisher.event_hub_name != cfg.azure.event_hub_name:
             raise SystemExit(
-                "AZURE_EVENTHUB_NAME does not match the configured UrbanFlow Event Hub."
+                "The resolved Event Hub name does not match the configured UrbanFlow Event Hub."
             )
         execution_id = args.execution_id or new_execution_id()
         if args.poll_count == 1:

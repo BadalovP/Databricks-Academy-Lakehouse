@@ -4,8 +4,32 @@
 
 ## Current readiness
 
-- GP1 `0702-132442-toro5spu` was `TERMINATED` after inactivity during the latest read-only check.
-- GP2 `0702-171207-xo9bbc0y` was `TERMINATED`.
+Refreshed by read-only checks on **2026-09-29**. The compute precondition is now met for the
+first time, and a hard code blocker found the same day has been fixed.
+
+- GP1 `0702-132442-toro5spu` is **`RUNNING`**, started by the project operator. Cluster ID, DBR
+  `17.3.x-scala2.13`, `USER_ISOLATION` access mode and `Standard_F4` nodes were all re-verified.
+  Its 60-minute auto-termination is the practical deadline for the run.
+- GP2 `0702-171207-xo9bbc0y` is `TERMINATED` and is not needed while GP1 is running.
+- **A blocker was found and fixed before proposing any run.** `parse_station_events` selected
+  `"kafka_*"`, and Spark expands only `*` and `<struct>.*`, so a prefix pattern is read as a literal
+  column name. Reproduced locally against real pyspark: `AnalysisException:
+  [UNRESOLVED_COLUMN.WITH_SUGGESTION] ... kafka_* cannot be resolved`. Analysis fails before any row
+  moves, so a live run started before this fix would have consumed shared compute and produced
+  nothing. The Kafka lineage columns are now named explicitly and a regression test analyses the
+  query plan, verified to fail if the glob returns.
+- **No UrbanFlow Job exists in either workspace yet**, so the sequence below must deploy the bundle
+  before it can run anything. This step was missing from the earlier version of this plan.
+- **Event Hubs retention is one hour, not one day.** The hub's authoritative
+  `retentionDescription.retentionTimeInHours` is `1`; the legacy `messageRetentionInDays` field
+  reports `1` only because it cannot express sub-day values, and an earlier version of this plan
+  repeated that wrong figure. Steps 4 to 6 below must therefore complete inside the same hour, or
+  our own published events expire before the consumer reads them and reconciliation fails on a
+  count mismatch. The upside is that foreign-message exposure is capped at one hour of data.
+- The second workspace `dbr_dev_trial` is **deliberately not used for this test**. It shares the
+  Unity Catalog metastore and can read this project's data, but Databricks secret scopes are
+  workspace-local and `azure-secrets` does not exist there, so the Event Hubs connection string is
+  unreachable. See [RESOURCE_INVENTORY.md](RESOURCE_INVENTORY.md#two-workspace-topology).
 - Both use DBR `17.3.x-scala2.13`, standard `USER_ISOLATION`, and are compatible with Unity
   Catalog and Kafka Structured Streaming. The identity has effective attach permission.
 - `dbr_dev.parvinbadalov_urbanflow` and its `urbanflow_landing` Volume do not exist yet.
@@ -57,18 +81,59 @@ lifecycle action, library changes, Event Hub deletion or clearing, or any change
 
 ## Exact execution sequence after approval
 
-1. Run `urbanflow compute-status --require-ready` against the pinned Azure workspace profile.
+1. Run `urbanflow compute-status --require-ready` against the pinned Azure workspace profile and
+   stop unless GP1 is exactly `RUNNING`.
 2. Apply the prepared storage SQL only if the two isolated objects are absent.
-3. Generate one execution ID and run the producer with `--poll-count 1`, `--execution-id`,
-   `--report-path`, and `--confirm-publish`.
-4. Pass the report's execution ID, published count, and source timestamp to the unscheduled Job.
-5. Run the Job once with `run_stream=true`; do not start the Lakeflow pipeline.
-6. Download the Bronze JSON report and run `urbanflow reconcile-reports` locally.
-7. Record the final query state and a read-only after-state for the selected cluster.
+3. **Deploy only the Job**, using the Databricks CLI's `--select` flag:
+   `databricks bundle deploy -t azure --select jobs.urbanflow_bounded_stream_test`.
+   No UrbanFlow Job exists yet, so nothing is runnable before this. `--select` keeps the Lakeflow
+   pipeline out of the first deployment entirely, which was verified read-only with
+   `databricks bundle plan`: the unrestricted plan reports `2 to add` (the Job and the pipeline),
+   while the selected plan reports `1 to add` (the Job alone). Requires Databricks CLI v1.12.1 or
+   later, which supports both `--select` and `plan`.
+4. Generate one execution ID and run the producer with `--poll-count 1`, `--execution-id`,
+   `--report-path`, and `--confirm-publish`. The credential is resolved by
+   `--secret-source key-vault`, which is the default (see "Secret handling" below).
+5. Pass the report's execution ID, published count, and source timestamp to the unscheduled Job.
+6. Run the Job once with `run_stream=true`; do not start the Lakeflow pipeline.
+7. Download the Bronze JSON report and run `urbanflow reconcile-reports` locally.
+8. Record the final query state and a read-only after-state for GP1, without stopping it.
+
+The `azure` target is the correct one for this test because its `schema` variable resolves to
+`parvinbadalov_urbanflow`, which is exactly what the prepared storage SQL creates. The `dev` target
+resolves to `parvinbadalov_urbanflow_dev` instead, so mixing the two would create a Bronze table in
+one schema and a Volume in the other.
 
 Starting offsets are `earliest` only when the dedicated checkpoint has no saved position. Retained
 messages are not deleted. The execution ID isolates this snapshot during reconciliation, and the
 checkpoint advances normally for later approved reruns.
+
+## Secret handling
+
+The Event Hubs connection string is never typed into a chat, never pasted into a terminal, never
+placed in a shell variable, and never committed. There are two credential consumers and each reads
+the same Key Vault secret through its own platform's supported mechanism:
+
+| Consumer | Where it runs | Mechanism |
+|---|---|---|
+| The producer | The operator's machine | `EventHubsPublisher.from_key_vault()` reads `parvinbadalov-eventhub-cs` from `kvpl24databricks2` at run time using the existing Azure CLI sign-in. `--secret-source key-vault` is the CLI default. |
+| The notebook consumer | GP1, in Databricks | `dbutils.secrets.get(scope="azure-secrets", key="parvinbadalov-eventhub-cs")`, whose output Databricks redacts. The notebook prints only `{"secret_retrieved": True}`. |
+
+Both therefore resolve to the same Key Vault secret rather than to two copies that could drift.
+Read access was confirmed read-only on 2026-09-29 by requesting the secret and projecting only
+non-value fields (`id`, `enabled`, `created`): the call succeeded, which proves the `get` permission
+without revealing the value. The vault uses access policies, not RBAC
+(`enableRbacAuthorization: false`).
+
+`from_environment()` is retained for non-interactive CI use and is selectable with
+`--secret-source environment`, but it is documented as the less safe path because an environment
+variable has to be populated from somewhere first.
+
+Fully passwordless Entra ID authentication to Event Hubs was investigated and is **not currently
+available**: the operator holds `Contributor` on the resource group, which is a control-plane role,
+and Event Hubs data operations additionally require a data-plane role such as
+`Azure Event Hubs Data Sender`. Granting that is a privileged change and was deliberately not made.
+Key Vault therefore remains the credential source.
 
 ## Cost recheck
 
