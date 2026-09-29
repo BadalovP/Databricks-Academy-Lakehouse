@@ -14,3 +14,5 @@ reports/*.json
 .env
 .env.*
 !.env.example
+evidence/*.producer.json
+evidence/*.bronze.json

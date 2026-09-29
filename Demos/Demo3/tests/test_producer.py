@@ -531,3 +531,40 @@ def test_outcome_as_dict_is_json_safe_and_secret_free(monkeypatch: pytest.Monkey
     assert restored["uncertain_events"] == 2
     assert restored["complete"] is False
     assert [b["status"] for b in restored["batches"]] == ["confirmed", "uncertain"]
+
+
+def test_a_local_error_is_not_attempted_rather_than_uncertain(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Observed live: a missing optional WebSocket dependency raised ImportError from
+    inside send_batch, and the batch was wrongly reported as uncertain delivery.
+
+    A local error happens before any byte reaches the broker, so nothing can have been
+    delivered. Reporting it as uncertain would send the operator hunting for orphan
+    events that cannot exist.
+    """
+    _, fake_client = install_fake_eventhub_sdk(monkeypatch)
+    fake_client.send_batch.side_effect = ImportError("No module named 'websocket'")
+    publisher = EventHubsPublisher(FAKE_CONNECTION_STRING, "hub", max_events_per_batch=2)
+
+    with pytest.raises(PartialPublishError) as error:
+        publisher.send([{"event_id": str(i)} for i in range(5)])
+
+    outcome = error.value.outcome
+    assert outcome.uncertain_events == 0
+    assert outcome.not_attempted_events == 5
+    assert all(b.status == "not_attempted" for b in outcome.batches)
+
+
+def test_a_transport_error_is_still_uncertain(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The conservative classification must survive for genuine network failures."""
+    _, fake_client = install_fake_eventhub_sdk(monkeypatch)
+    fake_client.send_batch.side_effect = ConnectionError("write operation timed out")
+    publisher = EventHubsPublisher(FAKE_CONNECTION_STRING, "hub", max_events_per_batch=2)
+
+    with pytest.raises(PartialPublishError) as error:
+        publisher.send([{"event_id": str(i)} for i in range(5)])
+
+    outcome = error.value.outcome
+    assert outcome.uncertain_events == 2
+    assert outcome.not_attempted_events == 3
