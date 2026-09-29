@@ -9,10 +9,13 @@ variables:
     description: Workspace user whose folder contains the bundle files.
     default: parvinbadalov@softserve.academy
   catalog:
+    description: Unity Catalog catalog for this target; reaches both the pipeline and the notebook job.
     default: dbr_dev
   schema:
+    description: Target-specific schema, so a dev deployment cannot write the azure target's tables.
     default: parvinbadalov_urbanflow
   volume:
+    description: Volume holding this target's streaming checkpoint and JSON execution reports.
     default: urbanflow_landing
   compute_cluster_id:
     description: Existing shared cluster for notebook tasks; GP1 is preferred after read-only verification.
@@ -25,6 +28,7 @@ sync:
   include:
     - notebooks/**
     - pipeline/**
+    - sql/**
     - src/**
     - config/**
     - data/samples/**

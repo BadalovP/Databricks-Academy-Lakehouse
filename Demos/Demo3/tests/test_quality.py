@@ -3,6 +3,8 @@ from __future__ import annotations
 from urbanflow.quality import split_quality, validate_observation
 
 VALID = {
+    "event_id": "event-1",
+    "execution_id": "run-1",
     "station_id": "station-1",
     "num_bikes_available": 3,
     "num_docks_available": 7,
@@ -11,7 +13,9 @@ VALID = {
     "is_renting": 1,
     "is_returning": 1,
     "last_reported": 1000,
+    "source_last_updated": 1000,
     "collected_at": "2026-09-28T00:00:00Z",
+    "source_url": "https://example.test/station_status.json",
 }
 
 

@@ -17,6 +17,7 @@ def build_bronze_station_stream(
     connection_string: str,
     event_hub_name: str,
     consumer_group: str,
+    starting_offsets: str,
     max_offsets_per_trigger: int,
 ):
     """Return a parsed streaming DataFrame without starting billable work."""
@@ -25,6 +26,7 @@ def build_bronze_station_stream(
         connection_string=connection_string,
         event_hub_name=event_hub_name,
         consumer_group=consumer_group,
+        starting_offsets=starting_offsets,
         max_offsets_per_trigger=max_offsets_per_trigger,
     )
     return parse_station_events(read_event_hubs_stream(spark, options))
@@ -49,6 +51,7 @@ def bronze_station_status():
         connection_string=connection_string,
         event_hub_name=spark.conf.get("urbanflow.event_hub_name"),
         consumer_group=spark.conf.get("urbanflow.consumer_group"),
+        starting_offsets=spark.conf.get("urbanflow.starting_offsets"),
         max_offsets_per_trigger=int(spark.conf.get("urbanflow.max_events_per_trigger")),
     )
 

@@ -2,7 +2,56 @@
 
 from __future__ import annotations
 
+import re
+from dataclasses import dataclass
+from functools import reduce
+from pathlib import PurePosixPath
 from typing import Any
+
+REQUIRED_EVENT_FIELDS = (
+    "event_id",
+    "execution_id",
+    "station_id",
+    "num_bikes_available",
+    "num_docks_available",
+    "is_installed",
+    "is_renting",
+    "is_returning",
+    "last_reported",
+    "source_last_updated",
+    "collected_at",
+    "source_url",
+)
+
+
+@dataclass(frozen=True)
+class StreamPaths:
+    checkpoint: str
+    report: str
+
+
+def isolated_stream_paths(
+    *,
+    volume_root: str,
+    checkpoint_subpath: str,
+    report_subpath: str,
+    execution_id: str,
+) -> StreamPaths:
+    """Build paths that cannot escape the configured Unity Catalog Volume."""
+    root = PurePosixPath(volume_root)
+    if not str(root).startswith("/Volumes/") or len(root.parts) < 5:
+        raise ValueError("volume_root must identify a Unity Catalog Volume under /Volumes.")
+    if not re.fullmatch(r"[A-Za-z0-9._-]+", execution_id):
+        raise ValueError(
+            "execution_id may contain only letters, numbers, dot, underscore, or dash."
+        )
+    for subpath in (checkpoint_subpath, report_subpath):
+        candidate = PurePosixPath(subpath)
+        if candidate.is_absolute() or ".." in candidate.parts:
+            raise ValueError("Streaming subpaths must be relative and may not contain '..'.")
+    checkpoint = root / checkpoint_subpath
+    report = root / report_subpath / f"{execution_id}.bronze.json"
+    return StreamPaths(checkpoint=str(checkpoint), report=str(report))
 
 
 def station_status_schema() -> Any:
@@ -12,6 +61,7 @@ def station_status_schema() -> Any:
     return T.StructType(
         [
             T.StructField("event_id", T.StringType(), False),
+            T.StructField("execution_id", T.StringType(), False),
             T.StructField("station_id", T.StringType(), False),
             T.StructField("num_bikes_available", T.IntegerType(), False),
             T.StructField("num_docks_available", T.IntegerType(), False),
@@ -59,6 +109,14 @@ def event_hubs_kafka_options(
     }
 
 
+def redacted_kafka_options(options: dict[str, str]) -> dict[str, str]:
+    """Return safe diagnostic options without the SASL connection string."""
+    redacted = dict(options)
+    if "kafka.sasl.jaas.config" in redacted:
+        redacted["kafka.sasl.jaas.config"] = "[REDACTED]"
+    return redacted
+
+
 def read_event_hubs_stream(spark: Any, options: dict[str, str]) -> Any:
     """Create the unresolved streaming DataFrame; no query starts here."""
     return spark.readStream.format("kafka").options(**options).load()
@@ -77,7 +135,12 @@ def parse_station_events(kafka_dataframe: Any) -> Any:
         F.current_timestamp().alias("ingested_at"),
         F.col("value").cast("string").alias("raw_json"),
     )
-    return parsed.select("event.*", "kafka_*", "ingested_at", "raw_json")
+    flattened = parsed.select("event.*", "kafka_*", "ingested_at", "raw_json")
+    missing_required = reduce(
+        lambda left, right: left | right,
+        (F.col(field).isNull() for field in REQUIRED_EVENT_FIELDS),
+    )
+    return flattened.withColumn("parse_error", missing_required)
 
 
 def start_bronze_available_now(
@@ -87,6 +150,8 @@ def start_bronze_available_now(
     checkpoint_path: str,
 ) -> Any:
     """Start a bounded micro-batch query that stops after available data is consumed."""
+    if not checkpoint_path.strip():
+        raise ValueError("checkpoint_path must be non-empty.")
     return (
         dataframe.writeStream.format("delta")
         .option("checkpointLocation", checkpoint_path)
@@ -94,3 +159,15 @@ def start_bronze_available_now(
         .trigger(availableNow=True)
         .toTable(table_name)
     )
+
+
+def await_bounded_completion(query: Any, *, timeout_seconds: float) -> dict[str, Any]:
+    """Wait for a streaming query for a finite time and report an honest timeout state."""
+    if timeout_seconds <= 0:
+        raise ValueError("timeout_seconds must be positive.")
+    terminated = bool(query.awaitTermination(timeout_seconds))
+    return {
+        "terminated": terminated,
+        "timed_out": not terminated,
+        "timeout_seconds": timeout_seconds,
+    }

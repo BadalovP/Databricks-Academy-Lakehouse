@@ -18,6 +18,7 @@ resources:
         urbanflow.event_hubs_namespace: evhpl24databricks
         urbanflow.event_hub_name: parvinbadalov_evh
         urbanflow.consumer_group: parvinbadalov
+        urbanflow.starting_offsets: earliest
         urbanflow.max_events_per_trigger: "5000"
       libraries:
         - file:

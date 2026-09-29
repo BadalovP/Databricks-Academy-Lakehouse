@@ -2,6 +2,12 @@
 # MAGIC %md
 # MAGIC # UrbanFlow — Bounded Event Hubs Streaming with the Kafka Protocol
 # MAGIC
+# MAGIC # ⛔ SUPERSEDED — DO NOT RUN DURING MILESTONE 2 ⛔
+# MAGIC
+# MAGIC **This notebook is superseded by `03_eventhubs_to_bronze.py`.** It is kept only as teaching history, to show the first, simpler version of the consumer. It is fail-closed: the first code cell raises unless `acknowledge_superseded=true`, so an accidental "Run all" stops immediately.
+# MAGIC
+# MAGIC **Why running it is dangerous:** it writes the **same Bronze table** (`bronze_station_status`) using the **same checkpoint path** (`checkpoints/station_status`) as the new notebook. A stray run would commit Event Hubs offsets into that shared checkpoint, so the new notebook would find those events already consumed and its reconciliation (published count versus Bronze rows for one execution ID) would fail or, worse, silently under-count. It also defaults `startingOffsets` to `latest`, stamps no `execution_id`, has no approved-cluster allowlist, no bounded wait, and no reconciliation, so it produces no evidence of its own.
+# MAGIC
 # MAGIC **Business context:** Repeated station-status observations let operators distinguish a brief shortage from a recurring pattern.
 # MAGIC
 # MAGIC **Learning objectives:** Understand Event Hubs as a Kafka-compatible broker, build an explicit event schema, parse Kafka metadata, use checkpoints, and run a bounded `availableNow` micro-batch.
@@ -13,6 +19,42 @@
 # MAGIC **Inputs:** JSON station-status events published by `urbanflow.producer`.
 # MAGIC
 # MAGIC **Outputs:** Optional Bronze Delta rows with Kafka partition, offset, broker timestamp, raw JSON, and ingestion timestamp.
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Step 0 — Superseded-notebook acknowledgement gate
+# MAGIC
+# MAGIC **What:** Declare one `acknowledge_superseded` parameter and raise immediately unless it is explicitly set to `true`.
+# MAGIC
+# MAGIC **Why:** UrbanFlow needs this file preserved as teaching history, but it must be impossible to run by accident. It shares the Bronze table and the checkpoint path with `03_eventhubs_to_bronze.py`, so one stray run would consume Event Hubs offsets that Milestone 2's reconciliation depends on and would corrupt this milestone's evidence.
+# MAGIC
+# MAGIC **Input:** The `acknowledge_superseded` widget, `false` by default.
+# MAGIC
+# MAGIC **Output:** A `RuntimeError` that stops the notebook, or nothing at all when a reader has deliberately acknowledged the warning outside Milestone 2.
+# MAGIC
+# MAGIC **Key concepts:** Fail-closed defaults, deprecation guards, shared checkpoint hazards, evidence integrity, Databricks widgets as job parameters.
+# MAGIC
+# MAGIC **Expected result:** "Run all" fails here with an explanatory message, and no later cell executes.
+# MAGIC
+# MAGIC **How to explain it to my supervisor:** "The old consumer is kept for comparison, but it refuses to run unless someone deliberately acknowledges that it shares a checkpoint with the current notebook."
+# MAGIC
+# MAGIC **Rerun and cost considerations:** The guard itself costs nothing and contacts no cloud service. Leaving it at the default is the cheapest and safest outcome, because it prevents an unnecessary Event Hubs read on shared academy compute.
+# MAGIC
+# MAGIC **Correct alternative:** run `notebooks/03_eventhubs_to_bronze.py`, which has an approved-cluster allowlist, an execution ID, a bounded wait, and full reconciliation.
+
+# COMMAND ----------
+
+dbutils.widgets.dropdown("acknowledge_superseded", "false", ["false", "true"])
+
+if dbutils.widgets.get("acknowledge_superseded").lower() != "true":
+    raise RuntimeError(
+        "STOP: 03_streaming.py is superseded by 03_eventhubs_to_bronze.py. It writes the same "
+        "Bronze table through the same checkpoint path, so running it would consume Event Hubs "
+        "offsets that the Milestone 2 reconciliation depends on. Do not run it during "
+        "Milestone 2. Set acknowledge_superseded=true only to study the older version "
+        "deliberately, after the milestone is complete."
+    )
 
 # COMMAND ----------
 
@@ -250,7 +292,9 @@ else:
 # MAGIC - Event Hubs delivery and retries can be at least once, so stable event IDs and idempotent downstream MERGE remain necessary.
 # MAGIC - `availableNow` gives a finite demonstration and prevents an unattended continuous stream.
 # MAGIC
-# MAGIC **Actual validation:** Kafka option construction, schema code, duplicate suppression, and bounded-loop behavior pass offline tests. No live messages were published or consumed in this stage.
+# MAGIC **Status:** superseded by `03_eventhubs_to_bronze.py`, which adds an execution ID, an approved-cluster allowlist, a bounded wait, and reconciliation. This notebook shares that notebook's Bronze table and checkpoint path, which is exactly why the Step 0 gate refuses to run it during Milestone 2.
+# MAGIC
+# MAGIC **Actual validation:** Kafka option construction, schema code, duplicate suppression, and bounded-loop behavior pass offline tests. No live messages were published or consumed in this stage, and this notebook has not been run against Azure.
 # MAGIC
 # MAGIC **Common errors:** Missing Kafka connector, wrong secret scope, unauthorized consumer group, incorrect connection policy, reused checkpoint from another stream, or an unapproved target schema.
 # MAGIC

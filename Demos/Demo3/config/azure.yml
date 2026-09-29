@@ -27,9 +27,12 @@ azure:
 
 streaming:
   max_events_per_trigger: 5000
+  max_publish_events: 5000
   bounded_trigger: availableNow
+  starting_offsets: earliest
   checkpoint_subpath: checkpoints/station_status
   schema_subpath: schemas/station_status
+  report_subpath: reports/first_streaming_test
   minimum_poll_interval_seconds: 60
 
 compute:
@@ -49,7 +52,7 @@ compute:
       expected_spark_version: 17.3.x-scala2.13
       expected_data_security_mode: USER_ISOLATION
       verified_state: TERMINATED
-      verified_at: 2026-09-28
+      verified_at: 2026-09-29
       unity_catalog_compatible: true
       kafka_compatible: true
     gp2:
@@ -58,7 +61,7 @@ compute:
       expected_spark_version: 17.3.x-scala2.13
       expected_data_security_mode: USER_ISOLATION
       verified_state: TERMINATED
-      verified_at: 2026-09-28
+      verified_at: 2026-09-29
       unity_catalog_compatible: true
       kafka_compatible: true
 

@@ -12,6 +12,7 @@ def test_dev_config_is_safe_and_identity_prefixed() -> None:
     config = load_config(path)
     assert config.azure.schema == "parvinbadalov_urbanflow_dev"
     assert config.azure.event_hub_name == "parvinbadalov_evh"
+    assert config.sources.gbfs_discovery_url == "https://gbfs.citibikenyc.com/gbfs/2.3/gbfs.json"
     assert config.azure.volume_root.startswith("/Volumes/dbr_dev/parvinbadalov_")
     assert config.compute.preferred == "gp1"
     assert config.compute.preferred_cluster.cluster_id == "0702-132442-toro5spu"
@@ -23,6 +24,9 @@ def test_dev_config_is_safe_and_identity_prefixed() -> None:
     assert config.compute.allow_terminate is False
     assert config.compute.educational_cluster_creation_enabled is False
     assert config.compute.protected_from_termination is True
+    assert config.streaming.starting_offsets == "earliest"
+    assert config.streaming.max_publish_events == 5000
+    assert config.streaming.checkpoint_subpath.startswith("checkpoints/")
     assert config.lakeflow.compute_mode == "serverless"
     assert config.lakeflow.shared_cluster_id is None
 

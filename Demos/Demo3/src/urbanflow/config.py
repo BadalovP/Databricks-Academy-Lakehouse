@@ -58,9 +58,12 @@ class SourceSettings:
 @dataclass(frozen=True)
 class StreamingSettings:
     max_events_per_trigger: int
+    max_publish_events: int
     bounded_trigger: str
+    starting_offsets: str
     checkpoint_subpath: str
     schema_subpath: str
+    report_subpath: str
     minimum_poll_interval_seconds: int
 
 
@@ -99,7 +102,13 @@ class ComputeSettings:
         return self.clusters[self.fallback]
 
     @property
-    def protected_cluster_ids(self) -> frozenset[str]:
+    def declared_protected_cluster_ids(self) -> frozenset[str]:
+        """Cluster ids this YAML file asks to protect from termination.
+
+        This is only the configuration's contribution. Termination protection is decided by
+        ``urbanflow.automation.resolve_protected_cluster_ids``, which unions these ids with a
+        hardcoded floor, so a YAML edit can add protection but never remove it.
+        """
         return frozenset(cluster.cluster_id for cluster in self.clusters.values())
 
 
@@ -201,6 +210,14 @@ def load_config(path: str | Path) -> UrbanFlowConfig:
     if lakeflow_mode != "serverless":
         raise ValueError("UrbanFlow Lakeflow configuration must remain serverless.")
 
+    starting_offsets = str(streaming["starting_offsets"])
+    if starting_offsets not in {"earliest", "latest"}:
+        raise ValueError("Streaming starting_offsets must be 'earliest' or 'latest'.")
+    max_publish_events = int(streaming["max_publish_events"])
+    max_events_per_trigger = int(streaming["max_events_per_trigger"])
+    if max_publish_events < 1 or max_events_per_trigger < 1:
+        raise ValueError("Streaming event limits must be positive integers.")
+
     return UrbanFlowConfig(
         project_name=str(project["name"]),
         environment=str(project["environment"]),
@@ -225,10 +242,13 @@ def load_config(path: str | Path) -> UrbanFlowConfig:
             event_hubs_secret_name=str(azure["event_hubs_secret_name"]),
         ),
         streaming=StreamingSettings(
-            max_events_per_trigger=int(streaming["max_events_per_trigger"]),
+            max_events_per_trigger=max_events_per_trigger,
+            max_publish_events=max_publish_events,
             bounded_trigger=str(streaming["bounded_trigger"]),
+            starting_offsets=starting_offsets,
             checkpoint_subpath=str(streaming["checkpoint_subpath"]),
             schema_subpath=str(streaming["schema_subpath"]),
+            report_subpath=str(streaming["report_subpath"]),
             minimum_poll_interval_seconds=int(streaming["minimum_poll_interval_seconds"]),
         ),
         compute=ComputeSettings(
