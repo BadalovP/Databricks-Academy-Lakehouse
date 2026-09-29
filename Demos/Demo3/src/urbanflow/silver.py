@@ -35,6 +35,7 @@ SILVER_COLUMNS: tuple[str, ...] = (
     "observed_at",
     "capacity_estimate",
     "availability_status",
+    "is_operational",
     "is_low_bikes",
     "is_low_docks",
     "passed_contract",
@@ -162,18 +163,33 @@ def add_contract_result(
         + F.coalesce(F.col("num_bikes_disabled"), F.lit(0))
         + F.coalesce(F.col("num_docks_disabled"), F.lit(0)),
     )
-    annotated = annotated.withColumn(
-        "is_low_bikes", F.col("num_bikes_available") <= F.lit(low_bike_threshold)
+    # Operational gating, matching transformations.classify_availability, which is this
+    # project's reference implementation of the same rule. Without it an out-of-service
+    # station reports 0 bikes and 0 docks and is therefore flagged LOW_BIKES_AND_DOCKS,
+    # even though no amount of rebalancing can fix it. Confirmed live (2026-09-30): the
+    # first Phase 2 run produced 746 shortage rows where the reference rule produces 657,
+    # and the 89-row gap was exactly the stations that are not installed or not renting.
+    operational = F.coalesce(F.col("is_installed") == 1, F.lit(False)) & F.coalesce(
+        F.col("is_renting") == 1, F.lit(False)
     )
+    returnable = F.coalesce(F.col("is_returning") == 1, F.lit(False))
+    annotated = annotated.withColumn("is_operational", operational)
     annotated = annotated.withColumn(
-        "is_low_docks", F.col("num_docks_available") <= F.lit(low_dock_threshold)
+        "is_low_bikes",
+        operational & (F.col("num_bikes_available") <= F.lit(low_bike_threshold)),
+    )
+    # A station refusing returns cannot have a dock shortage worth acting on.
+    annotated = annotated.withColumn(
+        "is_low_docks",
+        operational & returnable & (F.col("num_docks_available") <= F.lit(low_dock_threshold)),
     )
     annotated = annotated.withColumn(
         "availability_status",
-        F.when(F.col("is_low_bikes") & F.col("is_low_docks"), F.lit("LOW_BIKES_AND_DOCKS"))
+        F.when(~operational, F.lit("OUT_OF_SERVICE"))
+        .when(F.col("is_low_bikes") & F.col("is_low_docks"), F.lit("LOW_BIKES_AND_DOCKS"))
         .when(F.col("is_low_bikes"), F.lit("LOW_BIKES"))
         .when(F.col("is_low_docks"), F.lit("LOW_DOCKS"))
-        .otherwise(F.lit("HEALTHY")),
+        .otherwise(F.lit("AVAILABLE")),
     )
     return annotated.drop("_known_station_id")
 

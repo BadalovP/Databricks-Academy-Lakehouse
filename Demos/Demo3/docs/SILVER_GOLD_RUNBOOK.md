@@ -1,4 +1,51 @@
-# Silver and Gold bounded run - prepared, NOT yet executed
+# Silver and Gold bounded run - EXECUTED 2026-09-30
+
+## Result: reconciliation PASS, idempotency PROVEN, one defect found and fixed
+
+Both runs succeeded on GP1 and every reconciliation passed. Row counts and event IDs tie
+out exactly, and a second identical run left all eight tables untouched, which proves
+Delta MERGE idempotency against the real engine rather than a mock.
+
+| Measure | Value |
+|---|---|
+| Source | `bronze_station_status`, 2,520 rows, execution `urbanflow-20260929T195132Z-r3` |
+| Silver / quarantine / duplicates | 2,520 / 0 / 0, accounted 2,520, IDs unique, `PASS` |
+| Fact rows | 2,520, matching Silver, distinct IDs, `PASS` |
+| Daily summary | 2,520 rows, observation total ties to the fact count |
+| Station dimension | 40 rows, the committed sample, as designed |
+| Shortages / priorities | 746 each - **this number was wrong, see below** |
+| Dry run | `937836701866956` SUCCESS in 86 s, both tasks confirmed no read and no write |
+| First real run | `244764181867554` SUCCESS in 314 s |
+| Idempotency run | `284553247546526` SUCCESS in 206 s, all eight tables `inserted_rows = 0`, before == after, `table_existed = true` |
+| GP1 afterwards | `RUNNING`, `last_restarted` unchanged - never started, restarted or terminated by this project |
+| Lakeflow | still not deployed |
+
+### The defect the run exposed
+
+A green Job was not treated as proof, and checking the numbers against Phase 1's
+in-memory preview is what caught it. The run produced **746** shortage rows where
+`transformations.classify_availability` - this project's own reference implementation of
+the same rule - produces **657**.
+
+`silver.py` classified purely on counts. An out-of-service station reports 0 bikes and 0
+docks, so it was flagged `LOW_BIKES_AND_DOCKS` even though no amount of rebalancing can
+fix it. Measured against the live feed: 2,520 stations, 88 of them not installed or not
+renting, and the two implementations differed by exactly 88. The snapshot's gap was 89
+because one station changed state in between.
+
+Fixed by gating on `is_installed AND is_renting`, gating dock shortages additionally on
+`is_returning`, adding an `is_operational` column, and restoring the reference
+vocabulary (`OUT_OF_SERVICE` and `AVAILABLE`). Two regression tests now pin the behaviour,
+one of which asserts the Spark and pure-Python implementations agree case by case, since
+they drifted apart once already.
+
+**Consequence: `gold_station_shortage` and `gold_rebalancing_priority` currently hold 746
+rows, roughly 89 of which are out-of-service stations that should read `OUT_OF_SERVICE`.
+Those two tables are stale until the Job is rerun with the corrected code.** The other six
+tables are unaffected in row count; `silver_station_status` and `fact_station_availability`
+carry corrected `availability_status` values only after a rerun.
+
+## Original plan, retained for reruns
 
 [Back to README](../README.md) · [First streaming test](FIRST_STREAMING_TEST.md) · [Cost and safety](COST_AND_SAFETY.md)
 
