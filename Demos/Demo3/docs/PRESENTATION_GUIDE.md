@@ -55,8 +55,8 @@ requires both a managed secret and explicit approval.”
 - Open `RESOURCE_INVENTORY.md`.
 - Show the verified workspace identity, existing identity-owned Event Hub, Kafka capability,
   Key Vault secret metadata, storage, and compute policies.
-- Show the GP1/GP2 table: both are technically compatible, GP1 is preferred, and both were
-  terminated during inspection, so the safety preflight refuses to run today.
+- Show the GP1/GP2 table: both are technically compatible, GP1 is preferred, and the latest
+  read-only check found GP1 `RUNNING`; UrbanFlow did not start it.
 - Emphasize that discovery was read-only and other students' resources are excluded.
 
 ## 19–22 minutes — Testing and CI/CD
@@ -65,12 +65,12 @@ requires both a managed secret and explicit approval.”
 - Open `.github/workflows/demo3_urbanflow.yml` and show that it has no login/deploy/run step.
 - Explain DAB target configuration and why resource deployment is deferred.
 
-## 22–25 minutes — Next live milestone
+## 22–25 minutes — Phase 2 live milestone
 
 - Open `COST_AND_SAFETY.md`.
-- Propose one GBFS poll, one existing Event Hub, one bounded consumer on GP1 only when it is already
-  running, one isolated Bronze table, and query cleanup without touching shared-cluster state.
-- State what evidence will change the matrix to `validated live`.
+- Propose one two-task existing-cluster Job that reuses the verified 2,520-row Bronze execution,
+  writes reconciled Silver and Gold tables, and never contacts Event Hubs or Lakeflow.
+- State the exact reconciliation and cluster-unchanged evidence needed for `validated live`.
 
 ## First-milestone files to show
 

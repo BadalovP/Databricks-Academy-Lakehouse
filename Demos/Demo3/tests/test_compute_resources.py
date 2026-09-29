@@ -220,7 +220,7 @@ def test_notebook_upload_refuses_any_path_outside_that_folder(
 def test_config_records_the_latest_2026_09_29_read_only_cluster_check(config_file: str) -> None:
     clusters = load_config(PROJECT_ROOT / config_file).compute.clusters
 
-    assert clusters["gp1"].verified_state == "TERMINATED"
+    assert clusters["gp1"].verified_state == "RUNNING"
     assert clusters["gp2"].verified_state == "TERMINATED"
     assert clusters["gp1"].verified_at == "2026-09-29"
     assert clusters["gp2"].verified_at == "2026-09-29"

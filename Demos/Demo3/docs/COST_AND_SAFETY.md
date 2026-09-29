@@ -1,117 +1,90 @@
-# UrbanFlow cost and safety plan
+# UrbanFlow Phase 2 cost and safety plan
 
 [← Main README](../README.md) · [Resource inventory](RESOURCE_INVENTORY.md)
 
 ## Current safety state
 
-All completed activity is local or read-only. No Event Hubs message was sent, no Databricks table
-or Volume was written, no Job/pipeline was created, and no compute was started.
+The first live milestone is complete: 2,520 events were published once and reconciled exactly into
+`dbr_dev.parvinbadalov_urbanflow.bronze_station_status`. Phase 2 development since that run has been
+local or read-only. No additional Event Hubs message, Databricks table write, Job deployment,
+Lakeflow execution, serverless session, or cluster lifecycle action occurred.
 
-## Guardrails already implemented
+## Implemented guardrails
 
-- Public samples are small and attributed; the 369 MB historical ZIP is never downloaded in full.
-- The producer is finite, respects the 60-second GBFS TTL, and requires `--confirm-publish`.
-- The notebook stream defaults to `run_stream=false` and uses `availableNow`, not an endless trigger.
-- Target host equality is checked before SDK actions.
-- Secrets are loaded only at runtime and never logged.
-- PR/push CI has no Azure login or live job.
-- Checkpoint and schema paths are UrbanFlow-specific.
-- GP1 and GP2 are protected from termination in code; cleanup stops only UrbanFlow queries.
-- Shared-compute preflight requires the selected cluster to already be `RUNNING` and never invokes
-  a start, restart, resize, edit, library, or termination API.
+- The new Job has no schedule, defaults `run_transform=false`, and contains two dependent notebook
+  tasks under one 1,200-second outer timeout.
+- Both tasks use `${var.compute_cluster_id}` through `existing_cluster_id`; no new cluster is
+  declared.
+- Each notebook exits before any Spark table action unless `run_transform=true` is supplied.
+- Both notebooks verify the actual cluster ID against the GP1/GP2 run allowlist.
+- The source is fixed to completed execution `urbanflow-20260929T195132Z-r3`; the Job neither calls
+  Event Hubs nor runs Structured Streaming.
+- Silver writes are gated by `Bronze = Silver + Quarantine + Duplicates` and unique event IDs.
+- Gold writes are gated by fact-to-Silver and aggregate-to-fact reconciliation.
+- Delta MERGE validates identifiers, rejects duplicate source keys, and uses stable grains.
+- JSON evidence contains counts and limitations, not raw messages, tokens, or connection strings.
+- GP1 and GP2 remain hard-coded against termination; Phase 2 invokes no cluster mutation API.
+- Static GitHub Actions has no Azure login, bundle deploy, Job run, or pipeline step.
 
-## Combined approval request for the first live test
+## Prepared consolidated approval request
 
-This is the single request to present before any billable action.
+This request is ready to present only after a fresh read-only preflight finds GP1 or GP2 already
+`RUNNING`. Approval covers the following actions as one bounded Phase 2 execution:
 
-### Existing resources to reuse
+1. Recheck the current Databricks identity, workspace host, Bronze table metadata, and GP1/GP2
+   state without changing them.
+2. Select GP1 (`0702-132442-toro5spu`) when it is already `RUNNING`; otherwise select GP2
+   (`0702-171207-xo9bbc0y`) only when it is already `RUNNING`. Stop if neither qualifies.
+3. Validate and deploy only DAB resource `urbanflow_silver_gold_test` to the Azure target, pinned to
+   the selected existing cluster. Do not deploy or run Lakeflow.
+4. Run that one unscheduled Job once with `run_transform=true` and
+   `source_execution_id=urbanflow-20260929T195132Z-r3`.
+5. Task `04_bronze_to_silver.py` reads the existing 2,520-row Bronze slice, validates and
+   reconciles it, then MERGEs `silver_station_status`, `quarantine_station_status`, and
+   `duplicate_station_status`.
+6. After Silver succeeds, task `05_silver_to_gold.py` builds and reconciles the stable availability
+   fact, a clearly named 40-row development station dimension, the daily summary, shortage table,
+   and rebalancing-priority table, then MERGEs them.
+7. Both tasks write small execution-specific JSON reports under the existing managed Volume.
+8. Read back counts and evidence, rerun no task, and verify the selected shared cluster's state and
+   configuration are unchanged. Never stop or terminate it.
 
-- Azure Databricks workspace `dbr_dev` at the verified host.
-- Unity Catalog `dbr_dev` and the identity-owned ADLS external location.
-- Event Hubs Standard namespace `evhpl24databricks`.
-- Existing Event Hub `parvinbadalov_evh`, policy `parvinbadalov_policy`, and consumer group
-  `parvinbadalov`.
-- Key Vault-backed Databricks scope `azure-secrets`, secret name
-  `parvinbadalov-eventhub-cs`.
-- GP1 (`0702-132442-toro5spu`) if it is already running; otherwise GP2
-  (`0702-171207-xo9bbc0y`) only if it is already running.
+## Explicit exclusions
 
-### Proposed new resources
+The approval does not include:
 
-- Schema `dbr_dev.parvinbadalov_urbanflow`.
-- Volume `dbr_dev.parvinbadalov_urbanflow.urbanflow_landing` or an approved equivalent isolated
-  subpath.
-- Bronze table `bronze_station_status` and its dedicated checkpoint directory.
+- another GBFS producer call or any Event Hubs publish;
+- Kafka consumption or a Structured Streaming query;
+- historical archive download or Auto Loader execution;
+- Lakeflow deployment or execution;
+- serverless compute;
+- a new cluster, cluster restart, resize, library change, or termination;
+- changes outside `dbr_dev.parvinbadalov_urbanflow` and its existing managed Volume;
+- dashboard, alert, governance, or unrelated Lab/Demo changes.
 
-No new workspace, storage account, Key Vault, Event Hubs namespace, SQL warehouse, or cluster is
-required for this first test. The DAB Job and Lakeflow definitions remain local and undeployed.
+## Expected duration and cost boundary
 
-### Code to execute
+The two bounded batch tasks target completion within ten minutes and the Job has a 20-minute outer
+timeout. The existing USD 2 operator stop threshold remains a planning guard, not a guaranteed
+price. Azure Databricks charges depend on VM and DBU rates, agreement, workload, instance, region,
+and currency. See [Azure Databricks pricing](https://azure.microsoft.com/en-us/pricing/details/databricks/).
 
-1. Run the read-only shared-compute preflight. Stop if neither GP1 nor GP2 is already `RUNNING`.
-2. Create only the isolated UrbanFlow schema and Volume with the prepared idempotent SQL, or verify
-   that an administrator created them.
-3. Confirm the execution identity can read only the named Event Hubs secret without displaying it.
-4. Publish one validated GBFS poll, capped at 5,000 events, and save the secret-free producer JSON
-   report locally.
-5. Run `03_eventhubs_to_bronze.py` once with `availableNow`, the producer execution ID, expected
-   count, and source timestamp on the selected existing cluster.
-6. Validate explicit schema, Kafka partition/offset metadata, event-ID uniqueness, source,
-   collection and broker timestamps, rejects, duplicates, and exact count reconciliation.
-7. Persist the Bronze JSON report, verify the query is inactive, compare both reports offline, and
-   confirm the shared cluster was not modified.
+## Success evidence
 
-### Expected duration
-
-- Producer: usually under one minute for one poll.
-- Databricks startup: zero by policy; a terminated cluster blocks the test.
-- Bounded stream and validation: target under five minutes after startup.
-- Total requested window: up to 20 minutes, followed by query and cluster-state verification.
-
-### Approximate cost
-
-The Event Hubs namespace already exists, so the incremental message volume is negligible relative
-to its standing namespace cost. Databricks compute is the main incremental cost. Exact DBU and VM
-prices depend on the academy contract and current Azure pricing. For approval planning, retain the
-conservative **USD 2 stop limit** for at most 20 minutes on an already-running shared cluster. This
-is an operator budget threshold, not a guaranteed price.
-[Microsoft's Azure Databricks pricing page](https://azure.microsoft.com/en-us/pricing/details/databricks/)
-states that charges combine VM usage and DBUs and vary with the agreement, workload, instance,
-region, and currency. The academy contract and actual DBU draw are unavailable locally, so a
-defensible exact USD forecast is impossible. Limit exposure with one snapshot, a 5,000-event cap,
-`availableNow`, immediate query verification, and a hard stop at 20 minutes. UrbanFlow does not
-change the shared clusters' auto-termination settings.
-
-### Required permissions
-
-- `USE CATALOG`, `CREATE SCHEMA` or use of an approved existing isolated schema.
-- `CREATE VOLUME`, `CREATE TABLE`, and write permission only in the UrbanFlow boundary.
-- Read permission on the named Databricks secret scope/key.
-- Send/Listen rights on `parvinbadalov_evh` and use of the named consumer group.
-- `CAN ATTACH TO` or higher on the selected already-running cluster; read-only inspection confirmed
-  effective `CAN MANAGE`, but UrbanFlow deliberately does not use lifecycle permissions.
-
-### Cleanup
-
-- Stop the streaming query and confirm it is inactive.
-- Do not stop, terminate, restart, resize, or edit GP1/GP2; record its state before and after.
-- Leave the small Bronze table/checkpoint only if approved for the next milestone.
-- If cleanup is requested, delete only explicitly identified `urbanflow` objects after a separate
-  destructive-action review. Never touch other Event Hubs, checkpoints, schemas, Labs, GP1, or GP2.
-
-### Success evidence
-
-- Producer report with count and deterministic event IDs, no credential or message payload dump.
-- Bronze count, distinct event-ID count, partition/offset range, timestamp completeness, and
-  reconciliation result.
-- Screenshot of the bounded query or Job task after success.
-- Before/after evidence showing the shared cluster configuration was unchanged and no lifecycle API
-  was called.
-- Dated entry under `docs/evidence/` and coverage-matrix status updated to `validated live`.
+- The Job and both tasks finish `SUCCESS` within the bound.
+- Source Bronze count remains 2,520 for the verified execution.
+- Silver reconciliation is `PASS`; accepted, quarantined, and duplicate counts add to 2,520.
+- Gold reconciliation is `PASS`; fact count equals Silver and daily observation totals equal fact.
+- A second run is not required. MERGE before/after counts and stable-key tests provide the planned
+  rerun proof; a later approved rerun should insert zero duplicate rows.
+- The Gold report states that availability contains one real snapshot and station reference is the
+  committed 40-row development sample.
+- The shared cluster has the same ID, runtime, access mode, and state before and after.
 
 ## Stop conditions
 
-Stop immediately if the resolved host or identity differs, neither GP1 nor GP2 is already running,
-the cluster metadata differs from the pinned contract, the named resource is not isolated, secret
-access is broader than expected, a continuous query remains active, or the checkpoint points
-outside the UrbanFlow path.
+Stop before deployment or execution when the host, identity, source execution, Bronze count,
+cluster ID, runtime, access mode, permissions, or state differs from the verified contract. During
+the run, stop the Job task if reconciliation fails or the 20-minute bound is reached. Do not repair
+Phase 2 by republishing Event Hubs data, deleting checkpoints, clearing tables, starting another
+compute target, or modifying shared cluster configuration.
