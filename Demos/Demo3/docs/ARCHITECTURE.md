@@ -88,36 +88,42 @@ specific station shortage.
 
 | Layer | Object | Grain | Stage status |
 |---|---|---|---|
-| Bronze | `bronze_station_status` | One received Kafka event | Consumer implemented; table not created |
-| Bronze | `bronze_historical_trip` | One physical trip row | Contract/sample verified; Auto Loader pending |
+| Bronze | `bronze_station_status` | One received Kafka event | Validated live: 2,520 reconciled rows |
+| Bronze | `bronze_historical_trips` | One physical trip row | Auto Loader, checkpoint, rescue, and validation implemented locally; not run |
 | Bronze | `bronze_station_information` | One captured reference record | Client implemented; table pending |
 | Bronze | `bronze_weather` | One place/time observation | Sample verified; table pending |
-| Silver | `silver_station_snapshot` | One valid station/source timestamp | Rules implemented locally; Delta pending |
-| Silver | `quarantine_station_status` | One invalid event with all failed rules | Routing implemented locally; table pending |
-| Silver | `dim_station_scd2` | One station version | Pure transition implemented; Delta MERGE pending |
-| Gold | `fact_station_shortage` | One shortage episode/observation | Pending repeated live observations |
+| Silver | `silver_station_status` | One accepted event ID | Contract, deterministic deduplication, reconciliation, and MERGE implemented locally |
+| Silver | `quarantine_station_status` | One invalid Kafka record with all failed rules | Routing and Kafka-lineage MERGE implemented locally |
+| Silver | `duplicate_station_status` | One repeated Kafka record | Deterministic routing and Kafka-lineage MERGE implemented locally |
+| Silver | `dim_station_scd2` | One station version | Null-safe transitions and interval audit tested locally; persistence pending |
+| Gold | `fact_station_availability` | One Silver event ID | Stable schema, left enrichment, reconciliation, and MERGE implemented locally |
+| Gold | `gold_station_shortage` | One shortage observation | Implemented locally; one snapshot is not a repeated episode |
+| Gold | `gold_rebalancing_priority` | Station and observation timestamp | Explainable score and MERGE implemented locally |
 | Gold | `fact_historical_trip` | One valid historical ride | Pending Auto Loader and data quality |
 | Gold | `dim_weather_hourly` | One weather hour | Pending historical weather selection |
-| Gold | `daily_station_summary` | Station and date | Pending medallion pipeline |
+| Gold | `gold_daily_station_summary` | Station and date | Implemented locally with observation count and trend-capability flag |
 
 ## SCD strategy
 
 - **SCD Type 1:** correct non-historical descriptive attributes when preserving old values has no
-  analytical value.
+  analytical value. New, changed, unchanged, and temporarily missing stations are tested.
 - **SCD Type 2:** preserve changes to name, capacity, latitude, or longitude when historical
   interpretation depends on the version in effect.
-- If no real capacity change is available in the short observation window, a clearly labelled
-  synthetic capacity change will demonstrate the mechanics. It will never be mixed into real
-  operational facts.
+- SCD2 comparisons are null-safe; duplicate incoming keys and out-of-order effective timestamps are
+  rejected. The audit requires exactly one current version per station, valid intervals, and no
+  overlaps. Synthetic changes remain clearly labelled and never enter operational facts.
 
 ## Schema evolution strategy
 
 1. Bronze retains raw JSON so unexpected fields are not lost.
-2. Trusted columns use an explicit schema.
-3. A controlled fixture introduces one additive field for the schema-evolution lesson.
-4. Auto Loader `schemaLocation` and checkpoint paths are isolated.
-5. `_rescued_data` is retained for fields that do not match the current contract.
-6. `mergeSchema` or `autoMerge` is enabled only in the controlled exercise, not globally.
+2. The production historical reader supplies an explicit schema and uses `rescue`; unexpected or
+   mistyped fields land in `_rescued_data` without changing the contract.
+3. The separate additive-evolution lesson omits `.schema()`, supplies schema hints, and uses
+   `addNewColumns`. Databricks does not allow `addNewColumns` with an explicit reader schema; see
+   the official [Auto Loader schema evolution documentation](https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/schema).
+4. Auto Loader `schemaLocation` and streaming checkpoint paths are distinct and isolated.
+5. The bounded writer uses `availableNow`; it has been prepared but not executed.
+6. Delta schema auto-merge is not enabled globally.
 7. Column mapping is demonstrated before renaming a Delta column.
 
 ## Two-workspace topology and the role of each
@@ -182,7 +188,8 @@ clusters unchanged.
 
 ## Why Lakeflow remains a later stage
 
-The bundle now contains a serverless, triggered Lakeflow configuration and a Bronze Kafka streaming
+The bundle contains a serverless, triggered Lakeflow configuration and a Bronze Kafka streaming
 table declaration. It has not been deployed or executed. Serverless Lakeflow manages its own
-compute and checkpoints, independently of GP1/GP2. Silver valid/quarantine tables, Gold aggregates,
-expectations, and the reconciliation gate remain later implementation stages.
+compute and checkpoints, independently of GP1/GP2. Physical Silver and Gold functions now exist as
+an existing-cluster Phase 2 Job; moving them into Lakeflow and adding managed expectations remain
+later work.

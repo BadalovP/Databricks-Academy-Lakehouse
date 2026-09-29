@@ -47,3 +47,49 @@ resources:
         project: urbanflow
         compute: existing_shared_cluster
         safety: requires_already_running_cluster
+
+    urbanflow_silver_gold_test:
+      name: "[${bundle.target}] urbanflow_silver_gold_test"
+      max_concurrent_runs: 1
+      timeout_seconds: 1200
+      parameters:
+        - name: run_transform
+          default: "false"
+        - name: source_execution_id
+          default: urbanflow-20260929T195132Z-r3
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema
+          default: ${var.schema}
+        - name: volume
+          default: ${var.volume}
+      tasks:
+        - task_key: bronze_to_silver
+          existing_cluster_id: ${var.compute_cluster_id}
+          timeout_seconds: 600
+          notebook_task:
+            notebook_path: ../notebooks/04_bronze_to_silver.py
+            base_parameters:
+              run_transform: "{{job.parameters.run_transform}}"
+              source_execution_id: "{{job.parameters.source_execution_id}}"
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume: "{{job.parameters.volume}}"
+        - task_key: silver_to_gold
+          depends_on:
+            - task_key: bronze_to_silver
+          existing_cluster_id: ${var.compute_cluster_id}
+          timeout_seconds: 600
+          notebook_task:
+            notebook_path: ../notebooks/05_silver_to_gold.py
+            base_parameters:
+              run_transform: "{{job.parameters.run_transform}}"
+              source_execution_id: "{{job.parameters.source_execution_id}}"
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume: "{{job.parameters.volume}}"
+      tags:
+        project: urbanflow
+        phase: silver_gold
+        compute: existing_shared_cluster
+        safety: dry_run_by_default

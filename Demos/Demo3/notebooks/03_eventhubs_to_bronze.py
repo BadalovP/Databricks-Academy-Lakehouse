@@ -532,9 +532,9 @@ else:
 # MAGIC 3. Hardcoding the config file meant a `dev` deployment wrote the `azure` target's table and checkpoint. The job now passes the bundle's catalog, schema, and volume, so targets are isolated.
 # MAGIC 4. Safety that depends on an earlier cell is fragile. The execution filter is now a typed column comparison instead of interpolated SQL text, so it is safe on its own.
 # MAGIC
-# MAGIC **Actual validation:** All producer, schema, checkpoint-path, reconciliation, deduplication, Quarantine, shortage, bounded-wait, target-isolation, and shared-cluster protection behavior is tested offline. This notebook has not been run against Azure in this milestone, so every "expected result" above is a prediction, not evidence.
+# MAGIC **Actual validation:** This notebook ran in Azure on 2026-09-29 as Job run `873010921866250`: 2,520 published events produced 2,520 Bronze rows, with zero rejected, duplicate, missing, or unexpected event IDs and final reconciliation `PASS`.
 # MAGIC
-# MAGIC **Expected outputs of a first live run:** one Bronze row per published station event, one checkpoint directory, one JSON report with `status: PASS`, and a printed shortage preview. None of these exist yet.
+# MAGIC **Validated outputs:** managed Bronze table `dbr_dev.parvinbadalov_urbanflow.bronze_station_status`, its isolated checkpoint, a Bronze JSON report with `status: PASS`, and the local medallion preview for execution `urbanflow-20260929T195132Z-r3`.
 # MAGIC
 # MAGIC **Common errors:** Cluster not already running or not on the approved list, missing schema or Volume for the deployed target, denied secret read, incorrect policy in the connection string, checkpoint collision with the superseded `03_streaming.py`, unavailable Kafka connector, source count mismatch, malformed retained events, or a wait bound set too low for the published volume.
 # MAGIC

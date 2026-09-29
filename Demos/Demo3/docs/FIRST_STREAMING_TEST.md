@@ -104,11 +104,11 @@ If neither is ready, stop. UrbanFlow never starts either cluster and never creat
 The existing Lakeflow resource remains serverless and triggered. It is neither attached to GP1 or
 GP2 nor included in this first execution.
 
-## One combined approval request
+## Historical combined approval request — completed
 
-This is a prepared request, not an active approval request. It must not be submitted until a fresh
-read-only preflight names GP1 or GP2 as already `RUNNING`. At present neither cluster is running,
-the isolated schema and Volume are absent, and the secret-scope ACL does not name the user.
+The request below is retained as the audit trail for the completed first live milestone. It is not
+an active request and must not be repeated. The current Phase 2 request is maintained in
+[COST_AND_SAFETY.md](COST_AND_SAFETY.md).
 
 Approve one execution window of at most 20 minutes with a USD 2 operator stop limit to:
 
@@ -127,7 +127,7 @@ Approve one execution window of at most 20 minutes with a USD 2 operator stop li
 The request does not include Lakeflow execution, a second workload, a new cluster, a cluster
 lifecycle action, library changes, Event Hub deletion or clearing, or any change to other projects.
 
-## Exact execution sequence after approval
+## Historical execution sequence used for the first milestone
 
 **For attempt 2, steps 2 and 3 are already satisfied and must be skipped.** The schema, the Volume
 and the Job all exist, and the consumer path (`src/urbanflow/streaming.py`, the notebooks, the

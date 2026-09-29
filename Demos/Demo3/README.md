@@ -5,13 +5,12 @@ UrbanFlow is an educational Azure Databricks lakehouse for a practical operation
 repeated shortage patterns?** It combines real public APIs, historical trips, a Kafka-style
 Event Hubs stream, Spark, Delta Lake, Unity Catalog, testing, CI/CD, and Databricks SDK patterns.
 
-> **Milestone status — local foundation complete.** Public sources and existing cloud resources
-> have been verified read-only. The API client, bounded producer, Kafka consumer helpers,
-> transformations, quality rules, automation safety primitives, real-data fixtures, tests, and
-> two educational notebooks are implemented. GP1 and GP2 were inspected read-only and GP1 is the
-> preferred existing-cluster target, but both were `TERMINATED` during inspection. No UrbanFlow
-> Azure resource has been created or modified, no event has been published, and no Databricks
-> compute has been started.
+> **Milestone status — Bronze validated live; Phase 2 implemented locally.** On 2026-09-29 the
+> bounded producer published 2,520 events and Job `404404108673495` wrote 2,520 reconciled rows to
+> `dbr_dev.parvinbadalov_urbanflow.bronze_station_status`, with zero missing, unexpected, rejected,
+> or duplicate event IDs. The new Bronze-to-Silver-to-Gold workflow, Delta MERGEs, Auto Loader
+> helpers, SCD audits, Spark tests, educational notebooks, and one dry-run-by-default two-task Job
+> are complete locally. Phase 2 has not been deployed or executed in Azure.
 
 ## Business problem
 
@@ -62,7 +61,7 @@ switches compute without editing a notebook.
 
 | Cluster | Verified ID | Latest state on 2026-09-29 | Runtime / access mode | Effective permission | Decision |
 |---|---|---|---|---|---|
-| GP1 | `0702-132442-toro5spu` | `TERMINATED` (inactivity) | DBR `17.3.x-scala2.13`, `USER_ISOLATION` | `CAN_MANAGE` through `admins`; `users` has `CAN_RESTART` | Preferred configuration; blocked until an independent operator has it `RUNNING` |
+| GP1 | `0702-132442-toro5spu` | `RUNNING` (fresh read-only check) | DBR `17.3.x-scala2.13`, `USER_ISOLATION` | `CAN_MANAGE` through `admins`; `users` has `CAN_RESTART` | Preferred Phase 2 target, subject to one final pre-execution check |
 | GP2 | `0702-171207-xo9bbc0y` | `TERMINATED` | DBR `17.3.x-scala2.13`, `USER_ISOLATION` | `CAN_MANAGE` through `admins`; `users` has `CAN_RESTART` | Compatible fallback; currently blocked by the same rule |
 
 DBR 17.3 and standard access mode meet the documented
@@ -74,9 +73,10 @@ This is a compatibility assessment, not live network evidence. The preflight acc
 only when its ID, name, runtime, access mode, attach permission, and current `RUNNING` state all
 match. It never starts, restarts, resizes, or terminates GP1 or GP2.
 
-The Job resource defaults `run_stream=false` and uses `existing_cluster_id`. A manual run against a
-terminated all-purpose cluster could start it, so deployment and execution remain blocked until an
-academy operator already has the selected cluster running and the live test is approved.
+Both Job resources default their live gates to `false` and use `existing_cluster_id`. A manual run
+against a terminated all-purpose cluster could start it, so Phase 2 deployment and execution remain
+blocked until an academy operator already has the selected cluster running and the consolidated
+live test is approved.
 
 ## 1. Overall solution architecture
 
@@ -147,10 +147,11 @@ flowchart LR
     DAILY --> CHECK["Bronze = Silver + Quarantine"]
 ```
 
-The implemented local quality rules cover completeness, numeric validity, non-negative counts,
-capacity consistency, known-station referential integrity, source timestamps, and freshness.
-Quarantined rows retain all failed-rule names. The later Delta implementation will reconcile
-every Bronze row to either Silver or Quarantine.
+The physical Silver contract enforces identifiers, parsing, required availability fields,
+non-negative counts, binary station-state flags, source timestamps, and optional known-station
+referential integrity. Quarantined rows retain every failed-rule name. Duplicate delivery is a
+third explicit outcome, so reconciliation proves `Bronze = Silver + Quarantine + Duplicates`.
+All three outputs now have idempotent Delta MERGE implementations; live tables remain pending.
 
 ## 4. CI/CD design
 
@@ -174,21 +175,21 @@ validation. It has no Azure login, deployment, producer, Job, pipeline, or clust
 path will be added only after resources and permissions are approved. Two authorized deployment
 environments have not been demonstrated, so DEV-to-PROD promotion remains pending.
 
-## 5. Planned Databricks Job orchestration
+## 5. Databricks Job orchestration
 
 ```mermaid
 flowchart LR
-    PREFLIGHT["Verify identity, host, and resources"] --> INGEST["Bounded API + batch ingestion"]
-    INGEST --> PIPE["urbanflow_pipeline"]
-    PIPE --> RECON["Reconciliation and DQ gate"]
-    RECON --> VALIDATE["Dashboard-source validation"]
-    VALIDATE --> CLEANUP["Stop query; leave shared cluster unchanged"]
-    CLEANUP --> REPORT["JSON execution report"]
+    PREFLIGHT["Verify GP1 or GP2 is already RUNNING"] --> S["04 Bronze to Silver"]
+    S --> SCHECK{"Bronze reconciliation PASS"}
+    SCHECK --> G["05 Silver to Gold"]
+    G --> GCHECK{"Gold reconciliation PASS"}
+    GCHECK --> REPORT["Two JSON evidence reports"]
 ```
 
-This graph is the intended orchestration, not live evidence. Local DAB Job and Lakeflow definitions
-now exist, but no corresponding workspace resource has been deployed. The SDK module implements
-host verification, read-only shared-compute assessment, notebook upload, and bounded polling.
+The `urbanflow_silver_gold_test` definition is one unscheduled, two-task DAG. It defaults
+`run_transform=false`, pins both tasks to the configured existing cluster, and does not invoke the
+producer, Event Hubs, serverless compute, or Lakeflow. It is implemented and validated locally but
+has not been deployed or run. The earlier Bronze Job exists as workspace Job `404404108673495`.
 
 ## Implemented modules
 
@@ -199,6 +200,11 @@ host verification, read-only shared-compute assessment, notebook upload, and bou
 | `streaming.py` | Builds Kafka/SASL options, defines the explicit Spark schema, preserves partition/offset metadata, and starts an `availableNow` Bronze write. |
 | `reporting.py` | Produces secret-free Bronze and end-to-end JSON reconciliation with IDs, counts, rejects, duplicates, offsets, and timestamps. |
 | `medallion.py` | Prepares deterministic Silver records, Quarantine rows, duplicate accounting, shortage flags, and Bronze reconciliation locally. |
+| `silver.py` | Applies the Spark Silver contract, deterministic broker ordering, freshness, reconciliation, and three idempotent Delta MERGEs. |
+| `gold.py` | Builds the station dimension, stable availability fact, daily summary, shortages, rebalancing priorities, Gold reconciliation, and Delta MERGEs. |
+| `historical.py` | Defines explicit-contract and schema-evolution Auto Loader paths, rescued-data validation, checkpoints, join match reporting, and daily trip demand. |
+| `dimensions.py` | Demonstrates SCD1/SCD2 with null-safe changes, interval audits, idempotent reruns, and synthetic-change labelling. |
+| `persistence.py` | Validates identifiers and renders reusable null-safe Delta MERGEs that reject duplicate source keys. |
 | `transformations.py` | Classifies shortages, deduplicates, joins station reference data, summarizes availability, and demonstrates SCD2 transitions. |
 | `quality.py` | Routes valid and invalid observations with named completeness, validity, consistency, referential-integrity, and freshness rules. |
 | `automation.py` | Verifies the exact workspace host, assesses GP1 then GP2 read-only, blocks shared-cluster termination, uploads notebooks, and polls Jobs/pipelines. |
@@ -211,9 +217,12 @@ host verification, read-only shared-compute assessment, notebook upload, and bou
   shortages, prepares an opt-in idempotent MERGE, and runs a dashboard-ready SQL query.
 - [`03_streaming.py`](notebooks/03_streaming.py) explains topics, partitions, offsets, consumer
   groups, checkpoints, micro-batches, restart semantics, and a guarded bounded Event Hubs read.
-- [`03_eventhubs_to_bronze.py`](notebooks/03_eventhubs_to_bronze.py) is the prepared first live
-  test: one execution ID, `availableNow`, exact Bronze reconciliation, a JSON report, and a local
-  Silver/Quarantine/shortage preview. It has not been run.
+- [`03_eventhubs_to_bronze.py`](notebooks/03_eventhubs_to_bronze.py) performed the completed first
+  live test for execution `urbanflow-20260929T195132Z-r3`.
+- [`04_bronze_to_silver.py`](notebooks/04_bronze_to_silver.py) is the dry-run-by-default physical
+  Silver task with contract routing, reconciliation, MERGEs, and JSON evidence.
+- [`05_silver_to_gold.py`](notebooks/05_silver_to_gold.py) is the dependent Gold task with stable
+  fact schema, honest one-snapshot summaries, operational outputs, MERGEs, and JSON evidence.
 
 Every code cell has a preceding Markdown cell covering what, why, input, output, key concepts,
 expected result, presentation wording, and rerun/cost implications.
@@ -267,24 +276,23 @@ $env:AZURE_EVENTHUB_NAME = "parvinbadalov_evh"
 urbanflow --config config\azure.yml produce --poll-count 1 --confirm-publish
 ```
 
-Do not run this command until the combined Azure execution request is approved.
-The approved command will also pass an execution ID and `--report-path`; the report contains event
-IDs and counts but no connection string or raw payloads. The matching notebook Job defaults to
-`run_stream=false`, has no schedule, and uses the existing GP1 ID through `existing_cluster_id`.
+The first producer run is complete. Phase 2 must not run this command again: it reuses execution
+`urbanflow-20260929T195132Z-r3` directly from the verified Bronze table.
 
 ## Academy coverage
 
 The detailed, evidence-based matrix is in
 [`docs/LABS_1_TO_9_COVERAGE.md`](docs/LABS_1_TO_9_COVERAGE.md). Current highlights:
 
-- **Implemented locally:** REST discovery/parsing, DataFrame business rules, explicit schemas,
-  deduplication, quality routing, SCD2 example, bounded producer, Kafka consumer configuration,
-  checkpoints, mocked SDK polling/cleanup, DAB configuration, static CI, and offline tests.
+- **Implemented locally:** physical Silver/Quarantine/duplicate MERGEs, persisted Gold-table
+  definitions, explicit and evolving Auto Loader paths, SCD1/SCD2 audits, a two-task Phase 2 Job,
+  educational notebooks, local Spark regression tests, DAB configuration, and static CI.
 - **Discovered read-only:** target workspace identity, Unity Catalog resources, Event Hubs Kafka
   capability, Key Vault secret metadata, storage, secret scope, and compute policies.
-- **Pending live validation:** UrbanFlow schema/Volume, messages, Bronze/Silver/Gold tables,
-  Lakeflow pipeline, Job, dashboard, alert, security demonstrations, deployment promotion, and
-  execution screenshots.
+- **Validated live:** isolated schema and Volume, secret access, 2,520 Event Hubs messages, bounded
+  Structured Streaming, Bronze table, Job execution, and exact producer-to-Bronze reconciliation.
+- **Pending live validation:** Phase 2 Silver/Gold tables and reports, historical Auto Loader,
+  Lakeflow, dashboard, alert, governance demonstrations, and deployment promotion.
 
 ## Documentation
 
@@ -292,21 +300,20 @@ The detailed, evidence-based matrix is in
 - [Labs 1–9 coverage matrix](docs/LABS_1_TO_9_COVERAGE.md)
 - [Read-only Azure resource inventory](docs/RESOURCE_INVENTORY.md)
 - [Cost and safety plan](docs/COST_AND_SAFETY.md)
-- [First bounded streaming test runbook](docs/FIRST_STREAMING_TEST.md)
+- [First bounded streaming test runbook](docs/FIRST_STREAMING_TEST.md) — Phase 1, validated live
+- [Silver and Gold bounded run runbook](docs/SILVER_GOLD_RUNBOOK.md) — Phase 2, prepared but not yet executed
 - [20–25 minute presentation guide](docs/PRESENTATION_GUIDE.md)
 - [Evidence policy and future screenshots](docs/evidence/README.md)
 
 ## Known limitations
 
-- No UrbanFlow cloud object has been created or executed yet.
+- Bronze is one real snapshot, so availability summaries are not historical trends.
 - The existing Event Hub has one day of retention, suitable for a short demonstration rather
   than durable history.
-- GP1 and GP2 are technically compatible but both were `TERMINATED` during the latest read-only
-  inspection. UrbanFlow did not start or stop either cluster and will not change them.
-- The consumer group and secret scope exist, but access has not been exercised by UrbanFlow.
-- The `azure-secrets` scope metadata is visible, but its returned ACL does not name the current
-  user; secret-value access remains an explicit live preflight or administrator item.
-- The proposed `parvinbadalov_urbanflow` schema and `urbanflow_landing` Volume do not yet exist.
+- GP1 was `RUNNING` during the latest read-only inspection; GP2's latest recorded state is
+  `TERMINATED`. UrbanFlow did not start or stop either cluster and will not change them.
+- The existing secret and consumer group were exercised successfully during the completed Bronze
+  run; Phase 2 performs no secret read and no Event Hubs operation.
 - Current and historical station identifiers require the documented `short_name` crosswalk.
 - Dashboard, alerts, Silver/Gold Lakeflow declarations, full medallion tables, approximately
   1,000-file Auto Loader experiment, governance policies, and real execution evidence belong to
@@ -314,9 +321,8 @@ The detailed, evidence-based matrix is in
 
 ## Cost and safety boundary
 
-The first live test is intentionally small: one GBFS poll, up to about 2,520 small JSON events,
-and one bounded `availableNow` consumer on GP1 only if GP1 is already running. GP2 is the fallback
-under the same rule. Cleanup stops the query and verifies it is inactive; it never stops shared
-compute. The test reuses the existing Event Hub, Key Vault secret, catalog, and authorized storage
-path. Nothing live will run until the user approves the combined request in
-[the cost and safety plan](docs/COST_AND_SAFETY.md).
+The next live test is one bounded read of the existing 2,520-row Bronze slice followed by two
+existing-cluster notebook tasks that MERGE Silver and Gold and write small JSON reports. It sends
+no Event Hubs messages, runs no stream or Lakeflow pipeline, and never changes shared compute.
+Nothing live will run until the consolidated request in
+[the cost and safety plan](docs/COST_AND_SAFETY.md) is approved.
