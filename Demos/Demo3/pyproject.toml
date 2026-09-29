@@ -15,6 +15,10 @@ dependencies = [
   # reaches a shell variable, a shell history file, or this repository.
   "azure-identity>=1.17,<2",
   "azure-keyvault-secrets>=4.8,<5",
+  # Required by azure-eventhub's AmqpOverWebsocket transport, which the producer uses
+  # to reach Event Hubs on port 443. The SDK imports it lazily when it opens the
+  # connection, so without it a publish fails with ImportError mid-send.
+  "websocket-client>=1.7,<2",
   "databricks-sdk>=0.68",
   "PyYAML>=6.0",
   "requests>=2.31",

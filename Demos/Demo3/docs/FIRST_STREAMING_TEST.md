@@ -1,4 +1,52 @@
-# First bounded streaming test - prepared, not executed
+# First bounded streaming test - EXECUTED AND RECONCILED (2026-09-29)
+
+## Result: PASS
+
+The bounded Citi Bike GBFS -> Event Hubs -> Bronze path ran live on GP1 and the
+producer-to-Bronze reconciliation passed exactly. This is validated live in Azure, not
+merely implemented.
+
+| Measure | Value |
+|---|---|
+| Execution ID | `urbanflow-20260929T195132Z-r3` |
+| Stations in the source snapshot | 2,520 |
+| Published events (confirmed) | 2,520 in 9 batches, 0 uncertain, 0 not attempted |
+| Consumed rows | 2,520 |
+| Accepted / rejected rows | 2,520 / 0 |
+| Distinct event IDs | 2,520 |
+| Duplicate Bronze rows | 0 |
+| Missing event IDs | 0 |
+| Unexpected event IDs | 0 |
+| Kafka evidence | partition 0, offsets 780 to 3,299 (exactly 2,520 offsets) |
+| Source timestamp agreement | `observed = [1790711443]`, equal to the producer's value |
+| Bronze table | `dbr_dev.parvinbadalov_urbanflow.bronze_station_status` (managed Delta) |
+| Consumer Job run | `873010921866250`, SUCCESS in 130 s |
+| Dry run beforehand | `908540927181738`, SUCCESS in 51 s |
+| Streaming query | terminated, and inactive after cleanup |
+| Silver preview | 2,520 valid, 0 quarantined, reconciles |
+| Shortage preview | 278 LOW_BIKES, 374 LOW_DOCKS, 5 LOW_BIKES_AND_DOCKS (657 flagged) |
+| GP1 after the run | `RUNNING`, `last_restarted` unchanged - never started, restarted or terminated by this project |
+| Lakeflow | never deployed |
+
+The Job reaching SUCCESS was deliberately not treated as proof. The producer and
+Bronze event-ID sets were compared as sets independently of the report's own status
+field: both 2,520, with an empty symmetric difference.
+
+### Three attempts, and what each proved
+
+1. **Attempt 1** stopped on an AMQP write timeout with a roughly 1 MiB frame. 0 events
+   published, verified three ways.
+2. **Attempt 2** stopped on `ImportError` from inside `send_batch`: AMQP over WebSocket
+   needs `websocket-client`, which the SDK imports lazily when it opens the connection.
+   0 events published. This also revealed that the failure classifier was too coarse -
+   a local error cannot have delivered anything, so it must be reported as
+   `not_attempted`, not `uncertain`.
+3. **Attempt 3** succeeded with WebSocket transport, 300-event batches and a 120 s
+   socket timeout. Whether the original fault was frame size, the transport, or the
+   timeout is still not isolated, because all three changed together; that is recorded
+   honestly rather than claimed as a diagnosis.
+
+## Runbook (retained below for reruns)
 
 [Back to README](../README.md) · [Cost and safety](COST_AND_SAFETY.md)
 

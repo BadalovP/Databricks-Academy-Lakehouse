@@ -7,10 +7,15 @@ Status meanings:
 - **Implemented locally:** code or documentation exists and has offline/static validation.
 - **Discovered read-only:** the real resource/capability was observed but not exercised.
 - **Pending live:** implementation or Azure execution evidence still remains.
+- **Validated live:** executed against real Azure resources with reconciled evidence.
 - **Blocked:** a confirmed permission/capability prevents progress.
 
-No row is labelled `validated live` yet because UrbanFlow has not performed a cloud write or
-execution.
+**First live validation completed 2026-09-29.** The bounded Citi Bike GBFS -> Event Hubs ->
+Bronze path ran on GP1 with an exact producer-to-Bronze reconciliation: 2,520 published, 2,520
+consumed, 2,520 accepted, 0 rejected, 0 duplicate, 0 missing and 0 unexpected event IDs, with
+Kafka partition 0 offsets 780-3,299 recorded. See
+[FIRST_STREAMING_TEST.md](FIRST_STREAMING_TEST.md). Rows below promoted to `Validated live` cite
+that run; everything else is unchanged and still honest about what has not run.
 
 | Lab | Required topic | UrbanFlow implementation | File / validation | Evidence | Status |
 |---:|---|---|---|---|---|
@@ -25,14 +30,14 @@ execution.
 | 2 | Azure provisioning settings | Existing workspace, ADLS Gen2, Key Vault settings documented | `RESOURCE_INVENTORY.md` | Azure CLI read-only inventory | Discovered read-only |
 | 2 | Personal container / external location | Existing identity external location identified | `RESOURCE_INVENTORY.md` | UC external location listed | Discovered read-only |
 | 2 | Storage credential | Managed-identity credential identified | `RESOURCE_INVENTORY.md` | UC credential listed | Discovered read-only |
-| 2 | Schemas and Volume | Identity-prefixed names configured | `config/*.yml` | Objects not created | Pending live |
+| 2 | Schemas and Volume | `dbr_dev.parvinbadalov_urbanflow` + managed Volume `urbanflow_landing` created | `sql/00_prepare_urbanflow_storage.sql`, UC API | Both created 2026-09-29 and used by the live run | Validated live |
 | 2 | Managed vs external tables | Design and existing examples documented | `ARCHITECTURE.md` | UrbanFlow tables absent | Pending live |
-| 2 | Key Vault-backed secret | Vault secret and Databricks scope names verified, value never read | `RESOURCE_INVENTORY.md` | Metadata only | Discovered read-only |
+| 2 | Key Vault-backed secret | Producer reads it from Key Vault; notebook reads it via `azure-secrets`; value never printed | `producer.from_key_vault`, notebook Step 5 | Both paths authenticated in the live run | Validated live |
 | 2 | Idempotent Bronze + metadata | Event ID, source/collection times, Kafka metadata, MERGE lesson | source modules and notebook | Offline tests | Implemented locally |
 | 2 | Ingestion Job | Planned bounded orchestration | README Job diagram | Job absent | Pending live |
 | 2 | Legacy mounts exercise | Explanation deliberately separated from core design | Architecture security boundary | No deprecated mount created | Pending live |
 | 3 | Auto Loader | Historical contract and Volume layout planned | `ARCHITECTURE.md` | Source verified; loader pending | Pending live |
-| 3 | Structured Streaming | Kafka reader, parser, bounded writer | `streaming.py`, `03_eventhubs_to_bronze.py` | Options/schema/path tests pass | Implemented locally |
+| 3 | Structured Streaming | Kafka reader, explicit-schema parser, bounded `availableNow` writer | `streaming.py`, `03_eventhubs_to_bronze.py` | Job run `873010921866250` SUCCESS in 130 s; 2,520 rows to Bronze | Validated live |
 | 3 | Event Hubs / Kafka | Existing Standard namespace/hub plus GP1/GP2 compatibility contract | inventory/config/streaming | Kafka enabled; DBR/access mode compatible; no message read | Implemented locally |
 | 3 | Real Python producer | TTL-aware, duplicate-aware, finite Event Hubs producer | `producer.py`, CLI | Mocked tests | Implemented locally |
 | 3 | Explicit schema | `StructType` station event contract | `streaming.py` | Static/tests | Implemented locally |

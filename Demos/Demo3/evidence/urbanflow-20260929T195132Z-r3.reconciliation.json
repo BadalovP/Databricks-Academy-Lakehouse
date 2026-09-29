@@ -1,0 +1,12 @@
+{
+  "bronze_status": "PASS",
+  "consumed_rows": 2520,
+  "duplicate_bronze_rows": 0,
+  "execution_id": "urbanflow-20260929T195132Z-r3",
+  "execution_ids_match": true,
+  "missing_event_ids": [],
+  "published_events": 2520,
+  "report_type": "urbanflow_end_to_end_reconciliation",
+  "status": "PASS",
+  "unexpected_event_ids": []
+}

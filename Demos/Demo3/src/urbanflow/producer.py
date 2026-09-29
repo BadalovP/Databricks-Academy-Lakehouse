@@ -39,6 +39,13 @@ BATCH_CONFIRMED = "confirmed"
 BATCH_UNCERTAIN = "uncertain"
 BATCH_NOT_ATTEMPTED = "not_attempted"
 
+# Failures that provably happen on this machine before any byte reaches the broker,
+# so the batch cannot have been delivered. Calling these "uncertain" would send the
+# operator hunting for orphan events that cannot exist. Observed live: a missing
+# optional WebSocket dependency surfaces as ImportError from inside send_batch,
+# because the SDK imports its transport lazily when it opens the connection.
+LOCAL_FAILURE_TYPES = (ImportError, TypeError, AttributeError, NameError)
+
 
 class Publisher(Protocol):
     def send(self, events: Iterable[dict[str, Any]]) -> "PublishOutcome": ...
@@ -347,8 +354,13 @@ class EventHubsPublisher:
                 # Our own messages about our own data; safe to surface unchanged.
                 raise failure
             assert failed_index is not None
+            # A local error cannot have delivered anything, so the in-flight batch is
+            # not_attempted rather than uncertain.
+            in_flight_status = (
+                BATCH_NOT_ATTEMPTED if isinstance(failure, LOCAL_FAILURE_TYPES) else BATCH_UNCERTAIN
+            )
             for index in range(failed_index, len(chunks)):
-                status = BATCH_UNCERTAIN if index == failed_index else BATCH_NOT_ATTEMPTED
+                status = in_flight_status if index == failed_index else BATCH_NOT_ATTEMPTED
                 outcomes.append(BatchOutcome(index, tuple(i for i, _ in chunks[index]), status))
             outcome = PublishOutcome(tuple(outcomes))
             logger.warning(
