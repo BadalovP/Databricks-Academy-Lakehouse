@@ -235,3 +235,87 @@ def test_bounded_run_respects_ttl_and_does_not_publish_duplicates() -> None:
     sleep = Mock()
     assert run_bounded(client, publisher, poll_count=2, sleep_fn=sleep) == 1
     sleep.assert_called_once_with(60)
+
+
+def install_fake_key_vault_sdk(
+    monkeypatch: pytest.MonkeyPatch, *, secret_value: str | None
+) -> tuple[Mock, Mock]:
+    """Install fake azure.identity and azure.keyvault.secrets modules.
+
+    Returns (SecretClient constructor mock, get_secret mock) so a test can assert
+    which vault URL was built and which secret name was requested.
+    """
+    get_secret = Mock(return_value=SimpleNamespace(value=secret_value))
+    secret_client_ctor = Mock(return_value=SimpleNamespace(get_secret=get_secret))
+
+    identity_module = ModuleType("azure.identity")
+    identity_module.AzureCliCredential = Mock(return_value="cli-credential")
+    secrets_module = ModuleType("azure.keyvault.secrets")
+    secrets_module.SecretClient = secret_client_ctor
+    keyvault_module = ModuleType("azure.keyvault")
+    keyvault_module.secrets = secrets_module
+    azure_module = sys.modules.get("azure") or ModuleType("azure")
+    azure_module.identity = identity_module
+    azure_module.keyvault = keyvault_module
+
+    monkeypatch.setitem(sys.modules, "azure", azure_module)
+    monkeypatch.setitem(sys.modules, "azure.identity", identity_module)
+    monkeypatch.setitem(sys.modules, "azure.keyvault", keyvault_module)
+    monkeypatch.setitem(sys.modules, "azure.keyvault.secrets", secrets_module)
+    return secret_client_ctor, get_secret
+
+
+def test_from_key_vault_reads_the_configured_vault_and_secret(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The preferred credential path: no environment variable is involved at all."""
+    monkeypatch.delenv("AZURE_EVENTHUB_CONNECTION_STRING", raising=False)
+    monkeypatch.delenv("AZURE_EVENTHUB_NAME", raising=False)
+    ctor, get_secret = install_fake_key_vault_sdk(monkeypatch, secret_value=FAKE_CONNECTION_STRING)
+
+    publisher = EventHubsPublisher.from_key_vault(
+        vault_name="kvpl24databricks2",
+        secret_name="parvinbadalov-eventhub-cs",
+        event_hub_name="parvinbadalov_evh",
+    )
+
+    assert ctor.call_args.kwargs["vault_url"] == "https://kvpl24databricks2.vault.azure.net/"
+    get_secret.assert_called_once_with("parvinbadalov-eventhub-cs")
+    assert publisher.connection_string == FAKE_CONNECTION_STRING
+    assert publisher.event_hub_name == "parvinbadalov_evh"
+
+
+def test_from_key_vault_never_renders_or_logs_the_secret(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Provenance may be logged; the value must not be, at any level."""
+    caplog.set_level(logging.DEBUG, logger="urbanflow")
+    install_fake_key_vault_sdk(monkeypatch, secret_value=FAKE_CONNECTION_STRING)
+
+    publisher = EventHubsPublisher.from_key_vault(
+        vault_name="kvpl24databricks2",
+        secret_name="parvinbadalov-eventhub-cs",
+        event_hub_name="parvinbadalov_evh",
+    )
+
+    assert FAKE_CONNECTION_STRING not in caplog.text
+    assert FAKE_CONNECTION_STRING not in repr(publisher)
+    assert FAKE_CONNECTION_STRING not in str(publisher)
+    assert FAKE_CONNECTION_STRING not in f"{publisher}"
+    # Guard against the capture itself silently going vacuous again.
+    assert any(
+        record.name == "urbanflow.producer" and "Key Vault" in record.getMessage()
+        for record in caplog.records
+    )
+
+
+def test_from_key_vault_rejects_an_empty_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An empty secret must fail loudly rather than producing an unusable publisher."""
+    install_fake_key_vault_sdk(monkeypatch, secret_value="")
+
+    with pytest.raises(RuntimeError, match="present but empty"):
+        EventHubsPublisher.from_key_vault(
+            vault_name="kvpl24databricks2",
+            secret_name="parvinbadalov-eventhub-cs",
+            event_hub_name="parvinbadalov_evh",
+        )

@@ -111,14 +111,36 @@ identity container, exposed through a dedicated UrbanFlow Volume. That write has
 | Kafka enabled | `true` |
 | Existing identity Event Hub | `parvinbadalov_evh` |
 | Partitions | 1 |
-| Retention | 1 day |
+| Retention (effective) | **1 hour** (`retentionDescription.retentionTimeInHours = 1`, cleanup policy `Delete`) |
+| Retention (legacy field) | `messageRetentionInDays = 1` — misleading, see below |
 | Existing consumer groups | `$Default`, `parvinbadalov` |
 | Event-level policy | `parvinbadalov_policy` with Listen and Send |
 
 The 2026-09-29 Azure CLI refresh confirmed the namespace is `Active`, Standard tier, in East US,
-and Kafka-enabled. The Event Hub is `Active` with one partition and one-day retention. The named
-consumer group exists, and the event-level rule still has `Listen` and `Send`. Only metadata and
-rights were read; no key or connection string was requested.
+and Kafka-enabled. The Event Hub is `Active` with one partition. The named consumer group exists,
+and the event-level rule still has `Listen` and `Send`. Only metadata and rights were read; no key
+or connection string was requested.
+
+### Retention is one hour, not one day
+
+An earlier version of this document reported one-day retention. That was wrong, and the Azure
+Portal was right. The hub exposes two retention properties and they disagree:
+
+| Property | Value | Authority |
+|---|---|---|
+| `messageRetentionInDays` | `1` | Legacy field. It can only express whole days, so a sub-day setting is reported as `1`. |
+| `retentionDescription` | `{cleanupPolicy: Delete, retentionTimeInHours: 1}` | **Authoritative.** The effective setting is **one hour**. |
+
+Reading only the legacy field produced the wrong answer. Three operational consequences follow:
+
+1. **The producer and the consumer must run within the same hour.** If the Job run is delayed more
+   than an hour after publishing, our own events expire and the bounded read consumes nothing. The
+   reconciliation would then correctly fail on a count mismatch rather than silently pass.
+2. **It sharply limits foreign-message risk.** Only messages published in the previous hour can
+   still exist, so `startingOffsets=earliest` on a fresh checkpoint reads at most one hour of data.
+   Combined with the `execution_id` filter, batch isolation is strong.
+3. **`failOnDataLoss` is hardcoded to `false`**, so expiry would be tolerated silently by Spark.
+   The real guard against that is the reconciliation count-and-ID comparison, not the connector.
 
 Other students' Event Hubs are visible and excluded. UrbanFlow can probably reuse
 `parvinbadalov_evh` for a short demonstration, subject to approval and validation that existing

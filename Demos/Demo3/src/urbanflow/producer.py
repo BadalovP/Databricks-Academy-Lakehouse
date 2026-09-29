@@ -101,6 +101,14 @@ class EventHubsPublisher:
 
     @classmethod
     def from_environment(cls) -> "EventHubsPublisher":
+        """Read the credential from the process environment.
+
+        Kept for non-interactive callers such as CI, but `from_key_vault` is the
+        preferred path for an operator running this by hand: an environment
+        variable has to be typed or pasted somewhere first, which tends to leave
+        the live SAS key in a shell history file and in a process environment
+        other programs on the machine can read.
+        """
         connection_string = os.getenv("AZURE_EVENTHUB_CONNECTION_STRING")
         event_hub_name = os.getenv("AZURE_EVENTHUB_NAME")
         if not connection_string or not event_hub_name:
@@ -108,6 +116,44 @@ class EventHubsPublisher:
                 "AZURE_EVENTHUB_CONNECTION_STRING and AZURE_EVENTHUB_NAME are required."
             )
         return cls(connection_string=connection_string, event_hub_name=event_hub_name)
+
+    @classmethod
+    def from_key_vault(
+        cls,
+        *,
+        vault_name: str,
+        secret_name: str,
+        event_hub_name: str,
+        credential: Any | None = None,
+    ) -> "EventHubsPublisher":
+        """Fetch the connection string from Azure Key Vault for this run only.
+
+        This is the preferred credential path. The secret is read straight into
+        memory using the operator's existing Azure CLI sign-in, so it is never
+        typed into a terminal, never stored in a shell variable or history file,
+        and never written to this repository. It is the same Key Vault secret that
+        already backs the `azure-secrets` Databricks scope, so the notebook and the
+        producer authenticate against one source of truth rather than two copies.
+        """
+        from azure.identity import AzureCliCredential
+        from azure.keyvault.secrets import SecretClient
+
+        client = SecretClient(
+            vault_url=f"https://{vault_name}.vault.azure.net/",
+            credential=credential if credential is not None else AzureCliCredential(),
+        )
+        secret = client.get_secret(secret_name)
+        if not secret.value:
+            raise RuntimeError(
+                f"Key Vault secret {secret_name!r} in vault {vault_name!r} is present but empty."
+            )
+        # Deliberately logs only provenance, never the value or any part of it.
+        logger.info(
+            "Loaded the Event Hubs credential from Key Vault %s, secret %s.",
+            vault_name,
+            secret_name,
+        )
+        return cls(connection_string=secret.value, event_hub_name=event_hub_name)
 
     def send(self, events: Iterable[dict[str, Any]]) -> int:
         """Publish events in batches and report how many were accepted before any failure."""

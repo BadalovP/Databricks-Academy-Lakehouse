@@ -10,6 +10,11 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
   "azure-eventhub>=5.12,<6",
+  # Lets the producer read the Event Hubs connection string straight from Azure
+  # Key Vault with the operator's existing Azure CLI sign-in, so the secret never
+  # reaches a shell variable, a shell history file, or this repository.
+  "azure-identity>=1.17,<2",
+  "azure-keyvault-secrets>=4.8,<5",
   "databricks-sdk>=0.68",
   "PyYAML>=6.0",
   "requests>=2.31",
