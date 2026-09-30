@@ -1,0 +1,47 @@
+{
+  "delta_merges": {
+    "duplicates": {
+      "inserted_rows": 0,
+      "rows_after": 0,
+      "rows_before": 0,
+      "source_rows": 0,
+      "table_existed": false
+    },
+    "quarantine": {
+      "inserted_rows": 0,
+      "rows_after": 0,
+      "rows_before": 0,
+      "source_rows": 0,
+      "table_existed": false
+    },
+    "silver": {
+      "inserted_rows": 2520,
+      "rows_after": 2520,
+      "rows_before": 0,
+      "source_rows": 2520,
+      "table_existed": false
+    }
+  },
+  "freshness": {
+    "age_seconds": 13499,
+    "is_fresh": false,
+    "max_age_seconds": 3600,
+    "newest_source_last_updated": 1790711443,
+    "oldest_source_last_updated": 1790711443,
+    "rows": 2520
+  },
+  "phase": "bronze_to_silver",
+  "reconciliation": {
+    "accounted_rows": 2520,
+    "bronze_rows": 2520,
+    "counts_reconcile": true,
+    "distinct_silver_event_ids": 2520,
+    "duplicate_rows": 0,
+    "quarantine_rows": 0,
+    "silver_ids_unique": true,
+    "silver_rows": 2520,
+    "status": "PASS"
+  },
+  "source_execution_id": "urbanflow-20260929T195132Z-r3",
+  "status": "PASS"
+}

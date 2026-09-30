@@ -41,7 +41,7 @@ def test_valid_rows_reach_silver_with_the_declared_contract(spark_session) -> No
     row = split.silver.collect()[0]
     assert row["event_id"] == "e1"
     assert row["passed_contract"] is True
-    assert row["availability_status"] == "HEALTHY"
+    assert row["availability_status"] == "AVAILABLE"
     # capacity_estimate sums bikes, docks and both disabled counts.
     assert row["capacity_estimate"] == 20
     assert row["observed_at"] is not None
@@ -142,7 +142,7 @@ def test_availability_classification_covers_the_whole_matrix(spark_session) -> N
         for r in split_silver_and_quarantine(bronze).silver.collect()
     }
 
-    assert statuses["healthy"] == "HEALTHY"
+    assert statuses["healthy"] == "AVAILABLE"
     assert statuses["low-bikes"] == "LOW_BIKES"
     assert statuses["low-docks"] == "LOW_DOCKS"
     assert statuses["both"] == "LOW_BIKES_AND_DOCKS"
@@ -156,7 +156,7 @@ def test_thresholds_are_configurable(spark_session) -> None:
     default = split_silver_and_quarantine(bronze).silver.collect()[0]
     raised = split_silver_and_quarantine(bronze, low_bike_threshold=6).silver.collect()[0]
 
-    assert default["availability_status"] == "HEALTHY"
+    assert default["availability_status"] == "AVAILABLE"
     assert raised["availability_status"] == "LOW_BIKES"
 
 
@@ -261,3 +261,75 @@ def test_add_contract_result_is_inspectable_before_routing(spark_session) -> Non
 
     assert annotated["passed_contract"] is False
     assert "NEGATIVE_AVAILABILITY" in annotated["failed_rules"]
+
+
+def test_out_of_service_stations_are_not_reported_as_actionable_shortages(
+    spark_session,
+) -> None:
+    """Regression test for a defect found in the FIRST live Phase 2 run.
+
+    silver.py classified purely on counts, so a station that is not installed or not
+    renting reports 0 bikes and 0 docks and was flagged LOW_BIKES_AND_DOCKS. The live run
+    produced 746 shortage rows where transformations.classify_availability -- this
+    project's reference implementation of the same rule -- produces 657. The 89-row gap
+    was exactly the out-of-service stations, which no amount of rebalancing can fix.
+    """
+    bronze = bronze_frame(
+        spark_session,
+        [
+            bronze_row(event_id="live-empty", bikes=0, docks=0, offset=1),
+            bronze_row(event_id="not-installed", bikes=0, docks=0, offset=2, is_installed=0),
+            bronze_row(event_id="not-renting", bikes=0, docks=0, offset=3, is_renting=0),
+            bronze_row(event_id="no-returns", bikes=10, docks=0, offset=4, is_returning=0),
+        ],
+    )
+
+    rows = {r["event_id"]: r for r in split_silver_and_quarantine(bronze).silver.collect()}
+
+    # A genuinely empty, working station is still an actionable shortage.
+    assert rows["live-empty"]["availability_status"] == "LOW_BIKES_AND_DOCKS"
+    assert rows["live-empty"]["is_operational"] is True
+    # Out-of-service stations are reported as such, never as a shortage.
+    for key in ("not-installed", "not-renting"):
+        assert rows[key]["availability_status"] == "OUT_OF_SERVICE"
+        assert rows[key]["is_operational"] is False
+        assert rows[key]["is_low_bikes"] is False
+        assert rows[key]["is_low_docks"] is False
+    # A station refusing returns cannot have a dock shortage worth acting on.
+    assert rows["no-returns"]["is_low_docks"] is False
+    assert rows["no-returns"]["availability_status"] == "AVAILABLE"
+
+
+def test_silver_classification_matches_the_pure_python_reference(spark_session) -> None:
+    """The Spark and pure-Python implementations of the rule must agree exactly.
+
+    They drifted apart once already, which is what shipped 89 wrong shortage rows.
+    """
+    from urbanflow.transformations import classify_availability
+
+    cases = [
+        dict(event_id="a", bikes=0, docks=0, offset=1),
+        dict(event_id="b", bikes=2, docks=9, offset=2),
+        dict(event_id="c", bikes=9, docks=2, offset=3),
+        dict(event_id="d", bikes=9, docks=9, offset=4),
+        dict(event_id="e", bikes=0, docks=0, offset=5, is_installed=0),
+        dict(event_id="f", bikes=0, docks=0, offset=6, is_renting=0),
+        dict(event_id="g", bikes=9, docks=0, offset=7, is_returning=0),
+    ]
+    bronze = bronze_frame(spark_session, [bronze_row(**c) for c in cases])
+    spark_rows = {
+        r["event_id"]: r["availability_status"]
+        for r in split_silver_and_quarantine(bronze).silver.collect()
+    }
+
+    for case in cases:
+        reference = classify_availability(
+            {
+                "num_bikes_available": case["bikes"],
+                "num_docks_available": case["docks"],
+                "is_installed": case.get("is_installed", 1),
+                "is_renting": case.get("is_renting", 1),
+                "is_returning": case.get("is_returning", 1),
+            }
+        )
+        assert spark_rows[case["event_id"]] == reference["availability_status"], case["event_id"]

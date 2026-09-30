@@ -1,0 +1,55 @@
+{
+  "availability_history": "one real snapshot; not trend evidence",
+  "delta_merges": {
+    "daily_summary": {
+      "inserted_rows": 2520,
+      "rows_after": 2520,
+      "rows_before": 0,
+      "source_rows": 2520,
+      "table_existed": false
+    },
+    "dimension": {
+      "inserted_rows": 40,
+      "rows_after": 40,
+      "rows_before": 0,
+      "source_rows": 40,
+      "table_existed": false
+    },
+    "fact": {
+      "inserted_rows": 2520,
+      "rows_after": 2520,
+      "rows_before": 0,
+      "source_rows": 2520,
+      "table_existed": false
+    },
+    "priorities": {
+      "inserted_rows": 746,
+      "rows_after": 746,
+      "rows_before": 0,
+      "source_rows": 746,
+      "table_existed": false
+    },
+    "shortages": {
+      "inserted_rows": 746,
+      "rows_after": 746,
+      "rows_before": 0,
+      "source_rows": 746,
+      "table_existed": false
+    }
+  },
+  "matched_reference_rows": 40,
+  "phase": "silver_to_gold",
+  "reconciliation": {
+    "distinct_fact_event_ids": 2520,
+    "fact_ids_unique": true,
+    "fact_matches_silver": true,
+    "fact_rows": 2520,
+    "silver_rows": 2520,
+    "status": "PASS",
+    "summary_observation_total": 2520,
+    "summary_totals_match_fact": true
+  },
+  "source_execution_id": "urbanflow-20260929T195132Z-r3",
+  "station_reference_rows": 40,
+  "status": "PASS"
+}

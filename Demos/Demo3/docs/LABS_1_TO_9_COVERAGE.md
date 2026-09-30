@@ -47,8 +47,8 @@ that run; everything else is unchanged and still honest about what has not run.
 | 3 | availableNow / micro-batches (historical Auto Loader) | `start_historical_available_now` with a schema checkpoint | `historical.py` | Unit-tested writer wiring only; never run against a real archive | Implemented locally |
 | 3 | Replay and semantics | Exactly-once/at-least-once explanation | README / architecture | Documentation review | Implemented locally |
 | 3 | Approximately 1,000 files | Local generator planned | Coverage matrix | Generator absent | Pending live |
-| 4 | Cleaning, explicit schemas, deduplication | Physical Spark contract, quarantine and deterministic broker ordering | `silver.py` | Real local Spark tests | Implemented locally |
-| 4 | MERGE / rerun safety | Identifier-safe, duplicate-rejecting Delta MERGE for all Phase 2 outputs | `persistence.py`, Silver/Gold notebooks | SQL and fake-client tests; live pending | Implemented locally |
+| 4 | Cleaning, explicit schemas, deduplication | Physical Spark contract, quarantine and deterministic broker ordering | `silver.py` | Live run wrote 2,520 Silver rows, 0 quarantined, IDs unique, `PASS` | Validated live |
+| 4 | MERGE / rerun safety | Identifier-safe, duplicate-rejecting Delta MERGE for all Phase 2 outputs | `persistence.py`, Silver/Gold notebooks | Second identical run left all eight tables at `inserted_rows = 0`, before == after | Validated live |
 | 4 | SCD1 / SCD2 | New/changed/unchanged/missing stations, null-safe changes, interval audits | `dimensions.py`, tests | Real local Spark tests | Implemented locally |
 | 4 | Enforcement/evolution | Explicit contracts; controlled evolution strategy | source / architecture | Delta behavior pending | Implemented locally |
 | 4 | Column mapping | Planned controlled rename demonstration | Architecture | None | Pending live |
