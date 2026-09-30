@@ -248,9 +248,11 @@ def persist_gold_outputs(
       corrected source no longer produces.
     """
     from urbanflow.persistence import (
+        backfill_execution_id,
         evolve_delta_schema,
         merge_delta_table,
         replace_execution_scope,
+        unassigned_execution_rows,
     )
 
     required = {"dimension", "fact", "daily_summary", "shortages", "priorities"}
@@ -270,6 +272,38 @@ def persist_gold_outputs(
             ("priorities", priorities),
         )
     }
+
+    # Adding `execution_id` to an existing priority table leaves every legacy row NULL, and
+    # a NULL can never match an execution-scoped delete. Those rows are attributed from the
+    # shortage table, which shares this table's grain and was written by the same run.
+    #
+    # The ORDER below matters and is the subtle part. Both tables are the same filter over
+    # the same fact, so the legacy priority rows correspond to the legacy SHORTAGE rows. The
+    # attribution therefore has to read the shortage table while it is still uncorrected: as
+    # soon as the shortage replacement removes the rows that no longer qualify, the evidence
+    # for exactly the rows needing attribution would be gone, and every one of them would
+    # look unattributable.
+    priorities_table = table_names["priorities"]
+    shortage_table = table_names["shortages"]
+    legacy_priority_rows = unassigned_execution_rows(spark, priorities_table, "execution_id")
+    if legacy_priority_rows and not spark.catalog.tableExists(shortage_table):
+        raise ValueError(
+            f"{priorities_table} has {legacy_priority_rows} rows without an execution_id and "
+            f"{shortage_table} is absent, so their provenance cannot be established. "
+            "Refusing to guess which execution produced them."
+        )
+    priority_lineage = (
+        spark.table(shortage_table).select("station_id", "observed_at", "execution_id")
+        if spark.catalog.tableExists(shortage_table)
+        else priorities.select("station_id", "observed_at", "execution_id").limit(0)
+    )
+    priority_backfill = backfill_execution_id(
+        spark,
+        priorities_table,
+        lineage=priority_lineage,
+        key_columns=("station_id", "observed_at"),
+        execution_column="execution_id",
+    )
 
     results: dict[str, dict[str, Any]] = {
         "dimension": merge_delta_table(
@@ -301,6 +335,7 @@ def persist_gold_outputs(
     }
     for name, migration in migrations.items():
         results[name]["schema_migration"] = migration
+    results["priorities"]["legacy_backfill"] = priority_backfill
     return results
 
 

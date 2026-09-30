@@ -296,7 +296,54 @@ print({"delta_merges": merge_report})
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Step 8 - Store Gold evidence and limitations
+# MAGIC ## Step 8 - Verify the corrected derived tables across their whole contents
+# MAGIC
+# MAGIC **What:** Assert that each derived table now contains exactly the rows its corrected source produces, that no row is left without an `execution_id`, and that any other execution's rows still have the same count as before the write.
+# MAGIC
+# MAGIC **Why:** The scoped comparison alone can report success while wrong rows remain. `gold_rebalancing_priority` is the proof: it was created before `execution_id` existed, so adding the column left all 746 legacy rows NULL, and `NULL = '<execution>'` is NULL rather than true. A scoped delete can therefore never match those rows, while the scoped count still compares 657 against 657 and looks correct. The 89 stations that are actually out of service would have stayed on an operator's action list.
+# MAGIC
+# MAGIC **Input:** The per-table reports returned by `persist_gold_outputs`, each already carrying a whole-table `verification` block and the legacy attribution report.
+# MAGIC
+# MAGIC **Output:** A raised error on any mismatch, otherwise a printed summary of attributed and deleted rows.
+# MAGIC
+# MAGIC **Key concepts:** NULL comparison semantics, execution-scoped deletion, verified-lineage backfill, two-way membership checks, failing closed.
+# MAGIC
+# MAGIC **Expected result:** `legacy_backfill` reports 746 rows attributed on the first corrected run and 0 on any later run; shortages and priorities each report 657 rows with 89 stale rows removed, 0 unassigned rows and status `PASS`.
+# MAGIC
+# MAGIC **How to explain it to my supervisor:** "We checked the whole table, not just the part we wrote. A row that belonged to no run would have slipped past a narrower check, and that is exactly the row that would have kept a broken station on the repair list."
+# MAGIC
+# MAGIC **Rerun and cost considerations:** These are small counting queries over tables already in memory for this run, and they add no write, no new table and no extra compute.
+
+# COMMAND ----------
+
+backfill_report = merge_report["priorities"].get("legacy_backfill", {})
+print({"legacy_backfill": backfill_report})
+
+verification_failures = {}
+for derived in ("shortages", "priorities"):
+    verification = merge_report[derived].get("verification", {})
+    if verification.get("status") != "PASS" or not merge_report[derived].get(
+        "other_executions_preserved", True
+    ):
+        verification_failures[derived] = verification
+    print(
+        {
+            "table": gold_tables[derived],
+            "scope_rows": verification.get("scope_rows"),
+            "stale_rows_removed": merge_report[derived].get("stale_rows_removed"),
+            "unassigned_rows": verification.get("unassigned_rows"),
+            "other_execution_rows": verification.get("other_execution_rows"),
+            "status": verification.get("status"),
+        }
+    )
+
+if verification_failures:
+    raise RuntimeError(f"Derived Gold tables did not verify: {verification_failures}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Step 9 - Store Gold evidence and limitations
 # MAGIC
 # MAGIC **What:** Write reconciliation, MERGE counts, reference match coverage, and the one-snapshot limitation to JSON.
 # MAGIC
@@ -322,6 +369,11 @@ evidence = {
     "status": gold_report["status"],
     "reconciliation": gold_report,
     "delta_merges": merge_report,
+    "legacy_priority_backfill": backfill_report,
+    "derived_table_verification": {
+        derived: merge_report[derived].get("verification", {})
+        for derived in ("shortages", "priorities")
+    },
     "station_reference_rows": 40,
     "matched_reference_rows": matched_reference_rows,
     "availability_history": "one real snapshot; not trend evidence",

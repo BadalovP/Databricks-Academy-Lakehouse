@@ -297,15 +297,45 @@ class _ScopeFrame:
         self.view = name
 
 
-def _scope_spark(scope_before: int, scope_after: int, total: int = 10):
+def _scope_spark(
+    scope_before: int,
+    scope_after: int,
+    total: int = 10,
+    unassigned: int = 0,
+    other: int = 0,
+):
+    """A target-table mock that answers each predicate the helper actually issues.
+
+    Dispatching on the predicate rather than on call order matters: the helper asks three
+    different questions of the same table - which rows have no execution id, which belong to
+    another execution, and which belong to ours - and a mock that returned one canned answer
+    to every `where()` would silently mis-attribute them to each other.
+    """
     spark = Mock()
     spark.catalog.tableExists.return_value = True
-    scoped = Mock()
-    scoped.count.side_effect = [scope_before, scope_after]
+    scope_calls = {"n": 0}
+
+    def _empty_join():
+        return Mock(count=Mock(return_value=0))
+
+    def _where(predicate: str):
+        if "IS NULL" in predicate:
+            return Mock(count=Mock(return_value=unassigned))
+        if "IS NOT NULL" in predicate:
+            return Mock(count=Mock(return_value=other))
+        # Our execution's slice: the first reading is taken before the MERGE, later ones after.
+        scope_calls["n"] += 1
+        value = scope_before if scope_calls["n"] == 1 else scope_after
+        return Mock(
+            count=Mock(return_value=value),
+            select=Mock(return_value=Mock(join=Mock(return_value=_empty_join()))),
+            join=Mock(return_value=_empty_join()),
+        )
+
     target = Mock()
     target.count.return_value = total
-    target.where.return_value = scoped
-    target.join.return_value = Mock(count=Mock(return_value=0))
+    target.where.side_effect = _where
+    target.join.return_value = _empty_join()
     spark.table.return_value = target
     return spark
 
@@ -332,6 +362,10 @@ def test_scoped_replacement_emits_a_delete_restricted_to_one_execution() -> None
     assert spark.sql.call_count == 1
     assert sql.count("MERGE INTO") == 1
     assert report["scope_matches_source"] is True
+    # The whole table is audited too, not just our slice.
+    assert report["verification"]["status"] == "PASS"
+    assert report["verification"]["unassigned_rows"] == 0
+    assert report["other_executions_preserved"] is True
 
 
 def test_scoped_replacement_requires_the_execution_column_in_the_source() -> None:
