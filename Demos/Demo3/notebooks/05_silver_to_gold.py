@@ -289,6 +289,7 @@ merge_report = persist_gold_outputs(
     shortages=shortages,
     priorities=priorities,
     table_names=gold_tables,
+    execution_id=source_execution_id,
 )
 print({"delta_merges": merge_report})
 

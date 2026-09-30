@@ -206,6 +206,10 @@ def rebalancing_priority(
         )
     )
     return scored.select(
+        # execution_id is carried so this table can be corrected one execution at a time.
+        # Without it a stale-row cleanup would have to overwrite the whole table, which
+        # would destroy any other execution's rows.
+        "execution_id",
         "station_id",
         "station_name",
         "observed_at",
@@ -230,15 +234,44 @@ def persist_gold_outputs(
     shortages: Any,
     priorities: Any,
     table_names: dict[str, str],
-) -> dict[str, dict[str, int | bool]]:
-    """Persist every Gold output with stable keys and idempotent Delta MERGEs."""
-    from urbanflow.persistence import merge_delta_table
+    execution_id: str,
+) -> dict[str, dict[str, Any]]:
+    """Persist every Gold output, migrating schemas and removing stale derived rows.
+
+    The five outputs split into two kinds, and they need different write strategies:
+
+    - `dimension`, `fact` and `daily_summary` are append-or-update by nature. A station
+      observation never stops existing, so a plain MERGE is correct.
+    - `shortages` and `priorities` are DERIVED filters whose row set legitimately shrinks
+      when a station stops qualifying. MERGE alone would leave the old row behind forever,
+      so these use an execution-scoped atomic replacement that also deletes rows the
+      corrected source no longer produces.
+    """
+    from urbanflow.persistence import (
+        evolve_delta_schema,
+        merge_delta_table,
+        replace_execution_scope,
+    )
 
     required = {"dimension", "fact", "daily_summary", "shortages", "priorities"}
     missing = required - set(table_names)
     if missing:
         raise ValueError(f"Missing Gold table names: {sorted(missing)}")
-    return {
+
+    # Migrate first. A table created by an earlier release can be narrower than the
+    # current projection, and Delta MERGE does not evolve the target on its own.
+    migrations = {
+        name: evolve_delta_schema(spark, frame, table_names[name])
+        for name, frame in (
+            ("dimension", dimension),
+            ("fact", fact),
+            ("daily_summary", daily_summary),
+            ("shortages", shortages),
+            ("priorities", priorities),
+        )
+    }
+
+    results: dict[str, dict[str, Any]] = {
         "dimension": merge_delta_table(
             spark, dimension, table_names["dimension"], key_columns=("station_id",)
         ),
@@ -249,16 +282,26 @@ def persist_gold_outputs(
             table_names["daily_summary"],
             key_columns=("station_id", "observation_date"),
         ),
-        "shortages": merge_delta_table(
-            spark, shortages, table_names["shortages"], key_columns=("event_id",)
+        "shortages": replace_execution_scope(
+            spark,
+            shortages,
+            table_names["shortages"],
+            key_columns=("event_id",),
+            execution_column="execution_id",
+            execution_id=execution_id,
         ),
-        "priorities": merge_delta_table(
+        "priorities": replace_execution_scope(
             spark,
             priorities,
             table_names["priorities"],
             key_columns=("station_id", "observed_at"),
+            execution_column="execution_id",
+            execution_id=execution_id,
         ),
     }
+    for name, migration in migrations.items():
+        results[name]["schema_migration"] = migration
+    return results
 
 
 def reconcile_gold(silver: Any, fact: Any, summary: Any) -> dict[str, Any]:

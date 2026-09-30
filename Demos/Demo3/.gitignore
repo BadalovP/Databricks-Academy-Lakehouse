@@ -16,3 +16,8 @@ reports/*.json
 !.env.example
 evidence/*.producer.json
 evidence/*.bronze.json
+
+# Local Spark test artifacts (never commit)
+spark-warehouse/
+metastore_db/
+derby.log

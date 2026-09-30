@@ -268,20 +268,35 @@ def persist_silver_outputs(
     silver_table: str,
     quarantine_table: str,
     duplicate_table: str,
-) -> dict[str, dict[str, int | bool]]:
-    """Persist all three reconciled Silver outcomes with idempotent Delta MERGEs."""
-    from urbanflow.persistence import merge_delta_table
+) -> dict[str, dict[str, Any]]:
+    """Persist all three reconciled Silver outcomes with idempotent Delta MERGEs.
+
+    Each target is schema-migrated first. `silver_station_status` was created with 27
+    columns before `is_operational` joined the contract, and Delta MERGE does not evolve
+    the target on its own, so without this the corrected run fails on an unresolvable
+    target column rather than writing anything.
+
+    These three are append-or-update by nature: an observation never stops existing, so
+    unlike the derived Gold shortage tables they need no stale-row deletion.
+    """
+    from urbanflow.persistence import evolve_delta_schema, merge_delta_table
 
     lineage_key = ("kafka_topic", "kafka_partition", "kafka_offset")
-    return {
-        "silver": merge_delta_table(spark, split.silver, silver_table, key_columns=("event_id",)),
-        "quarantine": merge_delta_table(
-            spark, split.quarantine, quarantine_table, key_columns=lineage_key
-        ),
-        "duplicates": merge_delta_table(
-            spark, split.duplicates, duplicate_table, key_columns=lineage_key
-        ),
+    targets = (
+        ("silver", split.silver, silver_table, ("event_id",)),
+        ("quarantine", split.quarantine, quarantine_table, lineage_key),
+        ("duplicates", split.duplicates, duplicate_table, lineage_key),
+    )
+    migrations = {
+        name: evolve_delta_schema(spark, frame, table) for name, frame, table, _ in targets
     }
+    results: dict[str, dict[str, Any]] = {
+        name: merge_delta_table(spark, frame, table, key_columns=keys)
+        for name, frame, table, keys in targets
+    }
+    for name, migration in migrations.items():
+        results[name]["schema_migration"] = migration
+    return results
 
 
 def freshness(
