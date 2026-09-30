@@ -50,7 +50,7 @@ that run; everything else is unchanged and still honest about what has not run.
 | 4 | Cleaning, explicit schemas, deduplication | Physical Spark contract, quarantine and deterministic broker ordering | `silver.py` | Live run wrote 2,520 Silver rows, 0 quarantined, IDs unique, `PASS` | Validated live |
 | 4 | MERGE / rerun safety | Identifier-safe, duplicate-rejecting Delta MERGE for all Phase 2 outputs | `persistence.py`, Silver/Gold notebooks | Second identical run left all eight tables at `inserted_rows = 0`, before == after | Validated live |
 | 4 | SCD1 / SCD2 | New/changed/unchanged/missing stations, null-safe changes, interval audits | `dimensions.py`, tests | Real local Spark tests | Implemented locally |
-| 4 | Enforcement/evolution | Explicit contracts; controlled evolution strategy | source / architecture | Delta behavior pending | Implemented locally |
+| 4 | Enforcement/evolution | Explicit contracts; add-only `ALTER TABLE ADD COLUMNS` migration instead of `autoMerge`; verified-lineage backfill for rows predating a column | `persistence.py`, `gold.py` | Real local Spark tests for the migration, the attribution guards and the whole-table verification; the Delta MERGE/DELETE itself pending the corrected live run | Implemented locally |
 | 4 | Column mapping | Planned controlled rename demonstration | Architecture | None | Pending live |
 | 4 | Data contracts | GBFS and event contracts documented and tested | client/streaming/architecture | Unit tests | Implemented locally |
 | 4 | OPTIMIZE/VACUUM/liquid clustering | Comparison and safe maintenance exercise still required | Coverage matrix | None | Pending live |

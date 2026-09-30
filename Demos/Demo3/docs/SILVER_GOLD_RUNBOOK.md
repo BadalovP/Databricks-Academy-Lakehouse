@@ -29,9 +29,18 @@ the same rule - produces **657**.
 
 `silver.py` classified purely on counts. An out-of-service station reports 0 bikes and 0
 docks, so it was flagged `LOW_BIKES_AND_DOCKS` even though no amount of rebalancing can
-fix it. Measured against the live feed: 2,520 stations, 88 of them not installed or not
-renting, and the two implementations differed by exactly 88. The snapshot's gap was 89
-because one station changed state in between.
+fix it.
+
+Two different numbers circulate for the size of this gap, and only one of them governs the
+correction. A live GBFS request made while diagnosing the defect found **88** stations not
+installed or not renting - but that was a different moment, and it is NOT the basis for any
+expectation here. The authoritative figure comes from the original snapshot itself: the
+`medallion_preview` block recorded in
+`evidence/urbanflow-20260929T195132Z-r3.bronze.json` was produced by
+`prepare_station_batch` over the very same 2,520 Bronze records this execution consumed from
+Kafka, using `classify_availability`, the corrected rule. It reports **657** shortages
+(LOW_BIKES 278, LOW_DOCKS 374, LOW_BIKES_AND_DOCKS 5). Against the 746 the Gold run wrote,
+the gap is exactly **89**.
 
 Fixed by gating on `is_installed AND is_renting`, gating dock shortages additionally on
 `is_returning`, adding an `is_operational` column, and restoring the reference
@@ -40,7 +49,7 @@ one of which asserts the Spark and pure-Python implementations agree case by cas
 they drifted apart once already.
 
 **Consequence: `gold_station_shortage` and `gold_rebalancing_priority` currently hold 746
-rows, roughly 89 of which are out-of-service stations that should read `OUT_OF_SERVICE`.
+rows, exactly 89 of which are out-of-service stations that should read `OUT_OF_SERVICE`.
 Those two tables are stale until the Job is rerun with the corrected code.** The other six
 tables are unaffected in row count; `silver_station_status` and `fact_station_availability`
 carry corrected `availability_status` values only after a rerun.
@@ -56,33 +65,63 @@ data behind.
 | Problem | Evidence from the live tables | Fix |
 |---|---|---|
 | Delta MERGE does not evolve the target schema | `silver_station_status` has 27 columns and no `is_operational`; the corrected contract has 28. The MERGE would have failed on an unresolvable target column | `evolve_delta_schema` runs an explicit, narrow `ALTER TABLE ... ADD COLUMNS` for genuinely missing columns only, before the MERGE. Only ever adds; never drops, renames or retypes |
-| UPDATE and INSERT cannot shrink a derived table | `gold_station_shortage` and `gold_rebalancing_priority` hold 746 rows each; the corrected rule produces ~657, so ~89 out-of-service stations would stay listed as actionable forever | `replace_execution_scope` uses one atomic MERGE whose `WHEN NOT MATCHED BY SOURCE AND execution_id = '<id>' THEN DELETE` removes exactly the stale rows for this execution |
+| UPDATE and INSERT cannot shrink a derived table | `gold_station_shortage` and `gold_rebalancing_priority` hold 746 rows each; the corrected rule produces 657, so 89 out-of-service stations would stay listed as actionable forever | `replace_execution_scope` uses one atomic MERGE whose `WHEN NOT MATCHED BY SOURCE AND execution_id = '<id>' THEN DELETE` removes exactly the stale rows for this execution |
 | The priority table could not be scoped | `gold_rebalancing_priority` had no `execution_id`, so a cleanup would have had to overwrite the whole table and destroy any other execution's rows | `rebalancing_priority` now carries `execution_id`, and the schema migration adds the column to the existing table |
+| **A scoped delete cannot match a NULL, so the legacy rows would have escaped it - silently** | Adding `execution_id` to the existing 746-row priority table leaves every one of those rows NULL. The MERGE then updates the 657 that still qualify (filling in their execution id) and leaves the other 89 alone, because `NULL = '<execution>'` evaluates to NULL rather than true. `scope_matches_source` afterwards compares 657 against 657 and **passes**, with 89 broken stations still on the action list | `backfill_execution_id` attributes the legacy rows from verified lineage first; `replace_execution_scope` then refuses outright to run while any row has no execution id; and `verify_execution_scope` audits the whole table rather than the scoped slice |
 
 `spark.databricks.delta.schema.autoMerge.enabled` was deliberately NOT used: it would
 silently absorb any future drift, including an accidentally removed column, across every
 table the session touches. The explicit migration names each added column in its report.
 
+### How the legacy priority rows were attributed
+
+The 89 stale priority rows can only be deleted once every legacy row carries an execution
+id, and assigning them all to the current run because it happens to be the run executing
+would be a guess. Two independent pieces of evidence establish their provenance instead:
+
+1. **Recorded at creation.** `evidence/urbanflow-20260929T195132Z-r3.gold.json` shows
+   `priorities` with `table_existed: false` and `rows_before: 0`, inserting 746 rows. The
+   table was *created* by this execution. The `.gold.run2.json` repeat then shows
+   `rows_before: 746, inserted_rows: 0`, so nothing else has written to it since.
+2. **Checked at run time, per row.** `backfill_execution_id` takes each legacy row's
+   execution id from `gold_station_shortage`, which shares the same grain
+   (`station_id`, `observed_at`) and does carry the column for all 746 rows. It refuses to
+   write anything unless the lineage has no NULL execution id, every lineage key maps to
+   exactly one execution, and *every* legacy row is attributable. An unattributable row
+   stops the run and reports the count rather than being adopted.
+
+Rows that already carry an execution id are never reassigned: the update fires only
+`WHEN MATCHED AND execution_id IS NULL`.
+
+**The order matters, and it is the subtle part.** Both tables are the same filter over the
+same fact, so the legacy priority rows correspond to the legacy *shortage* rows. The
+attribution therefore reads the shortage table while it is still uncorrected - once the
+shortage replacement has removed the 89 rows that no longer qualify, the evidence for
+exactly the rows needing attribution would be gone and all 89 would look unattributable. A
+regression test asserts the attribution happens before the shortage replacement, and fails
+if the two are reordered.
+
 ### Expected results for the correction run
 
-Derived from the ORIGINAL Bronze snapshot, not a freshly fetched feed, so the numbers are
-reproducible: 2,520 observations, of which 88 stations were not installed or not renting at
-the time of that snapshot.
+Derived from the ORIGINAL Bronze snapshot, not a freshly fetched feed. The shortage figure
+is not an estimate: 657 is what `classify_availability` produced from these same 2,520
+records, recorded in `evidence/urbanflow-20260929T195132Z-r3.bronze.json` at ingestion time.
 
 | Table | Before | After | Change |
 |---|---|---|---|
 | `silver_station_status` | 2,520 rows, 27 cols | 2,520 rows, 28 cols | `is_operational` added; `availability_status` corrected for out-of-service stations |
 | `fact_station_availability` | 2,520 | 2,520 | corrected `availability_status`, row count unchanged |
-| `gold_station_shortage` | 746 | ~657 | ~89 stale out-of-service rows DELETED |
-| `gold_rebalancing_priority` | 746, 12 cols | ~657, 13 cols | `execution_id` added; ~89 stale rows DELETED |
+| `gold_station_shortage` | 746 | 657 | 89 stale out-of-service rows DELETED |
+| `gold_rebalancing_priority` | 746, 12 cols | 657, 13 cols | `execution_id` added and backfilled for all 746 legacy rows; 89 stale rows DELETED |
 | `quarantine_station_status` | 0 | 0 | unchanged, no row fails the contract |
 | `duplicate_station_status` | 0 | 0 | unchanged |
 | `gold_daily_station_summary` | 2,520 | 2,520 | unchanged counts |
 | `dim_station_development_sample` | 40 | 40 | unchanged |
 
-The exact post-run shortage total is whatever the corrected rule yields for that snapshot;
-657 is the figure Phase 1's in-memory preview produced from the same data, so agreement
-with it is the check.
+Expected shortage composition, also from that recorded preview: LOW_BIKES 278,
+LOW_DOCKS 374, LOW_BIKES_AND_DOCKS 5. A post-run total that is not exactly 657, or a
+composition that differs from those three figures, means something other than the
+classification change moved - and is a reason to stop rather than to adjust the expectation.
 
 ### Commands
 
@@ -100,11 +139,26 @@ databricks bundle run urbanflow_silver_gold_test -t azure --profile dev     --pa
    reports it.
 2. Silver + quarantine + duplicates still equals 2,520, IDs unique, `PASS`.
 3. `fact_station_availability` still equals Silver with distinct IDs.
-4. Shortage and priority counts DROPPED to the corrected figure, and
-   `stale_rows_removed` reports how many were deleted.
-5. No row in either table has `availability_status = 'OUT_OF_SERVICE'`.
-6. `scope_matches_source` is true for both scoped tables.
-7. The repeat run reports `stale_rows_removed = 0` and unchanged counts everywhere.
+4. `legacy_priority_backfill` reports `null_rows_before: 746`,
+   `unattributable_rows: 0`, `backfilled_rows: 746`, `null_rows_after: 0`.
+5. Shortage and priority counts both DROPPED to exactly 657, and `stale_rows_removed`
+   reports 89 for each.
+6. No row in either table has `availability_status = 'OUT_OF_SERVICE'`.
+7. `derived_table_verification` is `PASS` for both tables, with
+   `missing_from_table: 0`, `unexpected_in_table: 0` and **`unassigned_rows: 0`**. The last
+   one is the check that the scoped comparison could not make: a non-zero value means legacy
+   rows escaped the delete, which is precisely the failure this run exists to prevent.
+   Step 8 of the notebook raises rather than printing a warning, so the Job fails loudly.
+8. `other_executions_preserved` is true for both tables.
+9. The repeat run reports `stale_rows_removed = 0`, `backfilled_rows = 0` and unchanged
+   counts everywhere.
+
+A note on what is and is not proven locally: the schema migration, the attribution guards,
+every NULL and anti-join count and the whole-table verification all run against a real Spark
+session in the test suite. The physical Delta MERGE and DELETE cannot, because delta-spark's
+jars do not resolve in this environment, so those statements are asserted at statement level
+and their effect is proven only by this live run. That is why the reconciliation above is
+checked against the tables themselves rather than trusted from the report.
 
 ### Rollback
 
@@ -157,8 +211,9 @@ From the 2,520 Bronze rows, with the thresholds both at 2:
 - **Daily summary: every row `is_trend_capable = false`.** There is one snapshot, so each
   station has exactly one observation and min, max and average all equal it. This is the
   honest answer, not a bug.
-- **Shortages around 657 rows** (Phase 1's in-memory preview saw 278 LOW_BIKES,
-  374 LOW_DOCKS and 5 LOW_BIKES_AND_DOCKS).
+- **Shortages exactly 657 rows**: 278 LOW_BIKES, 374 LOW_DOCKS, 5 LOW_BIKES_AND_DOCKS.
+  This is not a target to be approximated - it is what `classify_availability` produced from
+  these same 2,520 records, recorded in the Bronze evidence at ingestion time.
 - **Roughly 2,480 fact rows will have a null `station_name`.** The dimension is built from
   the committed 40-station sample, which is why the table is named
   `dim_station_development_sample`. The fact join is deliberately a LEFT join so a
