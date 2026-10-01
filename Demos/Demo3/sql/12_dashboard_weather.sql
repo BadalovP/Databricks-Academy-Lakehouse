@@ -75,11 +75,15 @@ GROUP BY weather_grid_label;
 
 -- 5. Trips that found no weather hour at all. Reported, not hidden: an uncovered hour is a
 --    fact about the archive window, and the trips themselves are still real.
+--
+--    This reads the persisted demand summary rather than an enriched-trips table. An earlier
+--    version of this query referenced `silver_historical_trips_weather`, which was never created
+--    and never should be: it would be a second copy of every trip row, differing only by three
+--    weather columns, and the per-day coverage needed here is already recorded in the summary.
 SELECT
-  COUNT(*)                                                          AS trips,
-  SUM(CASE WHEN has_weather THEN 1 ELSE 0 END)                      AS trips_with_weather,
-  SUM(CASE WHEN NOT has_weather THEN 1 ELSE 0 END)                  AS trips_without_weather,
-  ROUND(
-    100.0 * SUM(CASE WHEN has_weather THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0), 2
-  )                                                                 AS weather_coverage_percent
-FROM dbr_dev.parvinbadalov_urbanflow.silver_historical_trips_weather;
+  SUM(trips)                                                        AS trips,
+  SUM(trips_with_weather)                                           AS trips_with_weather,
+  SUM(trips) - SUM(trips_with_weather)                              AS trips_without_weather,
+  ROUND(100.0 * SUM(trips_with_weather) / NULLIF(SUM(trips), 0), 2) AS weather_coverage_percent,
+  COUNT(DISTINCT trip_date)                                         AS days_covered
+FROM dbr_dev.parvinbadalov_urbanflow.gold_weather_demand;

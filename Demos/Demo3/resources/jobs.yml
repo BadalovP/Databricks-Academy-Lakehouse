@@ -55,6 +55,9 @@ resources:
       parameters:
         - name: run_transform
           default: "false"
+        # Unique per run, so a repeat never overwrites the previous run's evidence.
+        - name: run_attempt_id
+          default: "{{job.run_id}}"
         - name: source_execution_id
           default: urbanflow-20260929T195132Z-r3
         - name: catalog
@@ -71,6 +74,7 @@ resources:
             notebook_path: ../notebooks/04_bronze_to_silver.py
             base_parameters:
               run_transform: "{{job.parameters.run_transform}}"
+              run_attempt_id: "{{job.parameters.run_attempt_id}}"
               source_execution_id: "{{job.parameters.source_execution_id}}"
               catalog: "{{job.parameters.catalog}}"
               schema: "{{job.parameters.schema}}"
@@ -84,6 +88,7 @@ resources:
             notebook_path: ../notebooks/05_silver_to_gold.py
             base_parameters:
               run_transform: "{{job.parameters.run_transform}}"
+              run_attempt_id: "{{job.parameters.run_attempt_id}}"
               source_execution_id: "{{job.parameters.source_execution_id}}"
               catalog: "{{job.parameters.catalog}}"
               schema: "{{job.parameters.schema}}"
@@ -105,6 +110,9 @@ resources:
       parameters:
         - name: run_ingest
           default: "false"
+        # Unique per run, so a repeat never overwrites the previous run's evidence.
+        - name: run_attempt_id
+          default: "{{job.run_id}}"
         - name: execution_id
           default: NOT_APPROVED
         - name: stream_timeout_seconds
@@ -123,6 +131,7 @@ resources:
             notebook_path: ../notebooks/06_historical_trips.py
             base_parameters:
               run_ingest: "{{job.parameters.run_ingest}}"
+              run_attempt_id: "{{job.parameters.run_attempt_id}}"
               execution_id: "{{job.parameters.execution_id}}"
               stream_timeout_seconds: "{{job.parameters.stream_timeout_seconds}}"
               catalog: "{{job.parameters.catalog}}"
@@ -141,6 +150,9 @@ resources:
       parameters:
         - name: run_enrichment
           default: "false"
+        # Unique per run, so a repeat never overwrites the previous run's evidence.
+        - name: run_attempt_id
+          default: "{{job.run_id}}"
         - name: execution_id
           default: NOT_APPROVED
         # Default to the committed 48-hour sample so a run makes no external request.
@@ -172,6 +184,7 @@ resources:
             notebook_path: ../notebooks/07_weather_enrichment.py
             base_parameters:
               run_enrichment: "{{job.parameters.run_enrichment}}"
+              run_attempt_id: "{{job.parameters.run_attempt_id}}"
               execution_id: "{{job.parameters.execution_id}}"
               weather_source: "{{job.parameters.weather_source}}"
               weather_sample_file: "{{job.parameters.weather_sample_file}}"

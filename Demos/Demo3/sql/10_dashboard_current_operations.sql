@@ -25,7 +25,9 @@ SELECT
   MIN(observed_at)                                                  AS snapshot_observed_from,
   MAX(observed_at)                                                  AS snapshot_observed_to,
   COUNT(DISTINCT execution_id)                                      AS executions_included,
-  'one GBFS snapshot; a point-in-time count, not a trend'           AS reading_note
+  -- No semicolon inside this literal: these files are meant to be copy-pasted, and any
+  -- tool that splits statements on ';' would break the query in half mid-string.
+  'one GBFS snapshot - a point-in-time count, not a trend'           AS reading_note
 FROM dbr_dev.parvinbadalov_urbanflow.silver_station_status;
 
 -- 2. Availability breakdown for a pie or bar chart, with the share stated explicitly.

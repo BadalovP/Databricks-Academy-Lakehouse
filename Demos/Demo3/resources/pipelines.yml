@@ -3,7 +3,8 @@ resources:
     urbanflow_pipeline:
       name: "[${bundle.target}] urbanflow_pipeline"
       catalog: ${var.catalog}
-      schema: ${var.schema}
+      # ISOLATED: never ${var.schema}, which the validated notebook tables live in.
+      schema: ${var.lakeflow_schema}
       root_path: ../src
       serverless: true
       # Triggered, never continuous. A continuous pipeline bills for as long as it runs; a
@@ -16,7 +17,7 @@ resources:
       edition: ADVANCED
       configuration:
         urbanflow.catalog: ${var.catalog}
-        urbanflow.schema: ${var.schema}
+        urbanflow.schema: ${var.lakeflow_schema}
         urbanflow.volume: ${var.volume}
         urbanflow.secret_scope: ${var.secret_scope}
         urbanflow.event_hubs_secret_name: parvinbadalov-eventhub-cs
@@ -28,6 +29,7 @@ resources:
         # Shared with the notebook path so a threshold is never defined in two places.
         urbanflow.low_bike_threshold: "2"
         urbanflow.low_dock_threshold: "2"
+        # Reads the shared landing Volume. A read is safe; only the output SCHEMA is isolated.
         urbanflow.station_information_path: >-
           /Volumes/${var.catalog}/${var.schema}/${var.volume}/landing/station_information
       libraries:

@@ -23,7 +23,7 @@
 -- must stay cheap; is_account_group_member is evaluated by the engine, not by a lookup join.
 CREATE OR REPLACE FUNCTION dbr_dev.parvinbadalov_urbanflow.region_row_filter(region_id STRING)
 RETURNS BOOLEAN
-COMMENT 'Dispatchers see their own region; urbanflow_admins see every region.'
+COMMENT 'Dispatchers see their own region. urbanflow_admins see every region.'
 RETURN
   is_account_group_member('urbanflow_admins')
   OR is_account_group_member(CONCAT('urbanflow_region_', region_id));
@@ -46,7 +46,7 @@ RETURN
 -- the same type as the column it masks.
 CREATE OR REPLACE FUNCTION dbr_dev.parvinbadalov_urbanflow.coordinate_mask(value DOUBLE)
 RETURNS DOUBLE
-COMMENT 'Full precision for urbanflow_admins; two decimal places (about 1 km) otherwise.'
+COMMENT 'Full precision for urbanflow_admins. Two decimal places (about 1 km) otherwise.'
 RETURN
   CASE
     WHEN is_account_group_member('urbanflow_admins') THEN value
@@ -73,7 +73,7 @@ RETURN
 -- analyst-facing view keeps the aggregate columns and hashes the identifier.
 CREATE OR REPLACE FUNCTION dbr_dev.parvinbadalov_urbanflow.ride_id_mask(value STRING)
 RETURNS STRING
-COMMENT 'Admins see ride_id; everyone else sees a stable one-way hash of it.'
+COMMENT 'Admins see ride_id. Everyone else sees a stable one-way hash of it.'
 RETURN
   CASE
     WHEN is_account_group_member('urbanflow_admins') THEN value

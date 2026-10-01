@@ -51,7 +51,11 @@ PROJECT_ROOT = NOTEBOOK_DIR.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from urbanflow.automation import APPROVED_RUN_CLUSTER_IDS
-from urbanflow.reporting import write_json_report
+from urbanflow.reporting import (
+    evidence_report_path,
+    resolve_attempt_id,
+    write_json_report,
+)
 from urbanflow.weather import (
     WeatherRequest,
     build_archive_url,
@@ -99,6 +103,7 @@ dbutils.widgets.text("longitude", "-74.0060")
 dbutils.widgets.text("catalog", "")
 dbutils.widgets.text("schema", "")
 dbutils.widgets.text("volume", "")
+dbutils.widgets.text("run_attempt_id", "")
 run_enrichment = dbutils.widgets.get("run_enrichment").lower() == "true"
 execution_id = dbutils.widgets.get("execution_id").strip()
 if not run_enrichment:
@@ -363,7 +368,16 @@ evidence = {
         "a missing reading stays null and is never replaced with zero",
     ],
 }
-write_json_report(evidence, f"{volume_root}/reports/weather/{execution_id}.weather.json")
+write_json_report(
+    evidence,
+    evidence_report_path(
+        volume_root,
+        phase="weather",
+        execution_id=execution_id,
+        attempt_id=resolve_attempt_id(job_run_id=dbutils.widgets.get("run_attempt_id")),
+        suffix="weather",
+    ),
+)
 print({"status": evidence["status"]})
 
 # COMMAND ----------

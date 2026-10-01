@@ -32,8 +32,14 @@ that run; everything else is unchanged and still honest about what has not run.
 
 See [SILVER_GOLD_RUNBOOK.md](SILVER_GOLD_RUNBOOK.md) and [PHASE3_STATUS.md](PHASE3_STATUS.md).
 
-**Current totals, 71 requirement rows:** 17 `Validated live`, 41 `Implemented locally`,
-3 `Discovered read-only`, 10 `Pending live`, 0 `Blocked`.
+**Current totals, 71 requirement rows:** 17 `Validated live`, 43 `Implemented locally`,
+3 `Discovered read-only`, **8** `Pending live`, 0 `Blocked`.
+
+The eight remaining rows are each analysed in [PENDING_REQUIREMENTS.md](PENDING_REQUIREMENTS.md),
+with the resource they need, whether they change data, and a recommended batch order. Two of them
+are recommended as *documented rather than executed*: a workspace-wide legacy mount on a shared
+academy workspace is poor judgement regardless of authorization, and a second workspace for
+DEV-to-PROD is new paid infrastructure whose absence is more honest to state than to simulate.
 
 Nine rows moved to `Validated live` in this round. Deliberately NOT promoted: full monthly
 historical ingestion (only a 40-row sample ran), Lakeflow, the published AI/BI dashboard and
@@ -48,7 +54,7 @@ full-scale one.
 | 1 | DataFrames | Explicit Spark DataFrames for station information/status | `01_fundamentals.py` | Static review; live notebook pending | Implemented locally |
 | 1 | select/filter/join/groupBy | Operational filter, UUID join, availability aggregation | `01_fundamentals.py` | Pure business rules unit-tested | Implemented locally |
 | 1 | Delta and SQL | Opt-in idempotent MERGE plus dashboard-ready SQL | `01_fundamentals.py` | Write defaults off | Implemented locally |
-| 1 | Basic dashboard | 22 dashboard datasets written as read-only SQL, plus a four-page layout and exact creation steps | `sql/10`-`sql/13`, `docs/DASHBOARD.md` | Query safety and schema isolation enforced by `tests/test_sql_assets.py`; no AI/BI object created, since publishing needs a billable SQL warehouse | Implemented locally |
+| 1 | Basic dashboard | 22 dashboard datasets as read-only SQL, a four-page layout and exact creation steps | `sql/10`-`sql/13`, `docs/DASHBOARD.md` | **All 22 queries executed read-only against the live corrected tables on GP1 2026-10-02** (run 242979365945407): 22/22 succeeded, and Page 1 returned 2,520 stations / 1,774 available / 89 out of service / 657 actionable. The AI/BI object itself is not created, since publishing needs a billable SQL warehouse | Implemented locally |
 | 1 | Shared cluster / General schema differences | GP1 preferred and GP2 fallback through configuration; must already be running | config, Job resource, inventory | IDs/runtime/access/permissions discovered read-only | Implemented locally |
 | 2 | Azure provisioning settings | Existing workspace, ADLS Gen2, Key Vault settings documented | `RESOURCE_INVENTORY.md` | Azure CLI read-only inventory | Discovered read-only |
 | 2 | Personal container / external location | Existing identity external location identified | `RESOURCE_INVENTORY.md` | UC external location listed | Discovered read-only |
@@ -69,7 +75,7 @@ full-scale one.
 | 3 | availableNow / micro-batches (Kafka) | Bounded Kafka writer with a bounded wait | `03_eventhubs_to_bronze.py`, `streaming.py` | Job run `873010921866250` consumed 2,520 rows and terminated | Validated live |
 | 3 | availableNow / micro-batches (historical Auto Loader) | `start_historical_available_now` with a schema checkpoint | `historical.py` | Ran live on GP1 2026-10-02: `availableNow` terminated by itself inside the wait bound; the rerun read no new file, proving the checkpoint | Validated live |
 | 3 | Replay and semantics | Exactly-once/at-least-once explanation | README / architecture | Documentation review | Implemented locally |
-| 3 | Approximately 1,000 files | Local generator planned | Coverage matrix | Generator absent | Pending live |
+| 3 | Approximately 1,000 files | `scripts/generate_many_small_files.py` writes 1,000 deterministic tiny CSVs (under 1.5 MB total) labelled SYNTHETIC EDUCATIONAL DATA, with ownership-marker cleanup | Coverage matrix | 14 tests covering exact file count, repeat safety, determinism, cleanup that refuses a foreign directory, and that every row passes the trip quality rules. Local only; the upload is a separate approval | Implemented locally |
 | 4 | Cleaning, explicit schemas, deduplication | Physical Spark contract, quarantine and deterministic broker ordering | `silver.py` | Live run wrote 2,520 Silver rows, 0 quarantined, IDs unique, `PASS` | Validated live |
 | 4 | MERGE / rerun safety | Identifier-safe, duplicate-rejecting Delta MERGE for all Phase 2 outputs | `persistence.py`, Silver/Gold notebooks | Second identical run left all eight tables at `inserted_rows = 0`, before == after | Validated live |
 | 4 | SCD1 / SCD2 | New/changed/unchanged/missing stations, null-safe changes, interval audits | `dimensions.py`, tests | Real local Spark tests | Implemented locally |
@@ -96,7 +102,7 @@ full-scale one.
 | 7 | Duplicate, late, SCD edge cases | Cross-partition duplicate order, null transitions, invalid intervals and out-of-order SCD changes | tests | Local pytest | Implemented locally |
 | 7 | DQ dimensions | Completeness, uniqueness key, validity, consistency, referential integrity, freshness | `quality.py` | Unit tests | Implemented locally |
 | 7 | Lakeflow expectations / Delta constraints | Non-dropping `expect_all` rules on all eight pipeline tables, including one asserting an out-of-service station is never actionable and one asserting a single observation cannot claim a trend | `pipeline/silver.py`, `pipeline/gold.py` | Source-level tests; execution requires a Lakeflow run, which is not authorized | Implemented locally |
-| 7 | Great Expectations or Soda | Suite not selected yet | Coverage matrix | None | Pending live |
+| 7 | Great Expectations or Soda | Great Expectations 1.23.2 suites for the Silver and trip contracts, run through an ephemeral context so no project state is created | Coverage matrix | Chosen by measurement, not preference: `soda-core-spark-df` pins pyspark to 3.5.9 while GE touches pyspark not at all (`docs/QUALITY_FRAMEWORK.md`). 11 tests prove the suites FAIL on a duplicated event id, a negative count, an unknown status, a null execution id and a double-typed station id | Implemented locally |
 | 7 | Reconciliation / anomaly gates | Bronze outcome and Silver-to-Gold grain/aggregate gates | `silver.py`, `gold.py` | Ran live 2026-10-02: Silver reconciliation PASS (2,520 = 2,520 + 0 + 0), Gold PASS, historical PASS (40 = 40 + 0 + 0), weather PASS (40 in, 40 out) | Validated live |
 | 7 | Databricks Connect / monitoring | Environment capability not yet tested | Coverage matrix | None | Pending live |
 | 8 | DAB and GitHub Actions | Static workflow, two targets, two existing-cluster Jobs, managed-compute pipeline | workflow / bundle/resources | Static local validation | Implemented locally |

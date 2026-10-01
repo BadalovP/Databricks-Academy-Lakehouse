@@ -49,7 +49,11 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 from pyspark.sql import functions as F
 
 from urbanflow.automation import APPROVED_RUN_CLUSTER_IDS
-from urbanflow.reporting import write_json_report
+from urbanflow.reporting import (
+    evidence_report_path,
+    resolve_attempt_id,
+    write_json_report,
+)
 from urbanflow.silver import (
     freshness,
     persist_silver_outputs,
@@ -85,6 +89,7 @@ dbutils.widgets.text("source_execution_id", "urbanflow-20260929T195132Z-r3")
 dbutils.widgets.text("catalog", "")
 dbutils.widgets.text("schema", "")
 dbutils.widgets.text("volume", "")
+dbutils.widgets.text("run_attempt_id", "")
 run_transform = dbutils.widgets.get("run_transform").lower() == "true"
 source_execution_id = dbutils.widgets.get("source_execution_id").strip()
 target_catalog = dbutils.widgets.get("catalog").strip()
@@ -133,9 +138,13 @@ bronze_table = f"{table_root}.bronze_station_status"
 silver_table = f"{table_root}.silver_station_status"
 quarantine_table = f"{table_root}.quarantine_station_status"
 duplicate_table = f"{table_root}.duplicate_station_status"
-report_path = (
-    f"/Volumes/{target_catalog}/{target_schema}/{target_volume}/reports/silver_gold/"
-    f"{source_execution_id}.silver.json"
+attempt_id = resolve_attempt_id(job_run_id=dbutils.widgets.get("run_attempt_id"))
+report_path = evidence_report_path(
+    f"/Volumes/{target_catalog}/{target_schema}/{target_volume}",
+    phase="silver_gold",
+    execution_id=source_execution_id,
+    attempt_id=attempt_id,
+    suffix="silver",
 )
 print({"bronze": bronze_table, "silver": silver_table, "report": report_path})
 

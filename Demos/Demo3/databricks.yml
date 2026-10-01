@@ -17,6 +17,14 @@ variables:
   volume:
     description: Volume holding this target's streaming checkpoint and JSON execution reports.
     default: urbanflow_landing
+  lakeflow_schema:
+    description: >-
+      Schema owned by the Lakeflow declarative pipeline ONLY. It is deliberately different from
+      `schema`, because the notebook and Jobs path has already validated tables of the same names
+      there and a Lakeflow update would take ownership of them. Keeping the two apart lets the
+      declarative and imperative implementations be compared side by side instead of fighting
+      over one set of tables.
+    default: parvinbadalov_urbanflow_lakeflow
   compute_cluster_id:
     description: Existing shared cluster for notebook tasks; GP1 is preferred after read-only verification.
     default: 0702-132442-toro5spu
@@ -42,6 +50,7 @@ targets:
       root_path: /Workspace/Users/${var.workspace_user}/.bundle/${bundle.name}/${bundle.target}
     variables:
       schema: parvinbadalov_urbanflow_dev
+      lakeflow_schema: parvinbadalov_urbanflow_lakeflow_dev
 
   azure:
     mode: production
