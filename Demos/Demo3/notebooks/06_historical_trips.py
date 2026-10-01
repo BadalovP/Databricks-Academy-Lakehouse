@@ -50,7 +50,6 @@ PROJECT_ROOT = NOTEBOOK_DIR.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from urbanflow.automation import APPROVED_RUN_CLUSTER_IDS
-from urbanflow.gold import station_dimension
 from urbanflow.historical import (
     daily_trip_demand,
     historical_landing_paths,
@@ -272,35 +271,38 @@ print(
 # MAGIC %md
 # MAGIC ## Step 7 - Join trips to current stations on short_name, and measure the match rate
 # MAGIC
-# MAGIC **What:** Build the station dimension from the reference feed, join trips to it on `short_name`, and report how many trips found a current station.
+# MAGIC **What:** Read the already-persisted station dimension, join trips to it on `short_name`, and report how many trips found a current station.
 # MAGIC
 # MAGIC **Why:** This is the join the whole notebook is organised around. `start_station_id` holds a value like `7407.13`, which is the GBFS `short_name` and not the UUID `station_id`. The join is a LEFT join so a renamed or retired station keeps its trips instead of losing them, and the match rate is reported so a wrong key cannot pass unnoticed.
 # MAGIC
-# MAGIC **Input:** The valid trips and the station reference feed.
+# MAGIC The dimension is read from the Gold table rather than re-derived from a landed JSON feed. An earlier version of this cell loaded `landing/station_information` from the Volume, and a read-only preflight found that directory has never existed - so the run would have failed here, *after* writing the Bronze trips table. Reading the table that Gold already produced removes the dependency on a path nobody created, and reuses reference data that has already been validated live.
+# MAGIC
+# MAGIC **Input:** The valid trips and `dim_station_development_sample`.
 # MAGIC
 # MAGIC **Output:** Joined trips with `station_matched`, plus the match-rate report.
 # MAGIC
-# MAGIC **Key concepts:** Business keys versus surrogate keys, left joins preserving facts, measuring a join instead of trusting it.
+# MAGIC **Key concepts:** Business keys versus surrogate keys, left joins preserving facts, measuring a join instead of trusting it, reusing a persisted dimension rather than recomputing it.
 # MAGIC
-# MAGIC **Expected result:** A match rate below 1.0 is normal and expected, because stations really are renamed and retired. A match rate of exactly 0.0 means the key is wrong, and the reconciliation step fails the run.
+# MAGIC **Expected result:** A match rate below 1.0 is normal and expected, because stations really are renamed and retired. A match rate of exactly 0.0 means the key is wrong, and the reconciliation step fails the run. For the committed 40-row development sample the rate is 1.0, measured locally.
 # MAGIC
 # MAGIC **How to explain it to my supervisor:** "Old trips name stations the way the archive did. We translate that to today's station IDs and report how many we could translate."
 # MAGIC
-# MAGIC **Rerun and cost considerations:** The reference feed is a small committed sample, so the join is broadcast-sized and cheap.
+# MAGIC **Rerun and cost considerations:** The dimension is 40 rows, so the join is broadcast-sized and cheap. Nothing is re-derived and no file is read.
 
 # COMMAND ----------
 
-station_reference = (
-    spark.read.format("json")
-    .option("multiLine", "true")
-    .load(f"{volume_root}/landing/station_information")
-    .selectExpr("explode(data.stations) AS station")
-    .select("station.*")
-)
-dimension = station_dimension(station_reference)
+dimension_table = f"{table_root}.dim_station_development_sample"
+if not spark.catalog.tableExists(dimension_table):
+    raise RuntimeError(
+        f"{dimension_table} does not exist. Run the Silver-to-Gold Job first; this notebook "
+        "reuses the persisted dimension rather than re-deriving it from a landed feed."
+    )
+dimension = spark.table(dimension_table)
+if dimension.count() == 0:
+    raise RuntimeError(f"{dimension_table} is empty, so every trip would report as unmatched.")
 joined = join_trips_to_stations(split["valid"], dimension)
 match_rate = trip_join_match_rate(joined)
-print({"match_rate": match_rate})
+print({"dimension_rows": dimension.count(), "match_rate": match_rate})
 
 # COMMAND ----------
 

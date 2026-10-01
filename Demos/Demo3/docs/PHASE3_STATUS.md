@@ -18,6 +18,49 @@ has run against real infrastructure. No row in
 | Governance | `sql/20_governance_rls_cls.sql` | Row filter, two column masks, grants, ABAC tagging, inspection queries | shared |
 | Maintenance | `sql/21_maintenance_optimize_vacuum.sql` | Z-ORDER vs liquid clustering, deletion vectors, CDF, column mapping, time travel | shared |
 
+## Read-only Azure preflight, 2026-10-01 21:22Z - and the blocker it found
+
+An authorized run attempt was preflighted and **stopped before any Azure write** because GP1 was
+not running. The checks that need no compute were completed, and one of them found a real defect
+in notebook 06.
+
+| Check | Result |
+|---|---|
+| GP1 `0702-132442-toro5spu` | **TERMINATED.** Started manually 08:09:24Z, auto-terminated 09:11:39Z after 62 minutes idle (`INACTIVITY`, 60-minute setting). Not restarted by this project |
+| GP2 | TERMINATED |
+| Lakeflow | **Undeployed.** 50 pipelines visible in the workspace, zero matching `urbanflow` |
+| UrbanFlow tables | Exactly the 9 expected, all `MANAGED`. No unexpected table appeared |
+| `silver_station_status` schema | **27 columns, `is_operational` ABSENT** - the pre-correction state, as expected |
+| `gold_station_shortage` schema | 10 columns, `execution_id` present |
+| `gold_rebalancing_priority` schema | **12 columns, `execution_id` ABSENT** - the legacy state the backfill exists for |
+| `fact_station_availability` schema | 15 columns |
+| `bundle plan --select jobs.urbanflow_silver_gold_test` | `0 to add, 0 to change, 0 to delete, **1 unchanged**` - only that Job is in scope, already deployed |
+| Volume `urbanflow_landing` | Contains `checkpoints` and `reports` only - **no `landing/` directory exists** |
+
+Schema checks came from Unity Catalog metadata rather than a query, which is why they were
+possible with no cluster. Row counts still require compute and remain unverified since the last
+run.
+
+### The blocker: notebook 06 read a path that has never existed
+
+Step 7 of `notebooks/06_historical_trips.py` loaded the station reference from
+`{volume_root}/landing/station_information`. The Volume has no `landing/` directory at all, so
+the authorized historical run would have **failed at the join step after already writing the
+Bronze trips table**, leaving a partial result to clean up.
+
+This was a defect introduced in PR #43 and found only because the Volume was listed before
+running. The fix reads the dimension from `dim_station_development_sample`, the Gold table that
+already exists with the 40 rows and the exact columns the join needs, which:
+
+- removes the dependency on a directory nobody created;
+- avoids landing a second file, keeping the run inside the "copy ONLY the 40-row sample"
+  authorization;
+- reuses reference data that has already been validated live;
+- fails loudly with a named reason if the dimension is missing or empty, instead of reporting
+  every trip as unmatched.
+
+A regression test now asserts the notebook reads the table and never that path again.
+
 ## Local end-to-end validation against the REAL committed samples (2026-10-01)
 
 The Azure runs for Phase 3 are authorized but blocked on compute, so the same checks those runs
