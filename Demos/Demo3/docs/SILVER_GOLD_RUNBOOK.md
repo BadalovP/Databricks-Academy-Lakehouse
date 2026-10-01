@@ -56,10 +56,21 @@ carry corrected `availability_status` values only after a rerun.
 
 ## Correction run - prepared and approved, BLOCKED on compute
 
-The run below is **approved** but has not executed. On 2026-10-01 GP1 (`0702-132442-toro5spu`)
-and GP2 were both `TERMINATED`, their 60-minute idle timers having elapsed, and this project
-does not start, restart, resize or terminate a cluster. The approval stands; the run needs
-someone to start GP1 manually first.
+The run below is **approved** but has not executed, across two attempts.
+
+The second attempt, at 2026-10-01 21:22Z, is the instructive one. GP1 had genuinely been started
+manually at **08:09:24Z** - the cluster's own `last_restarted_time` confirms it - but nothing
+attached to it, so its 60-minute inactivity timer elapsed and it auto-terminated at **09:11:39Z**
+with `termination_reason: INACTIVITY`. By the time the run was attempted the cluster had been down
+for twelve hours.
+
+The practical lesson for the next attempt: the 60 minutes is a timer on *inactivity*, and it only
+resets once a workload attaches. Starting GP1 and then doing something else for an hour loses the
+window. Starting it and running the Job immediately keeps it alive, and the Job itself resets the
+timer.
+
+This project does not start, restart, resize or terminate a cluster, so both attempts stopped
+before any Azure write. The approval stands.
 
 Nothing has been written in the meantime, so the eight tables remain in their pre-correction
 state: `silver_station_status` at 2,520 rows and 27 columns with no `is_operational`,

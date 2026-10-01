@@ -273,3 +273,20 @@ def test_the_weather_notebook_never_downloads_an_archive_or_starts_compute() -> 
             assert forbidden not in code, f"{name} contains {forbidden}"
         # Both must gate on the approved-cluster allowlist before any action.
         assert "APPROVED_RUN_CLUSTER_IDS" in code
+
+
+def test_the_historical_notebook_reads_the_persisted_dimension_not_a_landed_feed() -> None:
+    """A read-only preflight found `landing/station_information` has never existed.
+
+    The earlier version of this cell loaded that path, so the run would have failed at the
+    join step AFTER writing the Bronze trips table, leaving a partial result. Reading the
+    dimension table Gold already produced removes the dependency entirely.
+    """
+    code = "\n".join(cell for _, cell in _code_cells(NOTEBOOK_DIR / "06_historical_trips.py"))
+
+    assert "dim_station_development_sample" in code
+    assert "spark.table(dimension_table)" in code
+    assert "landing/station_information" not in code
+    # And it must fail loudly rather than reporting every trip as unmatched.
+    assert "does not exist" in code
+    assert "is empty, so every trip would report as unmatched" in code
