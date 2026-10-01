@@ -39,6 +39,7 @@
 
 # COMMAND ----------
 
+import json
 import sys
 from pathlib import Path
 
@@ -56,6 +57,7 @@ from urbanflow.weather import (
     build_archive_url,
     enrich_trips_with_weather,
     fetch_hourly_weather,
+    parse_hourly_payload,
     persist_weather_outputs,
     reconcile_weather_join,
     weather_coverage,
@@ -87,6 +89,8 @@ from urbanflow.weather import (
 # COMMAND ----------
 
 dbutils.widgets.dropdown("run_enrichment", "false", ["false", "true"])
+dbutils.widgets.dropdown("weather_source", "sample_json", ["sample_json", "archive_api"])
+dbutils.widgets.text("weather_sample_file", "open_meteo_archive_202401.sample.json")
 dbutils.widgets.text("execution_id", "")
 dbutils.widgets.text("start_date", "2024-01-01")
 dbutils.widgets.text("end_date", "2024-01-31")
@@ -157,11 +161,11 @@ print({"url": build_archive_url(request), "grid": request.grid_label})
 # MAGIC %md
 # MAGIC ## Step 4 - Retrieve real hourly observations, within an explicit bound
 # MAGIC
-# MAGIC **What:** Call the Open-Meteo archive API once and parse the response into one record per hour.
+# MAGIC **What:** Obtain hourly observations and parse them into one record per hour, either from the committed 48-hour archive sample landed in the Volume (`weather_source=sample_json`, the default) or from one live Open-Meteo archive call (`archive_api`).
 # MAGIC
 # MAGIC **Why:** The API returns parallel arrays, so a silently short array would shift every later reading onto the wrong hour and produce a plausible-looking but wrong chart. The parser checks every array's length against the `time` array and refuses to align them positionally if they disagree. Nothing here generates, interpolates or back-fills a reading.
 # MAGIC
-# MAGIC **Input:** The validated request.
+# MAGIC **Input:** The validated request, plus the landed sample file when the sample source is selected.
 # MAGIC
 # MAGIC **Output:** One record per hour, with nulls preserved as nulls.
 # MAGIC
@@ -171,13 +175,24 @@ print({"url": build_archive_url(request), "grid": request.grid_label})
 # MAGIC
 # MAGIC **How to explain it to my supervisor:** "These are real published observations. Where the source has no reading, we keep the gap rather than filling it in."
 # MAGIC
-# MAGIC **Rerun and cost considerations:** One HTTPS GET against a free public archive. The 62-day ceiling stops a typo in a year from becoming a very large request.
+# MAGIC **Rerun and cost considerations:** The default sample source makes NO external request at all, so a rerun costs only cluster time and cannot burden a public API. The `archive_api` source makes one HTTPS GET, with a 62-day ceiling so a typo in a year cannot become a very large request. Both paths run through the same parser, so choosing the sample does not bypass the validation.
 
 # COMMAND ----------
 
-records = fetch_hourly_weather(request, timeout_seconds=30.0, max_days=62)
+weather_source = dbutils.widgets.get("weather_source").strip()
+if weather_source == "sample_json":
+    # The committed 48-hour archive response, landed in the Volume. Parsed by the SAME
+    # parse_hourly_payload the API path uses, so the validation covers the real code path
+    # while making no external request from the cluster.
+    sample_path = (
+        f"{volume_root}/landing/weather/" + dbutils.widgets.get("weather_sample_file").strip()
+    )
+    with open(sample_path, encoding="utf-8") as handle:
+        records = parse_hourly_payload(json.load(handle), request)
+else:
+    records = fetch_hourly_weather(request, timeout_seconds=30.0, max_days=62)
 coverage = weather_coverage(records)
-print({"hours": coverage["hours"], "coverage": coverage})
+print({"source": weather_source, "hours": coverage["hours"], "coverage": coverage})
 
 # COMMAND ----------
 
@@ -334,7 +349,11 @@ evidence = {
     "phase": "weather_enrichment",
     "execution_id": execution_id,
     "status": reconciliation["status"],
-    "request": {"url": build_archive_url(request), "grid_label": request.grid_label},
+    "request": {
+        "source": weather_source,
+        "url": build_archive_url(request),
+        "grid_label": request.grid_label,
+    },
     "coverage": coverage,
     "reconciliation": reconciliation,
     "delta_merges": merge_report,

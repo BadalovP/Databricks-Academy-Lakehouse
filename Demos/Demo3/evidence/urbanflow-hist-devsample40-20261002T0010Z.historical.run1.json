@@ -1,0 +1,31 @@
+{
+ "_note": "Captured summary of the FIRST historical run, read from the Volume report after job run 848541476068172 and before the idempotency repeat reused that path. 40-ROW DEVELOPMENT SAMPLE, not full January 2024 data.",
+ "_job_run_id": 848541476068172,
+ "_scope": "40-ROW DEVELOPMENT SAMPLE",
+ "status": "PASS",
+ "execution_id": "urbanflow-hist-devsample40-20261002T0010Z",
+ "landed_files": ["historical_trips_202401_DEVELOPMENT_SAMPLE_40rows.csv"],
+ "reconciliation": {
+  "landed_rows": 40, "valid_rows": 40, "quarantine_rows": 0, "duplicate_rows": 0,
+  "accounted_rows": 40, "counts_reconcile": true,
+  "match_rate": 1.0, "join_produced_no_matches": false, "demand_rows": 40, "status": "PASS"
+ },
+ "match_rate": {"trips": 40, "matched_to_current_station": 40, "unmatched": 0, "match_rate": 1.0},
+ "duration_profile": {"trips": 40, "min_minutes": 1.28, "max_minutes": 30.1,
+                      "avg_minutes": 10.49, "median_minutes": 7.98},
+ "delta_merges": {
+  "trips": {"rows_before": 0, "rows_after": 40, "inserted_rows": 40, "table_existed": false},
+  "quarantine": {"rows_before": 0, "rows_after": 0, "inserted_rows": 0, "table_existed": false},
+  "duplicates": {"rows_before": 0, "rows_after": 0, "inserted_rows": 0, "table_existed": false},
+  "daily_demand": {"rows_before": 0, "rows_after": 40, "source_rows": 40,
+                   "stale_rows_removed": 0, "table_existed": false,
+                   "verification": {"status": "PASS", "total_rows": 40, "scope_rows": 40,
+                                    "missing_from_table": 0, "unexpected_in_table": 0,
+                                    "unassigned_rows": 0}}
+ },
+ "limitations": [
+  "40-ROW DEVELOPMENT SAMPLE; this is NOT full January 2024 data and implies no monthly coverage",
+  "the station dimension is a committed 40-row sample, so unmatched trips are expected",
+  "a match rate below 1.0 reflects renamed and retired stations, not a defect"
+ ]
+}

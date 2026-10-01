@@ -1,6 +1,7 @@
 # Phase 3 - historical trips, weather, Lakeflow, dashboard and governance
 
-Status: **implemented and tested locally. Nothing in Phase 3 has executed in Azure.**
+Status: **the 40-row historical sample and the 48-hour weather sample are now VALIDATED LIVE on
+GP1. The full monthly archive, Lakeflow and the published dashboard remain unexecuted.**
 
 That distinction is the point of this document. Every item below has real tests, several against
 a genuine local Spark session, but a passing test proves the code does what it says, not that it

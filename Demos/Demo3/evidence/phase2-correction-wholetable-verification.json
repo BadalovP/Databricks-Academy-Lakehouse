@@ -1,0 +1,40 @@
+{
+ "_note": "Read-only whole-table verification of the Phase 2 correction, run on GP1 immediately after correction run 1 (job run 240497605145949) and before the idempotency repeat. SELECT only; wrote nothing.",
+ "_verification_run_id": 618116231829401,
+ "_captured_at": "2026-10-02T00:00:00Z",
+ "bronze_station_status": {"rows": 2520},
+ "silver_station_status": {
+  "rows": 2520,
+  "distinct_event_ids": 2520,
+  "unassigned_execution": 0,
+  "distinct_executions": ["urbanflow-20260929T195132Z-r3"],
+  "is_operational_true": 2431,
+  "is_operational_false": 89,
+  "out_of_service": 89,
+  "by_status": {"AVAILABLE": 1774, "LOW_BIKES": 278, "LOW_DOCKS": 374, "LOW_BIKES_AND_DOCKS": 5, "OUT_OF_SERVICE": 89}
+ },
+ "fact_station_availability": {
+  "rows": 2520,
+  "distinct_event_ids": 2520,
+  "by_status": {"AVAILABLE": 1774, "LOW_BIKES": 278, "LOW_DOCKS": 374, "LOW_BIKES_AND_DOCKS": 5, "OUT_OF_SERVICE": 89}
+ },
+ "gold_station_shortage": {
+  "rows": 657,
+  "out_of_service": 0,
+  "unassigned_execution": 0,
+  "distinct_executions": ["urbanflow-20260929T195132Z-r3"],
+  "by_status": {"LOW_BIKES": 278, "LOW_DOCKS": 374, "LOW_BIKES_AND_DOCKS": 5}
+ },
+ "gold_rebalancing_priority": {
+  "rows": 657,
+  "out_of_service": 0,
+  "unassigned_execution": 0,
+  "distinct_executions": ["urbanflow-20260929T195132Z-r3"],
+  "by_status": {"LOW_BIKES": 278, "LOW_DOCKS": 374, "LOW_BIKES_AND_DOCKS": 5}
+ },
+ "gold_daily_station_summary": {"rows": 2520, "observation_total": 2520, "trend_capable_true": 0},
+ "quarantine_station_status": {"rows": 0},
+ "duplicate_station_status": {"rows": 0},
+ "dim_station_development_sample": {"rows": 40},
+ "derived_agreement": {"shortage_not_in_priority": 0, "priority_not_in_shortage": 0}
+}

@@ -143,11 +143,17 @@ resources:
           default: "false"
         - name: execution_id
           default: NOT_APPROVED
-        # The window is bounded; the notebook refuses anything above 62 days.
+        # Default to the committed 48-hour sample so a run makes no external request.
+        - name: weather_source
+          default: sample_json
+        - name: weather_sample_file
+          default: open_meteo_archive_202401.sample.json
+        # The window is bounded; the notebook refuses anything above 62 days. These dates
+        # match the committed sample's coverage.
         - name: start_date
-          default: "2024-01-01"
+          default: "2024-01-24"
         - name: end_date
-          default: "2024-01-31"
+          default: "2024-01-25"
         - name: latitude
           default: "40.7128"
         - name: longitude
@@ -167,6 +173,8 @@ resources:
             base_parameters:
               run_enrichment: "{{job.parameters.run_enrichment}}"
               execution_id: "{{job.parameters.execution_id}}"
+              weather_source: "{{job.parameters.weather_source}}"
+              weather_sample_file: "{{job.parameters.weather_sample_file}}"
               start_date: "{{job.parameters.start_date}}"
               end_date: "{{job.parameters.end_date}}"
               latitude: "{{job.parameters.latitude}}"

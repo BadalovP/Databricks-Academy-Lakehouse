@@ -54,32 +54,45 @@ Those two tables are stale until the Job is rerun with the corrected code.** The
 tables are unaffected in row count; `silver_station_status` and `fact_station_availability`
 carry corrected `availability_status` values only after a rerun.
 
-## Correction run - prepared and approved, BLOCKED on compute
+## Correction run - EXECUTED 2026-10-02, every expected figure exact
 
-The run below is **approved** but has not executed, across two attempts.
+Both corrected runs succeeded on GP1 and the whole-table verification passed. The numbers were
+not merely close to the expectation; they matched it exactly, which is what makes the
+classification fix defensible.
 
-The second attempt, at 2026-10-01 21:22Z, is the instructive one. GP1 had genuinely been started
-manually at **08:09:24Z** - the cluster's own `last_restarted_time` confirms it - but nothing
-attached to it, so its 60-minute inactivity timer elapsed and it auto-terminated at **09:11:39Z**
-with `termination_reason: INACTIVITY`. By the time the run was attempted the cluster had been down
-for twelve hours.
+| Measure | Value |
+|---|---|
+| Corrected run 1 | job run **240497605145949**, SUCCESS in 368 s |
+| Idempotency run 2 | job run **725768954237074**, SUCCESS in 190 s |
+| Whole-table verification | read-only run **618116231829401**, SELECT only |
+| `silver_station_status` | 2,520 rows, **27 -> 28 columns**, `is_operational` added by migration |
+| Silver composition | AVAILABLE 1,774 + LOW_BIKES 278 + LOW_DOCKS 374 + LOW_BIKES_AND_DOCKS 5 + OUT_OF_SERVICE 89 = **2,520** |
+| `is_operational = false` | **89**, exactly matching the OUT_OF_SERVICE count |
+| `gold_station_shortage` | **746 -> 657**, `stale_rows_removed` **89** |
+| `gold_rebalancing_priority` | **746 -> 657**, **12 -> 13 columns**, `stale_rows_removed` **89** |
+| Shortage and priority composition | **LOW_BIKES 278, LOW_DOCKS 374, LOW_BIKES_AND_DOCKS 5 = 657** in both |
+| `OUT_OF_SERVICE` rows in either derived table | **0** |
+| Unassigned (`execution_id IS NULL`) rows anywhere | **0** |
+| Legacy priority backfill | `null_rows_before` **746**, `attributable_rows` **746**, `unattributable_rows` **0**, `backfilled_rows` **746**, `null_rows_after` **0** |
+| Derived-table agreement | both anti-joins **0**: shortage and priority contain the same keys |
+| Other executions | none present; `other_executions_preserved` true |
+| Idempotency run 2 | shortage 657 -> 657, priority 657 -> 657, `stale_rows_removed` **0**, backfill found **0** NULL rows, nothing inserted, verification PASS |
+| GP1 afterwards | `RUNNING`, never started, restarted, resized or terminated by this project |
+| Lakeflow | still not deployed |
 
-The practical lesson for the next attempt: the 60 minutes is a timer on *inactivity*, and it only
-resets once a workload attaches. Starting GP1 and then doing something else for an hour loses the
-window. Starting it and running the Job immediately keeps it alive, and the Job itself resets the
-timer.
+The arithmetic closes in both directions, which is the real evidence: 746 - 657 = 89, and Silver
+independently reports exactly 89 stations with `is_operational = false`. The stale rows removed
+were precisely the out-of-service stations, and no other row moved.
 
-This project does not start, restart, resize or terminate a cluster, so both attempts stopped
-before any Azure write. The approval stands.
+`gold_daily_station_summary` reports `is_trend_capable = true` for **0** of its 2,520 rows. With
+one snapshot per station that is the honest answer, and it is asserted rather than assumed.
 
-Nothing has been written in the meantime, so the eight tables remain in their pre-correction
-state: `silver_station_status` at 2,520 rows and 27 columns with no `is_operational`,
-`gold_station_shortage` at 746 rows, and `gold_rebalancing_priority` at 746 rows with no
-`execution_id`.
+### A limitation found while saving evidence
 
-Two further defects were found by inspecting the live tables before rerunning, and both
-would have made a naive redeploy-and-rerun either fail outright or silently leave wrong
-data behind.
+The evidence report path is keyed only on `source_execution_id`, so the idempotency repeat
+overwrote run 1's report in the Volume. Run 1's figures were read before that happened and are
+preserved as `evidence/...gold.corrected-run1.json`, with run 2 as `...-run2.json`. A future
+change should add a run discriminator to the path; it was not changed mid-flight.
 
 ### Why a plain rerun would NOT have worked
 
