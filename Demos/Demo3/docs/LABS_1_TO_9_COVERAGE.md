@@ -17,6 +17,12 @@ Kafka partition 0 offsets 780-3,299 recorded. See
 [FIRST_STREAMING_TEST.md](FIRST_STREAMING_TEST.md). Rows below promoted to `Validated live` cite
 that run; everything else is unchanged and still honest about what has not run.
 
+**Phase 3 Azure execution is authorized but BLOCKED:** GP1 `0702-132442-toro5spu` was
+`TERMINATED` on 2026-10-01 and this project never starts a cluster. The historical and weather
+paths were therefore validated against the real committed samples with **local Spark** instead -
+see [PHASE3_STATUS.md](PHASE3_STATUS.md). That is strong evidence about the logic and is NOT an
+Azure execution, so no row moved to `Validated live`.
+
 **Current totals, 71 requirement rows:** 8 `Validated live`, 50 `Implemented locally`,
 3 `Discovered read-only`, 10 `Pending live`, 0 `Blocked`.
 
@@ -46,7 +52,7 @@ a deliberate choice not yet made (a Great Expectations or Soda suite, a 1,000-fi
 | 2 | Idempotent Bronze + metadata | Event ID, source/collection times, Kafka metadata, MERGE lesson | source modules and notebook | Offline tests | Implemented locally |
 | 2 | Ingestion Job | Bounded Bronze Job plus dry-run Phase 2 DAG | `resources/jobs.yml` | Bronze Job `404404108673495`; Phase 2 local only | Implemented locally |
 | 2 | Legacy mounts exercise | Explanation deliberately separated from core design | Architecture security boundary | No deprecated mount created | Pending live |
-| 3 | Auto Loader | `cloudFiles` reader with explicit schema, separate schemaLocation and per-execution checkpoint, rescued-data column, bounded `availableNow`, plus notebook 06 | `historical.py`, `notebooks/06_historical_trips.py` | Real local Spark tests for the contract, the split and the reconciliation; not yet run in Azure | Implemented locally |
+| 3 | Auto Loader | `cloudFiles` reader with explicit schema, separate schemaLocation and per-execution checkpoint, rescued-data column, bounded `availableNow`, plus notebook 06 | `historical.py`, `notebooks/06_historical_trips.py` | Validated end to end on the REAL committed 40-row sample with local Spark: 40 landed = 40 valid + 0 quarantine + 0 duplicate, reconciliation PASS, match rate 1.0 via short_name, UUID join 0 rows. Auto Loader itself and the Delta MERGE run only on a cluster, and have not | Implemented locally |
 | 3 | Structured Streaming | Kafka reader, explicit-schema parser, bounded `availableNow` writer | `streaming.py`, `03_eventhubs_to_bronze.py` | Job run `873010921866250` SUCCESS in 130 s; 2,520 rows to Bronze | Validated live |
 | 3 | Event Hubs / Kafka | Existing Standard namespace/hub plus GP1/GP2 compatibility contract | inventory/config/streaming | 2,520 messages published and consumed once | Validated live |
 | 3 | Real Python producer | TTL-aware, duplicate-aware, finite Event Hubs producer | `producer.py`, CLI | 2,520-event live producer report | Validated live |
@@ -73,8 +79,8 @@ a deliberate choice not yet made (a Great Expectations or Soda suite, a 1,000-fi
 | 6 | AI/BI dashboard and filters | Four pages, 22 datasets, with per-tile caveats so a snapshot is never charted as a trend | `docs/DASHBOARD.md`, `sql/10`-`sql/13` | Layout and queries complete and tested; object not created, and Page 1 is deliberately blocked until the Phase 2 correction run | Implemented locally |
 | 6 | Alerts / email | Volume-drop and shortage alert requirement retained | Coverage matrix | Destination/warehouse unverified | Pending live |
 | 6 | Permissions, RLS, masking | Region row filter, coordinate-rounding mask, ride_id hashing mask, least-privilege grants, ABAC tagging explained, plus inspection queries | `sql/20_governance_rls_cls.sql` | Tests prove no `SET MASK`, `SET ROW FILTER` or `GRANT` is active; the fail-to-zero-rows hazard is documented | Implemented locally |
-| 6 | Weather enrichment | Bounded Open-Meteo archive retrieval, hourly normalization, left join preserving every trip, null readings kept null, weather dimension and demand comparison, plus notebook 07 | `weather.py`, `notebooks/07_weather_enrichment.py` | 31 tests against a REAL committed 48-hour archive response, including positional-misalignment and join-fan-out cases; not yet run in Azure | Implemented locally |
-| 6 | Historical trip quality and demand | Three-way valid/quarantine/duplicate split, deterministic dedup by `ride_id`, trip-duration bounds, member vs casual mix, daily demand keyed to `short_name` | `historical.py`, `notebooks/06_historical_trips.py` | 26 real local Spark tests; reconciliation identity and zero-match-rate failure both covered | Implemented locally |
+| 6 | Weather enrichment | Bounded Open-Meteo archive retrieval, hourly normalization, left join preserving every trip, null readings kept null, weather dimension and demand comparison, plus notebook 07 | `weather.py`, `notebooks/07_weather_enrichment.py` | 33 tests against a REAL committed 48-hour archive response: 48 hours parsed and aligned, completeness 1.0, every trip preserved across the join, and an injected duplicate hour correctly FAILS. Not yet run in Azure | Implemented locally |
+| 6 | Historical trip quality and demand | Three-way valid/quarantine/duplicate split, deterministic dedup by `ride_id`, trip-duration bounds, member vs casual mix, daily demand keyed to `short_name` | `historical.py`, `notebooks/06_historical_trips.py` | 26 synthetic plus 22 real-sample local Spark tests; on the committed sample: demand 40 trips over 17 days reconciling exactly to the valid trips, member 35 / casual 5 matching the raw CSV, durations 1.28-30.10 min inside bounds | Implemented locally |
 | 4 | Derived-table correction | `backfill_execution_id`, fail-closed unassigned-row guard and whole-table `verify_execution_scope`, after 89 stale rows were found able to escape a scoped delete | `persistence.py`, `gold.py` | 18 tests on real local Spark; all five guards mutation-checked; Delta DML asserted at statement level | Implemented locally |
 | 7 | Importable functions | Client, transformations, quality, producer, monitoring, automation | `src/urbanflow/` | Import/test pass | Implemented locally |
 | 7 | pytest / Ruff / Black | Dedicated configuration and static workflow | `pyproject.toml`, workflow | Local results recorded in session report | Implemented locally |

@@ -18,6 +18,44 @@ has run against real infrastructure. No row in
 | Governance | `sql/20_governance_rls_cls.sql` | Row filter, two column masks, grants, ABAC tagging, inspection queries | shared |
 | Maintenance | `sql/21_maintenance_optimize_vacuum.sql` | Z-ORDER vs liquid clustering, deletion vectors, CDF, column mapping, time travel | shared |
 
+## Local end-to-end validation against the REAL committed samples (2026-10-01)
+
+The Azure runs for Phase 3 are authorized but blocked on compute, so the same checks those runs
+perform were executed locally against the actual committed sample files rather than against
+synthetic fixtures. `tests/test_sample_end_to_end.py` holds them as permanent coverage.
+
+**This is a 40-row DEVELOPMENT SAMPLE, not January 2024 data, and this is a LOCAL Spark run,
+not an Azure execution.** No Auto Loader, no `availableNow` trigger and no Delta MERGE were
+involved; those run only on a cluster.
+
+| Measure | Result |
+|---|---|
+| Landed rows | 40 |
+| Valid / quarantine / duplicate | 40 / 0 / 0, accounted 40, reconciliation **PASS** |
+| `ride_id` uniqueness in valid | 40 distinct, unique |
+| Station match rate via `short_name` | **40 of 40, 1.0** |
+| Join on the UUID instead | **0 rows**, as the module exists to demonstrate |
+| Daily demand rows | 40, across 17 distinct days |
+| Demand trips total vs valid trips | 40 = 40, reconciles |
+| Member / casual | 35 / 5, matching the raw CSV exactly |
+| Trip durations | min 1.28 min, max 30.10 min, avg 10.49, median 7.98 - all inside the 1-minute and 24-hour bounds |
+| Weather hours parsed | 48, temperature completeness 1.0 |
+| Weather join | every trip preserved, coverage reported, **PASS** |
+| Duplicated weather hour (injected) | multiplies trips and is caught, **FAIL** as intended |
+
+### What this run actually found
+
+The schema-inference hazard is worse than previously described, and the real file is what showed
+it. Inference types `start_station_id` as a double, and most values survive the round-trip by
+luck - `7407.13` really does come back as `7407.13`. But any identifier whose decimal part ends
+in zero does not: this sample contains **`5470.10` and `6740.10`**, which become `5470.1` and
+`6740.1` and then match no GBFS short_name at all.
+
+So inference does not fail and does not corrupt everything. It corrupts 2 of 45 identifiers,
+the join still returns a plausible number of rows, and the loss looks exactly like genuinely
+missing stations. The test now names those two values rather than describing the risk in general
+terms.
+
 ## Decisions worth defending out loud
 
 **Lakeflow reads Bronze in batch, not as a stream.** The Silver deduplication keeps the first
