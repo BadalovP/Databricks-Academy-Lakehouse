@@ -214,3 +214,62 @@ def test_superseded_notebook_is_fail_closed_and_labelled() -> None:
     assert 'dbutils.widgets.dropdown("acknowledge_superseded"' in first_code_cell
     assert 'dbutils.widgets.get("acknowledge_superseded").lower() != "true"' in first_code_cell
     assert "raise RuntimeError(" in first_code_cell
+
+
+@pytest.mark.parametrize(
+    "job_name, gate, notebook",
+    [
+        (
+            "urbanflow_historical_trips_test",
+            "run_ingest",
+            "../notebooks/06_historical_trips.py",
+        ),
+        (
+            "urbanflow_weather_enrichment_test",
+            "run_enrichment",
+            "../notebooks/07_weather_enrichment.py",
+        ),
+    ],
+)
+def test_phase3_jobs_are_unscheduled_and_fail_closed(
+    job_name: str, gate: str, notebook: str
+) -> None:
+    """A deployed Job must not be able to run itself, and must do nothing by default."""
+    resource = yaml.safe_load((PROJECT_ROOT / "resources" / "jobs.yml").read_text(encoding="utf-8"))
+    job = resource["resources"]["jobs"][job_name]
+    defaults = {parameter["name"]: parameter["default"] for parameter in job["parameters"]}
+
+    assert defaults[gate] == "false"
+    assert defaults["execution_id"] == "NOT_APPROVED"
+    assert "schedule" not in job
+    assert "continuous" not in job
+    assert job["max_concurrent_runs"] == 1
+    task = job["tasks"][0]
+    # Existing approved compute only: a new_cluster would create billable infrastructure.
+    assert task["existing_cluster_id"] == "${var.compute_cluster_id}"
+    assert "new_cluster" not in task
+    assert task["notebook_task"]["notebook_path"] == notebook
+    # Target isolation: a dev run must write dev objects.
+    for name in ("catalog", "schema", "volume"):
+        assert defaults[name] == "${var." + name + "}"
+        assert task["notebook_task"]["base_parameters"][name] == "{{job.parameters." + name + "}}"
+
+
+def test_the_historical_notebook_wait_bound_fits_inside_its_task_timeout() -> None:
+    """A wait that outlives its task is killed before the evidence report is written."""
+    resource = yaml.safe_load((PROJECT_ROOT / "resources" / "jobs.yml").read_text(encoding="utf-8"))
+    job = resource["resources"]["jobs"]["urbanflow_historical_trips_test"]
+    defaults = {parameter["name"]: parameter["default"] for parameter in job["parameters"]}
+
+    assert float(defaults["stream_timeout_seconds"]) < job["tasks"][0]["timeout_seconds"]
+    assert job["tasks"][0]["timeout_seconds"] <= job["timeout_seconds"]
+
+
+def test_the_weather_notebook_never_downloads_an_archive_or_starts_compute() -> None:
+    """Phase 3 added two notebooks; neither may acquire data or compute on its own."""
+    for name in ("06_historical_trips.py", "07_weather_enrichment.py"):
+        code = "\n".join(cell for _, cell in _code_cells(NOTEBOOK_DIR / name))
+        for forbidden in ("clusters.create", "clusters.start", "clusters.restart", "pip install"):
+            assert forbidden not in code, f"{name} contains {forbidden}"
+        # Both must gate on the approved-cluster allowlist before any action.
+        assert "APPROVED_RUN_CLUSTER_IDS" in code

@@ -93,3 +93,89 @@ resources:
         phase: silver_gold
         compute: existing_shared_cluster
         safety: dry_run_by_default
+
+    # Phase 3 Jobs. Both are PREPARED, unscheduled, and fail closed: the run gate defaults to
+    # "false", so a deploy or an accidental trigger exits before reading or writing anything.
+    # Neither creates compute; both attach to the already-running approved cluster.
+    urbanflow_historical_trips_test:
+      name: "[${bundle.target}] urbanflow_historical_trips_test"
+      max_concurrent_runs: 1
+      # Outer ceiling; the notebook's own availableNow wait bound stays below it.
+      timeout_seconds: 1800
+      parameters:
+        - name: run_ingest
+          default: "false"
+        - name: execution_id
+          default: NOT_APPROVED
+        - name: stream_timeout_seconds
+          default: "900"
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema
+          default: ${var.schema}
+        - name: volume
+          default: ${var.volume}
+      tasks:
+        - task_key: historical_trips_autoloader
+          existing_cluster_id: ${var.compute_cluster_id}
+          timeout_seconds: 1500
+          notebook_task:
+            notebook_path: ../notebooks/06_historical_trips.py
+            base_parameters:
+              run_ingest: "{{job.parameters.run_ingest}}"
+              execution_id: "{{job.parameters.execution_id}}"
+              stream_timeout_seconds: "{{job.parameters.stream_timeout_seconds}}"
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume: "{{job.parameters.volume}}"
+      tags:
+        project: urbanflow
+        phase: historical
+        compute: existing_shared_cluster
+        safety: dry_run_by_default
+
+    urbanflow_weather_enrichment_test:
+      name: "[${bundle.target}] urbanflow_weather_enrichment_test"
+      max_concurrent_runs: 1
+      timeout_seconds: 900
+      parameters:
+        - name: run_enrichment
+          default: "false"
+        - name: execution_id
+          default: NOT_APPROVED
+        # The window is bounded; the notebook refuses anything above 62 days.
+        - name: start_date
+          default: "2024-01-01"
+        - name: end_date
+          default: "2024-01-31"
+        - name: latitude
+          default: "40.7128"
+        - name: longitude
+          default: "-74.0060"
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema
+          default: ${var.schema}
+        - name: volume
+          default: ${var.volume}
+      tasks:
+        - task_key: weather_enrichment
+          existing_cluster_id: ${var.compute_cluster_id}
+          timeout_seconds: 600
+          notebook_task:
+            notebook_path: ../notebooks/07_weather_enrichment.py
+            base_parameters:
+              run_enrichment: "{{job.parameters.run_enrichment}}"
+              execution_id: "{{job.parameters.execution_id}}"
+              start_date: "{{job.parameters.start_date}}"
+              end_date: "{{job.parameters.end_date}}"
+              latitude: "{{job.parameters.latitude}}"
+              longitude: "{{job.parameters.longitude}}"
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume: "{{job.parameters.volume}}"
+      tags:
+        project: urbanflow
+        phase: weather
+        compute: existing_shared_cluster
+        safety: dry_run_by_default

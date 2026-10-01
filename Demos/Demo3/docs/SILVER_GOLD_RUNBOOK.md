@@ -54,7 +54,17 @@ Those two tables are stale until the Job is rerun with the corrected code.** The
 tables are unaffected in row count; `silver_station_status` and `fact_station_availability`
 carry corrected `availability_status` values only after a rerun.
 
-## Correction run - prepared, NOT yet executed
+## Correction run - prepared and approved, BLOCKED on compute
+
+The run below is **approved** but has not executed. On 2026-10-01 GP1 (`0702-132442-toro5spu`)
+and GP2 were both `TERMINATED`, their 60-minute idle timers having elapsed, and this project
+does not start, restart, resize or terminate a cluster. The approval stands; the run needs
+someone to start GP1 manually first.
+
+Nothing has been written in the meantime, so the eight tables remain in their pre-correction
+state: `silver_station_status` at 2,520 rows and 27 columns with no `is_operational`,
+`gold_station_shortage` at 746 rows, and `gold_rebalancing_priority` at 746 rows with no
+`execution_id`.
 
 Two further defects were found by inspecting the live tables before rerunning, and both
 would have made a naive redeploy-and-rerun either fail outright or silently leave wrong

@@ -17,6 +17,16 @@ Kafka partition 0 offsets 780-3,299 recorded. See
 [FIRST_STREAMING_TEST.md](FIRST_STREAMING_TEST.md). Rows below promoted to `Validated live` cite
 that run; everything else is unchanged and still honest about what has not run.
 
+**Current totals, 71 requirement rows:** 8 `Validated live`, 50 `Implemented locally`,
+3 `Discovered read-only`, 10 `Pending live`, 0 `Blocked`.
+
+Phase 3 moved 11 rows from `Pending live` to `Implemented locally`: the historical Auto Loader,
+the Lakeflow pipeline, weather enrichment, the dashboard datasets and layout, governance
+(RLS/CLS/ABAC) and Delta maintenance. None of them moved to `Validated live`, because none has
+executed in Azure. The remaining 10 `Pending live` rows each need either a billable resource
+this project is not authorized to start (a SQL warehouse, a Lakeflow run, a second workspace) or
+a deliberate choice not yet made (a Great Expectations or Soda suite, a 1,000-file generator).
+
 | Lab | Required topic | UrbanFlow implementation | File / validation | Evidence | Status |
 |---:|---|---|---|---|---|
 | 1 | Git and notebooks | Dedicated feature branch and Databricks source-format notebooks | `notebooks/01_fundamentals.py` | Local Git state; notebook format audit | Implemented locally |
@@ -25,7 +35,7 @@ that run; everything else is unchanged and still honest about what has not run.
 | 1 | DataFrames | Explicit Spark DataFrames for station information/status | `01_fundamentals.py` | Static review; live notebook pending | Implemented locally |
 | 1 | select/filter/join/groupBy | Operational filter, UUID join, availability aggregation | `01_fundamentals.py` | Pure business rules unit-tested | Implemented locally |
 | 1 | Delta and SQL | Opt-in idempotent MERGE plus dashboard-ready SQL | `01_fundamentals.py` | Write defaults off | Implemented locally |
-| 1 | Basic dashboard | SQL source query designed | Notebook Step 10 | AI/BI object/screenshots absent | Pending live |
+| 1 | Basic dashboard | 22 dashboard datasets written as read-only SQL, plus a four-page layout and exact creation steps | `sql/10`-`sql/13`, `docs/DASHBOARD.md` | Query safety and schema isolation enforced by `tests/test_sql_assets.py`; no AI/BI object created, since publishing needs a billable SQL warehouse | Implemented locally |
 | 1 | Shared cluster / General schema differences | GP1 preferred and GP2 fallback through configuration; must already be running | config, Job resource, inventory | IDs/runtime/access/permissions discovered read-only | Implemented locally |
 | 2 | Azure provisioning settings | Existing workspace, ADLS Gen2, Key Vault settings documented | `RESOURCE_INVENTORY.md` | Azure CLI read-only inventory | Discovered read-only |
 | 2 | Personal container / external location | Existing identity external location identified | `RESOURCE_INVENTORY.md` | UC external location listed | Discovered read-only |
@@ -36,7 +46,7 @@ that run; everything else is unchanged and still honest about what has not run.
 | 2 | Idempotent Bronze + metadata | Event ID, source/collection times, Kafka metadata, MERGE lesson | source modules and notebook | Offline tests | Implemented locally |
 | 2 | Ingestion Job | Bounded Bronze Job plus dry-run Phase 2 DAG | `resources/jobs.yml` | Bronze Job `404404108673495`; Phase 2 local only | Implemented locally |
 | 2 | Legacy mounts exercise | Explanation deliberately separated from core design | Architecture security boundary | No deprecated mount created | Pending live |
-| 3 | Auto Loader | Historical contract and Volume layout planned | `ARCHITECTURE.md` | Source verified; loader pending | Pending live |
+| 3 | Auto Loader | `cloudFiles` reader with explicit schema, separate schemaLocation and per-execution checkpoint, rescued-data column, bounded `availableNow`, plus notebook 06 | `historical.py`, `notebooks/06_historical_trips.py` | Real local Spark tests for the contract, the split and the reconciliation; not yet run in Azure | Implemented locally |
 | 3 | Structured Streaming | Kafka reader, explicit-schema parser, bounded `availableNow` writer | `streaming.py`, `03_eventhubs_to_bronze.py` | Job run `873010921866250` SUCCESS in 130 s; 2,520 rows to Bronze | Validated live |
 | 3 | Event Hubs / Kafka | Existing Standard namespace/hub plus GP1/GP2 compatibility contract | inventory/config/streaming | 2,520 messages published and consumed once | Validated live |
 | 3 | Real Python producer | TTL-aware, duplicate-aware, finite Event Hubs producer | `producer.py`, CLI | 2,520-event live producer report | Validated live |
@@ -51,26 +61,28 @@ that run; everything else is unchanged and still honest about what has not run.
 | 4 | MERGE / rerun safety | Identifier-safe, duplicate-rejecting Delta MERGE for all Phase 2 outputs | `persistence.py`, Silver/Gold notebooks | Second identical run left all eight tables at `inserted_rows = 0`, before == after | Validated live |
 | 4 | SCD1 / SCD2 | New/changed/unchanged/missing stations, null-safe changes, interval audits | `dimensions.py`, tests | Real local Spark tests | Implemented locally |
 | 4 | Enforcement/evolution | Explicit contracts; add-only `ALTER TABLE ADD COLUMNS` migration instead of `autoMerge`; verified-lineage backfill for rows predating a column | `persistence.py`, `gold.py` | Real local Spark tests for the migration, the attribution guards and the whole-table verification; the Delta MERGE/DELETE itself pending the corrected live run | Implemented locally |
-| 4 | Column mapping | Planned controlled rename demonstration | Architecture | None | Pending live |
+| 4 | Column mapping | Controlled rename documented with the one-way reader/writer upgrade stated as its cost; left commented | `sql/21_maintenance_optimize_vacuum.sql` | `tests/test_sql_assets.py` proves no `RENAME COLUMN` is active; not executed | Implemented locally |
 | 4 | Data contracts | GBFS and event contracts documented and tested | client/streaming/architecture | Unit tests | Implemented locally |
-| 4 | OPTIMIZE/VACUUM/liquid clustering | Comparison and safe maintenance exercise still required | Coverage matrix | None | Pending live |
+| 4 | OPTIMIZE/VACUUM/liquid clustering | Side-by-side Z-ORDER vs liquid clustering comparison, deletion vectors, CDF and time travel, with a prominent VACUUM irreversibility warning; every destructive statement commented | `sql/21_maintenance_optimize_vacuum.sql` | Tests assert no active VACUUM, OPTIMIZE, CLUSTER BY or retention-check override; only DESCRIBE runs | Implemented locally |
 | 5 | Lakeflow pipeline | Serverless triggered resource and Bronze Kafka streaming table declared | pipeline and `resources/pipelines.yml` | Bundle schema validation; not deployed | Implemented locally |
-| 5 | Streaming tables / materialized views | Physical model specified | `ARCHITECTURE.md` | None | Pending live |
+| 5 | Streaming tables / materialized views | Bronze declared as a streaming table; Silver, Quarantine, duplicates and all five Gold tables as materialized views, reusing the notebook path's own functions | `pipeline/bronze.py`, `pipeline/silver.py`, `pipeline/gold.py` | 22 source- and config-level tests, including a no-duplicated-business-logic check; pipeline deliberately NOT deployed | Implemented locally |
 | 5 | Bronze/Silver/Quarantine/Gold | Physical Silver/Quarantine/duplicate MERGEs and reconciled Gold model | `silver.py`, `gold.py`, notebooks 04/05 | Real local Spark tests; tables pending | Implemented locally |
-| 5 | Expectations, lineage, monitoring | Requirements identified | Architecture | Live evidence absent | Pending live |
+| 5 | Expectations, lineage, monitoring | 18 declarative expectations across Silver and Gold, all non-dropping so quarantine evidence survives; event-log and expectation-result queries prepared | `pipeline/silver.py`, `pipeline/gold.py`, `sql/13_dashboard_data_quality.sql` | Tests assert expectations exist on every table and that none drops or fails rows; event log needs a running pipeline | Implemented locally |
 | 5 | DAB deployment | Bundle targets plus undeployed Job and serverless Lakeflow resources | `databricks.yml`, `resources/` | Static validation | Implemented locally |
 | 6 | Fact/dimension model | Stable availability fact, 40-row development dimension, daily summary and shortage outputs | `gold.py`, notebook 05 | Real local Spark tests; tables pending | Implemented locally |
-| 6 | AI/BI dashboard and filters | Required views and first SQL source defined | notebook / README | Dashboard absent | Pending live |
+| 6 | AI/BI dashboard and filters | Four pages, 22 datasets, with per-tile caveats so a snapshot is never charted as a trend | `docs/DASHBOARD.md`, `sql/10`-`sql/13` | Layout and queries complete and tested; object not created, and Page 1 is deliberately blocked until the Phase 2 correction run | Implemented locally |
 | 6 | Alerts / email | Volume-drop and shortage alert requirement retained | Coverage matrix | Destination/warehouse unverified | Pending live |
-| 6 | Permissions, RLS, masking | Safe non-PII demonstration planned | Resource inventory | Groups/objects not selected | Pending live |
-| 6 | Weather enrichment | Real Open-Meteo sample and contract | sample / architecture | API verified; Gold join pending | Implemented locally |
+| 6 | Permissions, RLS, masking | Region row filter, coordinate-rounding mask, ride_id hashing mask, least-privilege grants, ABAC tagging explained, plus inspection queries | `sql/20_governance_rls_cls.sql` | Tests prove no `SET MASK`, `SET ROW FILTER` or `GRANT` is active; the fail-to-zero-rows hazard is documented | Implemented locally |
+| 6 | Weather enrichment | Bounded Open-Meteo archive retrieval, hourly normalization, left join preserving every trip, null readings kept null, weather dimension and demand comparison, plus notebook 07 | `weather.py`, `notebooks/07_weather_enrichment.py` | 31 tests against a REAL committed 48-hour archive response, including positional-misalignment and join-fan-out cases; not yet run in Azure | Implemented locally |
+| 6 | Historical trip quality and demand | Three-way valid/quarantine/duplicate split, deterministic dedup by `ride_id`, trip-duration bounds, member vs casual mix, daily demand keyed to `short_name` | `historical.py`, `notebooks/06_historical_trips.py` | 26 real local Spark tests; reconciliation identity and zero-match-rate failure both covered | Implemented locally |
+| 4 | Derived-table correction | `backfill_execution_id`, fail-closed unassigned-row guard and whole-table `verify_execution_scope`, after 89 stale rows were found able to escape a scoped delete | `persistence.py`, `gold.py` | 18 tests on real local Spark; all five guards mutation-checked; Delta DML asserted at statement level | Implemented locally |
 | 7 | Importable functions | Client, transformations, quality, producer, monitoring, automation | `src/urbanflow/` | Import/test pass | Implemented locally |
 | 7 | pytest / Ruff / Black | Dedicated configuration and static workflow | `pyproject.toml`, workflow | Local results recorded in session report | Implemented locally |
 | 7 | pre-commit | Local Ruff, Black, and pytest hooks | `.pre-commit-config.yaml` | Uses the project development environment | Implemented locally |
 | 7 | chispa / Spark tests | Real local Spark suites for Silver, Gold, historical joins and SCD | `tests/test_{silver,gold,historical,dimensions}.py` | Local pytest | Implemented locally |
 | 7 | Duplicate, late, SCD edge cases | Cross-partition duplicate order, null transitions, invalid intervals and out-of-order SCD changes | tests | Local pytest | Implemented locally |
 | 7 | DQ dimensions | Completeness, uniqueness key, validity, consistency, referential integrity, freshness | `quality.py` | Unit tests | Implemented locally |
-| 7 | Lakeflow expectations / Delta constraints | Planned with full pipeline | Architecture | None | Pending live |
+| 7 | Lakeflow expectations / Delta constraints | Non-dropping `expect_all` rules on all eight pipeline tables, including one asserting an out-of-service station is never actionable and one asserting a single observation cannot claim a trend | `pipeline/silver.py`, `pipeline/gold.py` | Source-level tests; execution requires a Lakeflow run, which is not authorized | Implemented locally |
 | 7 | Great Expectations or Soda | Suite not selected yet | Coverage matrix | None | Pending live |
 | 7 | Reconciliation / anomaly gates | Bronze outcome and Silver-to-Gold grain/aggregate gates | `silver.py`, `gold.py` | Real local Spark tests | Implemented locally |
 | 7 | Databricks Connect / monitoring | Environment capability not yet tested | Coverage matrix | None | Pending live |
