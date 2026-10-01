@@ -3,10 +3,97 @@
 from __future__ import annotations
 
 import json
+import re
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any, Iterable, Mapping
+
+# Evidence paths are built from these tokens, so the charset is deliberately narrow: no slash,
+# no whitespace, no dot-dot, nothing that could escape the reports directory or confuse a shell.
+# A colon is excluded too - `replace_execution_scope` tolerates one in a business execution id,
+# but it has no place in a filename and no id this project uses contains one.
+_PATH_TOKEN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$")
+
+# Named rather than free-form, so a typo creates an error instead of a new orphan directory.
+EVIDENCE_PHASES: frozenset[str] = frozenset(
+    {"first_streaming_test", "silver_gold", "historical", "weather"}
+)
+
+
+def sanitize_path_token(value: str, *, label: str) -> str:
+    """Validate one component of an evidence path, rejecting anything path-unsafe."""
+    token = str(value).strip()
+    if not _PATH_TOKEN.fullmatch(token):
+        raise ValueError(
+            f"{label} {value!r} is not safe for an evidence path: it must start with a letter or "
+            "digit and contain only letters, digits, dot, underscore, plus or hyphen."
+        )
+    if ".." in token:
+        raise ValueError(f"{label} {value!r} must not contain '..'.")
+    return token
+
+
+def resolve_attempt_id(
+    *,
+    job_run_id: str | None = None,
+    now: datetime | None = None,
+) -> str:
+    """Identify ONE execution attempt, distinctly from the business execution it belongs to.
+
+    This exists because of a real loss. Evidence paths were keyed only on `execution_id`, which is
+    a *business* lineage key: the corrected Silver-to-Gold run and its idempotency repeat share
+    one, by design, because they process the same Bronze snapshot. The repeat therefore overwrote
+    the first run's report in the Volume, and the first run's figures survived only because they
+    had been read before the repeat happened.
+
+    The fix separates the two concepts rather than weakening either. `execution_id` keeps meaning
+    "which data", and is still what the Delta MERGE and the execution-scoped deletes key on, so
+    reruns stay idempotent at the data layer. The attempt id means "which run", and appears only
+    in filenames.
+
+    The Databricks job run id is preferred because it is unique, already recorded by the platform
+    and links the evidence straight back to the run page. A UTC timestamp is the fallback for an
+    interactive run, where no job run id exists.
+    """
+    if job_run_id and str(job_run_id).strip():
+        candidate = str(job_run_id).strip()
+        # A job parameter that was never substituted arrives literally as "{{job.run_id}}".
+        if not candidate.startswith("{{"):
+            return sanitize_path_token(f"run-{candidate}", label="job_run_id")
+    moment = now or datetime.now(UTC)
+    return sanitize_path_token(f"ts-{moment.strftime('%Y%m%dT%H%M%SZ')}", label="attempt timestamp")
+
+
+def evidence_report_path(
+    volume_root: str,
+    *,
+    phase: str,
+    execution_id: str,
+    attempt_id: str,
+    suffix: str,
+) -> str:
+    """Build a unique, deterministic evidence path for one attempt of one execution.
+
+    The shape is `<volume_root>/reports/<phase>/<execution_id>/<attempt_id>.<suffix>.json`.
+    `execution_id` becomes a DIRECTORY, so every attempt at the same business execution collects
+    beside its siblings instead of replacing them, and the run history for a given snapshot is
+    readable by listing one directory.
+
+    Deterministic by construction: the same four inputs always produce the same path, so a report
+    can be located later without searching.
+    """
+    root = str(volume_root).rstrip("/")
+    if not root:
+        raise ValueError("volume_root must be non-empty.")
+    if phase not in EVIDENCE_PHASES:
+        raise ValueError(
+            f"Unknown evidence phase {phase!r}; expected one of {sorted(EVIDENCE_PHASES)}."
+        )
+    execution = sanitize_path_token(execution_id, label="execution_id")
+    attempt = sanitize_path_token(attempt_id, label="attempt_id")
+    extension = sanitize_path_token(suffix, label="suffix")
+    return f"{root}/reports/{phase}/{execution}/{attempt}.{extension}.json"
 
 
 def _json_safe(value: Any) -> Any:

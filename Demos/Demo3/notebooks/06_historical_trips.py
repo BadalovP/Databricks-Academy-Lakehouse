@@ -64,7 +64,11 @@ from urbanflow.historical import (
     trip_join_match_rate,
     with_trip_lineage,
 )
-from urbanflow.reporting import write_json_report
+from urbanflow.reporting import (
+    evidence_report_path,
+    resolve_attempt_id,
+    write_json_report,
+)
 from urbanflow.streaming import await_bounded_completion
 
 # COMMAND ----------
@@ -96,6 +100,7 @@ dbutils.widgets.text("catalog", "")
 dbutils.widgets.text("schema", "")
 dbutils.widgets.text("volume", "")
 dbutils.widgets.text("stream_timeout_seconds", "600")
+dbutils.widgets.text("run_attempt_id", "")
 run_ingest = dbutils.widgets.get("run_ingest").lower() == "true"
 execution_id = dbutils.widgets.get("execution_id").strip()
 target_catalog = dbutils.widgets.get("catalog").strip()
@@ -150,7 +155,14 @@ historical_tables = {
     "duplicates": f"{table_root}.duplicate_historical_trips",
     "daily_demand": f"{table_root}.gold_daily_trip_demand",
 }
-report_path = f"{volume_root}/reports/historical/{execution_id}.historical.json"
+attempt_id = resolve_attempt_id(job_run_id=dbutils.widgets.get("run_attempt_id"))
+report_path = evidence_report_path(
+    volume_root,
+    phase="historical",
+    execution_id=execution_id,
+    attempt_id=attempt_id,
+    suffix="historical",
+)
 print({"paths": paths, "tables": historical_tables})
 
 # COMMAND ----------

@@ -59,7 +59,11 @@ from urbanflow.gold import (
     station_availability_fact,
     station_dimension,
 )
-from urbanflow.reporting import write_json_report
+from urbanflow.reporting import (
+    evidence_report_path,
+    resolve_attempt_id,
+    write_json_report,
+)
 
 # COMMAND ----------
 
@@ -89,6 +93,7 @@ dbutils.widgets.text("source_execution_id", "urbanflow-20260929T195132Z-r3")
 dbutils.widgets.text("catalog", "")
 dbutils.widgets.text("schema", "")
 dbutils.widgets.text("volume", "")
+dbutils.widgets.text("run_attempt_id", "")
 run_transform = dbutils.widgets.get("run_transform").lower() == "true"
 source_execution_id = dbutils.widgets.get("source_execution_id").strip()
 target_catalog = dbutils.widgets.get("catalog").strip()
@@ -139,9 +144,13 @@ gold_tables = {
     "shortages": f"{table_root}.gold_station_shortage",
     "priorities": f"{table_root}.gold_rebalancing_priority",
 }
-report_path = (
-    f"/Volumes/{target_catalog}/{target_schema}/{target_volume}/reports/silver_gold/"
-    f"{source_execution_id}.gold.json"
+attempt_id = resolve_attempt_id(job_run_id=dbutils.widgets.get("run_attempt_id"))
+report_path = evidence_report_path(
+    f"/Volumes/{target_catalog}/{target_schema}/{target_volume}",
+    phase="silver_gold",
+    execution_id=source_execution_id,
+    attempt_id=attempt_id,
+    suffix="gold",
 )
 
 # COMMAND ----------
