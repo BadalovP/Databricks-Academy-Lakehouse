@@ -126,15 +126,17 @@ is not published without separate approval.
 There is also a dependency ordering problem that would make a dashboard created today
 misleading rather than merely empty:
 
-| Section | Blocked on |
+| Section | Status as of 2026-10-02 |
 |---|---|
-| Current operations | The Phase 2 correction run. Until it runs, `gold_station_shortage` holds 746 rows of which 89 are out-of-service stations wrongly listed as actionable |
-| Historical demand | Notebook 06 running against a landed archive. No trip table exists yet |
-| Weather | Notebook 07, which depends on the trip table |
-| Data quality | Partially available now; the trip-outcome tiles need notebook 06 |
+| Current operations | **Unblocked.** The Phase 2 correction ran; shortage and priority hold exactly 657 correct rows with zero out-of-service entries |
+| Historical demand | **Data exists, but from a 40-ROW DEVELOPMENT SAMPLE only.** Every tile would show 40 trips over 17 days. Honest, and far too thin to present as demand analysis - this page needs the full monthly archive |
+| Weather | **Data exists, 48 hours.** Only 4 of 40 trips fall inside it, so coverage is 0.1. The charts would be technically correct and practically empty |
+| Data quality | **Fully available.** Every reconciliation tile has real numbers behind it |
 
-Publishing Page 1 before the correction run would put 89 known-wrong rows on a supervisor's
-screen, which is worse than publishing nothing.
+So the remaining blocker is no longer correctness, it is the SQL warehouse plus the thinness of
+the sample data. Pages 1 and 4 would be genuinely informative today. Pages 2 and 3 should wait
+for the monthly archive, or carry a prominent 40-row label - showing a 40-trip "demand trend" to a
+supervisor would invite exactly the wrong conclusion.
 
 ## Exact creation steps, once approved
 
