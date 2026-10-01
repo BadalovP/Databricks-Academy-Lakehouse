@@ -6,7 +6,12 @@ resources:
       schema: ${var.schema}
       root_path: ../src
       serverless: true
+      # Triggered, never continuous. A continuous pipeline bills for as long as it runs; a
+      # triggered one does its bounded update and stops, which is the only mode this project
+      # is authorized to use.
       continuous: false
+      # `development` is deliberately NOT set here: the azure target runs in production mode,
+      # which rejects a development pipeline outright. Each target decides its own mode.
       channel: CURRENT
       edition: ADVANCED
       configuration:
@@ -20,6 +25,15 @@ resources:
         urbanflow.consumer_group: parvinbadalov
         urbanflow.starting_offsets: earliest
         urbanflow.max_events_per_trigger: "5000"
+        # Shared with the notebook path so a threshold is never defined in two places.
+        urbanflow.low_bike_threshold: "2"
+        urbanflow.low_dock_threshold: "2"
+        urbanflow.station_information_path: >-
+          /Volumes/${var.catalog}/${var.schema}/${var.volume}/landing/station_information
       libraries:
         - file:
             path: ../pipeline/bronze.py
+        - file:
+            path: ../pipeline/silver.py
+        - file:
+            path: ../pipeline/gold.py
