@@ -15,6 +15,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from urbanflow.reporting import sanitize_path_token
+
 # Rescued data goes in its own column rather than failing the read, so a column the
 # official archive adds later is captured instead of discarded. This is the Lab 3
 # schema-evolution and rescued-data requirement.
@@ -310,7 +312,9 @@ def trip_join_match_rate(joined: Any) -> dict[str, Any]:
     }
 
 
-def historical_landing_paths(volume_root: str, *, execution_id: str) -> dict[str, str]:
+def historical_landing_paths(
+    volume_root: str, *, execution_id: str, landing_subdir: str = ""
+) -> dict[str, str]:
     """Landing, schema and checkpoint locations inside the EXISTING UrbanFlow Volume.
 
     No new storage account, container or external location is involved - these are
@@ -319,19 +323,24 @@ def historical_landing_paths(volume_root: str, *, execution_id: str) -> dict[str
     inferred schema in one and Structured Streaming keeps offsets in the other, and sharing a
     path between them corrupts both.
 
-    The checkpoint is per execution so a rerun is a clean bounded read rather than a resume of
-    someone else's partial progress, which is the same discipline the Bronze stream uses.
+    `landing_subdir` isolates one source set from another. It is optional so the already-validated
+    40-row sample keeps its original landing, schema and checkpoint paths. A full archive supplies
+    a value such as `202401-full`, which gives it a separate landing directory, Auto Loader schema
+    location and checkpoint namespace without moving or re-reading the sample.
     """
     if not volume_root.strip():
         raise ValueError("volume_root must be non-empty.")
-    if not execution_id.strip():
-        raise ValueError("execution_id must be non-empty.")
+    execution = sanitize_path_token(execution_id, label="execution_id")
+    subdir = str(landing_subdir).strip()
+    if subdir:
+        subdir = sanitize_path_token(subdir, label="landing_subdir")
     root = volume_root.rstrip("/")
+    source_namespace = "historical_trips" + (f"/{subdir}" if subdir else "")
     return {
-        "landing": f"{root}/landing/historical_trips",
-        "schema": f"{root}/schemas/historical_trips",
-        "checkpoint": f"{root}/checkpoints/historical_trips/{execution_id}",
-        "archive": f"{root}/landing/historical_trips/_archive",
+        "landing": f"{root}/landing/{source_namespace}",
+        "schema": f"{root}/schemas/{source_namespace}",
+        "checkpoint": f"{root}/checkpoints/{source_namespace}/{execution}",
+        "archive": f"{root}/landing/{source_namespace}/_archive",
     }
 
 

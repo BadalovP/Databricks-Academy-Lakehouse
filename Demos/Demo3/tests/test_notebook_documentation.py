@@ -24,7 +24,21 @@ REQUIRED_GUIDANCE = (
 # while writing a new cell is 5-25 lines.
 MAX_CODE_CELL_LINES = 30
 NOT_EXECUTED_PHRASES = ("has not been run", "has not been executed", "No live messages")
-VALIDATED_LIVE_NOTEBOOKS = {Path("notebooks/03_eventhubs_to_bronze.py")}
+VALIDATED_LIVE_CLAIMS = {
+    Path("notebooks/03_eventhubs_to_bronze.py"): ("2026-09-29", "2,520", "PASS"),
+    Path("notebooks/04_bronze_to_silver.py"): ("2026-10-02", "2,520", "repeat"),
+    Path("notebooks/05_silver_to_gold.py"): ("2026-10-02", "657", "89"),
+    Path("notebooks/06_historical_trips.py"): (
+        "2026-10-02",
+        "40-ROW DEVELOPMENT SAMPLE",
+        "40 landed",
+    ),
+    Path("notebooks/07_weather_enrichment.py"): (
+        "2026-10-02",
+        "48-HOUR WEATHER SAMPLE",
+        "40 trips",
+    ),
+}
 
 
 def _cells(path: Path) -> list[str]:
@@ -112,9 +126,9 @@ def test_actual_validation_claim_matches_the_notebook_evidence(notebook: Path) -
     claims = [line for line in lines if "**Actual validation:**" in line]
     assert claims, f"{notebook} must state what was actually validated"
     for claim in claims:
-        if notebook in VALIDATED_LIVE_NOTEBOOKS:
-            assert "ran in Azure on 2026-09-29" in claim
-            assert "2,520" in claim and "PASS" in claim
+        if notebook in VALIDATED_LIVE_CLAIMS:
+            for fact in VALIDATED_LIVE_CLAIMS[notebook]:
+                assert fact in claim, f"{notebook} is missing live evidence fact {fact!r}: {claim}"
         else:
             assert any(
                 phrase in claim for phrase in NOT_EXECUTED_PHRASES

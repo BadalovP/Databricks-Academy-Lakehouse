@@ -55,8 +55,8 @@ start_lat, start_lng, end_lat, end_lng, member_casual
 ```
 
 January 2024 `start_station_id` matches current GBFS `short_name` in the selected sample. The
-current UUID `station_id` is a separate key. The future station dimension will preserve both and
-record unmatched historical identifiers rather than silently dropping trips.
+current UUID `station_id` is a separate key. The station dimension preserves both, and the
+historical path records unmatched identifiers rather than silently dropping trips.
 
 ### Weather contract
 
@@ -89,19 +89,19 @@ specific station shortage.
 | Layer | Object | Grain | Stage status |
 |---|---|---|---|
 | Bronze | `bronze_station_status` | One received Kafka event | Validated live: 2,520 reconciled rows |
-| Bronze | `bronze_historical_trips` | One physical trip row | Auto Loader, checkpoint, rescue, and validation implemented locally; not run |
+| Bronze | `bronze_historical_trips` | One physical trip row | Validated live on the 40-row development sample; full archive not run |
 | Bronze | `bronze_station_information` | One captured reference record | Client implemented; table pending |
 | Bronze | `bronze_weather` | One place/time observation | Sample verified; table pending |
-| Silver | `silver_station_status` | One accepted event ID | Contract, deterministic deduplication, reconciliation, and MERGE implemented locally |
-| Silver | `quarantine_station_status` | One invalid Kafka record with all failed rules | Routing and Kafka-lineage MERGE implemented locally |
-| Silver | `duplicate_station_status` | One repeated Kafka record | Deterministic routing and Kafka-lineage MERGE implemented locally |
+| Silver | `silver_station_status` | One accepted event ID | Validated live: 2,520 rows, with reconciliation and idempotent repeat |
+| Silver | `quarantine_station_status` | One invalid Kafka record with all failed rules | Validated live: 0 rows for the bounded Bronze execution |
+| Silver | `duplicate_station_status` | One repeated Kafka record | Validated live: 0 rows for the bounded Bronze execution |
 | Silver | `dim_station_scd2` | One station version | Null-safe transitions and interval audit tested locally; persistence pending |
-| Gold | `fact_station_availability` | One Silver event ID | Stable schema, left enrichment, reconciliation, and MERGE implemented locally |
-| Gold | `gold_station_shortage` | One shortage observation | Implemented locally; one snapshot is not a repeated episode |
-| Gold | `gold_rebalancing_priority` | Station and observation timestamp | Explainable score and MERGE implemented locally |
-| Gold | `fact_historical_trip` | One valid historical ride | Pending Auto Loader and data quality |
-| Gold | `dim_weather_hourly` | One weather hour | Pending historical weather selection |
-| Gold | `gold_daily_station_summary` | Station and date | Implemented locally with observation count and trend-capability flag |
+| Gold | `fact_station_availability` | One Silver event ID | Validated live: 2,520 rows and 2,520 distinct event IDs |
+| Gold | `gold_station_shortage` | One shortage observation | Validated live: 657 actionable rows; one snapshot is not a repeated episode |
+| Gold | `gold_rebalancing_priority` | Station and observation timestamp | Validated live: 657 rows and no out-of-service priorities |
+| Silver | `silver_historical_trips` | One valid historical ride | Validated live on the 40-row development sample; full archive not run |
+| Gold | `dim_weather_hourly` | One weather hour | Validated live on the committed 48-hour sample |
+| Gold | `gold_daily_station_summary` | Station and date | Validated live with observation count and trend-capability flag |
 
 ## SCD strategy
 
@@ -122,7 +122,8 @@ specific station shortage.
    `addNewColumns`. Databricks does not allow `addNewColumns` with an explicit reader schema; see
    the official [Auto Loader schema evolution documentation](https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/schema).
 4. Auto Loader `schemaLocation` and streaming checkpoint paths are distinct and isolated.
-5. The bounded writer uses `availableNow`; it has been prepared but not executed.
+5. The bounded writer uses `availableNow`; the 40-row development sample and its no-new-file
+   rerun both completed on GP1. The full monthly archive remains unexecuted.
 6. Delta schema auto-merge is not enabled globally.
 7. Column mapping is demonstrated before renaming a Delta column.
 
@@ -186,10 +187,10 @@ The cluster-cleanup rule above applies only to an explicitly created, isolated e
 GP1 and GP2 are hard-coded protected IDs: cleanup stops the UrbanFlow query and leaves those shared
 clusters unchanged.
 
-## Why Lakeflow remains a later stage
+## Why Lakeflow remains a separate stage
 
 The bundle contains a serverless, triggered Lakeflow configuration and a Bronze Kafka streaming
 table declaration. It has not been deployed or executed. Serverless Lakeflow manages its own
-compute and checkpoints, independently of GP1/GP2. Physical Silver and Gold functions now exist as
-an existing-cluster Phase 2 Job; moving them into Lakeflow and adding managed expectations remain
-later work.
+compute and checkpoints, independently of GP1/GP2. Physical Silver and Gold functions have run as
+an existing-cluster Phase 2 Job. Lakeflow reuses those functions and writes only to its isolated
+pipeline target schema when a separately approved update eventually runs.

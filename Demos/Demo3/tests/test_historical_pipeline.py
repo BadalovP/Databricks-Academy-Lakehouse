@@ -8,10 +8,12 @@ and the daily demand aggregate being correctable when a rerun produces fewer row
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 from unittest.mock import Mock
 
 import pytest
+import yaml
 
 from urbanflow.historical import (
     daily_trip_demand,
@@ -92,6 +94,55 @@ def test_landing_paths_tolerate_a_trailing_slash() -> None:
     paths = historical_landing_paths("/Volumes/cat/sch/vol/", execution_id=RUN)
 
     assert paths["landing"] == "/Volumes/cat/sch/vol/landing/historical_trips"
+
+
+def test_monthly_archive_paths_are_isolated_from_the_validated_sample() -> None:
+    root = "/Volumes/cat/sch/vol"
+    sample = historical_landing_paths(root, execution_id="urbanflow-hist-devsample40-r1")
+    monthly = historical_landing_paths(
+        root,
+        execution_id="urbanflow-hist-month202401-r1",
+        landing_subdir="202401-full",
+    )
+
+    assert sample == {
+        "landing": f"{root}/landing/historical_trips",
+        "schema": f"{root}/schemas/historical_trips",
+        "checkpoint": f"{root}/checkpoints/historical_trips/urbanflow-hist-devsample40-r1",
+        "archive": f"{root}/landing/historical_trips/_archive",
+    }
+    assert monthly == {
+        "landing": f"{root}/landing/historical_trips/202401-full",
+        "schema": f"{root}/schemas/historical_trips/202401-full",
+        "checkpoint": (
+            f"{root}/checkpoints/historical_trips/202401-full/urbanflow-hist-month202401-r1"
+        ),
+        "archive": f"{root}/landing/historical_trips/202401-full/_archive",
+    }
+    assert set(sample.values()).isdisjoint(monthly.values())
+
+
+@pytest.mark.parametrize("landing_subdir", ["../escape", "nested/path", "with space", ".hidden"])
+def test_landing_subdir_refuses_path_traversal_and_nested_paths(landing_subdir: str) -> None:
+    with pytest.raises(ValueError):
+        historical_landing_paths(
+            "/Volumes/cat/sch/vol", execution_id=RUN, landing_subdir=landing_subdir
+        )
+
+
+def test_historical_job_wires_the_landing_subdir_to_notebook_06() -> None:
+    root = Path(__file__).resolve().parents[1]
+    jobs = yaml.safe_load((root / "resources" / "jobs.yml").read_text(encoding="utf-8"))
+    job = jobs["resources"]["jobs"]["urbanflow_historical_trips_test"]
+    defaults = {parameter["name"]: parameter["default"] for parameter in job["parameters"]}
+
+    assert defaults["landing_subdir"] == ""
+    assert (
+        job["tasks"][0]["notebook_task"]["base_parameters"]["landing_subdir"]
+        == "{{job.parameters.landing_subdir}}"
+    )
+    notebook = (root / "notebooks" / "06_historical_trips.py").read_text(encoding="utf-8")
+    assert 'dbutils.widgets.text("landing_subdir", "")' in notebook
 
 
 @pytest.mark.parametrize(

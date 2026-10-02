@@ -229,3 +229,26 @@ def test_the_station_reference_path_is_configuration_not_a_hardcoded_catalog() -
     assert "${var.catalog}" in path
     assert "${var.schema}" in path
     assert "${var.volume}" in path
+
+
+def test_pipeline_code_cannot_bypass_the_isolated_target_schema() -> None:
+    """Every managed output is an unqualified dp table resolved in lakeflow_schema."""
+    for module in MODULES:
+        source = _source(module)
+        assert "dbr_dev.parvinbadalov_urbanflow" not in source
+        assert ".saveAsTable(" not in source
+        assert ".writeStream" not in source
+        assert "spark.sql(" not in source
+
+        for node in ast.walk(_tree(module)):
+            if not isinstance(node, ast.Call) or ast.unparse(node.func) != "dp.table":
+                continue
+            name = next(
+                (
+                    keyword.value.value
+                    for keyword in node.keywords
+                    if keyword.arg == "name" and isinstance(keyword.value, ast.Constant)
+                ),
+                None,
+            )
+            assert name and "." not in name, f"{module.name} bypasses the pipeline target: {name}"

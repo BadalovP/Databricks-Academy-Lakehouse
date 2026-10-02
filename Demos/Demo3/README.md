@@ -5,12 +5,13 @@ UrbanFlow is an educational Azure Databricks lakehouse for a practical operation
 repeated shortage patterns?** It combines real public APIs, historical trips, a Kafka-style
 Event Hubs stream, Spark, Delta Lake, Unity Catalog, testing, CI/CD, and Databricks SDK patterns.
 
-> **Milestone status — Bronze validated live; Phase 2 implemented locally.** On 2026-09-29 the
+> **Milestone status — Bronze, Silver/Gold, and bounded Phase 3 samples validated live.** On 2026-09-29 the
 > bounded producer published 2,520 events and Job `404404108673495` wrote 2,520 reconciled rows to
 > `dbr_dev.parvinbadalov_urbanflow.bronze_station_status`, with zero missing, unexpected, rejected,
-> or duplicate event IDs. The new Bronze-to-Silver-to-Gold workflow, Delta MERGEs, Auto Loader
-> helpers, SCD audits, Spark tests, educational notebooks, and one dry-run-by-default two-task Job
-> are complete locally. Phase 2 has not been deployed or executed in Azure.
+> or duplicate event IDs. On 2026-10-02 the corrected Silver/Gold path reconciled 2,520 rows and
+> removed 89 stale out-of-service priorities; its repeat was idempotent. The 40-row historical
+> **DEVELOPMENT SAMPLE** and 48-hour weather sample also passed bounded GP1 runs. The full monthly
+> archive, Lakeflow deployment, published dashboard, and governance changes remain unexecuted.
 
 ## Business problem
 
@@ -59,10 +60,10 @@ UrbanFlow does not define a notebook job cluster. Ordinary notebook tasks use th
 `compute_cluster_id`, whose verified default is GP1. Changing that variable to the verified GP2 ID
 switches compute without editing a notebook.
 
-| Cluster | Verified ID | Latest state on 2026-09-29 | Runtime / access mode | Effective permission | Decision |
+| Cluster | Verified ID | Latest state | Runtime / access mode | Effective permission | Decision |
 |---|---|---|---|---|---|
-| GP1 | `0702-132442-toro5spu` | `RUNNING` (fresh read-only check) | DBR `17.3.x-scala2.13`, `USER_ISOLATION` | `CAN_MANAGE` through `admins`; `users` has `CAN_RESTART` | Preferred Phase 2 target, subject to one final pre-execution check |
-| GP2 | `0702-171207-xo9bbc0y` | `TERMINATED` | DBR `17.3.x-scala2.13`, `USER_ISOLATION` | `CAN_MANAGE` through `admins`; `users` has `CAN_RESTART` | Compatible fallback; currently blocked by the same rule |
+| GP1 | `0702-132442-toro5spu` | `TERMINATED` (read-only check 2026-10-02) | DBR `17.3.x-scala2.13`, `USER_ISOLATION` | `CAN_MANAGE` through `admins`; `users` has `CAN_RESTART` | Preferred target when already running; currently unavailable under the no-lifecycle-mutation rule |
+| GP2 | `0702-171207-xo9bbc0y` | `TERMINATED` (read-only check 2026-10-02) | DBR `17.3.x-scala2.13`, `USER_ISOLATION` | `CAN_MANAGE` through `admins`; `users` has `CAN_RESTART` | Compatible fallback when already running; currently unavailable under the same rule |
 
 DBR 17.3 and standard access mode meet the documented
 [Unity Catalog compute requirements](https://learn.microsoft.com/en-us/azure/databricks/data-governance/unity-catalog/requirements)
@@ -138,20 +139,21 @@ flowchart LR
     CONTRACT -->|Invalid| Q["Quarantine<br/>all failed rules"]
     DEDUPE --> S1["Silver station snapshots"]
     DEDUPE --> S2["Silver historical demand"]
-    S1 --> G1["fact_station_snapshot"]
-    S1 --> G2["fact_station_shortage"]
-    S2 --> G3["fact_historical_trip"]
-    G1 --> DAILY["daily_station_summary"]
-    G2 --> DAILY
-    G3 --> DAILY
-    DAILY --> CHECK["Bronze = Silver + Quarantine"]
+    S1 --> G1["fact_station_availability"]
+    S1 --> G2["gold_station_shortage"]
+    G2 --> PRIORITY["gold_rebalancing_priority"]
+    S2 --> G3["gold_daily_trip_demand"]
+    G1 --> DAILY["gold_daily_station_summary"]
+    DAILY --> CHECK["Bronze = Silver + Quarantine + Duplicates"]
 ```
 
 The physical Silver contract enforces identifiers, parsing, required availability fields,
 non-negative counts, binary station-state flags, source timestamps, and optional known-station
 referential integrity. Quarantined rows retain every failed-rule name. Duplicate delivery is a
 third explicit outcome, so reconciliation proves `Bronze = Silver + Quarantine + Duplicates`.
-All three outputs now have idempotent Delta MERGE implementations; live tables remain pending.
+All three quality outcomes and the downstream Gold tables use idempotent Delta persistence. The
+bounded station, historical sample and weather sample paths have live evidence; the full monthly
+archive remains unexecuted.
 
 ## 4. CI/CD design
 
@@ -284,15 +286,15 @@ The first producer run is complete. Phase 2 must not run this command again: it 
 The detailed, evidence-based matrix is in
 [`docs/LABS_1_TO_9_COVERAGE.md`](docs/LABS_1_TO_9_COVERAGE.md). Current highlights:
 
-- **Implemented locally:** physical Silver/Quarantine/duplicate MERGEs, persisted Gold-table
-  definitions, explicit and evolving Auto Loader paths, SCD1/SCD2 audits, a two-task Phase 2 Job,
-  educational notebooks, local Spark regression tests, DAB configuration, and static CI.
+- **Implemented locally:** isolated Lakeflow declarations, dashboard and governance SQL, Great
+  Expectations suites, the 1,000-file generator, SCD audits, DAB configuration, and static CI.
 - **Discovered read-only:** target workspace identity, Unity Catalog resources, Event Hubs Kafka
   capability, Key Vault secret metadata, storage, secret scope, and compute policies.
-- **Validated live:** isolated schema and Volume, secret access, 2,520 Event Hubs messages, bounded
-  Structured Streaming, Bronze table, Job execution, and exact producer-to-Bronze reconciliation.
-- **Pending live validation:** Phase 2 Silver/Gold tables and reports, historical Auto Loader,
-  Lakeflow, dashboard, alert, governance demonstrations, and deployment promotion.
+- **Validated live:** the 2,520-event Bronze stream and exact reconciliation; corrected Silver and
+  Gold tables plus an idempotent repeat; the 40-row historical development sample; and the 48-hour
+  weather sample, all with stored evidence.
+- **Pending live:** exactly eight Academy rows remain; see
+  [the classified execution batches](docs/PENDING_REQUIREMENTS.md).
 
 ## Documentation
 
@@ -301,7 +303,7 @@ The detailed, evidence-based matrix is in
 - [Read-only Azure resource inventory](docs/RESOURCE_INVENTORY.md)
 - [Cost and safety plan](docs/COST_AND_SAFETY.md)
 - [First bounded streaming test runbook](docs/FIRST_STREAMING_TEST.md) — Phase 1, validated live
-- [Silver and Gold bounded run runbook](docs/SILVER_GOLD_RUNBOOK.md) — Phase 2, prepared but not yet executed
+- [Silver and Gold bounded run runbook](docs/SILVER_GOLD_RUNBOOK.md) — Phase 2, validated live
 - [20–25 minute presentation guide](docs/PRESENTATION_GUIDE.md)
 - [Evidence policy and future screenshots](docs/evidence/README.md)
 
@@ -310,19 +312,18 @@ The detailed, evidence-based matrix is in
 - Bronze is one real snapshot, so availability summaries are not historical trends.
 - The existing Event Hub has one day of retention, suitable for a short demonstration rather
   than durable history.
-- GP1 was `RUNNING` during the latest read-only inspection; GP2's latest recorded state is
-  `TERMINATED`. UrbanFlow did not start or stop either cluster and will not change them.
+- GP1 and GP2 were both `TERMINATED` during the latest read-only inspection on 2026-10-02.
+  UrbanFlow did not start or stop either cluster and will not change them.
 - The existing secret and consumer group were exercised successfully during the completed Bronze
   run; Phase 2 performs no secret read and no Event Hubs operation.
 - Current and historical station identifiers require the documented `short_name` crosswalk.
-- Dashboard, alerts, Silver/Gold Lakeflow declarations, full medallion tables, approximately
-  1,000-file Auto Loader experiment, governance policies, and real execution evidence belong to
-  later stages.
+- The full monthly archive, 1,000-file Auto Loader discovery run, Lakeflow deployment, published
+  dashboard, alert, governance changes, and maintenance operations have not run.
 
 ## Cost and safety boundary
 
-The next live test is one bounded read of the existing 2,520-row Bronze slice followed by two
-existing-cluster notebook tasks that MERGE Silver and Gold and write small JSON reports. It sends
-no Event Hubs messages, runs no stream or Lakeflow pipeline, and never changes shared compute.
-Nothing live will run until the consolidated request in
-[the cost and safety plan](docs/COST_AND_SAFETY.md) is approved.
+The next recommended execution batch separates its read-only checks from its writes. Databricks
+Connect and GE can read existing tables on an already-running GP1. A Jobs API trigger creates a run
+record, and the 1,000-file Auto Loader exercise uploads files and writes checkpoints and Delta rows,
+so those steps need explicit write approval. Exact commands and rollbacks are in
+[the pending-requirements plan](docs/PENDING_REQUIREMENTS.md).

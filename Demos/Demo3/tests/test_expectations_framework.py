@@ -8,6 +8,7 @@ unknown availability status, and a station identifier typed as a number instead 
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -222,11 +223,17 @@ def test_the_report_is_json_safe_so_it_can_join_the_existing_evidence(spark_sess
 
 def test_soda_was_rejected_for_a_recorded_measured_reason() -> None:
     """The choice between the two frameworks must stay justified, not become folklore."""
-    from pathlib import Path
-
     doc = Path(__file__).resolve().parents[1] / "docs" / "QUALITY_FRAMEWORK.md"
     text = doc.read_text(encoding="utf-8")
 
     assert "soda-core-spark-df" in text
-    assert "3.5.9" in text and "4.1.1" in text  # the measured downgrade
+    assert "pyspark>=3.4,<4.0" in text
+    assert "3.5.9" in text and "4.1.1" in text  # the measured resolver outcome
     assert "great_expectations" in text or "Great Expectations" in text
+
+
+def test_project_spark_constraint_includes_the_measured_engine() -> None:
+    project = Path(__file__).resolve().parents[1] / "pyproject.toml"
+    text = project.read_text(encoding="utf-8")
+
+    assert '"pyspark>=3.5,<4.2"' in text

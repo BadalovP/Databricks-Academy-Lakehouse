@@ -78,7 +78,7 @@ inside the Volume where it serves no purpose once extracted.
 
 ```bash
 EID="urbanflow-hist-month202401-$(date -u +%Y%m%dT%H%MZ)"
-LANDING="dbfs:/Volumes/dbr_dev/parvinbadalov_urbanflow/urbanflow_landing/landing/historical_trips_month202401"
+LANDING="dbfs:/Volumes/dbr_dev/parvinbadalov_urbanflow/urbanflow_landing/landing/historical_trips/202401-full"
 databricks fs mkdir "$LANDING" --profile dev
 for f in extracted/*.csv; do
   databricks fs cp "$f" "$LANDING/$(basename "$f")" --profile dev
@@ -86,8 +86,8 @@ done
 databricks fs ls "$LANDING" --profile dev
 ```
 
-**A separate landing directory from the sample.** The sample lives in
-`landing/historical_trips/`; mixing a month of real rides into the same directory would make the
+**A separate landing directory from the sample.** The already-validated sample stays in its
+legacy `landing/historical_trips/` path; mixing a month of real rides into that directory would make the
 already-validated 40-row result unreproducible, and Auto Loader would treat the new files as an
 increment of that run rather than a new one.
 
@@ -98,18 +98,18 @@ matching `*.csv` goes up.
 
 ```bash
 databricks bundle run urbanflow_historical_trips_test -t azure --profile dev \
-  --params run_ingest=true,execution_id="$EID",stream_timeout_seconds=1800
+  --params run_ingest=true,execution_id="$EID",landing_subdir=202401-full,stream_timeout_seconds=1200
 ```
 
-The new execution id gives a fresh checkpoint under
-`checkpoints/historical_trips/$EID`, so this is a clean bounded read rather than a resume of the
-sample's progress. **The sample's checkpoint is never reused.**
+The `landing_subdir` parameter isolates every Auto Loader state path for this source set:
 
-One change is needed first: notebook 06 derives its landing path from
-`historical_landing_paths(volume_root, execution_id=...)`, which currently hardcodes
-`landing/historical_trips`. A `landing_subdir` parameter is required so the monthly run reads its
-own directory. That is a small, tested change and is **not** yet made - it belongs with the
-approval for this run, not before it.
+- landing: `landing/historical_trips/202401-full/`
+- schema location: `schemas/historical_trips/202401-full/`
+- checkpoint: `checkpoints/historical_trips/202401-full/$EID`
+
+The empty default retains all three legacy paths used by the validated 40-row sample. The monthly
+run therefore neither moves the sample nor resumes its checkpoint. The new execution id also keeps
+the monthly rows in their own business lineage scope inside the shared Delta tables.
 
 ### Step 4 - validate
 
@@ -143,13 +143,14 @@ proving the checkpoint and the MERGE together, exactly as the sample run did.
 | Rerun | 2-3 min | processes no new file |
 
 Cost class: **cluster time on GP1 only.** No serverless, no SQL warehouse, no new infrastructure.
-GP1's 60-minute inactivity timer resets whenever a job attaches, and the upload happens before the
-cluster is needed - so the practical sequencing is to upload first, then start GP1, then run.
+The upload happens before compute is needed. After it finishes, wait for GP1 to be already
+`RUNNING`, perform the read-only identity/state preflight, and then run. UrbanFlow never starts or
+restarts the shared cluster.
 
 ## Rollback
 
-Fully reversible, because the monthly run writes to **different tables** from the validated
-sample run. The exact procedure:
+Reversible by execution scope: the monthly run writes rows into the **same tables** as the sample,
+but every monthly row carries a distinct execution id. The exact procedure:
 
 ```sql
 -- 1. Remove the monthly execution's rows from the shared trip tables, leaving the sample intact.
@@ -172,7 +173,8 @@ Then, if needed, delete the landed CSVs and the checkpoint:
 
 ```bash
 databricks fs rm -r "$LANDING" --profile dev
-databricks fs rm -r "dbfs:/Volumes/.../checkpoints/historical_trips/$EID" --profile dev
+databricks fs rm -r "dbfs:/Volumes/.../checkpoints/historical_trips/202401-full/$EID" --profile dev
+databricks fs rm -r "dbfs:/Volumes/.../schemas/historical_trips/202401-full" --profile dev
 ```
 
 A `DROP TABLE` is **not** the rollback here and should not be used: it would destroy the sample

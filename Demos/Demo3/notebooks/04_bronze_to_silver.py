@@ -258,7 +258,7 @@ print({"delta_merges": write_report})
 # MAGIC
 # MAGIC **How to explain it to my supervisor:** "The report records proof, while sensitive data and raw messages stay out of logs."
 # MAGIC
-# MAGIC **Rerun and cost considerations:** One small Volume file is overwritten for the same execution ID, making evidence deterministic.
+# MAGIC **Rerun and cost considerations:** Each Job run or interactive attempt gets a distinct evidence filename under the same business execution directory.
 
 # COMMAND ----------
 
@@ -280,7 +280,7 @@ print({"status": evidence["status"], "report_path": report_path})
 # MAGIC
 # MAGIC Silver has a physical Delta workflow: a bounded Bronze slice is validated, deterministically deduplicated, routed into three accountable outcomes, reconciled, and merged by stable keys.
 # MAGIC
-# MAGIC **Actual validation:** This Phase 2 notebook has not been run in Azure; its functions and contracts were tested locally against real Spark.
+# MAGIC **Actual validation:** This notebook ran on GP1 on 2026-10-02 for execution `urbanflow-20260929T195132Z-r3`: 2,520 Bronze rows reconciled to 2,520 Silver, 0 quarantine and 0 duplicates, with a successful idempotent repeat.
 # MAGIC
 # MAGIC **Common errors:** Wrong execution ID, a non-approved cluster, missing schema privileges, an altered Bronze row count, duplicate MERGE keys, or a target identifier from the wrong bundle environment.
 # MAGIC

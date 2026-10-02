@@ -123,6 +123,9 @@ resources:
           default: ${var.schema}
         - name: volume
           default: ${var.volume}
+        # Empty preserves the already-validated sample paths. The monthly run uses 202401-full.
+        - name: landing_subdir
+          default: ""
       tasks:
         - task_key: historical_trips_autoloader
           existing_cluster_id: ${var.compute_cluster_id}
@@ -137,6 +140,7 @@ resources:
               catalog: "{{job.parameters.catalog}}"
               schema: "{{job.parameters.schema}}"
               volume: "{{job.parameters.volume}}"
+              landing_subdir: "{{job.parameters.landing_subdir}}"
       tags:
         project: urbanflow
         phase: historical
@@ -155,6 +159,9 @@ resources:
           default: "{{job.run_id}}"
         - name: execution_id
           default: NOT_APPROVED
+        # Select exactly one trip lineage so sample and full-month rows are never combined.
+        - name: source_execution_id
+          default: urbanflow-hist-devsample40-20261002T0010Z
         # Default to the committed 48-hour sample so a run makes no external request.
         - name: weather_source
           default: sample_json
@@ -186,6 +193,7 @@ resources:
               run_enrichment: "{{job.parameters.run_enrichment}}"
               run_attempt_id: "{{job.parameters.run_attempt_id}}"
               execution_id: "{{job.parameters.execution_id}}"
+              source_execution_id: "{{job.parameters.source_execution_id}}"
               weather_source: "{{job.parameters.weather_source}}"
               weather_sample_file: "{{job.parameters.weather_sample_file}}"
               start_date: "{{job.parameters.start_date}}"

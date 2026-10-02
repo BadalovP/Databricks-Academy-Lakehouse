@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import uuid
 from collections import defaultdict
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -14,6 +15,7 @@ from typing import Any, Iterable, Mapping
 # A colon is excluded too - `replace_execution_scope` tolerates one in a business execution id,
 # but it has no place in a filename and no id this project uses contains one.
 _PATH_TOKEN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$")
+_OPAQUE_TOKEN_FRAGMENT = re.compile(r"[A-Za-z0-9]{24,}")
 
 # Named rather than free-form, so a typo creates an error instead of a new orphan directory.
 EVIDENCE_PHASES: frozenset[str] = frozenset(
@@ -22,7 +24,14 @@ EVIDENCE_PHASES: frozenset[str] = frozenset(
 
 
 def sanitize_path_token(value: str, *, label: str) -> str:
-    """Validate one component of an evidence path, rejecting anything path-unsafe."""
+    """Validate one evidence-path component and reject credential-shaped opaque values.
+
+    The narrow path charset prevents traversal and shell metacharacters. It does not, by itself,
+    reject a plain alphanumeric bearer token. Long opaque runs are therefore refused too.
+    UrbanFlow execution IDs are structured, hyphen-separated values and Databricks run IDs fit
+    within a signed 64-bit integer, so this rule rejects credential-shaped input without blocking
+    either legitimate form.
+    """
     token = str(value).strip()
     if not _PATH_TOKEN.fullmatch(token):
         raise ValueError(
@@ -31,6 +40,10 @@ def sanitize_path_token(value: str, *, label: str) -> str:
         )
     if ".." in token:
         raise ValueError(f"{label} {value!r} must not contain '..'.")
+    if _OPAQUE_TOKEN_FRAGMENT.search(token):
+        raise ValueError(
+            f"{label} is an opaque credential-shaped value and cannot be used in an evidence path."
+        )
     return token
 
 
@@ -38,6 +51,7 @@ def resolve_attempt_id(
     *,
     job_run_id: str | None = None,
     now: datetime | None = None,
+    unique_token: str | None = None,
 ) -> str:
     """Identify ONE execution attempt, distinctly from the business execution it belongs to.
 
@@ -53,16 +67,23 @@ def resolve_attempt_id(
     in filenames.
 
     The Databricks job run id is preferred because it is unique, already recorded by the platform
-    and links the evidence straight back to the run page. A UTC timestamp is the fallback for an
-    interactive run, where no job run id exists.
+    and links the evidence straight back to the run page. A UTC timestamp plus a UUID is the
+    fallback for an interactive run, where no job run id exists. The UUID matters because two
+    interactive attempts can start inside the same second and must still retain separate reports.
     """
     if job_run_id and str(job_run_id).strip():
         candidate = str(job_run_id).strip()
         # A job parameter that was never substituted arrives literally as "{{job.run_id}}".
         if not candidate.startswith("{{"):
+            if not candidate.isdecimal():
+                raise ValueError("job_run_id must be the numeric Databricks run ID.")
             return sanitize_path_token(f"run-{candidate}", label="job_run_id")
     moment = now or datetime.now(UTC)
-    return sanitize_path_token(f"ts-{moment.strftime('%Y%m%dT%H%M%SZ')}", label="attempt timestamp")
+    discriminator = unique_token or str(uuid.uuid4())
+    return sanitize_path_token(
+        f"ts-{moment.strftime('%Y%m%dT%H%M%S.%fZ')}-{discriminator}",
+        label="attempt timestamp",
+    )
 
 
 def evidence_report_path(

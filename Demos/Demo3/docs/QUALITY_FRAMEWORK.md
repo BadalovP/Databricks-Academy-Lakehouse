@@ -9,13 +9,17 @@ Both resolve against this project. The difference is what they do to it.
 
 | Framework | Packages installed | Effect on pyspark |
 |---|---|---|
-| `soda-core-spark-df` 3.5.6 | 26 | **Pins pyspark to 3.5.9**, a downgrade from the 4.1.1 in use |
-| `great_expectations` 1.23.2 | 16 | **None.** pyspark does not appear in its resolution at all |
+| `soda-core-spark-df` 3.5.6 | 26 | Declares `pyspark>=3.4,<4.0`; pip selects 3.5.9, a downgrade from the 4.1.1 in use |
+| base `great_expectations` 1.23.2 | 16 | **None.** pyspark does not appear in the base package's resolution |
 
-Being precise about the pin: this project declares `pyspark>=3.5,<4.1` for development, so Soda's
-3.5.9 sits at the very floor of that range rather than outside it. The environment the suite
-actually runs in has 4.1.1, and installing Soda there resolves pyspark down to 3.5.9 - roughly two
-years of Spark releases backwards, taken on so that a quality framework can be added.
+Being precise about the constraint: Soda does not require exactly 3.5.9. Its current Spark adapter
+requires `pyspark>=3.4,<4.0`, and pip selects the newest permitted release, 3.5.9. This project now
+declares `pyspark>=3.5,<4.2`, which includes the 4.1.1 engine the suite actually uses. Installing
+Soda there would therefore resolve Spark down to 3.5.9 solely to add a quality framework.
+
+GE also publishes an optional `spark` extra with `pyspark>=2.3.2,<4.2`. UrbanFlow installs the base
+package because Spark already exists in the development environment; either way, 4.1.1 is within
+GE's supported constraint.
 
 Reproduce with:
 
@@ -26,14 +30,14 @@ python -m pip install --dry-run great_expectations   # lists no pyspark
 
 ## Why that settles it
 
-Soda's Spark integration pins an older Spark. Installing it would change the engine that **every
+Soda's Spark integration excludes Spark 4. Installing it would change the engine that **every
 Spark test in this project runs against** - at the time of writing, the suite has over 100 tests
 executing against a real local Spark session, including the station-join behaviour, the
 three-way quality split and the schema-migration checks. Swapping Spark 4.1.1 for 3.5.9
 underneath them would invalidate all of that evidence to gain a quality framework, which is a bad
 trade whichever framework is better in the abstract.
 
-Great Expectations 1.23.2 installs 16 packages, none of them Spark, and was verified working
+The base Great Expectations 1.23.2 package installs 16 packages, none of them Spark, and was verified working
 against pyspark 4.1.1 before being adopted: a deliberately null-containing frame produced
 `success=False` with `unexpected_count=1`.
 

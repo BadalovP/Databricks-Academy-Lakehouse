@@ -49,6 +49,28 @@ STATIONS = ("7407.13", "6526.01", "6346.07", "6364.07", "5470.10")
 BASE = datetime(2024, 1, 2, 6, 0, 0)
 
 
+def _owned_files(marker: Path) -> set[str]:
+    """Read the exact basenames owned by a valid generator marker."""
+    try:
+        manifest = json.loads(marker.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise SystemExit(f"Refusing an unreadable generator marker at {marker}.") from error
+    if manifest.get("generator") != "scripts/generate_many_small_files.py":
+        raise SystemExit(f"Refusing an unrecognized generator marker at {marker}.")
+    names = manifest.get("generated_files")
+    if not isinstance(names, list):
+        raise SystemExit(
+            f"Refusing a generator marker without an exact file inventory at {marker}."
+        )
+    owned: set[str] = set()
+    for value in names:
+        name = str(value)
+        if Path(name).name != name or not name.startswith(FILE_PREFIX) or not name.endswith(".csv"):
+            raise SystemExit(f"Refusing an unsafe generated filename {name!r} in {marker}.")
+        owned.add(name)
+    return owned
+
+
 def _rows(file_index: int, rows_per_file: int) -> list[tuple]:
     """Deterministic rows: the same index always produces the same content."""
     out = []
@@ -95,13 +117,21 @@ def generate(directory: Path, *, files: int, rows_per_file: int, force: bool = F
         )
     directory.mkdir(parents=True, exist_ok=True)
 
-    # A regenerate must not leave last run's extra files behind, or the count would drift upward.
-    for stale in sorted(directory.glob(f"{FILE_PREFIX}*.csv")):
-        stale.unlink()
+    # A regenerate removes only the exact files in its previous inventory. A foreign file that
+    # happens to share our prefix is still foreign and must survive both generation and cleanup.
+    previously_owned = _owned_files(marker) if marker.exists() else set()
+    for name in sorted(previously_owned):
+        stale = directory / name
+        if stale.exists():
+            stale.unlink()
 
     written = []
     for index in range(files):
         path = directory / f"{FILE_PREFIX}{index:05d}.csv"
+        if path.exists() and path.name not in previously_owned and not force:
+            raise SystemExit(
+                f"Refusing to overwrite foreign file {path}. Pass --force only if it is disposable."
+            )
         with path.open("w", encoding="utf-8", newline="") as handle:
             writer = csv.writer(handle)
             writer.writerow(HEADER)
@@ -117,6 +147,7 @@ def generate(directory: Path, *, files: int, rows_per_file: int, force: bool = F
         "total_rows": len(written) * rows_per_file,
         "total_bytes": total_bytes,
         "file_prefix": FILE_PREFIX,
+        "generated_files": written,
         "deterministic": True,
     }
     marker.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -132,10 +163,13 @@ def cleanup(directory: Path) -> dict:
             "removed_directory": False,
             "note": "no marker; nothing owned here",
         }
+    owned = _owned_files(marker)
     removed = 0
-    for path in sorted(directory.glob(f"{FILE_PREFIX}*.csv")):
-        path.unlink()
-        removed += 1
+    for name in sorted(owned):
+        path = directory / name
+        if path.exists():
+            path.unlink()
+            removed += 1
     marker.unlink()
     removed_directory = False
     if not any(directory.iterdir()):
@@ -161,7 +195,10 @@ def main(argv: list[str] | None = None) -> int:
     manifest = generate(
         args.directory, files=args.files, rows_per_file=args.rows_per_file, force=args.force
     )
-    print(json.dumps(manifest, indent=2, sort_keys=True))
+    # The on-disk marker keeps the full ownership inventory. Console output stays concise even
+    # at the 1,000-file default.
+    summary = {key: value for key, value in manifest.items() if key != "generated_files"}
+    print(json.dumps(summary, indent=2, sort_keys=True))
     return 0
 
 
