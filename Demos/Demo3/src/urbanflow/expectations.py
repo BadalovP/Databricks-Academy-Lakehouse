@@ -1,11 +1,11 @@
 """Great Expectations suites for the UrbanFlow contracts.
 
 WHY GREAT EXPECTATIONS AND NOT SODA. The Academy asks for "Great Expectations or Soda", so one is
-enough, and the choice was settled by evidence rather than preference. `soda-core-spark-df` pins
-an older Spark: installing it would **downgrade pyspark from 4.1.1 to 3.5.9**, changing the engine
-every Spark test in this project runs against. Great Expectations 1.23.2 installs 16 packages and
-does not touch pyspark at all, so it is the lighter choice in the only sense that matters here -
-impact on what already works. That measurement is recorded in docs/QUALITY_FRAMEWORK.md.
+enough, and the choice was settled by evidence rather than preference. `soda-core-spark-df` 3.5.6
+declares `pyspark>=3.4,<4.0`; installing it into the measured Spark 4.1.1 environment resolves
+pyspark 3.5.9 and changes the engine every Spark test runs against. The base Great Expectations
+1.23.2 package adds no pyspark requirement, so it leaves 4.1.1 in place. That measurement is
+recorded in docs/QUALITY_FRAMEWORK.md.
 
 WHAT THIS ADDS, GIVEN THE PROJECT ALREADY HAS A QUALITY LAYER. `quality.py` routes rows and
 `pipeline/*.py` declares Lakeflow expectations; both are tested. What they do not produce is a

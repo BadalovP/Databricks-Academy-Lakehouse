@@ -9,7 +9,7 @@ below, then grouped into the smallest number of approval batches.
 | Requirement | What changed |
 |---|---|
 | Lab 3 - Approximately 1,000 files | `scripts/generate_many_small_files.py` generates 1,000 tiny deterministic CSVs (under 1.5 MB total), with cleanup and 14 tests. Local only; the upload is a separate approval |
-| Lab 7 - Great Expectations or Soda | GE 1.23.2 chosen by measurement (Soda would pin pyspark to 3.5.9), suites in `expectations.py`, 11 tests. See [QUALITY_FRAMEWORK.md](QUALITY_FRAMEWORK.md) |
+| Lab 7 - Great Expectations or Soda | GE 1.23.2 chosen by measurement (Soda requires pyspark below 4 and resolves 3.5.9 in this environment), suites in `expectations.py`, 11 tests. See [QUALITY_FRAMEWORK.md](QUALITY_FRAMEWORK.md) |
 
 ## The eight remaining
 
@@ -120,9 +120,24 @@ below, then grouped into the smallest number of approval batches.
 
 ## Approval batches, smallest first
 
+The eight pending rows map to the execution batches as follows. A2 and B are still useful final
+demonstrations, although their matrix rows already say `Implemented locally` rather than
+`Pending live`.
+
+| Pending row | Batch | Reason |
+|---|---|---|
+| Legacy mounts exercise | E / document only | Workspace-wide deprecated mount; poor practice in a shared academy workspace |
+| Alerts / email | C | Requires a scheduled SQL warehouse query |
+| Databricks Connect / monitoring | A | Read-only remote session on an already-running GP1 |
+| Idempotent deployment / approvals | D | Protected GitHub environment and authenticated control-plane deployment |
+| DEV-to-PROD promotion | D / document only | A real second environment would require new paid infrastructure |
+| Post-deploy validation | D | CI control-plane step, with any Job trigger explicitly treated as a write action |
+| Jobs API / pipeline trigger | A for the dry-run Job; B for Lakeflow | A Job trigger creates a run record; a Lakeflow trigger also writes isolated pipeline tables |
+| CI integration | D | Authenticated bundle validation, with no compute required |
+
 | Batch | Contents | Resource | Data change | Cost | Duration |
 |---|---|---|---|---|---|
-| **A. GP1 non-destructive** | Databricks Connect read-only session (3), Jobs API trigger of a dry run (7), GE suites against the live tables, 1,000-file Auto Loader discovery test | GP1, already running | **None** - reads and dry runs only | Cluster time | ~30 min |
+| **A. GP1 validation** | Databricks Connect read-only session (3), Jobs API trigger of a dry run (7), GE suites against the live tables, 1,000-file Auto Loader discovery test | GP1, already running | **Mixed:** Connect and GE are reads; a Job trigger creates a run; the 1,000-file test uploads files and writes Auto Loader state and Delta rows | Cluster time | ~30 min |
 | **A2. Monthly archive** | Full January 2024 ingestion, see [MONTHLY_ARCHIVE_PLAN.md](MONTHLY_ARCHIVE_PLAN.md) | GP1 + local download | Adds a new `execution_id`; the sample's rows untouched | Cluster time | ~45-60 min |
 | **B. Lakeflow bounded** | One triggered update of the isolated pipeline | **Serverless** | Writes to the isolated `..._lakeflow` schema only | **Billable** | ~15 min |
 | **C. SQL warehouse** | Publish the dashboard (pages 1 and 4 now), one alert (2) | **SQL warehouse** | None | **Billable, recurring for the alert** | ~45 min |
@@ -147,3 +162,20 @@ below, then grouped into the smallest number of approval batches.
 Item 1 (legacy mounts) and item 5 (DEV→PROD) are recommended as **documented rather than executed**,
 for reasons given above. If that is accepted, the realistic ceiling for `Validated live` is 6 of
 the 8 remaining rows.
+
+## Batch A command-level preflight - prepared, not executed
+
+Every command below first depends on a read-only `clusters get` result showing GP1
+`0702-132442-toro5spu` is already `RUNNING`. A terminated result stops the batch; none of these
+steps may start or restart the shared cluster.
+
+| Action | Exact command or operation | Classification | Expected duration and evidence | Rollback |
+|---|---|---|---|---|
+| Databricks Connect validation | In a separate venv with Databricks Connect matching DBR 17.3, build `DatabricksSession.builder.profile("dev").clusterId("0702-132442-toro5spu").getOrCreate()`, then collect `SELECT current_user(), current_catalog(), current_schema()` and `SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow.silver_station_status` | **READ**: attaches to already-running GP1 and issues two SELECTs | 2-5 min; record identity, catalog/schema and the measured row count | Stop the local session only; no Azure data rollback |
+| Jobs API trigger demonstration | `databricks bundle run urbanflow_silver_gold_test -t azure --profile dev --params run_transform=false` | **WRITE/control plane**: creates and executes a Job run even though the notebook exits before a data write | 1-3 min; Job run URL, terminal `SUCCESS`, and `DRY_RUN` task output | No data rollback; the immutable run record remains as evidence |
+| GE against live tables | Through the same isolated Databricks Connect session, call `validate_frame(spark.table("dbr_dev.parvinbadalov_urbanflow.silver_station_status"), suite_name=SILVER_SUITE, expectations=silver_expectations())`; validate `silver_historical_trips` only after filtering to `execution_id = 'urbanflow-hist-devsample40-20261002T0010Z'` | **READ**: GE uses an ephemeral context and Spark actions only | 3-8 min; two JSON reports with per-expectation results and no persisted GE state | Stop the local session; no Azure rollback |
+| 1,000-file Auto Loader discovery | Generate locally with `python scripts/generate_many_small_files.py <temp> --files 1000 --rows-per-file 5`; upload only `synthetic_trips_*.csv` to `dbfs:/Volumes/dbr_dev/parvinbadalov_urbanflow/urbanflow_landing/landing/historical_trips/synthetic-1000/`; then run `databricks bundle run urbanflow_historical_trips_test -t azure --profile dev --params run_ingest=true,execution_id=urbanflow-hist-synthetic1000-<UTC>,landing_subdir=synthetic-1000,stream_timeout_seconds=900` | **WRITE**: 1,000 Volume uploads, Auto Loader schema/checkpoint state, Delta MERGEs and a report | 8-15 min; 1,000 discovered files, 5,000 reconciled rows, bounded termination, and an evidence path | Delete only that execution id from the four historical tables, then remove the `synthetic-1000` landing/schema/checkpoint paths and locally run the generator's `--cleanup` |
+
+The local generator step is safe to run independently. The upload, both Job triggers, Auto Loader
+state, Delta writes and evidence report are Azure writes and remain unexecuted until separately
+authorized.

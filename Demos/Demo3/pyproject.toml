@@ -28,11 +28,11 @@ dependencies = [
 dev = [
   "black>=24,<26",
   "chispa>=0.11,<1",
-  # Great Expectations, not Soda: soda-core-spark-df pins pyspark to 3.5.9, the floor of the
-  # range below, while GE touches pyspark not at all. See docs/QUALITY_FRAMEWORK.md.
+  # Great Expectations, not Soda: soda-core-spark-df requires pyspark<4 and resolves 3.5.9,
+  # while the base GE package leaves the existing Spark 4.1.1 installation alone.
   "great_expectations>=1.23,<2",
   "jsonschema>=4.23,<5",
-  "pyspark>=3.5,<4.1",
+  "pyspark>=3.5,<4.2",
   "pre-commit>=4,<5",
   "pytest>=8,<10",
   "ruff>=0.9,<1",

@@ -114,6 +114,28 @@ def test_the_weather_section_states_its_resolution_and_refuses_to_predict() -> N
     assert "weather_coverage" in weather
 
 
+def test_historical_and_weather_queries_keep_execution_scopes_separate() -> None:
+    """A future full archive must not be summed together with the 40-row sample."""
+    historical = (SQL_DIR / "11_dashboard_historical_demand.sql").read_text(encoding="utf-8")
+    weather = (SQL_DIR / "12_dashboard_weather.sql").read_text(encoding="utf-8")
+
+    assert historical.count("40-ROW DEVELOPMENT SAMPLE") >= 6
+    assert historical.count("execution_id") >= 12
+    assert "OVER (PARTITION BY execution_id)" in historical
+    assert "LIMIT 25" not in historical
+    assert weather.count("48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE") >= 4
+    assert weather.count("execution_id") >= 8
+
+
+def test_weather_notebook_selects_one_historical_execution() -> None:
+    notebook = (PROJECT_ROOT / "notebooks" / "07_weather_enrichment.py").read_text(encoding="utf-8")
+    jobs = (PROJECT_ROOT / "resources" / "jobs.yml").read_text(encoding="utf-8")
+
+    assert 'dbutils.widgets.text("source_execution_id", "")' in notebook
+    assert 'F.col("execution_id") == F.lit(source_execution_id)' in notebook
+    assert 'source_execution_id: "{{job.parameters.source_execution_id}}"' in jobs
+
+
 def test_the_quality_section_checks_the_reconciliation_identity() -> None:
     quality = (SQL_DIR / "13_dashboard_data_quality.sql").read_text(encoding="utf-8")
 

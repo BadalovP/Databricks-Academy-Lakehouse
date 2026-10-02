@@ -368,7 +368,7 @@ if verification_failures:
 # MAGIC
 # MAGIC **How to explain it to my supervisor:** "The report records what is complete, what is sampled, and why one snapshot cannot prove a trend."
 # MAGIC
-# MAGIC **Rerun and cost considerations:** The small report is overwritten deterministically for the same execution ID.
+# MAGIC **Rerun and cost considerations:** Each Job run or interactive attempt gets a distinct evidence filename under the same business execution directory.
 
 # COMMAND ----------
 
@@ -397,7 +397,7 @@ print({"status": evidence["status"], "report_path": report_path})
 # MAGIC
 # MAGIC Gold now has durable designs for a station development dimension, an availability fact, daily station summaries, shortage indicators, and explainable rebalancing priorities. Left enrichment keeps all real observations even when the 40-row sample cannot name every station.
 # MAGIC
-# MAGIC **Actual validation:** This Phase 2 notebook has not been run in Azure; its transformations and reconciliation were tested locally with real Spark.
+# MAGIC **Actual validation:** The corrected GP1 runs on 2026-10-02 produced 2,520 availability facts, 657 shortages and 657 priorities, removed 89 stale out-of-service priorities, and repeated with zero new inserts or stale-row removals.
 # MAGIC
 # MAGIC **Common errors:** Treating `short_name` as the UUID, dropping unmatched facts with an inner join, describing one snapshot as a trend, or using an aggregate key that does not match its grain.
 # MAGIC

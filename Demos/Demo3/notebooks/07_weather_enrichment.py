@@ -12,7 +12,7 @@
 # MAGIC
 # MAGIC **Safety:** `run_enrichment` defaults to `false`, so the committed default exits before any call or write. The request window is bounded and refused above 62 days. The notebook never starts, stops or resizes a cluster.
 # MAGIC
-# MAGIC **Actual validation:** This notebook has not been run in Azure. The parser and the join are covered by tests against a real committed Open-Meteo archive response, but no figure below has been observed on the cluster.
+# MAGIC **Actual validation:** On 2026-10-02 Job run `472557041765891` used the committed **48-HOUR WEATHER SAMPLE** and the 40-trip development execution on GP1: 40 trips entered and 40 left the join, coverage 0.1, and no external request occurred. The full monthly archive has not been enriched.
 # MAGIC
 # MAGIC **Two limitations that must be read before any chart from this is shown:** the weather series is ONE COORDINATE for New York City, not per-station weather, and every row carries `weather_grid_label` so that resolution stays visible. And these are COMPARISONS, not predictions: grouping trips by temperature bucket shows that cold wet days have fewer rides, but it models nothing and controls for nothing, not day of week, not holidays, not closures.
 
@@ -42,6 +42,8 @@
 import json
 import sys
 from pathlib import Path
+
+from pyspark.sql import functions as F
 
 try:
     NOTEBOOK_DIR = Path(__file__).resolve().parent
@@ -96,6 +98,7 @@ dbutils.widgets.dropdown("run_enrichment", "false", ["false", "true"])
 dbutils.widgets.dropdown("weather_source", "sample_json", ["sample_json", "archive_api"])
 dbutils.widgets.text("weather_sample_file", "open_meteo_archive_202401.sample.json")
 dbutils.widgets.text("execution_id", "")
+dbutils.widgets.text("source_execution_id", "")
 dbutils.widgets.text("start_date", "2024-01-01")
 dbutils.widgets.text("end_date", "2024-01-31")
 dbutils.widgets.text("latitude", "40.7128")
@@ -106,6 +109,7 @@ dbutils.widgets.text("volume", "")
 dbutils.widgets.text("run_attempt_id", "")
 run_enrichment = dbutils.widgets.get("run_enrichment").lower() == "true"
 execution_id = dbutils.widgets.get("execution_id").strip()
+source_execution_id = dbutils.widgets.get("source_execution_id").strip()
 if not run_enrichment:
     dbutils.notebook.exit("DRY_RUN: no weather was requested and no Delta table was written.")
 cluster_id = spark.conf.get("spark.databricks.clusterUsageTags.clusterId", "")
@@ -113,6 +117,8 @@ if cluster_id not in APPROVED_RUN_CLUSTER_IDS:
     raise RuntimeError(f"Cluster {cluster_id!r} is not approved for UrbanFlow.")
 if not execution_id:
     raise ValueError("execution_id must identify this weather enrichment run.")
+if not source_execution_id:
+    raise ValueError("source_execution_id must select one historical trip execution.")
 
 # COMMAND ----------
 
@@ -258,9 +264,15 @@ if not coverage["complete"]:
 # COMMAND ----------
 
 weather = weather_frame(spark, records)
-trips = spark.table(f"{table_root}.silver_historical_trips")
+trips = spark.table(f"{table_root}.silver_historical_trips").where(
+    F.col("execution_id") == F.lit(source_execution_id)
+)
 enriched = enrich_trips_with_weather(trips, weather)
 trip_rows = trips.count()
+if trip_rows == 0:
+    raise RuntimeError(
+        f"No historical trips found for source_execution_id={source_execution_id!r}."
+    )
 enriched_rows = enriched.count()
 matched_rows = enriched.where("has_weather").count()
 print({"trip_rows": trip_rows, "enriched_rows": enriched_rows, "matched_rows": matched_rows})
@@ -346,13 +358,14 @@ display(summary.orderBy("trip_date"))
 # MAGIC
 # MAGIC **How to explain it to my supervisor:** "The report records where the weather came from, how complete it was, and what it cannot be used to claim."
 # MAGIC
-# MAGIC **Rerun and cost considerations:** The report is small and is overwritten deterministically for the same execution ID.
+# MAGIC **Rerun and cost considerations:** The report is small; each Job run or interactive attempt gets a distinct evidence filename under the same business execution directory.
 
 # COMMAND ----------
 
 evidence = {
     "phase": "weather_enrichment",
     "execution_id": execution_id,
+    "source_execution_id": source_execution_id,
     "status": reconciliation["status"],
     "request": {
         "source": weather_source,

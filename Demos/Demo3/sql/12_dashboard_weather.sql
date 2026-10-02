@@ -10,9 +10,15 @@
 --    cold wet days have fewer rides; it does not model, forecast or control for anything else
 --    (day of week, holidays, closures). The column names say "avg" and "total" rather than
 --    "effect" for that reason.
+-- 3. Every demand comparison keeps execution_id in its grain. The committed weather run used
+--    the 40-trip development sample; it must never be summed together with a later monthly run.
 
 -- 1. Trip volume against temperature, by day. The dashboard's main weather comparison.
 SELECT
+  execution_id,
+  CASE WHEN execution_id LIKE 'urbanflow-weather-devsample48h-%'
+       THEN '48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE'
+       ELSE 'FULL ARCHIVE WEATHER EXECUTION' END                    AS data_scope,
   trip_date,
   SUM(trips)                                                        AS trips,
   ROUND(AVG(avg_temperature_celsius), 2)                            AS avg_temperature_celsius,
@@ -22,22 +28,30 @@ SELECT
   -- exactly as convincing as one built on full coverage.
   ROUND(AVG(weather_coverage), 4)                                   AS weather_coverage
 FROM dbr_dev.parvinbadalov_urbanflow.gold_weather_demand
-GROUP BY trip_date
-ORDER BY trip_date;
+GROUP BY execution_id, trip_date
+ORDER BY execution_id, trip_date;
 
 -- 2. Trips by temperature bucket. Coarse, labelled buckets rather than a fitted curve.
 SELECT
+  execution_id,
+  CASE WHEN execution_id LIKE 'urbanflow-weather-devsample48h-%'
+       THEN '48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE'
+       ELSE 'FULL ARCHIVE WEATHER EXECUTION' END                    AS data_scope,
   temperature_bucket,
   SUM(trips)                                                        AS trips,
   COUNT(DISTINCT trip_date)                                         AS days_in_bucket,
   ROUND(SUM(trips) / NULLIF(COUNT(DISTINCT trip_date), 0), 1)       AS avg_trips_per_day,
   ROUND(AVG(avg_temperature_celsius), 2)                            AS avg_temperature_celsius
 FROM dbr_dev.parvinbadalov_urbanflow.gold_weather_demand
-GROUP BY temperature_bucket
-ORDER BY temperature_bucket;
+GROUP BY execution_id, temperature_bucket
+ORDER BY execution_id, temperature_bucket;
 
 -- 3. Precipitation against demand. Wet days are bucketed, not regressed.
 SELECT
+  execution_id,
+  CASE WHEN execution_id LIKE 'urbanflow-weather-devsample48h-%'
+       THEN '48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE'
+       ELSE 'FULL ARCHIVE WEATHER EXECUTION' END                    AS data_scope,
   CASE
     WHEN total_precipitation_mm IS NULL   THEN 'unknown'
     WHEN total_precipitation_mm =  0      THEN '0 dry'
@@ -49,12 +63,13 @@ SELECT
   SUM(trips)                                                        AS trips,
   ROUND(SUM(trips) / NULLIF(COUNT(DISTINCT trip_date), 0), 1)       AS avg_trips_per_day
 FROM (
-  SELECT trip_date, SUM(trips) AS trips, SUM(total_precipitation_mm) AS total_precipitation_mm
+  SELECT execution_id, trip_date, SUM(trips) AS trips,
+         SUM(total_precipitation_mm) AS total_precipitation_mm
   FROM dbr_dev.parvinbadalov_urbanflow.gold_weather_demand
-  GROUP BY trip_date
+  GROUP BY execution_id, trip_date
 )
-GROUP BY precipitation_band
-ORDER BY precipitation_band;
+GROUP BY execution_id, precipitation_band
+ORDER BY execution_id, precipitation_band;
 
 -- 4. The weather series itself, so a reader can see its grain and its gaps directly.
 SELECT
@@ -81,9 +96,15 @@ GROUP BY weather_grid_label;
 --    and never should be: it would be a second copy of every trip row, differing only by three
 --    weather columns, and the per-day coverage needed here is already recorded in the summary.
 SELECT
+  execution_id,
+  CASE WHEN execution_id LIKE 'urbanflow-weather-devsample48h-%'
+       THEN '48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE'
+       ELSE 'FULL ARCHIVE WEATHER EXECUTION' END                    AS data_scope,
   SUM(trips)                                                        AS trips,
   SUM(trips_with_weather)                                           AS trips_with_weather,
   SUM(trips) - SUM(trips_with_weather)                              AS trips_without_weather,
   ROUND(100.0 * SUM(trips_with_weather) / NULLIF(SUM(trips), 0), 2) AS weather_coverage_percent,
   COUNT(DISTINCT trip_date)                                         AS days_covered
-FROM dbr_dev.parvinbadalov_urbanflow.gold_weather_demand;
+FROM dbr_dev.parvinbadalov_urbanflow.gold_weather_demand
+GROUP BY execution_id
+ORDER BY execution_id;

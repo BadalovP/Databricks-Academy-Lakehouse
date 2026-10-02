@@ -3,10 +3,10 @@
 Status: **the 40-row historical sample and the 48-hour weather sample are now VALIDATED LIVE on
 GP1. The full monthly archive, Lakeflow and the published dashboard remain unexecuted.**
 
-That distinction is the point of this document. Every item below has real tests, several against
-a genuine local Spark session, but a passing test proves the code does what it says, not that it
-has run against real infrastructure. No row in
-[LABS_1_TO_9_COVERAGE.md](LABS_1_TO_9_COVERAGE.md) moved to `Validated live` in Phase 3.
+That distinction is the point of this document. The bounded sample runs provide real infrastructure
+evidence for their stated scope only. They do not prove a full monthly archive, a Lakeflow update,
+or a published dashboard. The exact status changes and evidence are recorded in
+[LABS_1_TO_9_COVERAGE.md](LABS_1_TO_9_COVERAGE.md).
 
 ## What was built
 
@@ -62,11 +62,12 @@ already exists with the 40 rows and the exact columns the join needs, which:
 
 A regression test now asserts the notebook reads the table and never that path again.
 
-## Local end-to-end validation against the REAL committed samples (2026-10-01)
+## Local prediction against the real committed samples (2026-10-01)
 
-The Azure runs for Phase 3 are authorized but blocked on compute, so the same checks those runs
-perform were executed locally against the actual committed sample files rather than against
-synthetic fixtures. `tests/test_sample_end_to_end.py` holds them as permanent coverage.
+Before the live runs, the same checks were executed locally against the actual committed sample
+files rather than synthetic fixtures. `tests/test_sample_end_to_end.py` keeps that prediction as
+permanent regression coverage. The historical and weather samples then ran successfully on GP1 on
+2026-10-02, as described at the top of this document and in the coverage matrix.
 
 **This is a 40-row DEVELOPMENT SAMPLE, not January 2024 data, and this is a LOCAL Spark run,
 not an Azure execution.** No Auto Loader, no `availableNow` trigger and no Delta MERGE were
@@ -133,12 +134,12 @@ what every other principal can see. `tests/test_sql_assets.py` asserts that no `
 retention-check override is active in any file. The only live statements in the maintenance file
 are `DESCRIBE`.
 
-## What each piece needs to go live, and why it has not
+## What remains to go live
 
 | Piece | Blocked on | Billable? |
 |---|---|---|
-| Historical Auto Loader | An official Citi Bike archive landed and expanded in the Volume, and GP1 running | Cluster time only; GP1 already exists |
-| Weather enrichment | The trip table, so it follows the archive | One free public API call plus cluster time |
+| Full-month historical Auto Loader | The official archive landed in its isolated monthly subdirectory and GP1 already running | Cluster time only; GP1 already exists |
+| Full-month weather enrichment | The selected full-month trip execution, so sample and monthly rows remain separate | One public API call plus cluster time |
 | Lakeflow pipeline | Explicit approval. Lakeflow runs on **serverless** compute, which this project does not assume is free | **Yes** |
 | AI/BI dashboard object | A SQL warehouse to execute the datasets | **Yes** |
 | RLS / column masks | Account groups (`urbanflow_admins`, `urbanflow_region_*`) that have not been created, and a decision to change visibility | No, but hard to reverse safely |
@@ -152,17 +153,16 @@ unbounded transfer that should be a deliberate, approved act. Step 4 of the note
 landing directory and raises if it finds no CSV, so a missing archive is a clear error rather
 than a successful load of nothing.
 
-A bounded alternative exists and needs no approval: the committed
-`data/samples/historical_trips_202401_sample.csv` (40 real rows) can be copied into the landing
-directory to exercise the entire path end to end. That proves the mechanics without a large
-transfer, and the evidence report would say plainly that it covers 40 rows rather than a month.
+The bounded alternative has now run: the committed
+`data/samples/historical_trips_202401_sample.csv` (40 real rows) exercised the complete path on
+GP1 without a large transfer. Its evidence says plainly that it covers 40 rows rather than a
+month.
 
 ## Honest limitations
 
-- **No Phase 3 code has run on a cluster.** The Auto Loader wiring, the `availableNow` write and
-  the Delta MERGE statements are asserted at statement level, because `delta-spark` 3.4.0 does
-  not resolve against the local pyspark 4.1.1 and changing that runtime under a 362-test suite
-  was not worth it.
+- **Only bounded Phase 3 samples have run on a cluster.** The 40-row historical sample and
+  48-hour weather sample validated the Auto Loader, `availableNow`, Delta persistence and
+  reconciliation path. The full January archive and Lakeflow pipeline remain unexecuted.
 - **Lakeflow modules cannot be imported in tests.** `pyspark.pipelines` only exists inside a
   running pipeline and `spark` is an injected global, so those 22 tests are source- and
   config-level. That is a real limitation, not a workaround; importing a stub would only prove
@@ -172,7 +172,6 @@ transfer, and the evidence report would say plainly that it covers 40 rows rathe
   the match rate is reported rather than assumed.
 - **The weather series is one city coordinate.** Not per-station weather. Every row carries
   `weather_grid_label`.
-- **The dashboard is not published, and Page 1 should not be** until the Phase 2 correction run
-  completes. Until then `gold_station_shortage` holds 746 rows of which 89 are out-of-service
-  stations wrongly listed as actionable, and putting those on a supervisor's screen would be
-  worse than showing nothing.
+- **The dashboard is not published.** Its 22 read-only datasets ran successfully after the Phase 2
+  correction removed the 89 stale out-of-service priorities. Publishing still requires separate
+  approval for billable SQL warehouse compute.

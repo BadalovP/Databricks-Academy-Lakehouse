@@ -228,11 +228,27 @@ def test_an_empty_volume_root_is_refused() -> None:
 
 def test_an_unsubstituted_job_parameter_falls_back_to_a_timestamp() -> None:
     """`{{job.run_id}}` reaching the notebook literally must not become a filename."""
-    moment = datetime(2026, 10, 2, 3, 4, 5, tzinfo=UTC)
+    moment = datetime(2026, 10, 2, 3, 4, 5, 123456, tzinfo=UTC)
+    unique = "12345678-1234-5678-1234-567812345678"
+    expected = f"ts-20261002T030405.123456Z-{unique}"
 
-    assert resolve_attempt_id(job_run_id="{{job.run_id}}", now=moment) == "ts-20261002T030405Z"
-    assert resolve_attempt_id(job_run_id="", now=moment) == "ts-20261002T030405Z"
-    assert resolve_attempt_id(job_run_id=None, now=moment) == "ts-20261002T030405Z"
+    assert (
+        resolve_attempt_id(job_run_id="{{job.run_id}}", now=moment, unique_token=unique) == expected
+    )
+    assert resolve_attempt_id(job_run_id="", now=moment, unique_token=unique) == expected
+    assert resolve_attempt_id(job_run_id=None, now=moment, unique_token=unique) == expected
+
+
+def test_two_interactive_attempts_in_the_same_microsecond_do_not_collide() -> None:
+    """The old seconds-only fallback overwrote fast repeated interactive executions."""
+    moment = datetime(2026, 10, 2, 3, 4, 5, 123456, tzinfo=UTC)
+
+    first = resolve_attempt_id(job_run_id=None, now=moment)
+    second = resolve_attempt_id(job_run_id=None, now=moment)
+
+    assert first != second
+    assert first.startswith("ts-20261002T030405.123456Z-")
+    assert second.startswith("ts-20261002T030405.123456Z-")
 
 
 def test_a_real_job_run_id_is_preferred_over_the_clock() -> None:
@@ -259,22 +275,21 @@ def test_a_connection_string_cannot_reach_a_filename() -> None:
         sanitize_path_token(_FAKE_CONNECTION_STRING, label="execution_id")
 
 
-def test_the_charset_alone_would_NOT_stop_a_bare_token_and_that_is_understood() -> None:
-    """An honest statement of what this validation does and does not protect against.
+def test_a_bare_credential_shaped_token_cannot_reach_a_filename() -> None:
+    """A narrow charset is insufficient because many bearer tokens are plain alphanumeric."""
+    with pytest.raises(ValueError, match="credential-shaped"):
+        sanitize_path_token(_FAKE_PAT, label="execution_id")
 
-    A personal access token is plain alphanumeric, so it satisfies the path charset. Asserting
-    that `sanitize_path_token` rejects one would be false, and writing a test that appears to
-    check it - by guarding the assertion behind a condition the token never meets - would be worse
-    than having no test, because it reads as coverage while asserting nothing. An earlier draft of
-    this file did exactly that.
 
-    The real protection is upstream: the only values that reach these parameters are the business
-    `execution_id` and the platform's `{{job.run_id}}`. Neither is a credential, and the next test
-    pins that. Secrets are kept out of evidence by never being passed in, not by being filtered.
-    """
-    assert sanitize_path_token(_FAKE_PAT, label="execution_id") == _FAKE_PAT
+def test_a_long_numeric_secret_cannot_reach_a_filename() -> None:
+    with pytest.raises(ValueError, match="credential-shaped"):
+        sanitize_path_token("9" * 32, label="execution_id")
 
-    # So the guarantee has to come from the inputs, which are numeric or a known id shape.
+
+def test_job_run_ids_must_be_numeric_platform_ids() -> None:
+    with pytest.raises(ValueError, match="numeric Databricks run ID"):
+        resolve_attempt_id(job_run_id="not-a-platform-run")
+
     assert resolve_attempt_id(job_run_id="240497605145949") == "run-240497605145949"
 
 
@@ -437,12 +452,44 @@ def test_cleanup_removes_only_what_was_generated(tmp_path) -> None:
     generate(target, files=5, rows_per_file=2)
     unrelated = target / "keep_me.txt"
     unrelated.write_text("not mine", encoding="utf-8")
+    same_prefix_but_foreign = target / "synthetic_trips_foreign.csv"
+    same_prefix_but_foreign.write_text("not mine either", encoding="utf-8")
 
     report = cleanup(target)
 
     assert report["removed_files"] == 5
     assert report["removed_directory"] is False  # the foreign file kept the directory alive
     assert unrelated.exists()
+    assert same_prefix_but_foreign.exists()
+
+
+def test_regeneration_preserves_a_foreign_file_with_the_generator_prefix(tmp_path) -> None:
+    from scripts.generate_many_small_files import generate
+
+    target = tmp_path / "many"
+    generate(target, files=5, rows_per_file=2)
+    foreign = target / "synthetic_trips_foreign.csv"
+    foreign.write_text("foreign", encoding="utf-8")
+
+    generate(target, files=3, rows_per_file=2)
+
+    assert foreign.read_text(encoding="utf-8") == "foreign"
+    assert len(list(target.glob("synthetic_trips_0000?.csv"))) == 3
+
+
+def test_cleanup_refuses_a_forged_marker_inventory_with_path_traversal(tmp_path) -> None:
+    from scripts.generate_many_small_files import MARKER_NAME, cleanup
+
+    target = tmp_path / "many"
+    target.mkdir()
+    marker = {
+        "generator": "scripts/generate_many_small_files.py",
+        "generated_files": ["../foreign.csv"],
+    }
+    (target / MARKER_NAME).write_text(json.dumps(marker), encoding="utf-8")
+
+    with pytest.raises(SystemExit, match="unsafe generated filename"):
+        cleanup(target)
 
 
 def test_cleanup_refuses_to_claim_a_directory_it_does_not_own(tmp_path) -> None:

@@ -4,7 +4,7 @@
 # MAGIC
 # MAGIC **Business context:** The availability tables hold one real snapshot, which can never show a trend. Official Citi Bike trip archives contain weeks of real rides, so this is where genuine historical demand comes from, and it is the evidence an operator would use to plan capacity rather than react to a single reading.
 # MAGIC
-# MAGIC **Prerequisites:** The existing UrbanFlow schema and managed Volume exist, at least one official trip CSV has been landed under the Volume's `landing/historical_trips` directory, GP1 or GP2 is already `RUNNING`, and this run has explicit approval.
+# MAGIC **Prerequisites:** The existing UrbanFlow schema and managed Volume exist, at least one official trip CSV has been landed under the selected `landing/historical_trips/<landing_subdir>` directory (the empty legacy subdirectory retains the validated 40-row sample), GP1 or GP2 is already `RUNNING`, and this run has explicit approval.
 # MAGIC
 # MAGIC **Learning objectives:** Use Auto Loader with an explicit schema and a rescued-data column, keep station identifiers as strings, join historical trips to current stations on `short_name` rather than the UUID, route every row to valid, quarantine or duplicate, and prove the counts reconcile.
 # MAGIC
@@ -12,7 +12,7 @@
 # MAGIC
 # MAGIC **Safety:** `run_ingest` defaults to `false`, so the committed default exits before any read or write. The notebook never starts, stops or resizes a cluster, never downloads an archive, and never writes outside the UrbanFlow schema.
 # MAGIC
-# MAGIC **Actual validation:** This notebook has not been run in Azure. Every function it calls is covered by the offline and local-Spark test suite, and the figures below are expectations rather than observations until an approved run produces evidence.
+# MAGIC **Actual validation:** On 2026-10-02 Job run `848541476068172` processed the **40-ROW DEVELOPMENT SAMPLE** on GP1: 40 landed = 40 valid + 0 quarantine + 0 duplicate, match rate 1.0, and a repeat discovered no new file. The full January archive has not run.
 # MAGIC
 # MAGIC **The one mistake this notebook exists to prevent:** historical trips carry values like `7407.13` in `start_station_id`. That is the GBFS **short name**, not the UUID `station_id`. Joining on `station_id` matches nothing and produces an empty result that looks like missing data rather than a join bug, so the match rate is reported and a rate of exactly zero fails the run.
 
@@ -99,6 +99,7 @@ dbutils.widgets.text("execution_id", "")
 dbutils.widgets.text("catalog", "")
 dbutils.widgets.text("schema", "")
 dbutils.widgets.text("volume", "")
+dbutils.widgets.text("landing_subdir", "")
 dbutils.widgets.text("stream_timeout_seconds", "600")
 dbutils.widgets.text("run_attempt_id", "")
 run_ingest = dbutils.widgets.get("run_ingest").lower() == "true"
@@ -106,6 +107,7 @@ execution_id = dbutils.widgets.get("execution_id").strip()
 target_catalog = dbutils.widgets.get("catalog").strip()
 target_schema = dbutils.widgets.get("schema").strip()
 target_volume = dbutils.widgets.get("volume").strip()
+landing_subdir = dbutils.widgets.get("landing_subdir").strip()
 stream_timeout_seconds = float(dbutils.widgets.get("stream_timeout_seconds"))
 if not run_ingest:
     dbutils.notebook.exit("DRY_RUN: no archive was read and no Delta table was written.")
@@ -147,7 +149,9 @@ for label, value in (
         raise ValueError(f"{label} {value!r} is not a plain identifier.")
 table_root = f"{target_catalog}.{target_schema}"
 volume_root = f"/Volumes/{target_catalog}/{target_schema}/{target_volume}"
-paths = historical_landing_paths(volume_root, execution_id=execution_id)
+paths = historical_landing_paths(
+    volume_root, execution_id=execution_id, landing_subdir=landing_subdir
+)
 bronze_trips_table = f"{table_root}.bronze_historical_trips"
 historical_tables = {
     "trips": f"{table_root}.silver_historical_trips",
@@ -434,7 +438,7 @@ print({"delta_merges": merge_report})
 # MAGIC
 # MAGIC **How to explain it to my supervisor:** "The report says what we proved and, just as importantly, what we did not."
 # MAGIC
-# MAGIC **Rerun and cost considerations:** The report is small and is overwritten deterministically for the same execution ID.
+# MAGIC **Rerun and cost considerations:** The report is small; each Job run or interactive attempt gets a distinct evidence filename under the same business execution directory.
 
 # COMMAND ----------
 
