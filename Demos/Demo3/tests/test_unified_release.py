@@ -58,7 +58,8 @@ def test_unified_job_uses_gp1_only_and_never_contains_a_producer() -> None:
 
 
 def test_unified_job_defaults_to_bounded_sample_mode() -> None:
-    defaults = {item["name"]: item["default"] for item in _job()["parameters"]}
+    job = _job()
+    defaults = {item["name"]: item["default"] for item in job["parameters"]}
 
     assert defaults["run_station_pipeline"] == "true"
     assert defaults["run_historical"] == "true"
@@ -68,6 +69,11 @@ def test_unified_job_defaults_to_bounded_sample_mode() -> None:
     assert defaults["historical_execution_id"] == "urbanflow-hist-devsample40-20261002T0010Z"
     assert defaults["historical_landing_subdir"] == ""
     assert defaults["weather_source"] == "sample_json"
+    assert defaults["stream_timeout_seconds"] == "900"
+    assert job["timeout_seconds"] == 5400
+
+    historical = next(task for task in job["tasks"] if task["task_key"] == "05_historical_trips")
+    assert historical["timeout_seconds"] == 3600
 
 
 def test_unified_job_reuses_existing_business_notebooks() -> None:
@@ -145,6 +151,13 @@ def test_release_workflow_monitors_first_run_and_gates_the_repeat() -> None:
     assert "run_once first" in text
     assert 'if [[ "$REPEAT_RUN" == "true" ]]; then run_once second; fi' in text
     assert "scripts/validate_job_run.py" in text
+
+
+def test_release_workflow_gives_monthly_mode_a_bounded_but_realistic_window() -> None:
+    text = WORKFLOW.read_text(encoding="utf-8")
+
+    assert '"stream_timeout_seconds": "2700" if full else "900"' in text
+    assert "for _ in $(seq 1 420); do" in text
 
 
 def _plan(action: str, *, name: str = EXPECTED_NAME, changes: dict | None = None) -> dict:
