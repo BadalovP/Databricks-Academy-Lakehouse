@@ -44,3 +44,19 @@ Two notes on reading these honestly:
 - The historical and weather files describe **samples**. 40 trip rows and 48 weather hours prove
   the mechanics end to end; they say nothing about a full month, and neither file should be cited
   as monthly coverage.
+
+## SQL alert validation, 2026-10-03
+
+| File | What it records |
+|---|---|
+| `ALERT_VALIDATION.md` | The last Academy row closed: one SQL alert on the actionable-shortage measure, created on the shared academy serverless warehouse, genuinely evaluated to `TRIGGERED` against 657, then deleted |
+| `2026-10-03_alert_validation.json` | Machine-readable result: warehouse profile and ownership, statement ID, alert ID, condition, evaluation timestamp, notification configuration, cleanup state and blast-radius counts |
+
+Two things these files are careful about, and a reader should rely on:
+
+- **Email delivery is inferred, not confirmed.** The alert transitioned to `TRIGGERED` with one
+  email subscription configured, which is the condition under which Databricks sends. The mailbox
+  was not inspected.
+- **The warehouse is not ours.** It belongs to `lbiel@softserve.academy` with `CAN_USE` granted to
+  the `users` group, so using it is intended but the billing is the shared academy account's, and
+  `CAN_USE` cannot stop it — it auto-stops after 5 idle minutes.

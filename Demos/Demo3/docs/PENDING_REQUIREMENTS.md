@@ -1,35 +1,28 @@
 # The remaining Pending live requirements, and how to clear them
 
-> **Updated 2026-10-03.** The CI/CD batch cleared **four** of these rows - idempotent deployment
-> and approvals, post-deploy validation, the Jobs API trigger, and `CI integration` - leaving
-> **3** `Pending live`. `CI integration` was unblocked by four additive, read-only `CAN_VIEW` Job
-> ACL patches, after which workflow run `37084965415` completed SUCCESS end to end. See
-> [CICD_BATCH_EVIDENCE.md](CICD_BATCH_EVIDENCE.md) section 9 for the pre- and post-change ACLs and
-> the proof that `IS_OWNER` and `admins CAN_MANAGE` survived.
+> **CLOSED 2026-10-03. `Pending live` is now zero.**
 >
-> **Final reconciliation, same day.** **One** row now remains `Pending live`: **Lab 6 alerts and
-> email**, which needs a billable SQL warehouse to evaluate its query on a schedule. That is real
-> outstanding work rather than a documentation gap, so it stays pending.
+> The last row, **Lab 6 alerts and email**, was validated live: alert `3025530840217009` on the
+> shared academy serverless warehouse `3ed106620db591d9` evaluated against a read-only query
+> returning 657 and **TRIGGERED**, with an email subscription configured. It was deleted afterwards
+> so no scheduled alert is left in a shared workspace. See
+> [ALERT_VALIDATION.md](../evidence/ALERT_VALIDATION.md), which also records what is *not* claimed:
+> the recipient mailbox was never inspected, so delivery is inferred from the triggered transition.
 >
-> The legacy mount and DEV-to-PROD promotion moved to `Implemented locally` rather than staying
-> pending, because for both the documentation **is** the deliverable and execution is a settled
-> decision, not outstanding work. Both are now backed by real sections in
-> [ARCHITECTURE.md](ARCHITECTURE.md). Two documentation defects were fixed in the process: the
-> mount row cited an architecture section that had never been written, and the two-workspace
-> section called the trial workspace "a genuine second environment for CI/CD promotion" while
-> justifying it with the fact that it reaches the same data - which refutes the claim rather than
-> supporting it.
+> Before that, the CI/CD batch cleared four rows with live evidence - idempotent deployment and
+> approvals, post-deploy validation, the Jobs API trigger and `CI integration` - and the
+> documentation reconciliation closed two more as `Implemented locally` because executing them was
+> judged inappropriate: a workspace-wide legacy mount on shared academy infrastructure, and a
+> second workspace that would be new paid infrastructure. Neither was closed by lowering a
+> standard, and both say so in their own evidence column.
 >
-> **A correction worth recording.** An earlier status report listed Databricks Connect as still
-> pending and proposed re-running it as the next batch. That was wrong: it had been
-> `Validated live` since PR #49, as the paragraph immediately below this blockquote already stated,
-> and acting on the recommendation would have repeated proven work. The pending set was Lab 2,
-> Lab 6 and Lab 8 - not Lab 2, Lab 7 and Lab 8.
-
-The analysis below was written when seven rows were pending, and is kept because the
-resource/cost/destructiveness assessment for each remains accurate and useful. Read it against the
-blockquote above for current status: Databricks Connect and Great Expectations were closed by the
-Batch A read validation, four more by the CI/CD batch, and two by the documentation reconciliation.
+> The analysis below is retained as the record of how each row was reasoned about - the resource,
+> cost and destructiveness assessment for each remains accurate and useful.
+>
+> **A correction kept on the record:** an earlier status report listed Databricks Connect as still
+> pending and proposed re-running it as the next batch. That was wrong - it had been
+> `Validated live` since PR #49 - and acting on it would have repeated proven work. The pending set
+> at that moment was Lab 2, Lab 6 and Lab 8.
 
 ## Completed preparation and read validation
 
