@@ -263,8 +263,9 @@ clusters unchanged.
 
 ## Why Lakeflow remains a separate stage
 
-The bundle contains a serverless, triggered Lakeflow configuration and a Bronze Kafka streaming
-table declaration. It has not been deployed or executed. Serverless Lakeflow manages its own
-compute and checkpoints, independently of GP1/GP2. Physical Silver and Gold functions have run as
-an existing-cluster Phase 2 Job. Lakeflow reuses those functions and writes only to its isolated
-pipeline target schema when a separately approved update eventually runs.
+The bundle contains a serverless, triggered Lakeflow configuration and a Bronze Delta streaming
+table declaration. It has not been deployed or executed. The original Event Hubs messages are no
+longer inside their retention window, so the declarative comparison stream-reads the preserved
+main-schema Bronze Delta table instead of republishing messages. The station reference is also a
+read-only main-schema source. Serverless Lakeflow manages its own compute and checkpoints,
+independently of GP1/GP2, and writes every managed table only to its isolated pipeline schema.

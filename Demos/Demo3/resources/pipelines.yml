@@ -19,19 +19,17 @@ resources:
         urbanflow.catalog: ${var.catalog}
         urbanflow.schema: ${var.lakeflow_schema}
         urbanflow.volume: ${var.volume}
-        urbanflow.secret_scope: ${var.secret_scope}
-        urbanflow.event_hubs_secret_name: parvinbadalov-eventhub-cs
-        urbanflow.event_hubs_namespace: evhpl24databricks
-        urbanflow.event_hub_name: parvinbadalov_evh
-        urbanflow.consumer_group: parvinbadalov
-        urbanflow.starting_offsets: earliest
-        urbanflow.max_events_per_trigger: "5000"
+        # The Kafka retention window no longer contains the validated execution. Lakeflow
+        # stream-reads the preserved append-only Bronze Delta table instead of republishing it.
+        urbanflow.station_bronze_source_table: >-
+          ${var.catalog}.${var.schema}.bronze_station_status
+        # Reference data is read from the validated imperative path and copied into the
+        # pipeline-owned schema. The source table is never modified.
+        urbanflow.station_reference_source_table: >-
+          ${var.catalog}.${var.schema}.dim_station_development_sample
         # Shared with the notebook path so a threshold is never defined in two places.
         urbanflow.low_bike_threshold: "2"
         urbanflow.low_dock_threshold: "2"
-        # Reads the shared landing Volume. A read is safe; only the output SCHEMA is isolated.
-        urbanflow.station_information_path: >-
-          /Volumes/${var.catalog}/${var.schema}/${var.volume}/landing/station_information
       libraries:
         - file:
             path: ../pipeline/bronze.py

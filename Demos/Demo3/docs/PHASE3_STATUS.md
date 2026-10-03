@@ -30,7 +30,7 @@ requiring approval.
 |---|---|---|---|
 | Historical trips | `historical.py`, `notebooks/06_historical_trips.py` | Auto Loader with an explicit schema, per-execution checkpoint, three-way valid/quarantine/duplicate split, trip-duration bounds, rider mix, daily demand | 26 + 14 existing |
 | Weather | `weather.py`, `notebooks/07_weather_enrichment.py` | Bounded Open-Meteo archive retrieval, hourly normalisation, left join preserving every trip, demand comparison | 31 |
-| Lakeflow | `pipeline/silver.py`, `pipeline/gold.py` | Eight declarative tables with 18 non-dropping expectations, reusing the notebook path's own functions | 22 |
+| Lakeflow | `pipeline/bronze.py`, `pipeline/silver.py`, `pipeline/gold.py` | One streaming table plus batch materialized views with 22 non-dropping expectations, reusing the notebook path's own functions | 23 |
 | Dashboard | `sql/10`-`sql/13`, `DASHBOARD.md` | 22 read-only datasets, four pages, per-tile caveats | 32 (shared with governance) |
 | Governance | `sql/20_governance_rls_cls.sql` | Row filter, two column masks, grants, ABAC tagging, inspection queries | shared |
 | Maintenance | `sql/21_maintenance_optimize_vacuum.sql` | Z-ORDER vs liquid clustering, deletion vectors, CDF, column mapping, time travel | shared |
@@ -127,6 +127,13 @@ different semantics, non-deterministic tie-break, unbounded state without a wate
 read in batch and keep the rule exactly as the notebook path and the tests have it. Keeping the
 rule won. Silver and Gold are materialized views recomputed per update; Bronze stays a streaming
 table, so ingestion is still incremental. For ~2,520 observations the recomputation is trivial.
+
+**Lakeflow reuses the preserved Delta snapshot rather than Event Hubs.** The validated messages
+have expired from the one-hour Event Hubs retention window, and republishing them would create a
+second ingestion event. The pipeline's Bronze streaming table therefore uses
+`spark.readStream.table` against the approved main-schema Bronze table. Its reference materialized
+view reads the approved station dimension. Both sources are read-only; every pipeline-owned table
+still resolves inside `parvinbadalov_urbanflow_lakeflow`.
 
 **Expectations warn, they never drop.** A dropping expectation on Silver would delete the rows
 the quarantine table exists to preserve, and Bronze would stop reconciling to Silver plus

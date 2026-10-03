@@ -67,7 +67,7 @@ DIMENSION_EXPECTATIONS = {
 }
 
 
-@dp.table(
+@dp.materialized_view(
     name="station_information_raw",
     comment=(
         "GBFS station_information records landed in the UrbanFlow Volume. The reference feed "
@@ -76,23 +76,20 @@ DIMENSION_EXPECTATIONS = {
     table_properties={"quality": "bronze", "project": "urbanflow"},
 )
 def station_information_raw():
-    """Read the landed reference feed from the Volume path given in the pipeline config.
-
-    The path is configuration rather than a literal so the dev and azure targets can point at
-    their own Volume without a code change. Reading JSON with an explicit multiLine option
-    matches the shape GBFS actually publishes.
-    """
-    path = spark.conf.get("urbanflow.station_information_path")  # noqa: F821
-    return (
-        spark.read.format("json")  # noqa: F821
-        .option("multiLine", "true")
-        .load(path)
-        .selectExpr("explode(data.stations) AS station")
-        .select("station.*")
+    """Read the approved main-schema station reference and restore its raw feed column names."""
+    source = spark.conf.get("urbanflow.station_reference_source_table")  # noqa: F821
+    return spark.read.table(source).selectExpr(  # noqa: F821
+        "station_id",
+        "station_short_name AS short_name",
+        "station_name AS name",
+        "latitude AS lat",
+        "longitude AS lon",
+        "capacity",
+        "region_id",
     )
 
 
-@dp.table(
+@dp.materialized_view(
     name="dim_station_development_sample",
     comment=(
         "Station dimension built from the committed 40-row GBFS reference sample. Carries BOTH "
@@ -106,7 +103,7 @@ def dim_station_development_sample():
     return station_dimension(spark.read.table("station_information_raw"))  # noqa: F821
 
 
-@dp.table(
+@dp.materialized_view(
     name="fact_station_availability",
     comment="One row per station observation, left-enriched with station reference data.",
     table_properties={"quality": "gold", "project": "urbanflow"},
@@ -120,7 +117,7 @@ def fact_station_availability():
     )
 
 
-@dp.table(
+@dp.materialized_view(
     name="gold_daily_station_summary",
     comment=(
         "Per station per day aggregate. `is_trend_capable` is false whenever a station has a "
@@ -134,7 +131,7 @@ def gold_daily_station_summary():
     return daily_station_summary(spark.read.table("fact_station_availability"))  # noqa: F821
 
 
-@dp.table(
+@dp.materialized_view(
     name="gold_station_shortage",
     comment=(
         "Stations an operator would act on right now. An out-of-service station is excluded "
@@ -148,7 +145,7 @@ def gold_station_shortage():
     return shortage_indicators(spark.read.table("fact_station_availability"))  # noqa: F821
 
 
-@dp.table(
+@dp.materialized_view(
     name="gold_rebalancing_priority",
     comment=(
         "Ranked rebalancing list. The score is a plain sum of severity, deficit and size "

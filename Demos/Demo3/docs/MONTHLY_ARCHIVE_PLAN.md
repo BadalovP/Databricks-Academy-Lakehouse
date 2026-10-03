@@ -8,7 +8,7 @@ never be conflated: the sample proved the mechanics, this proves the scale.
 
 ## Verified facts, read-only
 
-Confirmed by an HTTP HEAD request on 2026-10-02 - metadata only, no bytes downloaded:
+Reconfirmed by an HTTP HEAD request on 2026-10-03 - metadata only, no archive bytes downloaded:
 
 | Fact | Value | How |
 |---|---|---|
@@ -17,7 +17,8 @@ Confirmed by an HTTP HEAD request on 2026-10-02 - metadata only, no bytes downlo
 | Content type | `application/zip` | HEAD `Content-Type` |
 | Last modified | Thu, 03 Jul 2025 15:01:20 GMT | HEAD `Last-Modified` |
 | Known member | `202401-citibike-tripdata_2.csv` | The 40-row sample was taken from it by byte-range read |
-| Local disk free | **183 GB** on C: | `df -h` |
+| Local disk free | **179.33 GiB** on C: | `Get-PSDrive C` on 2026-10-03 |
+| Isolated Volume paths | Landing, schema and checkpoint roots for `202401-full` are all absent | Read-only `databricks fs ls`; no checkpoint collision |
 
 ### What is NOT yet known, and must not be guessed
 
