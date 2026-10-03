@@ -101,6 +101,8 @@ matching `*.csv` goes up.
 ### Step 3 - run, on a NEW execution id
 
 ```bash
+# Historical: the component Job used here was retired 2026-10-03; the month actually ran
+# through the unified Job's release workflow with full_month=true.
 databricks bundle run urbanflow_historical_trips_test -t azure --profile dev \
   --params run_ingest=true,execution_id="$EID",landing_subdir=202401-full,stream_timeout_seconds=2700
 ```

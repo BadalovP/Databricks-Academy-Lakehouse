@@ -124,7 +124,8 @@ specific station shortage.
    the official [Auto Loader schema evolution documentation](https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/schema).
 4. Auto Loader `schemaLocation` and streaming checkpoint paths are distinct and isolated.
 5. The bounded writer uses `availableNow`; the 40-row development sample and its no-new-file
-   rerun both completed on GP1. The full monthly archive remains unexecuted.
+   rerun both completed on GP1, and the full January 2024 month (1,888,085 rows) ran through the
+   unified Job on 2026-10-03 in its own namespace and Bronze table.
 6. Delta schema auto-merge is not enabled globally.
 7. Column mapping is demonstrated before renaming a Delta column.
 
@@ -265,7 +266,9 @@ clusters unchanged.
 ## Why Lakeflow remains a separate stage
 
 The bundle contains a serverless, triggered Lakeflow configuration and a Bronze Delta streaming
-table declaration. It has not been deployed or executed. The original Event Hubs messages are no
+table declaration. It was deployed alone and run once on 2026-10-03 (pipeline
+`fb8a0b8a-cdf8-45c4-bff6-2d117a516fb9`, update `ba6710ed-bd97-46e0-a0c0-616050e3c9b9`, COMPLETED,
+22/22 expectations, business results identical to the imperative tables). The original Event Hubs messages are no
 longer inside their retention window, so the declarative comparison stream-reads the preserved
 main-schema Bronze Delta table instead of republishing messages. The station reference is also a
 read-only main-schema source. Serverless Lakeflow manages its own compute and checkpoints,

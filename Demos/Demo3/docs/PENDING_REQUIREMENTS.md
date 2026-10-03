@@ -1,6 +1,12 @@
 # The remaining Pending live requirements, and how to clear them
 
-> **CLOSED 2026-10-03. `Pending live` is now zero.**
+> **CLOSED 2026-10-03. `Pending live` is now zero, and the depth items are done too.** On
+> 2026-10-03 the isolated Lakeflow pipeline ran once, the AI/BI dashboard was published, governance
+> and maintenance were demonstrated or deliberately declined with evidence, and the four component
+> Jobs were retired. Commands below that name `urbanflow_*_test` Jobs are historical; those Jobs
+> now exist only as undeployed config in `resources/retired/component_jobs.yml`.
+>
+> **Earlier closure:**
 >
 > The last row, **Lab 6 alerts and email**, was validated live: alert `3025530840217009` on the
 > shared academy serverless warehouse `3ed106620db591d9` evaluated against a read-only query

@@ -1,8 +1,45 @@
-# UrbanFlow AI/BI dashboard - datasets, layout and creation steps
+# UrbanFlow AI/BI dashboard
 
-Status: **prepared locally, not created.** Every query exists and is read-only; the dashboard
-object itself has not been created in the workspace. The reason is in [Why it is not created
-yet](#why-it-is-not-created-yet).
+Status: **PUBLISHED 2026-10-03.** "UrbanFlow — NYC Mobility Operations & Demand", dashboard
+`01f1bf66a828102f9167c26cdd833277`, published with embedded credentials on the shared academy
+warehouse `3ed106620db591d9` (Serverless Starter Warehouse, 2X-Small, 5-minute auto-stop, owned by
+the academy). It has **no schedule**, so it queries only when someone opens it.
+
+| Fact | Value |
+|---|---|
+| Workspace path | `/Users/parvinbadalov@softserve.academy/UrbanFlow — NYC Mobility Operations & Demand.lvdash.json` |
+| Pages | Current Operations · January 2024 Historical Demand · Weather & Demand · Data Quality & Reliability |
+| Datasets | 20, generated from `sql/10`-`sql/13` by [`scripts/build_dashboard.py`](../scripts/build_dashboard.py) |
+| Committed definition | [`dashboards/urbanflow.lvdash.json`](../dashboards/urbanflow.lvdash.json); a test fails if it drifts from the SQL |
+| Historical execution | `urbanflow-hist-202401-full-gh-37140618864-1` (unified run `96337578882467`) |
+| Weather execution | `urbanflow-weather-202401-full-gh-37140618864-1` |
+| Station execution | `urbanflow-20260929T195132Z-r3` (the one real snapshot) |
+
+**Execution binding.** The two execution IDs are resolved from
+`evidence/2026-10-03_unified_release.json`, not typed, and substituted as literals into every
+historical and weather dataset. A viewer cannot widen the scope, which is also why there is no
+interactive execution filter: it would reintroduce the risk of silently summing the 40-row sample
+with the month.
+
+**Validated before publishing.** All 20 datasets were executed read-only on the warehouse first.
+Key figures, each matching the stored evidence: 2,520 stations / 1,774 available / 278 low bikes /
+374 low docks / 5 both / 89 out of service / 657 actionable; 1,886,318 valid trips, 1,678,496
+member, 207,822 casual, 2,223 start stations; 744 weather hours, 99.98% trip coverage, 374 trips
+without weather; 1,888,085 landed reconciling with 1,767 quarantined (1,160 missing start station,
+607 too long) and 64,635 trips (3.43%) at a referenced station; 22 Lakeflow expectations.
+
+**What could not be verified from here:** the widgets were not inspected visually in a browser.
+The datasets are proven; the rendering of each widget relies on the Lakeview definition format.
+
+**A defect found while building it.** `sql/13` query 6 counted historical trips across every
+execution - on the real data it would have shown 1,886,358 valid trips and `ride_ids_unique =
+false`, because the sample comes from the same archive. It is now scoped, and a per-statement test
+requires every read of an execution-keyed table to select one execution.
+
+**Alert.** The Academy alert was validated live on 2026-10-03 and deleted afterwards
+([ALERT_VALIDATION.md](../evidence/ALERT_VALIDATION.md)). It was deliberately **not** recreated:
+the station data is one frozen snapshot, so a recurring `actionable_shortages > 0` alert would fire
+identically forever and spend warehouse time while nobody is watching.
 
 ## What is real today, and what is not
 
@@ -26,152 +63,102 @@ Two rules follow from that table and they are enforced in the SQL, not left to g
 
 ## Datasets
 
-Each numbered query in the SQL files becomes one dashboard dataset. They are plain `SELECT`
-statements against persisted tables - no writes, no DDL - and a test
-(`tests/test_sql_assets.py`) enforces that, along with the rule that every table reference is
-fully qualified and inside the UrbanFlow schema.
+Each dataset is one numbered, read-only statement. `tests/test_sql_assets.py` enforces that they only read, stay inside the UrbanFlow schemas, are fully qualified, and that every read of an execution-keyed table selects one execution.
 
-| Dataset | File | Query | Feeds |
-|---|---|---|---|
-| `ops_headline` | `sql/10_dashboard_current_operations.sql` | 1 | Counter tiles |
-| `ops_breakdown` | `sql/10_...` | 2 | Availability bar/pie |
-| `ops_priorities` | `sql/10_...` | 3 | Top-25 priority table |
-| `ops_station_detail` | `sql/10_...` | 4 | Station table and map |
-| `ops_actions` | `sql/10_...` | 5 | Action summary |
-| `demand_daily` | `sql/11_dashboard_historical_demand.sql` | 1 | Trips-per-day line |
-| `demand_stations` | `sql/11_...` | 2 | Busiest-stations bar |
-| `demand_rider_mix` | `sql/11_...` | 3 | Member share area |
-| `demand_hourly` | `sql/11_...` | 4 | Hour-by-weekday heatmap |
-| `demand_durations` | `sql/11_...` | 5 | Duration histogram |
-| `demand_match_rate` | `sql/11_...` | 6 | Join-health counter |
-| `weather_daily` | `sql/12_dashboard_weather.sql` | 1 | Trips vs temperature combo |
-| `weather_buckets` | `sql/12_...` | 2 | Trips per temperature bucket |
-| `weather_precipitation` | `sql/12_...` | 3 | Trips per rainfall band |
-| `weather_series` | `sql/12_...` | 4 | Coverage and provenance tile |
-| `weather_gaps` | `sql/12_...` | 5 | Uncovered-trips counter |
-| `quality_counts` | `sql/13_dashboard_data_quality.sql` | 1 | Reconciliation tiles |
-| `quality_rules` | `sql/13_...` | 2 | Quarantine-by-rule bar |
-| `quality_freshness` | `sql/13_...` | 3 | Freshness tile |
-| `quality_reference` | `sql/13_...` | 4 | Reference match tile |
-| `quality_keys` | `sql/13_...` | 5 | Uniqueness tile |
-| `quality_trips` | `sql/13_...` | 6 | Trip outcome tiles |
+| Dataset | Source statement | Page(s) |
+|---|---|---|
+| `ops_headline` | `sql/10_dashboard_current_operations.sql` query 1 - Snapshot headline | Current Operations |
+| `ops_breakdown` | `sql/10_dashboard_current_operations.sql` query 2 - Availability breakdown | Current Operations |
+| `ops_priorities` | `sql/10_dashboard_current_operations.sql` query 3 - Top 25 priorities | Current Operations |
+| `ops_actions` | `sql/10_dashboard_current_operations.sql` query 5 - Action summary | Current Operations |
+| `demand_daily` | `sql/11_dashboard_historical_demand.sql` query 1 - Trips per day | January 2024 Historical Demand |
+| `demand_hourly` | `sql/11_dashboard_historical_demand.sql` query 4 - Trips by hour and weekday | January 2024 Historical Demand |
+| `demand_durations` | `sql/11_dashboard_historical_demand.sql` query 5 - Duration distribution | January 2024 Historical Demand |
+| `demand_headline` | `sql/11_dashboard_historical_demand.sql` query 7 - Monthly headline | January 2024 Historical Demand |
+| `demand_rideable` | `sql/11_dashboard_historical_demand.sql` query 8 - Rideable type | January 2024 Historical Demand |
+| `demand_top_stations` | `sql/11_dashboard_historical_demand.sql` query 9 - Top stations | January 2024 Historical Demand |
+| `demand_day_type` | `sql/11_dashboard_historical_demand.sql` query 10 - Weekday vs weekend | January 2024 Historical Demand |
+| `weather_daily` | `sql/12_dashboard_weather.sql` query 1 - Daily trips and weather | Weather & Demand |
+| `weather_buckets` | `sql/12_dashboard_weather.sql` query 2 - Trips by temperature | Weather & Demand |
+| `weather_precipitation` | `sql/12_dashboard_weather.sql` query 3 - Trips by rainfall | Weather & Demand |
+| `weather_series` | `sql/12_dashboard_weather.sql` query 4 - Weather series provenance | Weather & Demand |
+| `weather_gaps` | `sql/12_dashboard_weather.sql` query 5 - Weather coverage | Weather & Demand |
+| `quality_station` | `sql/13_dashboard_data_quality.sql` query 1 - Station reconciliation | Data Quality & Reliability |
+| `quality_trip_rules` | `sql/13_dashboard_data_quality.sql` query 7 - Trip quarantine reasons | Data Quality & Reliability |
+| `quality_lakeflow` | `sql/13_dashboard_data_quality.sql` query 8 - Lakeflow expectations | Data Quality & Reliability |
+| `quality_monthly` | `sql/13_dashboard_data_quality.sql` query 9 - Monthly reconciliation | Data Quality & Reliability |
 
-## Layout
+## Layout as published
 
-Four pages, in the order an operator would actually read them: what is wrong now, what is
-normal, what explains the difference, and whether to trust any of it.
+Generated from the committed definition. Text tiles carry the caveats inside the page, not in a footnote, so a screenshot cannot crop them away.
 
+**Current Operations**
+
+- text: **POINT-IN-TIME GBFS SNAPSHOT — NOT A HISTORICAL AVAILABILITY TREND.** One real Citi Bike station-status snapshot (station execution `urbanflow-202609…
+- counter: Stations observed
+- counter: AVAILABLE
+- counter: LOW_BIKES
+- counter: LOW_DOCKS
+- counter: LOW_BIKES_AND_DOCKS
+- counter: OUT_OF_SERVICE
+- counter: Actionable shortages
+- text: **Actionable = LOW_BIKES + LOW_DOCKS + LOW_BIKES_AND_DOCKS = 657.** An OUT_OF_SERVICE station is excluded: no rebalancing fixes it.
+- bar: Stations by availability status
+- bar: Recommended action
+- table: Top 25 rebalancing priorities (score = severity + deficit + size)
+
+**January 2024 Historical Demand**
+
+- text: **REAL JANUARY 2024 CITI BIKE MONTHLY ARCHIVE** — every valid trip of execution `urbanflow-hist-202401-full-gh-37140618864-1` (unified run `9633757888…
+- counter: Valid trips
+- counter: Member trips
+- counter: Casual trips
+- counter: Start stations
+- bar: Average trips per day: weekday vs weekend
+- line: Trips per day
+- bar: Rideable type
+- bar: Trips by hour of day (UTC timestamps as stored)
+- bar: Trip duration distribution
+- table: Top 15 origin and destination stations
+
+**Weather & Demand**
+
+- text: Hourly Open-Meteo archive for **one NYC reference coordinate** (40.7128, -74.0060) — **not station-level weather**. Charts show **association, not cau…
+- counter: Weather hours
+- counter: Trip-weather coverage %
+- counter: Trips without weather
+- counter: Hours missing temperature
+- line: Trips per day
+- line: Average temperature per day (°C)
+- scatter: Daily trips vs temperature
+- scatter: Daily trips vs precipitation (mm)
+- scatter: Daily trips vs wind (km/h)
+- bar: Average trips per day by temperature band
+- bar: Average trips per day by rainfall band
+
+**Data Quality & Reliability**
+
+- text: Latest successful unified Job run: **`96337578882467`** (`[azure] UrbanFlow End-to-End`, 7/7 tasks, final validation PASS). Lakeflow update **`ba6710e…
+- counter: Landed
+- counter: Valid
+- counter: Quarantine
+- counter: Duplicates
+- counter: Reconciles
+- counter: Reference coverage %
+- text: **Reference coverage 3.43% is NOT a data-quality failure.** It is the share of rides starting at one of the 40 stations in the committed **DEVELOPMENT…
+- bar: Why trips were quarantined (every row has a named reason)
+- table: Station snapshot reconciliation (Bronze = Silver + Quarantine + Duplicates)
+- table: Lakeflow expectations from the pipeline event log (latest completed update)
+
+## Rebuilding or republishing
+
+```powershell
+python scripts/build_dashboard.py            # regenerate dashboards/urbanflow.lvdash.json
+python scripts/build_dashboard.py --check    # fails if the file is stale (pytest runs the same check in CI)
+databricks lakeview update 01f1bf66a828102f9167c26cdd833277 --json @payload.json --profile dev
+databricks lakeview publish 01f1bf66a828102f9167c26cdd833277 --embed-credentials `
+  --warehouse-id 3ed106620db591d9 --profile dev
 ```
-PAGE 1 - CURRENT OPERATIONS                 (one snapshot; no time axis anywhere)
-+-------------------------------------------------------------------------+
-| [ stations ] [ available ] [ out of service ] [ actionable shortages ]  |  counters
-| caption: "point-in-time count from one GBFS snapshot at <observed_at>"  |
-+----------------------------------+--------------------------------------+
-| Availability breakdown (bar)     | Action summary (bar)                 |
-+----------------------------------+--------------------------------------+
-| Top 25 rebalancing priorities (table, score and its 3 components)      |
-+-------------------------------------------------------------------------+
-| Station map, sized by bikes available, coloured by status               |
-+-------------------------------------------------------------------------+
 
-PAGE 2 - HISTORICAL DEMAND                  (real history; a time axis is valid here)
-+-------------------------------------------------------------------------+
-| Trips per day (line)                                                    |
-+----------------------------------+--------------------------------------+
-| Busiest stations (bar)           | Member vs casual share (area)        |
-+----------------------------------+--------------------------------------+
-| Demand by hour and weekday (heatmap)                                    |
-+----------------------------------+--------------------------------------+
-| Trip duration buckets (histogram)| [ match rate ] counter               |
-+----------------------------------+--------------------------------------+
-
-PAGE 3 - WEATHER                            (comparison, not prediction)
-+-------------------------------------------------------------------------+
-| banner: "one city coordinate, not per-station weather; comparisons only"|
-+-------------------------------------------------------------------------+
-| Trips and temperature by day (dual axis)                                |
-+----------------------------------+--------------------------------------+
-| Trips per temperature bucket     | Trips per rainfall band              |
-+----------------------------------+--------------------------------------+
-| Weather coverage and provenance (table: grid label, hours, gaps, source)|
-+-------------------------------------------------------------------------+
-
-PAGE 4 - DATA QUALITY
-+-------------------------------------------------------------------------+
-| [ bronze reconciles ] [ fact = silver ] [ unassigned rows ] [ fresh? ]  |
-+----------------------------------+--------------------------------------+
-| Quarantined rows by rule (bar)   | Trip outcomes (bar)                  |
-+----------------------------------+--------------------------------------+
-| Reference match rate, with the "40-station sample" note shown           |
-+-------------------------------------------------------------------------+
-```
-
-### Tiles that must carry their caveat in the tile
-
-Not in a footnote, because footnotes get cropped in a screenshot:
-
-- Every Page 1 tile: "one snapshot, point-in-time".
-- Page 3 banner: one coordinate, comparison only.
-- Reference match rate: "the dimension is a committed 40-station sample, so a low rate is
-  expected".
-- Daily availability summary, wherever shown: `is_trend_capable = false`.
-
-## Why it is not created yet
-
-Creating the dashboard object is not in itself destructive, but publishing one requires a SQL
-warehouse to execute the datasets, and **serverless SQL warehouse time is billable**. This
-project does not assume serverless is free, so the warehouse is not started and the dashboard
-is not published without separate approval.
-
-There is also a dependency ordering problem that would make a dashboard created today
-misleading rather than merely empty:
-
-| Section | Status as of 2026-10-02 |
-|---|---|
-| Current operations | **Unblocked.** The Phase 2 correction ran; shortage and priority hold exactly 657 correct rows with zero out-of-service entries |
-| Historical demand | **Data exists, but from a 40-ROW DEVELOPMENT SAMPLE only.** Every tile would show 40 trips over 17 days. Honest, and far too thin to present as demand analysis - this page needs the full monthly archive |
-| Weather | **Data exists, 48 hours.** Only 4 of 40 trips fall inside it, so coverage is 0.1. The charts would be technically correct and practically empty |
-| Data quality | **Fully available.** Every reconciliation tile has real numbers behind it |
-
-So the remaining blocker is no longer correctness, it is the SQL warehouse plus the thinness of
-the sample data. Pages 1 and 4 would be genuinely informative today. Pages 2 and 3 should wait
-for the monthly archive, or carry a prominent 40-row label - showing a 40-trip "demand trend" to a
-supervisor would invite exactly the wrong conclusion.
-
-Every Page 2 dataset requires one `:historical_execution_id`, and every Page 3 dataset requires
-one `:weather_execution_id`. A missing parameter fails the query, and each dataset also keeps the
-selected ID in its result grain. This prevents the development sample and a later monthly run from
-being combined.
-
-## Exact creation steps, once approved
-
-1. **Run the prerequisites in order:** the Phase 2 correction run, then notebook 06 against a
-   landed archive, then notebook 07.
-2. **Confirm the data is right before building anything on it.** Run query 1 of
-   `sql/13_dashboard_data_quality.sql` and check `bronze_reconciles`, `fact_matches_silver` and
-   `derived_tables_agree` are all true and `unassigned_rows` is 0.
-3. **Start a SQL warehouse** - the smallest available - and note that this begins billing.
-4. **Create the dashboard:** in the workspace, *New → Dashboard*, name it
-   `[dev] UrbanFlow Operations`.
-5. **Add each dataset** from the table above: *Data → Create from SQL*, paste the query, name
-   it with the dataset name given.
-6. **Create and bind both required parameters:** `historical_execution_id` on every Page 2 dataset
-   and `weather_execution_id` on every Page 3 dataset. Select one execution for each page.
-7. **Build the four pages** per the layout, adding each caveat caption as you add its tile
-   rather than afterwards.
-8. **Re-read every tile against the "what is real" table** at the top of this document. Any
-   tile with a time axis must be on Page 2, or sourced from the weather daily series.
-9. **Stop the SQL warehouse** when finished. It does not stop itself immediately, and an idle
-   warehouse still bills until its auto-stop elapses.
-10. **Record the evidence:** dashboard URL, the date, and the row counts each tile showed, then
-   move the Lab 1 and Lab 6 dashboard rows in
-   [LABS_1_TO_9_COVERAGE.md](LABS_1_TO_9_COVERAGE.md) from `Pending live` to `Validated live`.
-   Not before: a created dashboard with no recorded figures is not evidence.
-
-## Alternative that needs no warehouse
-
-Every query here also runs in a notebook cell on the already-running GP1 cluster with
-`display()`. That produces the same figures and the same charts for a presentation, with no SQL
-warehouse and no extra cost. It is not an AI/BI dashboard object, so it does not close the
-Academy dashboard requirement - but it does let the numbers be shown and discussed, which is
-the part that matters for a supervisor conversation.
+`payload.json` carries `serialized_dashboard` (the committed file's contents). Do not add a
+schedule: the station page is one snapshot, and a refresh schedule would only spend warehouse time.

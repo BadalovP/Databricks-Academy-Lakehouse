@@ -58,7 +58,7 @@ This is a fair question, because the project is not short of quality checks:
 | Layer | What it does | What it does not do |
 |---|---|---|
 | `quality.py` | Routes every row to valid or quarantine with named failed rules | Produces no portable report |
-| `pipeline/*.py` | 18 declarative Lakeflow expectations | Needs a running pipeline |
+| `pipeline/*.py` | 22 declarative Lakeflow expectations, all passing in update `ba6710ed-…` (2026-10-03) | Report only inside the pipeline event log |
 | `reconcile_*` functions | Prove counts tie out between layers | Check totals, not per-column rules |
 | **Great Expectations** | **A portable, per-expectation validation report** | Does not route or persist anything |
 
