@@ -2,28 +2,70 @@
 
 [← Project README](../README.md)
 
-## Current state
+## Current state - deployed, released and run (2026-10-03)
 
-This document describes the prepared PR A release architecture. It does not claim a deployment or
-a Job run.
+The unified Job is the project's primary orchestrator, and it has been deployed and executed **by
+the release workflow**, not by hand. Full machine-readable evidence:
+[`evidence/2026-10-03_unified_release.json`](../evidence/2026-10-03_unified_release.json); raw task
+reports: [`evidence/unified/`](../evidence/unified/).
 
-The read-only inventory on 2026-10-03 found:
-
-| Resource | Actual state |
+| Fact | Value |
 |---|---|
-| GP1 `0702-132442-toro5spu` | `RUNNING`, DBR `17.3.x-scala2.13`, `USER_ISOLATION` |
-| Component Jobs | Four known `_test` Jobs, all on GP1 |
-| Primary `[azure] UrbanFlow End-to-End` Job | Not deployed |
-| Main schema | `dbr_dev.parvinbadalov_urbanflow`, 16 managed Delta tables |
-| Landing Volume | `dbr_dev.parvinbadalov_urbanflow.urbanflow_landing` |
-| Lakeflow | No deployed UrbanFlow pipeline; the prepared isolated path reads the preserved Bronze and station-reference tables without republishing Event Hubs |
-| AI/BI and SQL alerts | No UrbanFlow dashboard or alert |
-| Shared SQL warehouse | `3ed106620db591d9`, `STOPPED`, five-minute auto-stop |
-| GitHub OIDC identity | Active service principal, identified by the repository variable `AZURE_CLIENT_ID`; UC access is inherited through `account users`. The literal client id is deliberately not reproduced: this repository is public, and while a client id is not a credential, publishing a service-principal and tenant identifier serves no purpose |
-| Existing DAB root ACL | Your user and `admins` have `CAN_MANAGE`; the GitHub service principal is not yet listed |
+| Unified Job | `991496516229387` - `[azure] UrbanFlow End-to-End`, 7 tasks, GP1 only, no schedule |
+| Sample run #1 | `4222809815373` - `TERMINATED / SUCCESS`, 7/7 tasks, 471 s |
+| Sample run #2 (idempotency) | `284335864579341` - `TERMINATED / SUCCESS`, 7/7 tasks, 389 s |
+| Full-month run | `96337578882467` - `TERMINATED / SUCCESS`, 7/7 tasks, 1,082 s |
+| Release workflow runs | `37139449737` (sample + repeat) and `37140618864` (full month), both `success` on `7abc194` |
+| Component Jobs | All four retained; retirement is a separate, unapproved decision |
+| Lakeflow, dashboard, SQL warehouse, governance, maintenance | Untouched |
 
-The four component Jobs remain in place. They are evidence-bearing validation resources and are
-not cleanup candidates until the unified Job has passed two bounded sample executions.
+**Idempotency is proven from the write reports rather than the green status.** Run #2 inserted 0
+rows and removed 0 in every table, migrated no schema, left every count identical, and found no new
+historical file to process; both final validations returned identical checks.
+
+### Two failed attempts, and what they found
+
+Neither failure was retried blindly; each was diagnosed from the run output and fixed by PR first.
+
+| Workflow run | Unified run | Failure | Root cause | Fix |
+|---|---|---|---|---|
+| `37136659149` | `157686710394279` | `06_weather_enrichment`: no trips for the station execution ID | Databricks gives a **job** parameter precedence over a same-named **task** parameter, so the station `source_execution_id` replaced the weather task's historical mapping | PR #64, plus a bundle-wide test that rejects any shadowed task parameter |
+| `37138096688` | `295677984549301` | `07_final_validation`: `bronze_historical_trips` has no `execution_id` | Historical Bronze was one shared table, read whole and re-stamped by every execution. The month would have reported 1,888,125 landed rows and counted the 40 sample rides as duplicates | PR #65: one Bronze table per source namespace, and a guard that refuses a second execution in an owned namespace |
+
+PR #65 also fixed a third full-month defect found during the same review: preflight required
+`weather_source=open_meteo_archive`, which the weather notebook does not accept.
+
+In both failures every completed task reported zero inserted rows, and the failing task failed
+closed before writing, so neither attempt changed any table.
+
+### REAL JANUARY 2024 CITI BIKE MONTHLY ARCHIVE
+
+| Measure | Value |
+|---|---|
+| Source CSV rows, measured before the run | 1,888,085 |
+| Landed in `bronze_historical_trips_202401_full` | **1,888,085** |
+| Valid / quarantine / duplicate | **1,886,318 / 1,767 / 0** - reconciles exactly |
+| Quarantine reasons | `MISSING_START_STATION_ID` 1,160, `TRIP_TOO_LONG` 607; no row without a reason |
+| Distinct, non-null `ride_id` | 1,886,318 / 0 null |
+| Rider mix | member 1,678,496, casual 207,822 |
+| Ride starts | 2023-12-31 13:50:28 to 2024-01-31 23:58:30 UTC; ends all fall in January |
+| Duration (valid) | min 1.02, median 7.73, mean 11.02, max 1,439.55 minutes |
+| Daily demand | 32 start days; 64,794 station-day rows in `gold_daily_trip_demand` |
+| Station match rate | **3.43%** (64,635 rides) |
+| Weather | 744 complete hours from one Open-Meteo archive request; 1,886,318 trips in and out of the LEFT join; 1,885,944 (99.98%) with weather |
+
+The match rate is **dimension coverage, not a data defect**: the station dimension is the committed
+40-station development sample, 39 of which appear in the month, against 2,223 distinct start
+stations. It is not evidence of renamed or retired stations. The 374 trips without weather are
+exactly the 374 rides that started on 31 December, outside the January weather window. Weather is
+one city coordinate, not per-station, and comparisons are descriptive, never causal.
+
+The sample's 40 Bronze rows and 40 Silver rows are unchanged, and Silver holds the two executions
+side by side under their own IDs.
+
+**Known limitation:** `silver_historical_trips.source_file` is stamped from `_metadata.file_path`
+on the Delta Bronze read, so it records a Bronze Parquet file rather than the source CSV. The CSV
+file names are recorded in each historical report's `landed_files`.
 
 ## DAG and data contracts
 
@@ -92,11 +134,11 @@ display name and refuses the create when such a Job already exists. Later plans 
 guard addresses the earlier failure mode where an identity without the expected deployment state
 would otherwise propose duplicate creates.
 
-The current directory ACL is a real prerequisite: the GitHub identity is not listed on object
-`2449501099480664`. Before the first dispatch, the existing directory owner or an administrator
-must grant that one service principal `CAN_MANAGE` on the UrbanFlow Azure bundle root. The workflow
-checks the exact directory before planning and performs no permission mutation itself. Removing the
-scoped ACL entry is the rollback after the release if GitHub will no longer manage this bundle.
+The directory ACL was a real prerequisite. On 2026-10-03, with explicit approval, the service
+principal identified by `AZURE_CLIENT_ID` was granted `CAN_MANAGE` on object `2449501099480664`
+only, by an additive update that was read back to confirm the owner and `admins` entries survived.
+The workflow performs no permission mutation itself. Removing that one ACL entry is the rollback if
+GitHub will no longer manage this bundle.
 
 ## Bounded modes
 
@@ -109,7 +151,7 @@ Hubs messages.
 - landing subdirectory `202401-full`;
 - a new historical execution ID;
 - a new weather execution ID;
-- the bounded Open-Meteo archive source and January 2024 date window.
+- the bounded Open-Meteo archive source (`archive_api`) and January 2024 date window.
 
 Monthly mode also raises the Auto Loader wait from the 15-minute sample default to a bounded
 45 minutes. The historical task has a 60-minute ceiling, the complete Job has a 90-minute
@@ -120,9 +162,8 @@ GP1's lifecycle.
 The workflow does not download or upload the Citi Bike archive. Those remain separate approved
 actions that must finish before a full-month dispatch.
 
-## Live approval still required
+## Still behind separate approval
 
-Creating the unified Job, running it, repeating it for idempotency, downloading or uploading the
-monthly archive, running Lakeflow, starting the SQL warehouse, publishing a dashboard, changing
-governance or running maintenance all remain behind the consolidated live approval gate. Merging
-this preparation changes only repository files.
+Running Lakeflow, starting the SQL warehouse, publishing a dashboard, changing governance, running
+OPTIMIZE or VACUUM, enabling CDF or deletion vectors, changing clustering and retiring the four
+component Jobs all remain unapproved. None was performed.

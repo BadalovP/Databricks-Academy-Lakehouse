@@ -12,10 +12,11 @@ Event Hubs stream, Spark, Delta Lake, Unity Catalog, testing, CI/CD, and Databri
 > removed 89 stale out-of-service priorities; its repeat was idempotent. The 40-row historical
 > **DEVELOPMENT SAMPLE** and 48-hour weather sample also passed bounded GP1 runs. On 2026-10-03,
 > Databricks Connect reproduced the corrected counts read-only and GE passed 20/20 expectations
-> across Silver and the named historical sample. The full monthly archive, Lakeflow deployment,
-> published dashboard, and governance changes remain unexecuted. The primary seven-task
-> End-to-End Job and its protected manual release workflow are prepared locally; they have not
-> been deployed or run.
+> across Silver and the named historical sample. On 2026-10-03 the protected release workflow
+> deployed the primary seven-task End-to-End Job (`991496516229387`) and ran it twice in sample
+> mode - the repeat inserting zero rows - and once on the **REAL JANUARY 2024 CITI BIKE MONTHLY
+> ARCHIVE**: 1,888,085 landed = 1,886,318 valid + 1,767 quarantine + 0 duplicate. Lakeflow
+> deployment, the published dashboard, and governance changes remain unexecuted.
 
 ## Business problem
 
@@ -157,8 +158,8 @@ non-negative counts, binary station-state flags, source timestamps, and optional
 referential integrity. Quarantined rows retain every failed-rule name. Duplicate delivery is a
 third explicit outcome, so reconciliation proves `Bronze = Silver + Quarantine + Duplicates`.
 All three quality outcomes and the downstream Gold tables use idempotent Delta persistence. The
-bounded station, historical sample and weather sample paths have live evidence; the full monthly
-archive remains unexecuted.
+bounded station path, the historical and weather samples and the full January 2024 month all
+have live evidence.
 
 ## 4. CI/CD design
 
@@ -175,7 +176,7 @@ flowchart TB
     classDef current fill:#e8f5ec,stroke:#27834b,color:#205033
     classDef future fill:#fff4d6,stroke:#c69026,color:#704800
     class PR,STATIC,BUNDLE,MANUAL_READ,APPROVAL_READ,CONTROL current
-    class RELEASE,STATIC_RELEASE,APPROVAL_RELEASE,SELECTED,OPTIONAL future
+    class RELEASE,STATIC_RELEASE,APPROVAL_RELEASE,SELECTED,OPTIONAL current
 ```
 
 The [CI workflow](../../.github/workflows/demo3_urbanflow.yml) runs static checks on pull requests
@@ -187,8 +188,9 @@ The new [manual release workflow](../../.github/workflows/demo3_urbanflow_deploy
 `workflow_dispatch` only. It requires the exact confirmation `DEPLOY_AND_RUN_URBANFLOW`, repeats
 the static gates, waits for `azure-release-approval`, refuses to continue unless GP1 is already
 `RUNNING`, plans and deploys only `jobs.urbanflow_end_to_end`, and validates a terminal Job run.
-It is prepared but has not been dispatched. See the [unified release design and current-state
-record](docs/UNIFIED_RELEASE.md).
+It has run for real: workflow `37139449737` deployed and ran the sample twice, and
+`37140618864` ran the full month. Two earlier dispatches failed on genuine defects, which were
+fixed by PR before anything was retried. See the [unified release record](docs/UNIFIED_RELEASE.md).
 
 ## 5. Databricks Job orchestration
 
@@ -204,13 +206,14 @@ flowchart LR
     W --> V
 ```
 
-`urbanflow_end_to_end` is the prepared primary orchestrator. Every task uses GP1 through
+`urbanflow_end_to_end` is the deployed primary orchestrator, Job `991496516229387`. Every task uses GP1 through
 `existing_cluster_id`; there is no producer task, `new_cluster`, serverless Job compute or
 schedule. The station branch reuses Bronze execution `urbanflow-20260929T195132Z-r3`. The other
 branch reuses notebooks 06 and 07 for the 40-row and 48-hour development samples. The final task
 independently reads the selected outputs and fails the Job when their counts, business keys,
-execution IDs or reconciliation identities disagree. The definition and workflow are tested
-locally but the unified Job does not yet exist in Databricks.
+execution IDs or reconciliation identities disagree. Sample runs `4222809815373` and
+`284335864579341` and full-month run `96337578882467` all ended `TERMINATED / SUCCESS` with a
+final-validation `PASS`.
 
 ## Implemented modules
 
@@ -338,8 +341,9 @@ The detailed, evidence-based matrix is in
 - The existing secret and consumer group were exercised successfully during the completed Bronze
   run; Phase 2 performs no secret read and no Event Hubs operation.
 - Current and historical station identifiers require the documented `short_name` crosswalk.
-- The full monthly archive, 1,000-file Auto Loader discovery run, Lakeflow deployment, published
-  dashboard, alert, governance changes, and maintenance operations have not run.
+- The 1,000-file Auto Loader discovery run, Lakeflow deployment, published dashboard, governance
+  changes, and maintenance operations have not run. The SQL alert was validated live once and then
+  deleted, so none is left scheduled.
 
 ## Cost and safety boundary
 

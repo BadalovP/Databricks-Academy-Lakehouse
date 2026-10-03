@@ -89,7 +89,8 @@ specific station shortage.
 | Layer | Object | Grain | Stage status |
 |---|---|---|---|
 | Bronze | `bronze_station_status` | One received Kafka event | Validated live: 2,520 reconciled rows |
-| Bronze | `bronze_historical_trips` | One physical trip row | Validated live on the 40-row development sample; full archive not run |
+| Bronze | `bronze_historical_trips` | One physical trip row | Validated live on the 40-row development sample, which this table holds alone |
+| Bronze | `bronze_historical_trips_202401_full` | One physical trip row | Validated live: REAL JANUARY 2024 CITI BIKE MONTHLY ARCHIVE, 1,888,085 rows, unified run `96337578882467` |
 | Bronze | `bronze_station_information` | One captured reference record | Client implemented; table pending |
 | Bronze | `bronze_weather` | One place/time observation | Sample verified; table pending |
 | Silver | `silver_station_status` | One accepted event ID | Validated live: 2,520 rows, with reconciliation and idempotent repeat |
@@ -99,7 +100,7 @@ specific station shortage.
 | Gold | `fact_station_availability` | One Silver event ID | Validated live: 2,520 rows and 2,520 distinct event IDs |
 | Gold | `gold_station_shortage` | One shortage observation | Validated live: 657 actionable rows; one snapshot is not a repeated episode |
 | Gold | `gold_rebalancing_priority` | Station and observation timestamp | Validated live: 657 rows and no out-of-service priorities |
-| Silver | `silver_historical_trips` | One valid historical ride | Validated live on the 40-row development sample; full archive not run |
+| Silver | `silver_historical_trips` | One valid historical ride per execution | Validated live: 40 sample rides and 1,886,318 January 2024 rides, kept apart by `execution_id` |
 | Gold | `dim_weather_hourly` | One weather hour | Validated live on the committed 48-hour sample |
 | Gold | `gold_daily_station_summary` | Station and date | Validated live with observation count and trend-capability flag |
 

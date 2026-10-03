@@ -1,6 +1,9 @@
 # Real January 2024 Citi Bike monthly archive - execution plan
 
-Status: **prepared, not executed. Nothing has been downloaded or uploaded.**
+Status: **EXECUTED on 2026-10-03.** Downloaded, verified, staged, then ingested by unified run
+`96337578882467`: 1,888,085 landed = 1,886,318 valid + 1,767 quarantine + 0 duplicate. Results in
+[UNIFIED_RELEASE.md](UNIFIED_RELEASE.md). The plan below is kept as written beforehand, so its
+refusal to predict counts can be checked against what happened.
 
 This is the **REAL JANUARY 2024 CITI BIKE MONTHLY ARCHIVE**. It is a different thing from the
 committed **40-ROW DEVELOPMENT SAMPLE** that has already been validated live, and the two must

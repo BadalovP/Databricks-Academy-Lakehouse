@@ -12,7 +12,7 @@
 # MAGIC
 # MAGIC **Safety:** `run_enrichment` defaults to `false`, so the committed default exits before any call or write. The request window is bounded and refused above 62 days. The notebook never starts, stops or resizes a cluster.
 # MAGIC
-# MAGIC **Actual validation:** On 2026-10-02 Job run `472557041765891` used the committed **48-HOUR WEATHER SAMPLE** and the 40-trip development execution on GP1: 40 trips entered and 40 left the join, coverage 0.1, and no external request occurred. The full monthly archive has not been enriched.
+# MAGIC **Actual validation:** On 2026-10-02 Job run `472557041765891` used the committed **48-HOUR WEATHER SAMPLE** and the 40-trip development execution on GP1: 40 trips entered and 40 left the join, coverage 0.1, and no external request occurred. On 2026-10-03 unified run `96337578882467` made one Open-Meteo archive request for January 2024: 744 complete hours, 1,886,318 trips in and out of the join, and 1,885,944 with weather.
 # MAGIC
 # MAGIC **Two limitations that must be read before any chart from this is shown:** the weather series is ONE COORDINATE for New York City, not per-station weather, and every row carries `weather_grid_label` so that resolution stays visible. And these are COMPARISONS, not predictions: grouping trips by temperature bucket shows that cold wet days have fewer rides, but it models nothing and controls for nothing, not day of week, not holidays, not closures.
 

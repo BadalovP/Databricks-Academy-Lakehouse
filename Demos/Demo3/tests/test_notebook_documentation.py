@@ -38,6 +38,13 @@ VALIDATED_LIVE_CLAIMS = {
         "48-HOUR WEATHER SAMPLE",
         "40 trips",
     ),
+    Path("notebooks/08_unified_preflight.py"): ("2026-10-03", "4222809815373", "96337578882467"),
+    Path("notebooks/09_station_source_check.py"): ("2026-10-03", "2,520", "96337578882467"),
+    Path("notebooks/10_unified_final_validation.py"): (
+        "2026-10-03",
+        "284335864579341",
+        "96337578882467",
+    ),
 }
 
 

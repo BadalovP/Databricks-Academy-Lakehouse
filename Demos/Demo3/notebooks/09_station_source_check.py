@@ -12,7 +12,7 @@
 # MAGIC
 # MAGIC **Safety:** This task runs only `tableExists`, filtered `SELECT` and aggregate actions. It never invokes the producer or writes a table.
 # MAGIC
-# MAGIC **Actual validation:** This unified source-check notebook has not been executed on Azure; the same snapshot counts were independently validated read-only on 2026-10-03.
+# MAGIC **Actual validation:** On 2026-10-03 it returned `PASS` with 2,520 Bronze rows and 2,520 distinct event IDs in unified runs `4222809815373`, `284335864579341` and `96337578882467`.
 
 # COMMAND ----------
 

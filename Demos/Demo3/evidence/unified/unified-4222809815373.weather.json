@@ -1,0 +1,80 @@
+{
+  "coverage": {
+    "complete": true,
+    "hours": 48,
+    "hours_with_precipitation": 48,
+    "hours_with_temperature": 48,
+    "hours_with_wind": 48,
+    "missing_precipitation": 0,
+    "missing_temperature": 0,
+    "missing_wind": 0,
+    "temperature_completeness": 1.0
+  },
+  "delta_merges": {
+    "demand_summary": {
+      "other_execution_rows_after": 0,
+      "other_execution_rows_before": 0,
+      "other_executions_preserved": true,
+      "rows_after": 17,
+      "rows_before": 17,
+      "schema_migration": {
+        "added_columns": [],
+        "migrated": false,
+        "table_existed": true
+      },
+      "scope_matches_source": true,
+      "scope_rows_after": 17,
+      "scope_rows_before": 17,
+      "source_rows": 17,
+      "stale_rows_removed": 0,
+      "table_existed": true,
+      "verification": {
+        "missing_from_table": 0,
+        "no_unassigned_rows": true,
+        "other_execution_rows": 0,
+        "scope_matches_source": true,
+        "scope_rows": 17,
+        "source_rows": 17,
+        "status": "PASS",
+        "total_rows": 17,
+        "unassigned_rows": 0,
+        "unexpected_in_table": 0
+      }
+    },
+    "weather": {
+      "inserted_rows": 0,
+      "rows_after": 48,
+      "rows_before": 48,
+      "schema_migration": {
+        "added_columns": [],
+        "migrated": false,
+        "table_existed": true
+      },
+      "source_rows": 48,
+      "table_existed": true
+    }
+  },
+  "execution_id": "urbanflow-weather-devsample48h-20261002T0015Z",
+  "limitations": [
+    "one city coordinate, NOT per-station weather; see weather_grid_label",
+    "comparisons only, not predictions; nothing is modelled or controlled for",
+    "a missing reading stays null and is never replaced with zero"
+  ],
+  "phase": "weather_enrichment",
+  "reconciliation": {
+    "enriched_rows": 40,
+    "rows_preserved": true,
+    "status": "PASS",
+    "trip_rows": 40,
+    "trips_with_weather": 4,
+    "trips_without_weather": 36,
+    "weather_coverage": 0.1
+  },
+  "request": {
+    "grid_label": "open-meteo@40.7128,-74.0060",
+    "source": "sample_json",
+    "url": "https://archive-api.open-meteo.com/v1/archive?latitude=40.7128&longitude=-74.006&start_date=2024-01-24&end_date=2024-01-25&hourly=temperature_2m%2Cprecipitation%2Cwind_speed_10m&timezone=UTC"
+  },
+  "source_execution_id": "urbanflow-hist-devsample40-20261002T0010Z",
+  "status": "PASS"
+}

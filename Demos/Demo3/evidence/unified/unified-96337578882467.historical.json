@@ -1,0 +1,107 @@
+{
+  "delta_merges": {
+    "daily_demand": {
+      "other_execution_rows_after": 0,
+      "other_execution_rows_before": 40,
+      "other_executions_preserved": false,
+      "rows_after": 64794,
+      "rows_before": 40,
+      "schema_migration": {
+        "added_columns": [],
+        "migrated": false,
+        "table_existed": true
+      },
+      "scope_matches_source": true,
+      "scope_rows_after": 64794,
+      "scope_rows_before": 0,
+      "source_rows": 64794,
+      "stale_rows_removed": 0,
+      "table_existed": true,
+      "verification": {
+        "missing_from_table": 0,
+        "no_unassigned_rows": true,
+        "other_execution_rows": 0,
+        "scope_matches_source": true,
+        "scope_rows": 64794,
+        "source_rows": 64794,
+        "status": "PASS",
+        "total_rows": 64794,
+        "unassigned_rows": 0,
+        "unexpected_in_table": 0
+      }
+    },
+    "duplicates": {
+      "inserted_rows": 0,
+      "rows_after": 0,
+      "rows_before": 0,
+      "schema_migration": {
+        "added_columns": [],
+        "migrated": false,
+        "table_existed": true
+      },
+      "source_rows": 0,
+      "table_existed": true
+    },
+    "quarantine": {
+      "inserted_rows": 1767,
+      "rows_after": 1767,
+      "rows_before": 0,
+      "schema_migration": {
+        "added_columns": [],
+        "migrated": false,
+        "table_existed": true
+      },
+      "source_rows": 1767,
+      "table_existed": true
+    },
+    "trips": {
+      "inserted_rows": 1886318,
+      "rows_after": 1886358,
+      "rows_before": 40,
+      "schema_migration": {
+        "added_columns": [],
+        "migrated": false,
+        "table_existed": true
+      },
+      "source_rows": 1886318,
+      "table_existed": true
+    }
+  },
+  "duration_profile": {
+    "avg_minutes": 11.02,
+    "max_minutes": 1439.55,
+    "median_minutes": 7.73,
+    "min_minutes": 1.02,
+    "trips": 1886318
+  },
+  "execution_id": "urbanflow-hist-202401-full-gh-37140618864-1",
+  "landed_files": [
+    "202401-citibike-tripdata_1.csv",
+    "202401-citibike-tripdata_2.csv"
+  ],
+  "limitations": [
+    "the station dimension is a committed 40-row sample, so unmatched trips are expected",
+    "a match rate below 1.0 reflects renamed and retired stations, not a defect",
+    "trip demand IS real history; the availability tables remain one snapshot"
+  ],
+  "match_rate": {
+    "match_rate": 0.0343,
+    "matched_to_current_station": 64635,
+    "trips": 1886318,
+    "unmatched": 1821683
+  },
+  "phase": "historical_trips",
+  "reconciliation": {
+    "accounted_rows": 1888085,
+    "counts_reconcile": true,
+    "demand_rows": 64794,
+    "duplicate_rows": 0,
+    "join_produced_no_matches": false,
+    "landed_rows": 1888085,
+    "match_rate": 0.0343,
+    "quarantine_rows": 1767,
+    "status": "PASS",
+    "valid_rows": 1886318
+  },
+  "status": "PASS"
+}

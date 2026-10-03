@@ -65,9 +65,22 @@ Two things these files are careful about, and a reader should rely on:
 
 | File | What it records |
 |---|---|
-| `2026-10-03_monthly_archive_staging.json` | The real archive downloaded, verified byte-for-byte, extracted, measured and uploaded to an isolated sibling landing path. **No ingestion has run yet** |
+| `2026-10-03_monthly_archive_staging.json` | The real archive downloaded, verified byte-for-byte, extracted, measured and uploaded to an isolated sibling landing path. Ingested afterwards by run `96337578882467` |
 
 The staging also surfaced a path-isolation defect worth knowing about: `landing_subdir` joined with
 `/`, which placed the monthly archive inside the sample's own landing root. Auto Loader discovers
 recursively, so a later sample-mode run would have found 1.9 million monthly rows as new files and
 failed its 40-row expectations. The namespaces are now siblings and a test pins that.
+
+## Unified Job release and full January 2024 month, 2026-10-03 (GP1)
+
+| File | What it records |
+|---|---|
+| `2026-10-03_unified_release.json` | Workflow and Job run IDs, every task's state and duration, the idempotency basis, and the full-month measurements, including read-only post-run measurements |
+| `unified/unified-<run>.<phase>.json` | The raw task reports for sample runs `4222809815373` and `284335864579341` and full-month run `96337578882467` |
+
+Two earlier attempts failed and were diagnosed before anything was retried: a job parameter
+shadowed the weather task's historical ID (PR #64), and historical Bronze was a shared table that
+every execution re-stamped (PR #65). Neither attempt changed any table. The month then landed
+exactly the 1,888,085 rows measured in the source files. Narrative:
+[UNIFIED_RELEASE.md](../docs/UNIFIED_RELEASE.md).

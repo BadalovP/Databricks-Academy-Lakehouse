@@ -12,7 +12,7 @@
 # MAGIC
 # MAGIC **Safety:** `run_ingest` defaults to `false`, so the committed default exits before any read or write. The notebook never starts, stops or resizes a cluster, never downloads an archive, and never writes outside the UrbanFlow schema.
 # MAGIC
-# MAGIC **Actual validation:** On 2026-10-02 Job run `848541476068172` processed the **40-ROW DEVELOPMENT SAMPLE** on GP1: 40 landed = 40 valid + 0 quarantine + 0 duplicate, match rate 1.0, and a repeat discovered no new file. The full January archive has not run.
+# MAGIC **Actual validation:** On 2026-10-02 Job run `848541476068172` processed the **40-ROW DEVELOPMENT SAMPLE** on GP1: 40 landed = 40 valid + 0 quarantine + 0 duplicate, match rate 1.0, and a repeat discovered no new file. On 2026-10-03 unified run `96337578882467` processed the **REAL JANUARY 2024 CITI BIKE MONTHLY ARCHIVE** into its own namespace: 1,888,085 landed = 1,886,318 valid + 1,767 quarantine + 0 duplicate, with 1,886,318 distinct ride IDs.
 # MAGIC
 # MAGIC **The one mistake this notebook exists to prevent:** historical trips carry values like `7407.13` in `start_station_id`. That is the GBFS **short name**, not the UUID `station_id`. Joining on `station_id` matches nothing and produces an empty result that looks like missing data rather than a join bug, so the match rate is reported and a rate of exactly zero fails the run.
 

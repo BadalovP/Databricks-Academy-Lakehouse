@@ -12,7 +12,7 @@
 # MAGIC
 # MAGIC **Safety:** This notebook performs parameter and Spark-context reads only. It never starts compute, reads a data table, publishes Event Hubs messages, or writes data.
 # MAGIC
-# MAGIC **Actual validation:** This unified preflight has not been executed on Azure; its contracts are covered by offline tests before the first approved release.
+# MAGIC **Actual validation:** On 2026-10-03 it returned `PASS` in sample mode for unified runs `4222809815373` and `284335864579341`, and in full-month mode for run `96337578882467`.
 
 # COMMAND ----------
 
