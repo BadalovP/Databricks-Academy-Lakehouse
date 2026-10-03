@@ -1,0 +1,58 @@
+{
+  "_note": "The REAL JANUARY 2024 CITI BIKE MONTHLY ARCHIVE downloaded, verified, extracted and staged into the UrbanFlow Volume. This is NOT the 40-row DEVELOPMENT SAMPLE. No ingestion has run: these are measured facts about the file, not about any Delta table.",
+  "evidence_type": "urbanflow_monthly_archive_staging",
+  "label": "REAL JANUARY 2024 CITI BIKE MONTHLY ARCHIVE",
+  "date": "2026-10-03",
+  "source": {
+    "url": "https://s3.amazonaws.com/tripdata/202401-citibike-tripdata.zip",
+    "http_status": 200,
+    "content_length_bytes": 369035302,
+    "downloaded_bytes": 369035302,
+    "size_matches_recorded_expectation": true,
+    "downloaded_to": "session scratchpad, not the repository"
+  },
+  "archive_members": [
+    {"name": "202401-citibike-tripdata_1.csv", "uncompressed_bytes": 195372814, "stored_bytes": 195372814, "compress_method": 0, "data_rows": 1000000},
+    {"name": "202401-citibike-tripdata_2.csv", "uncompressed_bytes": 173662194, "stored_bytes": 173662194, "compress_method": 0, "data_rows": 888085}
+  ],
+  "measurements": {
+    "total_data_rows": 1888085,
+    "total_extracted_bytes": 369035008,
+    "non_csv_members": 0,
+    "macosx_entries": 0,
+    "compression_note": "Members are STORED (method 0) rather than deflated, which is why the zip size and the extracted total are nearly identical."
+  },
+  "header": {
+    "columns": ["ride_id","rideable_type","started_at","ended_at","start_station_name","start_station_id","end_station_name","end_station_id","start_lat","start_lng","end_lat","end_lng","member_casual"],
+    "matches_trip_schema": true
+  },
+  "station_id_form": {
+    "observed_examples": ["4028.03", "4225.14", "4107.05", "4066.15", "7116.04", "7577.27"],
+    "note": "Short-name form as expected, confirming the GBFS short_name join key rather than the UUID station_id."
+  },
+  "staged_to": {
+    "landing": "/Volumes/dbr_dev/parvinbadalov_urbanflow/urbanflow_landing/landing/historical_trips_202401-full",
+    "uploaded_files": [
+      {"name": "202401-citibike-tripdata_1.csv", "bytes_in_volume": 195372814},
+      {"name": "202401-citibike-tripdata_2.csv", "bytes_in_volume": 173662194}
+    ],
+    "byte_parity_with_local": true
+  },
+  "isolation": {
+    "sample_landing_path": "/Volumes/.../landing/historical_trips",
+    "monthly_landing_path": "/Volumes/.../landing/historical_trips_202401-full",
+    "monthly_is_child_of_sample": false,
+    "sample_landing_contents_after_staging": ["historical_trips_202401_DEVELOPMENT_SAMPLE_40rows.csv"],
+    "sample_file_bytes": 7894,
+    "sample_file_untouched": true,
+    "monthly_checkpoint_exists_yet": false,
+    "monthly_schema_location_exists_yet": false,
+    "defect_found_and_corrected": "landing_subdir joined with '/', which first placed the archive at landing/historical_trips/202401-full - inside the sample's own landing root. Auto Loader discovers recursively, so a later sample-mode run would have found 1.9 million monthly rows as new files and failed its 40-row expectations. The namespace is now a sibling, the nested directory was removed, and a regression test pins the invariant."
+  },
+  "not_done": {
+    "ingestion_run": false,
+    "delta_rows_written": 0,
+    "expected_row_counts_invented": false,
+    "note": "No expected post-ingestion counts are recorded here. 1,888,085 is the measured CSV row count, not a prediction about valid/quarantine/duplicate splits, which the run itself must determine."
+  }
+}
