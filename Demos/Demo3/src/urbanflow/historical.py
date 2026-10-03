@@ -329,6 +329,13 @@ def historical_landing_paths(
     40-row sample keeps its original landing, schema and checkpoint paths. A full archive supplies
     a value such as `202401-full`, which gives it a separate landing directory, Auto Loader schema
     location and checkpoint namespace without moving or re-reading the sample.
+
+    The suffixed namespace is a SIBLING of the sample's, never a child of it. An earlier version
+    joined the subdirectory with `/`, which put the monthly archive at
+    `landing/historical_trips/202401-full` - inside the sample's own landing root. Auto Loader
+    discovers files recursively, so a later sample-mode run would have found 1.9 million monthly
+    rows as new files and failed its 40-row expectations. Keeping them siblings means neither
+    source set can ever see the other's files.
     """
     if not volume_root.strip():
         raise ValueError("volume_root must be non-empty.")
@@ -337,7 +344,7 @@ def historical_landing_paths(
     if subdir:
         subdir = sanitize_path_token(subdir, label="landing_subdir")
     root = volume_root.rstrip("/")
-    source_namespace = "historical_trips" + (f"/{subdir}" if subdir else "")
+    source_namespace = "historical_trips" + (f"_{subdir}" if subdir else "")
     return {
         "landing": f"{root}/landing/{source_namespace}",
         "schema": f"{root}/schemas/{source_namespace}",

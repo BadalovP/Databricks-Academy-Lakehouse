@@ -112,12 +112,14 @@ def test_monthly_archive_paths_are_isolated_from_the_validated_sample() -> None:
         "archive": f"{root}/landing/historical_trips/_archive",
     }
     assert monthly == {
-        "landing": f"{root}/landing/historical_trips/202401-full",
-        "schema": f"{root}/schemas/historical_trips/202401-full",
+        # Sibling namespaces, not nested: a monthly directory inside the sample's landing root
+        # would be discovered recursively by a sample-mode Auto Loader run.
+        "landing": f"{root}/landing/historical_trips_202401-full",
+        "schema": f"{root}/schemas/historical_trips_202401-full",
         "checkpoint": (
-            f"{root}/checkpoints/historical_trips/202401-full/urbanflow-hist-month202401-r1"
+            f"{root}/checkpoints/historical_trips_202401-full/urbanflow-hist-month202401-r1"
         ),
-        "archive": f"{root}/landing/historical_trips/202401-full/_archive",
+        "archive": f"{root}/landing/historical_trips_202401-full/_archive",
     }
     assert set(sample.values()).isdisjoint(monthly.values())
 
@@ -475,3 +477,32 @@ def test_demand_is_execution_scoped_while_trips_are_merged(monkeypatch) -> None:
     # Quarantine and duplicate rows are not unique by ride_id alone.
     assert "ride_id" in keys[HISTORICAL_TABLES["quarantine"]]
     assert len(keys[HISTORICAL_TABLES["duplicates"]]) > 1
+
+
+def test_monthly_namespace_is_a_sibling_of_the_sample_never_a_child() -> None:
+    """Auto Loader discovers recursively, so a nested monthly directory is a real hazard.
+
+    An earlier version joined `landing_subdir` with `/`, putting the January archive at
+    `landing/historical_trips/202401-full` - inside the sample's own landing root. The sample's
+    checkpoint has only ever seen its 40-row CSV, so a later sample-mode run would have discovered
+    1.9 million monthly rows as new files and failed its 40-row expectations. This was caught after
+    the archive had already been staged, and the files were moved to the sibling path.
+    """
+    sample = historical_landing_paths("/V", execution_id="sample-x")
+    monthly = historical_landing_paths("/V", execution_id="month-x", landing_subdir="202401-full")
+
+    for key in ("landing", "schema", "checkpoint"):
+        assert not monthly[key].startswith(sample[key].rstrip("/") + "/"), key
+        assert monthly[key] != sample[key], key
+
+    # The already-validated sample paths must stay byte-identical.
+    assert sample["landing"] == "/V/landing/historical_trips"
+    assert sample["schema"] == "/V/schemas/historical_trips"
+    assert monthly["landing"] == "/V/landing/historical_trips_202401-full"
+
+
+def test_an_empty_subdir_leaves_the_sample_paths_untouched() -> None:
+    """The default must never relocate the validated sample."""
+    assert historical_landing_paths("/V", execution_id="e") == historical_landing_paths(
+        "/V", execution_id="e", landing_subdir=""
+    )

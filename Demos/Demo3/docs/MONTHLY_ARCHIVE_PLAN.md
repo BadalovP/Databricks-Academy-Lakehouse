@@ -79,7 +79,7 @@ inside the Volume where it serves no purpose once extracted.
 
 ```bash
 EID="urbanflow-hist-month202401-$(date -u +%Y%m%dT%H%MZ)"
-LANDING="dbfs:/Volumes/dbr_dev/parvinbadalov_urbanflow/urbanflow_landing/landing/historical_trips/202401-full"
+LANDING="dbfs:/Volumes/dbr_dev/parvinbadalov_urbanflow/urbanflow_landing/landing/historical_trips_202401-full"
 databricks fs mkdir "$LANDING" --profile dev
 for f in extracted/*.csv; do
   databricks fs cp "$f" "$LANDING/$(basename "$f")" --profile dev
@@ -102,11 +102,15 @@ databricks bundle run urbanflow_historical_trips_test -t azure --profile dev \
   --params run_ingest=true,execution_id="$EID",landing_subdir=202401-full,stream_timeout_seconds=2700
 ```
 
-The `landing_subdir` parameter isolates every Auto Loader state path for this source set:
+The `landing_subdir` parameter isolates every Auto Loader state path for this source set. The
+suffixed namespace is a **sibling** of the sample's, never a child: an earlier version joined the
+subdirectory with `/`, which would have placed the archive inside the sample's own landing root
+where a sample-mode Auto Loader run discovers files recursively. That was caught after staging and
+the files were moved.
 
-- landing: `landing/historical_trips/202401-full/`
-- schema location: `schemas/historical_trips/202401-full/`
-- checkpoint: `checkpoints/historical_trips/202401-full/$EID`
+- landing: `landing/historical_trips_202401-full/`
+- schema location: `schemas/historical_trips_202401-full/`
+- checkpoint: `checkpoints/historical_trips_202401-full/$EID`
 
 The empty default retains all three legacy paths used by the validated 40-row sample. The monthly
 run therefore neither moves the sample nor resumes its checkpoint. The new execution id also keeps
@@ -180,8 +184,8 @@ Then, if needed, delete the landed CSVs and the checkpoint:
 
 ```bash
 databricks fs rm -r "$LANDING" --profile dev
-databricks fs rm -r "dbfs:/Volumes/.../checkpoints/historical_trips/202401-full/$EID" --profile dev
-databricks fs rm -r "dbfs:/Volumes/.../schemas/historical_trips/202401-full" --profile dev
+databricks fs rm -r "dbfs:/Volumes/.../checkpoints/historical_trips_202401-full/$EID" --profile dev
+databricks fs rm -r "dbfs:/Volumes/.../schemas/historical_trips_202401-full" --profile dev
 ```
 
 A `DROP TABLE` is **not** the rollback here and should not be used: it would destroy the sample

@@ -60,3 +60,14 @@ Two things these files are careful about, and a reader should rely on:
 - **The warehouse is not ours.** It belongs to `lbiel@softserve.academy` with `CAN_USE` granted to
   the `users` group, so using it is intended but the billing is the shared academy account's, and
   `CAN_USE` cannot stop it — it auto-stops after 5 idle minutes.
+
+## January 2024 archive staged, 2026-10-03
+
+| File | What it records |
+|---|---|
+| `2026-10-03_monthly_archive_staging.json` | The real archive downloaded, verified byte-for-byte, extracted, measured and uploaded to an isolated sibling landing path. **No ingestion has run yet** |
+
+The staging also surfaced a path-isolation defect worth knowing about: `landing_subdir` joined with
+`/`, which placed the monthly archive inside the sample's own landing root. Auto Loader discovers
+recursively, so a later sample-mode run would have found 1.9 million monthly rows as new files and
+failed its 40-row expectations. The namespaces are now siblings and a test pins that.
