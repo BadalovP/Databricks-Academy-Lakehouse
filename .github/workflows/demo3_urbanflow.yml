@@ -108,20 +108,15 @@ jobs:
           set -euo pipefail
           databricks bundle validate -t azure
 
-          while IFS='|' read -r job_id expected_name; do
-            output="$RUNNER_TEMP/urbanflow-job-$job_id.json"
-            databricks jobs get "$job_id" --output json > "$output"
-            python -c "import json,sys; d=json.load(open(sys.argv[1])); assert d['settings']['name']==sys.argv[2]; assert {t['existing_cluster_id'] for t in d['settings']['tasks']}=={'0702-132442-toro5spu'}; print(f\"Verified Job {d['job_id']}: {d['settings']['name']}\")" "$output" "$expected_name"
-          done <<'JOBS'
-          404404108673495|[azure] urbanflow_bounded_stream_test
-          11834365763936|[azure] urbanflow_silver_gold_test
-          974964732439608|[azure] urbanflow_historical_trips_test
-          860666167537092|[azure] urbanflow_weather_enrichment_test
-          JOBS
+          # The unified Job is the only UrbanFlow Job; the four component Jobs were retired on
+          # 2026-10-03 (evidence/2026-10-03_retired_component_jobs.json).
+          databricks jobs get 991496516229387 --output json > "$RUNNER_TEMP/urbanflow-job.json"
+          python -c "import json,sys; d=json.load(open(sys.argv[1]))['settings']; assert d['name']=='[azure] UrbanFlow End-to-End'; assert {t['existing_cluster_id'] for t in d['tasks']}=={'0702-132442-toro5spu'}; assert len(d['tasks'])==7 and 'schedule' not in d and 'trigger' not in d; print('Verified Job 991496516229387: [azure] UrbanFlow End-to-End, 7 GP1 tasks, unscheduled')" "$RUNNER_TEMP/urbanflow-job.json"
 
-          databricks pipelines list-pipelines --filter "name LIKE '%urbanflow%'" --output json \
-            > "$RUNNER_TEMP/urbanflow-pipelines.json"
-          python -c "import json, pathlib; p=pathlib.Path('$RUNNER_TEMP/urbanflow-pipelines.json'); pipelines=json.loads(p.read_text()); assert pipelines == [], f'Unexpected UrbanFlow pipelines: {pipelines}'; print('Verified: no deployed UrbanFlow pipeline.')"
+          # The Lakeflow comparison pipeline must stay isolated, triggered and unscheduled.
+          databricks pipelines get fb8a0b8a-cdf8-45c4-bff6-2d117a516fb9 --output json \
+            > "$RUNNER_TEMP/urbanflow-pipeline.json"
+          python -c "import json,sys; s=json.load(open(sys.argv[1]))['spec']; assert s['schema']=='parvinbadalov_urbanflow_lakeflow', s['schema']; assert not s.get('continuous') and not s.get('trigger'); print('Verified pipeline: isolated schema parvinbadalov_urbanflow_lakeflow, triggered, unscheduled')" "$RUNNER_TEMP/urbanflow-pipeline.json"
 
       # A fresh runner has no local DAB deployment state, so idempotency is proved by the separate
       # authenticated before/deploy/after plan sequence rather than a misleading CI plan.

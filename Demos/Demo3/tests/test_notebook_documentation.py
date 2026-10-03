@@ -190,7 +190,9 @@ def test_bronze_consumer_takes_its_storage_target_from_parameters() -> None:
 
 
 def test_job_passes_bundle_target_variables_to_the_notebook() -> None:
-    job = yaml.safe_load((PROJECT_ROOT / "resources" / "jobs.yml").read_text(encoding="utf-8"))
+    job = yaml.safe_load(
+        (PROJECT_ROOT / "resources" / "retired" / "component_jobs.yml").read_text(encoding="utf-8")
+    )
     definition = job["resources"]["jobs"]["urbanflow_bounded_stream_test"]
     defaults = {parameter["name"]: parameter["default"] for parameter in definition["parameters"]}
     assert defaults["catalog"] == "${var.catalog}"
@@ -205,7 +207,9 @@ def test_job_passes_bundle_target_variables_to_the_notebook() -> None:
 
 
 def test_phase2_job_is_one_unscheduled_dry_run_dag_on_existing_compute() -> None:
-    resource = yaml.safe_load((PROJECT_ROOT / "resources" / "jobs.yml").read_text(encoding="utf-8"))
+    resource = yaml.safe_load(
+        (PROJECT_ROOT / "resources" / "retired" / "component_jobs.yml").read_text(encoding="utf-8")
+    )
     job = resource["resources"]["jobs"]["urbanflow_silver_gold_test"]
     defaults = {parameter["name"]: parameter["default"] for parameter in job["parameters"]}
 
@@ -256,7 +260,8 @@ def test_phase3_jobs_are_unscheduled_and_fail_closed(
     job_name: str, gate: str, notebook: str
 ) -> None:
     """A deployed Job must not be able to run itself, and must do nothing by default."""
-    resource = yaml.safe_load((PROJECT_ROOT / "resources" / "jobs.yml").read_text(encoding="utf-8"))
+    retired = PROJECT_ROOT / "resources" / "retired" / "component_jobs.yml"
+    resource = yaml.safe_load(retired.read_text(encoding="utf-8"))
     job = resource["resources"]["jobs"][job_name]
     defaults = {parameter["name"]: parameter["default"] for parameter in job["parameters"]}
 
@@ -278,7 +283,9 @@ def test_phase3_jobs_are_unscheduled_and_fail_closed(
 
 def test_the_historical_notebook_wait_bound_fits_inside_its_task_timeout() -> None:
     """A wait that outlives its task is killed before the evidence report is written."""
-    resource = yaml.safe_load((PROJECT_ROOT / "resources" / "jobs.yml").read_text(encoding="utf-8"))
+    resource = yaml.safe_load(
+        (PROJECT_ROOT / "resources" / "retired" / "component_jobs.yml").read_text(encoding="utf-8")
+    )
     job = resource["resources"]["jobs"]["urbanflow_historical_trips_test"]
     defaults = {parameter["name"]: parameter["default"] for parameter in job["parameters"]}
 

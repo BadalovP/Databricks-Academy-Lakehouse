@@ -1,0 +1,555 @@
+{
+  "_note": "Full definitions, ACLs and run histories of the four component Jobs, captured immediately before their retirement on 2026-10-03. Each can be recreated from `settings` with `databricks jobs create --json`, or from resources/jobs.yml at commit 4feea31.",
+  "evidence_type": "urbanflow_retired_component_jobs",
+  "date": "2026-10-03",
+  "superseded_by": {
+    "job_id": 991496516229387,
+    "name": "[azure] UrbanFlow End-to-End",
+    "proven_by_runs": [
+      4222809815373,
+      284335864579341,
+      96337578882467
+    ]
+  },
+  "jobs": {
+    "404404108673495": {
+      "name": "[azure] urbanflow_bounded_stream_test",
+      "created_time": 1790709504225,
+      "settings": {
+        "deployment": {
+          "kind": "BUNDLE",
+          "metadata_file_path": "/Workspace/Users/parvinbadalov@softserve.academy/.bundle/demo3_urbanflow/azure/state/metadata.json"
+        },
+        "edit_mode": "UI_LOCKED",
+        "email_notifications": {},
+        "format": "MULTI_TASK",
+        "max_concurrent_runs": 1,
+        "name": "[azure] urbanflow_bounded_stream_test",
+        "parameters": [
+          {
+            "default": "false",
+            "name": "run_stream"
+          },
+          {
+            "default": "azure-secrets",
+            "name": "secret_scope"
+          },
+          {
+            "default": "NOT_APPROVED",
+            "name": "execution_id"
+          },
+          {
+            "default": "0",
+            "name": "expected_published_events"
+          },
+          {
+            "default": "0",
+            "name": "expected_source_last_updated"
+          },
+          {
+            "default": "earliest",
+            "name": "starting_offsets"
+          },
+          {
+            "default": "900",
+            "name": "stream_timeout_seconds"
+          },
+          {
+            "default": "dbr_dev",
+            "name": "catalog"
+          },
+          {
+            "default": "parvinbadalov_urbanflow",
+            "name": "schema"
+          },
+          {
+            "default": "urbanflow_landing",
+            "name": "volume"
+          }
+        ],
+        "queue": {
+          "enabled": true
+        },
+        "tags": {
+          "compute": "existing_shared_cluster",
+          "project": "urbanflow",
+          "safety": "requires_already_running_cluster"
+        },
+        "tasks": [
+          {
+            "disabled": false,
+            "email_notifications": {},
+            "existing_cluster_id": "0702-132442-toro5spu",
+            "notebook_task": {
+              "base_parameters": {
+                "catalog": "{{job.parameters.catalog}}",
+                "execution_id": "{{job.parameters.execution_id}}",
+                "expected_published_events": "{{job.parameters.expected_published_events}}",
+                "expected_source_last_updated": "{{job.parameters.expected_source_last_updated}}",
+                "run_stream": "{{job.parameters.run_stream}}",
+                "schema": "{{job.parameters.schema}}",
+                "secret_scope": "{{job.parameters.secret_scope}}",
+                "starting_offsets": "{{job.parameters.starting_offsets}}",
+                "stream_timeout_seconds": "{{job.parameters.stream_timeout_seconds}}",
+                "volume": "{{job.parameters.volume}}"
+              },
+              "notebook_path": "/Workspace/Users/parvinbadalov@softserve.academy/.bundle/demo3_urbanflow/azure/files/notebooks/03_eventhubs_to_bronze",
+              "source": "WORKSPACE"
+            },
+            "run_if": "ALL_SUCCESS",
+            "task_key": "bounded_event_hubs_stream",
+            "timeout_seconds": 0
+          }
+        ],
+        "timeout_seconds": 1200,
+        "webhook_notifications": {}
+      },
+      "acl": [
+        {
+          "principal": "CI service principal (repository variable AZURE_CLIENT_ID)",
+          "levels": [
+            "CAN_VIEW"
+          ]
+        },
+        {
+          "principal": "parvinbadalov@softserve.academy",
+          "levels": [
+            "IS_OWNER"
+          ]
+        },
+        {
+          "principal": "admins",
+          "levels": [
+            "CAN_MANAGE"
+          ]
+        }
+      ],
+      "runs": [
+        {
+          "run_id": 873010921866250,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "start_time": 1790711518684
+        },
+        {
+          "run_id": 908540927181738,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "start_time": 1790711319278
+        }
+      ]
+    },
+    "11834365763936": {
+      "name": "[azure] urbanflow_silver_gold_test",
+      "created_time": 1790724713419,
+      "settings": {
+        "deployment": {
+          "kind": "BUNDLE",
+          "metadata_file_path": "/Workspace/Users/parvinbadalov@softserve.academy/.bundle/demo3_urbanflow/azure/state/metadata.json"
+        },
+        "edit_mode": "UI_LOCKED",
+        "email_notifications": {},
+        "format": "MULTI_TASK",
+        "max_concurrent_runs": 1,
+        "name": "[azure] urbanflow_silver_gold_test",
+        "parameters": [
+          {
+            "default": "false",
+            "name": "run_transform"
+          },
+          {
+            "default": "{{job.run_id}}",
+            "name": "run_attempt_id"
+          },
+          {
+            "default": "urbanflow-20260929T195132Z-r3",
+            "name": "source_execution_id"
+          },
+          {
+            "default": "dbr_dev",
+            "name": "catalog"
+          },
+          {
+            "default": "parvinbadalov_urbanflow",
+            "name": "schema"
+          },
+          {
+            "default": "urbanflow_landing",
+            "name": "volume"
+          }
+        ],
+        "queue": {
+          "enabled": true
+        },
+        "tags": {
+          "compute": "existing_shared_cluster",
+          "phase": "silver_gold",
+          "project": "urbanflow",
+          "safety": "dry_run_by_default"
+        },
+        "tasks": [
+          {
+            "disabled": false,
+            "email_notifications": {},
+            "existing_cluster_id": "0702-132442-toro5spu",
+            "notebook_task": {
+              "base_parameters": {
+                "catalog": "{{job.parameters.catalog}}",
+                "run_attempt_id": "{{job.parameters.run_attempt_id}}",
+                "run_transform": "{{job.parameters.run_transform}}",
+                "schema": "{{job.parameters.schema}}",
+                "source_execution_id": "{{job.parameters.source_execution_id}}",
+                "volume": "{{job.parameters.volume}}"
+              },
+              "notebook_path": "/Workspace/Users/parvinbadalov@softserve.academy/.bundle/demo3_urbanflow/azure/files/notebooks/04_bronze_to_silver",
+              "source": "WORKSPACE"
+            },
+            "run_if": "ALL_SUCCESS",
+            "task_key": "bronze_to_silver",
+            "timeout_seconds": 600
+          },
+          {
+            "depends_on": [
+              {
+                "task_key": "bronze_to_silver"
+              }
+            ],
+            "disabled": false,
+            "email_notifications": {},
+            "existing_cluster_id": "0702-132442-toro5spu",
+            "notebook_task": {
+              "base_parameters": {
+                "catalog": "{{job.parameters.catalog}}",
+                "run_attempt_id": "{{job.parameters.run_attempt_id}}",
+                "run_transform": "{{job.parameters.run_transform}}",
+                "schema": "{{job.parameters.schema}}",
+                "source_execution_id": "{{job.parameters.source_execution_id}}",
+                "volume": "{{job.parameters.volume}}"
+              },
+              "notebook_path": "/Workspace/Users/parvinbadalov@softserve.academy/.bundle/demo3_urbanflow/azure/files/notebooks/05_silver_to_gold",
+              "source": "WORKSPACE"
+            },
+            "run_if": "ALL_SUCCESS",
+            "task_key": "silver_to_gold",
+            "timeout_seconds": 600
+          }
+        ],
+        "timeout_seconds": 1200,
+        "webhook_notifications": {}
+      },
+      "acl": [
+        {
+          "principal": "CI service principal (repository variable AZURE_CLIENT_ID)",
+          "levels": [
+            "CAN_VIEW"
+          ]
+        },
+        {
+          "principal": "parvinbadalov@softserve.academy",
+          "levels": [
+            "IS_OWNER"
+          ]
+        },
+        {
+          "principal": "admins",
+          "levels": [
+            "CAN_MANAGE"
+          ]
+        }
+      ],
+      "runs": [
+        {
+          "run_id": 180887598258786,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "start_time": 1790986469413
+        },
+        {
+          "run_id": 725768954237074,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "start_time": 1790892240954
+        },
+        {
+          "run_id": 240497605145949,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "start_time": 1790891273607
+        },
+        {
+          "run_id": 284553247546526,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "start_time": 1790725245776
+        },
+        {
+          "run_id": 244764181867554,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "start_time": 1790724830129
+        },
+        {
+          "run_id": 937836701866956,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "start_time": 1790724727628
+        }
+      ]
+    },
+    "974964732439608": {
+      "name": "[azure] urbanflow_historical_trips_test",
+      "created_time": 1790892507483,
+      "settings": {
+        "deployment": {
+          "kind": "BUNDLE",
+          "metadata_file_path": "/Workspace/Users/parvinbadalov@softserve.academy/.bundle/demo3_urbanflow/azure/state/metadata.json"
+        },
+        "edit_mode": "UI_LOCKED",
+        "email_notifications": {},
+        "format": "MULTI_TASK",
+        "max_concurrent_runs": 1,
+        "name": "[azure] urbanflow_historical_trips_test",
+        "parameters": [
+          {
+            "default": "false",
+            "name": "run_ingest"
+          },
+          {
+            "default": "{{job.run_id}}",
+            "name": "run_attempt_id"
+          },
+          {
+            "default": "NOT_APPROVED",
+            "name": "execution_id"
+          },
+          {
+            "default": "900",
+            "name": "stream_timeout_seconds"
+          },
+          {
+            "default": "dbr_dev",
+            "name": "catalog"
+          },
+          {
+            "default": "parvinbadalov_urbanflow",
+            "name": "schema"
+          },
+          {
+            "default": "urbanflow_landing",
+            "name": "volume"
+          },
+          {
+            "default": "",
+            "name": "landing_subdir"
+          }
+        ],
+        "queue": {
+          "enabled": true
+        },
+        "tags": {
+          "compute": "existing_shared_cluster",
+          "phase": "historical",
+          "project": "urbanflow",
+          "safety": "dry_run_by_default"
+        },
+        "tasks": [
+          {
+            "disabled": false,
+            "email_notifications": {},
+            "existing_cluster_id": "0702-132442-toro5spu",
+            "notebook_task": {
+              "base_parameters": {
+                "catalog": "{{job.parameters.catalog}}",
+                "execution_id": "{{job.parameters.execution_id}}",
+                "landing_subdir": "{{job.parameters.landing_subdir}}",
+                "run_attempt_id": "{{job.parameters.run_attempt_id}}",
+                "run_ingest": "{{job.parameters.run_ingest}}",
+                "schema": "{{job.parameters.schema}}",
+                "stream_timeout_seconds": "{{job.parameters.stream_timeout_seconds}}",
+                "volume": "{{job.parameters.volume}}"
+              },
+              "notebook_path": "/Workspace/Users/parvinbadalov@softserve.academy/.bundle/demo3_urbanflow/azure/files/notebooks/06_historical_trips",
+              "source": "WORKSPACE"
+            },
+            "run_if": "ALL_SUCCESS",
+            "task_key": "historical_trips_autoloader",
+            "timeout_seconds": 1500
+          }
+        ],
+        "timeout_seconds": 1800,
+        "webhook_notifications": {}
+      },
+      "acl": [
+        {
+          "principal": "CI service principal (repository variable AZURE_CLIENT_ID)",
+          "levels": [
+            "CAN_VIEW"
+          ]
+        },
+        {
+          "principal": "parvinbadalov@softserve.academy",
+          "levels": [
+            "IS_OWNER"
+          ]
+        },
+        {
+          "principal": "admins",
+          "levels": [
+            "CAN_MANAGE"
+          ]
+        }
+      ],
+      "runs": [
+        {
+          "run_id": 388486903530489,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "start_time": 1790892687277
+        },
+        {
+          "run_id": 848541476068172,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "start_time": 1790892511186
+        }
+      ]
+    },
+    "860666167537092": {
+      "name": "[azure] urbanflow_weather_enrichment_test",
+      "created_time": 1790892890333,
+      "settings": {
+        "deployment": {
+          "kind": "BUNDLE",
+          "metadata_file_path": "/Workspace/Users/parvinbadalov@softserve.academy/.bundle/demo3_urbanflow/azure/state/metadata.json"
+        },
+        "edit_mode": "UI_LOCKED",
+        "email_notifications": {},
+        "format": "MULTI_TASK",
+        "max_concurrent_runs": 1,
+        "name": "[azure] urbanflow_weather_enrichment_test",
+        "parameters": [
+          {
+            "default": "false",
+            "name": "run_enrichment"
+          },
+          {
+            "default": "{{job.run_id}}",
+            "name": "run_attempt_id"
+          },
+          {
+            "default": "NOT_APPROVED",
+            "name": "execution_id"
+          },
+          {
+            "default": "urbanflow-hist-devsample40-20261002T0010Z",
+            "name": "source_execution_id"
+          },
+          {
+            "default": "sample_json",
+            "name": "weather_source"
+          },
+          {
+            "default": "open_meteo_archive_202401.sample.json",
+            "name": "weather_sample_file"
+          },
+          {
+            "default": "2024-01-24",
+            "name": "start_date"
+          },
+          {
+            "default": "2024-01-25",
+            "name": "end_date"
+          },
+          {
+            "default": "40.7128",
+            "name": "latitude"
+          },
+          {
+            "default": "-74.0060",
+            "name": "longitude"
+          },
+          {
+            "default": "dbr_dev",
+            "name": "catalog"
+          },
+          {
+            "default": "parvinbadalov_urbanflow",
+            "name": "schema"
+          },
+          {
+            "default": "urbanflow_landing",
+            "name": "volume"
+          }
+        ],
+        "queue": {
+          "enabled": true
+        },
+        "tags": {
+          "compute": "existing_shared_cluster",
+          "phase": "weather",
+          "project": "urbanflow",
+          "safety": "dry_run_by_default"
+        },
+        "tasks": [
+          {
+            "disabled": false,
+            "email_notifications": {},
+            "existing_cluster_id": "0702-132442-toro5spu",
+            "notebook_task": {
+              "base_parameters": {
+                "catalog": "{{job.parameters.catalog}}",
+                "end_date": "{{job.parameters.end_date}}",
+                "execution_id": "{{job.parameters.execution_id}}",
+                "latitude": "{{job.parameters.latitude}}",
+                "longitude": "{{job.parameters.longitude}}",
+                "run_attempt_id": "{{job.parameters.run_attempt_id}}",
+                "run_enrichment": "{{job.parameters.run_enrichment}}",
+                "schema": "{{job.parameters.schema}}",
+                "source_execution_id": "{{job.parameters.source_execution_id}}",
+                "start_date": "{{job.parameters.start_date}}",
+                "volume": "{{job.parameters.volume}}",
+                "weather_sample_file": "{{job.parameters.weather_sample_file}}",
+                "weather_source": "{{job.parameters.weather_source}}"
+              },
+              "notebook_path": "/Workspace/Users/parvinbadalov@softserve.academy/.bundle/demo3_urbanflow/azure/files/notebooks/07_weather_enrichment",
+              "source": "WORKSPACE"
+            },
+            "run_if": "ALL_SUCCESS",
+            "task_key": "weather_enrichment",
+            "timeout_seconds": 600
+          }
+        ],
+        "timeout_seconds": 900,
+        "webhook_notifications": {}
+      },
+      "acl": [
+        {
+          "principal": "CI service principal (repository variable AZURE_CLIENT_ID)",
+          "levels": [
+            "CAN_VIEW"
+          ]
+        },
+        {
+          "principal": "parvinbadalov@softserve.academy",
+          "levels": [
+            "IS_OWNER"
+          ]
+        },
+        {
+          "principal": "admins",
+          "levels": [
+            "CAN_MANAGE"
+          ]
+        }
+      ],
+      "runs": [
+        {
+          "run_id": 472557041765891,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "start_time": 1790892894612
+        }
+      ]
+    }
+  }
+}

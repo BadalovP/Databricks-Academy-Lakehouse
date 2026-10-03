@@ -1,0 +1,179 @@
+{
+  "principal": "the bundle's workspace_user",
+  "statements": {
+    "setup": [
+      "CREATE SCHEMA IF NOT EXISTS dbr_dev.parvinbadalov_urbanflow_governance_demo COMMENT 'UrbanFlow Demo3: isolated, disposable governance demonstration. Copies of public data only; dropped after evidence.'",
+      "CREATE OR REPLACE TABLE dbr_dev.parvinbadalov_urbanflow_governance_demo.station_reference AS SELECT station_id, station_short_name, station_name, latitude, longitude, capacity, CASE WHEN latitude >= 40.75 THEN 'NORTH' ELSE 'SOUTH' END AS dispatch_zone FROM dbr_dev.parvinbadalov_urbanflow.dim_station_development_sample",
+      "CREATE OR REPLACE TABLE dbr_dev.parvinbadalov_urbanflow_governance_demo.trips_slice AS SELECT ride_id, rideable_type, started_at, ended_at, start_station_id, member_casual FROM dbr_dev.parvinbadalov_urbanflow.silver_historical_trips WHERE execution_id = 'urbanflow-hist-202401-full-gh-37140618864-1' ORDER BY ride_id LIMIT 1000",
+      "CREATE OR REPLACE TABLE dbr_dev.parvinbadalov_urbanflow_governance_demo.zone_access (user_email STRING, dispatch_zone STRING)",
+      "CREATE OR REPLACE FUNCTION dbr_dev.parvinbadalov_urbanflow_governance_demo.zone_row_filter(zone STRING) RETURNS BOOLEAN COMMENT 'A dispatcher sees only zones mapped to them in zone_access.' RETURN EXISTS (SELECT 1 FROM dbr_dev.parvinbadalov_urbanflow_governance_demo.zone_access a WHERE a.user_email = current_user() AND (a.dispatch_zone = zone OR a.dispatch_zone = 'ALL'))",
+      "CREATE OR REPLACE FUNCTION dbr_dev.parvinbadalov_urbanflow_governance_demo.coordinate_mask(value DOUBLE) RETURNS DOUBLE COMMENT 'Two decimal places (about 1 km) unless in urbanflow_admins.' RETURN CASE WHEN is_account_group_member('urbanflow_admins') THEN value ELSE ROUND(value, 2) END",
+      "CREATE OR REPLACE FUNCTION dbr_dev.parvinbadalov_urbanflow_governance_demo.ride_id_mask(value STRING) RETURNS STRING COMMENT 'Stable one-way SHA-256 hash unless in urbanflow_admins.' RETURN CASE WHEN is_account_group_member('urbanflow_admins') THEN value ELSE SHA2(value, 256) END"
+    ],
+    "apply": [
+      "ALTER TABLE dbr_dev.parvinbadalov_urbanflow_governance_demo.station_reference SET ROW FILTER dbr_dev.parvinbadalov_urbanflow_governance_demo.zone_row_filter ON (dispatch_zone)",
+      "ALTER TABLE dbr_dev.parvinbadalov_urbanflow_governance_demo.station_reference ALTER COLUMN latitude SET MASK dbr_dev.parvinbadalov_urbanflow_governance_demo.coordinate_mask",
+      "ALTER TABLE dbr_dev.parvinbadalov_urbanflow_governance_demo.station_reference ALTER COLUMN longitude SET MASK dbr_dev.parvinbadalov_urbanflow_governance_demo.coordinate_mask",
+      "ALTER TABLE dbr_dev.parvinbadalov_urbanflow_governance_demo.trips_slice ALTER COLUMN ride_id SET MASK dbr_dev.parvinbadalov_urbanflow_governance_demo.ride_id_mask"
+    ],
+    "rollback": [
+      "ALTER TABLE dbr_dev.parvinbadalov_urbanflow_governance_demo.station_reference DROP ROW FILTER",
+      "ALTER TABLE dbr_dev.parvinbadalov_urbanflow_governance_demo.station_reference ALTER COLUMN latitude DROP MASK",
+      "ALTER TABLE dbr_dev.parvinbadalov_urbanflow_governance_demo.station_reference ALTER COLUMN longitude DROP MASK",
+      "ALTER TABLE dbr_dev.parvinbadalov_urbanflow_governance_demo.trips_slice ALTER COLUMN ride_id DROP MASK"
+    ],
+    "cleanup": [
+      "DROP SCHEMA dbr_dev.parvinbadalov_urbanflow_governance_demo CASCADE"
+    ]
+  },
+  "before": {
+    "column_masks": [],
+    "row_filters": [],
+    "validated_schema_masks_and_filters": [
+      {
+        "masks": "0",
+        "filters": "0"
+      }
+    ],
+    "catalog_grants_to_account_users": [
+      {
+        "grantee": "account users",
+        "privilege_type": "ALL_PRIVILEGES"
+      }
+    ]
+  },
+  "raw_unpoliced": {
+    "stations": [
+      {
+        "dispatch_zone": "NORTH",
+        "stations": "12",
+        "min_lat": "40.752762088742045",
+        "max_lat": "40.817245"
+      },
+      {
+        "dispatch_zone": "SOUTH",
+        "stations": "28",
+        "min_lat": "40.642031",
+        "max_lat": "40.74919"
+      }
+    ],
+    "trips": [
+      {
+        "ride_id": "0009E1BE75382466"
+      },
+      {
+        "ride_id": "0015BD4E0EE50B40"
+      }
+    ]
+  },
+  "after_apply": {
+    "column_masks": [
+      {
+        "table_name": "station_reference",
+        "column_name": "latitude",
+        "mask_name": "dbr_dev.parvinbadalov_urbanflow_governance_demo.coordinate_mask"
+      },
+      {
+        "table_name": "station_reference",
+        "column_name": "longitude",
+        "mask_name": "dbr_dev.parvinbadalov_urbanflow_governance_demo.coordinate_mask"
+      },
+      {
+        "table_name": "trips_slice",
+        "column_name": "ride_id",
+        "mask_name": "dbr_dev.parvinbadalov_urbanflow_governance_demo.ride_id_mask"
+      }
+    ],
+    "row_filters": [
+      {
+        "table_name": "station_reference",
+        "filter_name": "dbr_dev.parvinbadalov_urbanflow_governance_demo.zone_row_filter",
+        "target_columns": "dispatch_zone"
+      }
+    ],
+    "validated_schema_masks_and_filters": [
+      {
+        "masks": "0",
+        "filters": "0"
+      }
+    ],
+    "catalog_grants_to_account_users": [
+      {
+        "grantee": "account users",
+        "privilege_type": "ALL_PRIVILEGES"
+      }
+    ]
+  },
+  "filtered_no_mapping": [],
+  "filtered_south_only": [
+    {
+      "dispatch_zone": "SOUTH",
+      "stations": "28",
+      "min_lat": "40.64",
+      "max_lat": "40.75"
+    }
+  ],
+  "allowed_all_zones_coordinates_masked": [
+    {
+      "dispatch_zone": "NORTH",
+      "stations": "12",
+      "min_lat": "40.75",
+      "max_lat": "40.82"
+    },
+    {
+      "dispatch_zone": "SOUTH",
+      "stations": "28",
+      "min_lat": "40.64",
+      "max_lat": "40.75"
+    }
+  ],
+  "ride_id_masked": [
+    {
+      "ride_id": "15e12743fed678c00d6916e92dd6919ac4532bf320412fe1518322f24f8bdd1d"
+    },
+    {
+      "ride_id": "9392940d42e6e3a91952c8c14a265167420994e123b49d11c66629f1d5dda6e3"
+    }
+  ],
+  "after_rollback": {
+    "column_masks": [],
+    "row_filters": [],
+    "validated_schema_masks_and_filters": [
+      {
+        "masks": "0",
+        "filters": "0"
+      }
+    ],
+    "catalog_grants_to_account_users": [
+      {
+        "grantee": "account users",
+        "privilege_type": "ALL_PRIVILEGES"
+      }
+    ]
+  },
+  "after_rollback_view": {
+    "stations": [
+      {
+        "dispatch_zone": "NORTH",
+        "stations": "12",
+        "min_lat": "40.752762088742045",
+        "max_lat": "40.817245"
+      },
+      {
+        "dispatch_zone": "SOUTH",
+        "stations": "28",
+        "min_lat": "40.642031",
+        "max_lat": "40.74919"
+      }
+    ],
+    "trips": [
+      {
+        "ride_id": "0009E1BE75382466"
+      },
+      {
+        "ride_id": "0015BD4E0EE50B40"
+      }
+    ]
+  },
+  "demo_schema_exists_after_cleanup": false
+}

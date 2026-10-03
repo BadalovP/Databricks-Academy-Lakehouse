@@ -80,29 +80,85 @@ FROM dbr_dev.parvinbadalov_urbanflow.silver_station_status;
 
 -- 6. Historical trip quality, by outcome. Same reconciliation discipline as station status.
 SELECT
-  (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow.silver_historical_trips)    AS valid_trips,
-  (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow.quarantine_historical_trips) AS quarantined_trips,
-  (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow.duplicate_historical_trips)  AS duplicate_trips,
-  (SELECT COUNT(DISTINCT ride_id) FROM dbr_dev.parvinbadalov_urbanflow.silver_historical_trips)
-                                                                    AS distinct_ride_ids,
-  (SELECT COUNT(*) = COUNT(DISTINCT ride_id)
-   FROM dbr_dev.parvinbadalov_urbanflow.silver_historical_trips)    AS ride_ids_unique;
+  :historical_execution_id                                          AS execution_id,
+  (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow.silver_historical_trips
+   WHERE execution_id = :historical_execution_id)                   AS valid_trips,
+  (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow.quarantine_historical_trips
+   WHERE execution_id = :historical_execution_id)                   AS quarantined_trips,
+  (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow.duplicate_historical_trips
+   WHERE execution_id = :historical_execution_id)                   AS duplicate_trips,
+  (SELECT COUNT(DISTINCT ride_id) FROM dbr_dev.parvinbadalov_urbanflow.silver_historical_trips
+   WHERE execution_id = :historical_execution_id)                   AS distinct_ride_ids,
+  (SELECT COUNT(*) = COUNT(DISTINCT ride_id) FROM dbr_dev.parvinbadalov_urbanflow.silver_historical_trips
+   WHERE execution_id = :historical_execution_id)                   AS ride_ids_unique;
 
--- 7. Lakeflow pipeline health from its own event log. Replace the pipeline ID when the
---    pipeline has actually been created; it is not deployed at the time of writing.
--- SELECT timestamp, level, event_type, message
--- FROM event_log(TABLE(dbr_dev.parvinbadalov_urbanflow.urbanflow_pipeline))
--- WHERE level IN ('WARN', 'ERROR')
--- ORDER BY timestamp DESC
--- LIMIT 50;
+-- 7. Historical quarantine reasons for ONE execution. Every quarantined trip carries at least
+--    one named rule, so the reasons explain the whole quarantine rather than a sample of it.
+SELECT
+  execution_id,
+  rule                                                              AS failed_rule,
+  COUNT(*)                                                          AS trips_failing
+FROM dbr_dev.parvinbadalov_urbanflow.quarantine_historical_trips
+LATERAL VIEW EXPLODE(failed_rules) exploded AS rule
+WHERE execution_id = :historical_execution_id
+GROUP BY execution_id, rule
+ORDER BY trips_failing DESC;
 
--- 8. Expectation results from the pipeline event log, once the pipeline exists. Each
---    expectation declared in pipeline/silver.py and pipeline/gold.py reports passed and failed
---    record counts here, which is how a declarative quality rule becomes auditable evidence.
--- SELECT
---   timestamp,
---   details:flow_progress.data_quality.expectations                 AS expectations
--- FROM event_log(TABLE(dbr_dev.parvinbadalov_urbanflow.urbanflow_pipeline))
--- WHERE event_type = 'flow_progress'
---   AND details:flow_progress.data_quality IS NOT NULL
--- ORDER BY timestamp DESC;
+-- 8. Lakeflow expectation results from the isolated pipeline's own event log. Each expectation
+--    declared in pipeline/silver.py and pipeline/gold.py reports passed and failed record counts,
+--    which is how a declarative quality rule becomes auditable evidence. The pipeline writes only
+--    to the isolated schema; this reads its event log and nothing else.
+SELECT
+  expectation.dataset                                               AS dataset,
+  expectation.name                                                  AS expectation,
+  SUM(expectation.passed_records)                                   AS passed_records,
+  SUM(expectation.failed_records)                                   AS failed_records
+FROM (
+  SELECT EXPLODE(FROM_JSON(
+           details:flow_progress.data_quality.expectations,
+           'ARRAY<STRUCT<name: STRING, dataset: STRING, passed_records: BIGINT, failed_records: BIGINT>>'
+         )) AS expectation
+  FROM EVENT_LOG(TABLE(dbr_dev.parvinbadalov_urbanflow_lakeflow.silver_station_status))
+  WHERE event_type = 'flow_progress'
+    AND details:flow_progress.data_quality.expectations IS NOT NULL
+    AND origin.update_id = (
+      SELECT origin.update_id
+      FROM EVENT_LOG(TABLE(dbr_dev.parvinbadalov_urbanflow_lakeflow.silver_station_status))
+      WHERE event_type = 'update_progress' AND details:update_progress.state = 'COMPLETED'
+      ORDER BY timestamp DESC LIMIT 1
+    )
+)
+GROUP BY ALL
+ORDER BY dataset, expectation;
+
+-- 9. Monthly historical reconciliation and the trip-weighted reference match, for ONE execution.
+--    Bronze carries no execution column, so each source namespace lands in its own Bronze table
+--    with one owning execution (notebook 06 enforces that before streaming). This statement reads
+--    the January 2024 namespace's table, so it must only be paired with that namespace's execution.
+--    The match rate is weighted by trips, not by station-day rows: it is the share of rides that
+--    start at one of the 40 stations in the DEVELOPMENT REFERENCE DIMENSION, i.e. coverage of
+--    that dimension, not a data-quality measure.
+SELECT
+  :historical_execution_id                                          AS execution_id,
+  landed_rows,
+  valid_trips,
+  quarantined_trips,
+  duplicate_trips,
+  landed_rows = valid_trips + quarantined_trips + duplicate_trips   AS reconciles,
+  matched_trips,
+  ROUND(100.0 * matched_trips / NULLIF(valid_trips, 0), 2)          AS reference_coverage_percent,
+  'coverage of the 40-station development reference dimension, not data quality' AS reading_note
+FROM (
+  SELECT
+    (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow.bronze_historical_trips_202401_full)
+                                                                    AS landed_rows,
+    (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow.silver_historical_trips
+     WHERE execution_id = :historical_execution_id)                 AS valid_trips,
+    (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow.quarantine_historical_trips
+     WHERE execution_id = :historical_execution_id)                 AS quarantined_trips,
+    (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow.duplicate_historical_trips
+     WHERE execution_id = :historical_execution_id)                 AS duplicate_trips,
+    (SELECT SUM(trips_started) FROM dbr_dev.parvinbadalov_urbanflow.gold_daily_trip_demand
+     WHERE execution_id = :historical_execution_id AND start_station_uuid IS NOT NULL)
+                                                                    AS matched_trips
+);

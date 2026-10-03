@@ -41,7 +41,9 @@ def _assert_no_cluster_mutation(client: Mock) -> None:
 
 
 def test_notebook_job_uses_existing_cluster_and_defaults_to_dry_run() -> None:
-    resource = yaml.safe_load((PROJECT_ROOT / "resources/jobs.yml").read_text(encoding="utf-8"))
+    resource = yaml.safe_load(
+        (PROJECT_ROOT / "resources/retired/component_jobs.yml").read_text(encoding="utf-8")
+    )
     job = resource["resources"]["jobs"]["urbanflow_bounded_stream_test"]
     task = job["tasks"][0]
 
