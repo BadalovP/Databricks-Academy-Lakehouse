@@ -11,12 +11,18 @@ on:
       - "Demos/Demo3/**"
       - ".github/workflows/demo3_urbanflow.yml"
   workflow_dispatch:
+    inputs:
+      run_live_control_plane:
+        description: Run approval-gated read-only Azure Databricks validation
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
 
 concurrency:
-  group: demo3-urbanflow-static-${{ github.event_name }}-${{ github.ref }}
+  group: demo3-urbanflow-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -46,5 +52,78 @@ jobs:
       - name: Validate bundle structure without workspace authentication
         run: python scripts/validate_bundle.py
 
-      # This workflow deliberately has no deploy or run job. A future live
-      # job will require an approval-protected environment and explicit input.
+  approve-live-control-plane:
+    name: Approve UrbanFlow Live Control-Plane Validation
+    if: github.event_name == 'workflow_dispatch' && inputs.run_live_control_plane == true
+    needs: static-validation
+    runs-on: ubuntu-latest
+    environment: azure-release-approval
+    steps:
+      - name: Record approval
+        run: echo "Read-only UrbanFlow Azure control-plane validation approved."
+
+  live-control-plane-validation:
+    name: Validate UrbanFlow Azure Control Plane
+    if: github.event_name == 'workflow_dispatch' && inputs.run_live_control_plane == true
+    needs: approve-live-control-plane
+    runs-on: ubuntu-latest
+    environment: azure-prod
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: Demos/Demo3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - uses: databricks/setup-cli@main
+      - name: Verify pinned workspace and authentication
+        env:
+          DATABRICKS_AUTH_TYPE: azure-cli
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_host="https://adb-7405604503619901.1.azuredatabricks.net"
+          [[ -n "${DATABRICKS_HOST:-}" ]] || { echo "::error::DATABRICKS_AZURE_HOST is required."; exit 1; }
+          [[ "${DATABRICKS_HOST%/}" == "$expected_host" ]] || {
+            echo "::error::Resolved host does not match the pinned UrbanFlow Azure workspace."
+            exit 1
+          }
+          databricks current-user me --output json > "$RUNNER_TEMP/urbanflow-current-user.json"
+          python -c "import json, pathlib; p=pathlib.Path('$RUNNER_TEMP/urbanflow-current-user.json'); u=json.loads(p.read_text())['userName']; print(f'Authenticated Databricks identity: {u}')"
+      - name: Validate unchanged Job bundle and discover owned resources
+        env:
+          DATABRICKS_AUTH_TYPE: azure-cli
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          databricks bundle validate -t azure
+          plan_output="$(databricks bundle plan -t azure \
+            --select jobs.urbanflow_bounded_stream_test,jobs.urbanflow_silver_gold_test,jobs.urbanflow_historical_trips_test,jobs.urbanflow_weather_enrichment_test)"
+          printf '%s\n' "$plan_output"
+          grep -Fq "Plan: 0 to add, 0 to change, 0 to delete, 4 unchanged" <<< "$plan_output"
+
+          while IFS='|' read -r job_id expected_name; do
+            output="$RUNNER_TEMP/urbanflow-job-$job_id.json"
+            databricks jobs get "$job_id" --output json > "$output"
+            python -c "import json,sys; d=json.load(open(sys.argv[1])); assert d['settings']['name']==sys.argv[2]; assert {t['existing_cluster_id'] for t in d['settings']['tasks']}=={'0702-132442-toro5spu'}; print(f\"Verified Job {d['job_id']}: {d['settings']['name']}\")" "$output" "$expected_name"
+          done <<'JOBS'
+          404404108673495|[azure] urbanflow_bounded_stream_test
+          11834365763936|[azure] urbanflow_silver_gold_test
+          974964732439608|[azure] urbanflow_historical_trips_test
+          860666167537092|[azure] urbanflow_weather_enrichment_test
+          JOBS
+
+          databricks pipelines list-pipelines --filter "name LIKE '%urbanflow%'" --output json \
+            > "$RUNNER_TEMP/urbanflow-pipelines.json"
+          python -c "import json, pathlib; p=pathlib.Path('$RUNNER_TEMP/urbanflow-pipelines.json'); pipelines=json.loads(p.read_text()); assert pipelines == [], f'Unexpected UrbanFlow pipelines: {pipelines}'; print('Verified: no deployed UrbanFlow pipeline.')"
+
+      # This live path performs only authentication, bundle validation/plan, and resource reads.
+      # It has no deploy, run, cluster lifecycle, pipeline update, or data-plane command.

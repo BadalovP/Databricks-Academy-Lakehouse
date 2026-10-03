@@ -29,17 +29,40 @@ def test_readme_contains_five_balanced_mermaid_diagrams() -> None:
     assert len(diagrams) == 5
 
 
-def test_static_workflow_has_no_cloud_execution_step() -> None:
+def test_workflow_keeps_live_control_plane_validation_manually_gated_and_read_only() -> None:
     workflow = (REPOSITORY_ROOT / ".github/workflows/demo3_urbanflow.yml").read_text(
         encoding="utf-8"
     )
     forbidden = (
-        "azure/login",
         "databricks bundle deploy",
         "databricks bundle run",
         "databricks jobs run",
         "databricks pipelines start-update",
+        "databricks clusters start",
+        "databricks clusters restart",
+        "databricks clusters resize",
+        "databricks clusters delete",
+        "DATABRICKS_AZURE_TOKEN",
+        "${{ secrets.",
     )
     for command in forbidden:
         assert command not in workflow
+
     assert "python scripts/validate_bundle.py" in workflow
+    assert "run_live_control_plane" in workflow
+    assert (
+        workflow.count(
+            "github.event_name == 'workflow_dispatch' && inputs.run_live_control_plane == true"
+        )
+        == 2
+    )
+    assert "environment: azure-release-approval" in workflow
+    assert "needs: approve-live-control-plane" in workflow
+    assert "environment: azure-prod" in workflow
+    assert "azure/login@v2" in workflow
+    assert "databricks current-user me" in workflow
+    assert "databricks bundle validate -t azure" in workflow
+    assert "databricks bundle plan -t azure" in workflow
+    assert "databricks jobs get" in workflow
+    assert "databricks pipelines list-pipelines" in workflow
+    assert "Plan: 0 to add, 0 to change, 0 to delete, 4 unchanged" in workflow
