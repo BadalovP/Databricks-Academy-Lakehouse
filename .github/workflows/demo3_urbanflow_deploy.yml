@@ -214,17 +214,10 @@ jobs:
           run_once() {
             local label="$1"
             local token="urbanflow-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${label}"
-            python - "$JOB_ID" "$token" "$RUNNER_TEMP/run-params.json" "$RUNNER_TEMP/${label}-request.json" <<'PY'
-            import json, sys
-            job_id, token, params_path, out_path = sys.argv[1:5]
-            with open(params_path, encoding="utf-8") as handle:
-                params = json.load(handle)
-            # job_id and idempotency_token belong in the request body. Passing job_id positionally
-            # alongside --json is rejected by the CLI: "no positional arguments are allowed".
-            body = {"job_id": int(job_id), "idempotency_token": token, "job_parameters": params}
-            with open(out_path, "w", encoding="utf-8") as handle:
-                json.dump(body, handle)
-            PY
+            # job_id and idempotency_token are body fields: passing job_id positionally alongside
+            # --json is rejected by the CLI. Built with python -c rather than a heredoc, because a
+            # heredoc inside a function body needs its terminator unindented at column 0.
+            python -c 'import json,sys; json.dump({"job_id": int(sys.argv[1]), "idempotency_token": sys.argv[2], "job_parameters": json.load(open(sys.argv[3], encoding="utf-8"))}, open(sys.argv[4], "w", encoding="utf-8"))' "$JOB_ID" "$token" "$RUNNER_TEMP/run-params.json" "$RUNNER_TEMP/${label}-request.json"
             databricks jobs run-now --json @"$RUNNER_TEMP/${label}-request.json" --no-wait --output json > "$RUNNER_TEMP/${label}-submitted.json"
             local run_id
             run_id=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["run_id"])' "$RUNNER_TEMP/${label}-submitted.json")
