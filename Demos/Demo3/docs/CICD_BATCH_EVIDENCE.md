@@ -80,7 +80,7 @@ by the separate authenticated before/deploy/after sequence in section 2 instead.
 test now asserts `databricks bundle plan` is **absent** from the workflow, so the mistake cannot
 return quietly.
 
-## 5. Corrected workflow 37083109424 - PARTIAL, and still failing
+## 5. Workflow 37083109424 - PARTIAL, blocked on a Job ACL (since resolved, see section 9)
 
 Merged PR #51 (main `f5011fa`) and dispatched exactly one corrected run.
 
@@ -119,8 +119,9 @@ job 404404108673495 access control list
 So the service principal can authenticate and validate the bundle, because those need only
 workspace access, but it cannot *read* a Job it has no ACL on.
 
-**This is not a GitHub-side defect, so it was not retried.** It is a real Databricks permission
-fact, and fixing it means changing a permission - which this batch is not authorized to do.
+**This was not a GitHub-side defect, so it was not retried.** It was a real Databricks permission
+fact, and fixing it meant changing a permission - which required separate approval. That approval
+was given and the fix is recorded in section 9.
 
 ### Worth noting: the failure is partly good news
 
@@ -128,7 +129,7 @@ A CI principal that could already read everything would be a *worse* setup. This
 evidence that the pipeline authenticates as a distinct, least-privileged identity rather than
 reusing a developer's credentials. The gap is narrow and the fix is correspondingly small.
 
-### The proposed fix, for separate approval
+### The fix, approved and applied - see section 9 for the result
 
 Grant the CI service principal `CAN_VIEW` - read-only, cannot run or modify - on the four Jobs:
 
@@ -200,3 +201,82 @@ a failed workflow is precisely the kind of overclaiming this project avoids.
 
 The Jobs API row's *pipeline* trigger half also remains unproven, for the simple reason that no
 pipeline exists to trigger.
+
+## 9. The ACL fix and the successful corrected run - 2026-10-03
+
+### Pre-change ACLs, read before touching anything
+
+All four Jobs were identical, which is itself worth noting: a divergence would have meant
+something else had been editing them.
+
+```
+jobs 404404108673495, 11834365763936, 974964732439608, 860666167537092
+  parvinbadalov@softserve.academy  ->  ['IS_OWNER']
+  admins                           ->  ['CAN_MANAGE']   (inherited)
+  CI service principal             ->  absent
+```
+
+The repository variable `AZURE_CLIENT_ID` resolves to the workspace service principal
+`github-lab08-travelops` (active). Worth stating plainly, because it affected the decision: that
+principal is **shared with Lab 8's CI**, not UrbanFlow-specific, so the grant also gives Lab 8's
+workflows read visibility of these four Jobs. `CAN_VIEW` cannot run or modify anything and the
+grant is scoped to four objects, so the blast radius is small - but it is cross-project, which is
+why it was raised for an explicit decision rather than treated as a detail. A dedicated UrbanFlow
+service principal would be tighter; creating one needs a new Entra app, which tenant policy has
+previously refused.
+
+### The mutation
+
+Exactly four operations, each `databricks permissions update` - a **PATCH**, which adds to an ACL
+rather than replacing it. `databricks permissions set` was deliberately not used: it replaces the
+whole ACL and could have stripped ownership.
+
+The request body was built programmatically and asserted before any call: exactly one entry, one
+principal, `permission_level: CAN_VIEW`, and no other fields. No `CAN_MANAGE_RUN`, no
+`CAN_MANAGE`, no ownership change.
+
+### Post-change ACLs, read back immediately after each patch
+
+```
+all four jobs
+  CI service principal (AZURE_CLIENT_ID)  ->  ['CAN_VIEW']
+  parvinbadalov@softserve.academy         ->  ['IS_OWNER']     preserved
+  admins                                  ->  ['CAN_MANAGE']   preserved
+```
+
+Each read-back asserted all three conditions and would have aborted the loop on any mismatch. All
+four returned OK, so owner and admin access are provably intact.
+
+### The successful corrected run
+
+| Fact | Value |
+|---|---|
+| Workflow run | **`37084965415`** on main `bb105cb` |
+| Static CI | SUCCESS |
+| Gate | `azure-release-approval`, env id `22307333695`, reviewer `BadalovP`, `wait_timer: 0` |
+| Proof auth had not begun | at WAITING, the live Azure job was **not instantiated** (count 0) |
+| Approval | deployment **`6821457122`**, sha `bb105cb` |
+| Azure OIDC login | SUCCESS |
+| Databricks identity | SUCCESS |
+| `bundle validate -t azure` | SUCCESS - "Validation OK!" |
+| Four `jobs get` reads | **SUCCESS**, each verified by name |
+| Pipelines | "Verified: no deployed UrbanFlow pipeline." |
+| **Overall** | **SUCCESS** |
+
+The four verified lines, straight from the run log:
+
+```
+Verified Job 404404108673495: [azure] urbanflow_bounded_stream_test
+Verified Job 11834365763936: [azure] urbanflow_silver_gold_test
+Verified Job 974964732439608: [azure] urbanflow_historical_trips_test
+Verified Job 860666167537092: [azure] urbanflow_weather_enrichment_test
+Verified: no deployed UrbanFlow pipeline.
+```
+
+No Databricks Job was submitted, nothing was deployed, no `bundle plan` ran in CI, and no data
+workload executed. GP1's lifecycle was not touched.
+
+### Coverage effect
+
+`CI integration` is promoted to `Validated live` on this run. That makes four promotions in this
+batch and leaves **3** rows `Pending live`.

@@ -38,8 +38,13 @@ and both status distributions matched. Great Expectations passed 10/10 Silver an
 historical-sample expectations with zero unexpected rows. See
 [the dated evidence](../evidence/BATCH_A_READ_VALIDATION.md).
 
-**Current totals, 71 requirement rows:** **22** `Validated live`, 42 `Implemented locally`,
-3 `Discovered read-only`, **4** `Pending live`, 0 `Blocked`.
+**Current totals, 71 requirement rows:** **23** `Validated live`, 42 `Implemented locally`,
+3 `Discovered read-only`, **3** `Pending live`, 0 `Blocked`.
+
+**CI/CD batch completed 2026-10-03.** Four rows promoted on live evidence: idempotent
+deployment and approvals, post-deploy validation, the Jobs API trigger, and - after the ACL
+fix - CI integration. See [CICD_BATCH_EVIDENCE.md](CICD_BATCH_EVIDENCE.md) for run IDs, the
+pre- and post-change ACLs, and the independent checks.
 
 **CI/CD batch, 2026-10-03.** Three rows promoted on live evidence - idempotent deployment and
 approvals, post-deploy validation, and the Jobs API trigger. See
@@ -135,7 +140,7 @@ full-scale one.
 | 9 | Explicit polling/timeouts/errors | Generic bounded polling and domain errors | monitoring/client/tests | Unit tests | Implemented locally |
 | 9 | JSON reports | Producer, Bronze, and offline end-to-end reconciliation reports | CLI / `reporting.py` / runbook | Offline tests; live report pending | Implemented locally |
 | 9 | Termination verification | Exact `TERMINATED` required | `automation.py` | Mocked test | Implemented locally |
-| 9 | CI integration | Approval-gated `workflow_dispatch` job performing Azure OIDC login, Databricks identity verification, authenticated `bundle validate` and direct Job/pipeline reads | workflow | **Partially proven, workflow still failing.** On run 37083109424 the gate, OIDC login, Databricks identity check and authenticated `databricks bundle validate -t azure` ("Validation OK!") all SUCCEEDED live from CI. The run then FAILED on `databricks jobs get`: the CI Entra service principal (repository variable `AZURE_CLIENT_ID`) has no ACL entry on the four Jobs, whose ACL is `parvinbadalov@softserve.academy` IS_OWNER plus `admins` CAN_MANAGE. A read-only permission grant is needed and is not yet authorized. No Databricks write or workload occurred | Pending live |
+| 9 | CI integration | Approval-gated `workflow_dispatch` job performing Azure OIDC login, Databricks identity verification, authenticated `bundle validate` and direct Job/pipeline reads | workflow | Workflow run **37084965415** SUCCESS on 2026-10-03, end to end: the `azure-release-approval` gate held the run in WAITING with the live job not yet instantiated, then after approval (deployment 6821457122) Azure OIDC login, the pinned-host check, `databricks current-user me`, `bundle validate -t azure` ("Validation OK!"), **all four `databricks jobs get` reads verified by name**, and "Verified: no deployed UrbanFlow pipeline." all passed. Unblocked by four additive `CAN_VIEW` Job ACL patches, each read back to confirm `IS_OWNER` and `admins CAN_MANAGE` survived | Validated live |
 
 ## Next status changes allowed
 
