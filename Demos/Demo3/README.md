@@ -13,7 +13,9 @@ Event Hubs stream, Spark, Delta Lake, Unity Catalog, testing, CI/CD, and Databri
 > **DEVELOPMENT SAMPLE** and 48-hour weather sample also passed bounded GP1 runs. On 2026-10-03,
 > Databricks Connect reproduced the corrected counts read-only and GE passed 20/20 expectations
 > across Silver and the named historical sample. The full monthly archive, Lakeflow deployment,
-> published dashboard, and governance changes remain unexecuted.
+> published dashboard, and governance changes remain unexecuted. The primary seven-task
+> End-to-End Job and its protected manual release workflow are prepared locally; they have not
+> been deployed or run.
 
 ## Business problem
 
@@ -54,7 +56,7 @@ join.
 - Delta Lake and Unity Catalog
 - Databricks Asset Bundles
 - pytest, Ruff, Black, chispa-ready Spark test configuration
-- GitHub Actions with static-only PR and push validation
+- GitHub Actions with read-only CI plus a separately protected manual release workflow
 
 ## Shared academy compute selection
 
@@ -76,7 +78,8 @@ This is a compatibility assessment, not live network evidence. The preflight acc
 only when its ID, name, runtime, access mode, attach permission, and current `RUNNING` state all
 match. It never starts, restarts, resizes, or terminates GP1 or GP2.
 
-Both Job resources default their live gates to `false` and use `existing_cluster_id`. A manual run
+The four component Job resources default their live gates to `false` and use
+`existing_cluster_id`. A manual run
 against a terminated all-purpose cluster could start it, so Phase 2 deployment and execution remain
 blocked until an academy operator already has the selected cluster running and the consolidated
 live test is approved.
@@ -162,38 +165,52 @@ archive remains unexecuted.
 ```mermaid
 flowchart TB
     PR["Pull request or push"] --> STATIC["Ruff + Black + pytest"]
-    STATIC --> BUNDLE["Bundle structure validation"]
-    BUNDLE --> REVIEW["Code review"]
-    REVIEW -. "future approved manual action" .-> APPROVAL{"Protected environment"}
-    APPROVAL -.-> DEV["Idempotent DEV deployment"]
-    DEV -.-> VERIFY["Post-deployment read-only checks"]
-    VERIFY -.-> PROMOTE["Authorized PROD promotion"]
+    STATIC --> BUNDLE["Offline bundle validation"]
+    MANUAL_READ["Manual read-only CI"] --> APPROVAL_READ{"Protected approval"}
+    APPROVAL_READ --> CONTROL["OIDC + bundle validate + API reads"]
+    RELEASE["Manual release + exact confirmation"] --> STATIC_RELEASE["Repeat static gates"]
+    STATIC_RELEASE --> APPROVAL_RELEASE{"Protected approval"}
+    APPROVAL_RELEASE --> SELECTED["Deploy only urbanflow_end_to_end"]
+    SELECTED --> OPTIONAL["Optional bounded run + final validation"]
     classDef current fill:#e8f5ec,stroke:#27834b,color:#205033
     classDef future fill:#fff4d6,stroke:#c69026,color:#704800
-    class PR,STATIC,BUNDLE,REVIEW current
-    class APPROVAL,DEV,VERIFY,PROMOTE future
+    class PR,STATIC,BUNDLE,MANUAL_READ,APPROVAL_READ,CONTROL current
+    class RELEASE,STATIC_RELEASE,APPROVAL_RELEASE,SELECTED,OPTIONAL future
 ```
 
-The current [UrbanFlow workflow](../../.github/workflows/demo3_urbanflow.yml) contains only static
-validation. It has no Azure login, deployment, producer, Job, pipeline, or cluster step. A live
-path will be added only after resources and permissions are approved. Two authorized deployment
-environments have not been demonstrated, so DEV-to-PROD promotion remains pending.
+The [CI workflow](../../.github/workflows/demo3_urbanflow.yml) runs static checks on pull requests
+and pushes. Its manual path is separately approval-gated and performs Azure OIDC, authenticated
+bundle validation and direct control-plane reads only. It has no deployment, Job trigger,
+pipeline update or cluster lifecycle command.
+
+The new [manual release workflow](../../.github/workflows/demo3_urbanflow_deploy.yml) is
+`workflow_dispatch` only. It requires the exact confirmation `DEPLOY_AND_RUN_URBANFLOW`, repeats
+the static gates, waits for `azure-release-approval`, refuses to continue unless GP1 is already
+`RUNNING`, plans and deploys only `jobs.urbanflow_end_to_end`, and validates a terminal Job run.
+It is prepared but has not been dispatched. See the [unified release design and current-state
+record](docs/UNIFIED_RELEASE.md).
 
 ## 5. Databricks Job orchestration
 
 ```mermaid
 flowchart LR
-    PREFLIGHT["Verify GP1 or GP2 is already RUNNING"] --> S["04 Bronze to Silver"]
-    S --> SCHECK{"Bronze reconciliation PASS"}
-    SCHECK --> G["05 Silver to Gold"]
-    G --> GCHECK{"Gold reconciliation PASS"}
-    GCHECK --> REPORT["Two JSON evidence reports"]
+    P["01 preflight"] --> B["02 station source check"]
+    B --> S["03 station Silver"]
+    S --> G["04 station Gold"]
+    P --> H["05 historical trips"]
+    H --> W["06 weather enrichment"]
+    G --> V["07 read-only final validation"]
+    H --> V
+    W --> V
 ```
 
-The `urbanflow_silver_gold_test` definition is one unscheduled, two-task DAG. It defaults
-`run_transform=false`, pins both tasks to the configured existing cluster, and does not invoke the
-producer, Event Hubs, serverless compute, or Lakeflow. It is implemented and validated locally but
-has not been deployed or run. The earlier Bronze Job exists as workspace Job `404404108673495`.
+`urbanflow_end_to_end` is the prepared primary orchestrator. Every task uses GP1 through
+`existing_cluster_id`; there is no producer task, `new_cluster`, serverless Job compute or
+schedule. The station branch reuses Bronze execution `urbanflow-20260929T195132Z-r3`. The other
+branch reuses notebooks 06 and 07 for the 40-row and 48-hour development samples. The final task
+independently reads the selected outputs and fails the Job when their counts, business keys,
+execution IDs or reconciliation identities disagree. The definition and workflow are tested
+locally but the unified Job does not yet exist in Databricks.
 
 ## Implemented modules
 

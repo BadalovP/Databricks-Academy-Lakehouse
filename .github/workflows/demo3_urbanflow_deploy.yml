@@ -1,0 +1,235 @@
+name: Demo 3 · UrbanFlow manual release
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_release:
+        description: Type DEPLOY_AND_RUN_URBANFLOW exactly
+        required: true
+        type: string
+      run_job:
+        description: Run the unified Job after its selected deployment
+        required: true
+        default: true
+        type: boolean
+      repeat_for_idempotency:
+        description: Run the same bounded mode a second time only after the first succeeds
+        required: true
+        default: false
+        type: boolean
+      full_month:
+        description: Use the separately landed January 2024 archive and a new execution lineage
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: demo3-urbanflow-release
+  cancel-in-progress: false
+
+jobs:
+  static-validation:
+    name: Validate release request and repository
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Demos/Demo3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require explicit release confirmation
+        shell: bash
+        env:
+          CONFIRM_RELEASE: ${{ inputs.confirm_release }}
+          RUN_JOB: ${{ inputs.run_job }}
+          REPEAT_RUN: ${{ inputs.repeat_for_idempotency }}
+        run: |
+          set -euo pipefail
+          [[ "$CONFIRM_RELEASE" == "DEPLOY_AND_RUN_URBANFLOW" ]] || {
+            echo "::error::confirm_release must equal DEPLOY_AND_RUN_URBANFLOW"
+            exit 1
+          }
+          if [[ "$REPEAT_RUN" == "true" && "$RUN_JOB" != "true" ]]; then
+            echo "::error::repeat_for_idempotency requires run_job=true"
+            exit 1
+          fi
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: Demos/Demo3/pyproject.toml
+      - name: Install package and test tools
+        run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
+      - name: Static quality gates
+        run: |
+          set -euo pipefail
+          ruff check .
+          black --check .
+          pytest
+      - uses: databricks/setup-cli@main
+        with:
+          version: 1.12.1
+      - name: Validate bundle schema offline
+        run: python scripts/validate_bundle.py
+
+  approve-release:
+    name: Approve UrbanFlow deployment and optional run
+    needs: static-validation
+    runs-on: ubuntu-latest
+    environment: azure-release-approval
+    steps:
+      - name: Record protected approval
+        run: echo "UrbanFlow selected-resource release approved."
+
+  release:
+    name: Deploy and validate unified UrbanFlow Job
+    needs: approve-release
+    runs-on: ubuntu-latest
+    environment: azure-prod
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: Demos/Demo3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - uses: databricks/setup-cli@main
+        with:
+          version: 1.12.1
+      - name: Verify pinned workspace and Databricks identity
+        env:
+          DATABRICKS_AUTH_TYPE: azure-cli
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_host="https://adb-7405604503619901.1.azuredatabricks.net"
+          [[ "${DATABRICKS_HOST%/}" == "$expected_host" ]] || {
+            echo "::error::Resolved host does not match the pinned UrbanFlow workspace."
+            exit 1
+          }
+          databricks current-user me --output json > "$RUNNER_TEMP/urbanflow-current-user.json"
+      - name: Require GP1 to be already running
+        env:
+          DATABRICKS_AUTH_TYPE: azure-cli
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          databricks clusters get 0702-132442-toro5spu --output json > "$RUNNER_TEMP/gp1.json"
+          python - <<'PY'
+          import json, os, pathlib
+          cluster = json.loads((pathlib.Path(os.environ["RUNNER_TEMP"]) / "gp1.json").read_text())
+          assert cluster["cluster_id"] == "0702-132442-toro5spu"
+          assert cluster["cluster_name"] == "GP1"
+          assert cluster["state"] == "RUNNING", "UrbanFlow never starts GP1; wait for its owner."
+          assert cluster["spark_version"] == "17.3.x-scala2.13"
+          assert cluster["data_security_mode"] == "USER_ISOLATION"
+          PY
+      - name: Validate bundle and selected pre-deploy plan
+        env:
+          DATABRICKS_AUTH_TYPE: azure-cli
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          databricks workspace get-status "/Workspace/Users/parvinbadalov@softserve.academy/.bundle/demo3_urbanflow/azure" --output json > "$RUNNER_TEMP/bundle-root.json"
+          databricks bundle validate -t azure
+          databricks bundle plan -t azure --select jobs.urbanflow_end_to_end --output json > "$RUNNER_TEMP/pre-plan.json"
+          databricks jobs list --name "[azure] UrbanFlow End-to-End" --output json > "$RUNNER_TEMP/pre-jobs.json"
+          python scripts/validate_release_plan.py --phase pre --plan "$RUNNER_TEMP/pre-plan.json" --jobs "$RUNNER_TEMP/pre-jobs.json"
+      - name: Deploy only the unified Job
+        env:
+          DATABRICKS_AUTH_TYPE: azure-cli
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          databricks bundle deploy -t azure --select jobs.urbanflow_end_to_end --auto-approve --fail-on-active-runs
+      - name: Require an unchanged post-deploy plan and read back the Job
+        id: deployed-job
+        env:
+          DATABRICKS_AUTH_TYPE: azure-cli
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          databricks bundle plan -t azure --select jobs.urbanflow_end_to_end --output json > "$RUNNER_TEMP/post-plan.json"
+          databricks jobs list --name "[azure] UrbanFlow End-to-End" --expand-tasks --output json > "$RUNNER_TEMP/post-jobs.json"
+          python scripts/validate_release_plan.py --phase post --plan "$RUNNER_TEMP/post-plan.json" --jobs "$RUNNER_TEMP/post-jobs.json"
+          job_id=$(python -c 'import json,os,pathlib; p=json.loads((pathlib.Path(os.environ["RUNNER_TEMP"])/"post-plan.json").read_text()); print(p["plan"]["resources.jobs.urbanflow_end_to_end"]["remote_state"]["job_id"])')
+          databricks jobs get "$job_id" --output json > "$RUNNER_TEMP/unified-job.json"
+          python - "$job_id" <<'PY'
+          import json, os, pathlib, sys
+          job = json.loads((pathlib.Path(os.environ["RUNNER_TEMP"]) / "unified-job.json").read_text())
+          assert str(job["job_id"]) == sys.argv[1]
+          assert job["settings"]["name"] == "[azure] UrbanFlow End-to-End"
+          tasks = job["settings"]["tasks"]
+          assert len(tasks) == 7
+          assert {task["existing_cluster_id"] for task in tasks} == {"0702-132442-toro5spu"}
+          assert all("new_cluster" not in task for task in tasks)
+          PY
+          echo "job_id=$job_id" >> "$GITHUB_OUTPUT"
+      - name: Run and monitor the approved bounded mode
+        if: inputs.run_job == true
+        env:
+          DATABRICKS_AUTH_TYPE: azure-cli
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
+          JOB_ID: ${{ steps.deployed-job.outputs.job_id }}
+          FULL_MONTH: ${{ inputs.full_month }}
+          REPEAT_RUN: ${{ inputs.repeat_for_idempotency }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os, pathlib
+          full = os.environ["FULL_MONTH"] == "true"
+          suffix = f"gh-{os.environ['GITHUB_RUN_ID']}-{os.environ['GITHUB_RUN_ATTEMPT']}"
+          params = {
+              "run_station_pipeline": "true", "run_historical": "true", "run_weather": "true",
+              "run_full_month": str(full).lower(), "source_execution_id": "urbanflow-20260929T195132Z-r3",
+              "historical_execution_id": f"urbanflow-hist-202401-full-{suffix}" if full else "urbanflow-hist-devsample40-20261002T0010Z",
+              "historical_landing_subdir": "202401-full" if full else "",
+              "weather_execution_id": f"urbanflow-weather-202401-full-{suffix}" if full else "urbanflow-weather-devsample48h-20261002T0015Z",
+              "weather_source": "open_meteo_archive" if full else "sample_json",
+              "weather_start_date": "2024-01-01" if full else "2024-01-24",
+              "weather_end_date": "2024-01-31" if full else "2024-01-25",
+          }
+          path = pathlib.Path(os.environ["RUNNER_TEMP"]) / "run-request.json"
+          path.write_text(json.dumps({"job_parameters": params}), encoding="utf-8")
+          PY
+
+          run_once() {
+            local label="$1"
+            local token="urbanflow-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${label}"
+            databricks jobs run-now "$JOB_ID" --json @"$RUNNER_TEMP/run-request.json" --idempotency-token "$token" --no-wait --output json > "$RUNNER_TEMP/${label}-submitted.json"
+            local run_id
+            run_id=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["run_id"])' "$RUNNER_TEMP/${label}-submitted.json")
+            local terminal=false
+            for _ in $(seq 1 240); do
+              databricks jobs get-run "$run_id" --output json > "$RUNNER_TEMP/${label}-run.json"
+              local lifecycle
+              lifecycle=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["state"]["life_cycle_state"])' "$RUNNER_TEMP/${label}-run.json")
+              if [[ "$lifecycle" =~ ^(TERMINATED|SKIPPED|INTERNAL_ERROR)$ ]]; then terminal=true; break; fi
+              sleep 15
+            done
+            [[ "$terminal" == "true" ]] || { echo "::error::Job run $run_id timed out."; exit 1; }
+            local final_run_id
+            final_run_id=$(python -c 'import json,sys; d=json.load(open(sys.argv[1])); print(next(t["run_id"] for t in d["tasks"] if t["task_key"]=="07_final_validation"))' "$RUNNER_TEMP/${label}-run.json")
+            databricks jobs get-run-output "$final_run_id" --output json > "$RUNNER_TEMP/${label}-final-output.json"
+            python scripts/validate_job_run.py --run "$RUNNER_TEMP/${label}-run.json" --job-id "$JOB_ID" --final-output "$RUNNER_TEMP/${label}-final-output.json"
+          }
+
+          run_once first
+          if [[ "$REPEAT_RUN" == "true" ]]; then run_once second; fi
