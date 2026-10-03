@@ -136,13 +136,87 @@ this section records the design decision.
 | Workspace | SKU | Compute | UrbanFlow role |
 |---|---|---|---|
 | `dbr_dev` | premium | shared interactive clusters GP1/GP2 | **The first live Event Hubs to Bronze test.** It is the only workspace where the Event Hubs secret is readable. |
-| `dbr_dev_trial` | trial | serverless Jobs and one serverless SQL warehouse; no clusters | Later development, serverless notebooks, and a genuine second environment for CI/CD promotion. |
+| `dbr_dev_trial` | trial | serverless Jobs and one serverless SQL warehouse; no clusters | Later development and serverless notebooks. **Not** a production environment - see below. |
 
 The two workspaces **share one Unity Catalog metastore**
 (`7af05576-c79e-4f56-b84f-ead80be5c8b6`), the `dbr_dev` catalog is `OPEN` rather than
 workspace-bound, and Unity Catalog grants are metastore-level. A read-only probe confirmed the
-trial workspace can list this project's schemas, tables and Volumes in `dbr_dev`. That is what makes
-the trial workspace useful as a promotion target: it can reach the same data without copying it.
+trial workspace can list this project's schemas, tables and Volumes in `dbr_dev`.
+
+### Why this is NOT a DEV-to-PROD topology
+
+An earlier version of this section called the trial workspace "a genuine second environment for
+CI/CD promotion", and justified it by noting that the workspace "can reach the same data without
+copying it". That justification actually refutes the claim, and the correction is worth keeping
+visible rather than quietly editing away.
+
+Reaching *the same data* is precisely what disqualifies it:
+
+- **One metastore means one copy of the data.** A promotion that moves code between two
+  workspaces pointed at the same tables promotes nothing. There is no second dataset to validate
+  against, so a "PROD run" and a "DEV run" would read and write the same rows.
+- **A mistake in the second workspace damages the first.** Real environment separation exists so
+  that a bad deployment is survivable. Here a destructive statement issued from the trial
+  workspace would hit the same `dbr_dev.parvinbadalov_urbanflow` tables the validated evidence
+  lives in.
+- **Metastore-level grants are shared.** Permissions are not scoped per workspace, so the two
+  cannot have genuinely different access postures.
+
+What the project does have is **schema-level separation within one workspace**: the `dev` bundle
+target writes `parvinbadalov_urbanflow_dev` and the `azure` target writes
+`parvinbadalov_urbanflow`, with the Lakeflow pipeline isolated again into
+`parvinbadalov_urbanflow_lakeflow`. That is real and tested isolation of *objects*, and it is what
+prevents a dev deployment from touching validated tables. It is **not** environment isolation, and
+calling it one would be the kind of claim this project exists to avoid.
+
+Establishing a true PROD environment would mean a separate workspace on its own metastore - new
+paid infrastructure. The project deliberately does not create it, and states the absence rather
+than simulating the capability.
+
+## Legacy DBFS mounts, and why UrbanFlow uses Volumes instead
+
+The deprecated pattern is `dbutils.fs.mount()`, which attaches an object-storage container to a
+path under `/mnt/` using credentials supplied at mount time:
+
+```python
+# The deprecated pattern. NOT executed by this project - see the reasons below.
+dbutils.fs.mount(
+    source="wasbs://container@account.blob.core.windows.net",
+    mount_point="/mnt/urbanflow-landing",
+    extra_configs={"fs.azure.account.key.account.blob.core.windows.net": "<storage key>"},
+)
+```
+
+UrbanFlow uses a Unity Catalog managed Volume instead
+(`/Volumes/dbr_dev/parvinbadalov_urbanflow/urbanflow_landing`). The difference is not cosmetic:
+
+| | Legacy mount | Unity Catalog Volume |
+|---|---|---|
+| Scope | **Workspace-wide.** Every user of the workspace sees `/mnt/...` | Catalog object, governed per principal |
+| Credentials | Baked in at mount time, often a storage account key | No credential in user code; UC brokers access |
+| Permissions | Whoever can reach the path can reach the data - UC grants do not apply | `GRANT READ VOLUME` / `WRITE VOLUME`, auditable |
+| Lineage and audit | None | Recorded in Unity Catalog |
+| Lifecycle | Persists until explicitly unmounted, easy to forget | Dropped with its schema |
+
+**Why this project does not execute the mount, even though it could.** The requirement is to
+demonstrate the pattern and explain why it was replaced, and the explanation above is the
+substance of it. Actually creating one would mean:
+
+1. **Workspace-wide side effects on shared academy infrastructure.** A mount is not scoped to a
+   user or a schema. Every other student and the instructor would see `/mnt/urbanflow-landing`,
+   and it persists until someone remembers to unmount it. That is precisely the
+   bypasses-governance behaviour the exercise is meant to criticise, so performing it on a shared
+   workspace to earn a checkbox would be a poor decision regardless of authorization.
+2. **It needs a storage account key**, a long-lived credential this project does not hold and
+   whose handling would contradict the secret-management discipline used everywhere else.
+
+So the mount is documented, with runnable-looking code and a concrete comparison, and
+deliberately left unexecuted. Anyone wanting to demonstrate it live should do so in a personal
+workspace, and unmount immediately afterwards:
+
+```python
+dbutils.fs.unmount("/mnt/urbanflow-landing")
+```
 
 What they do **not** share is just as important to the design:
 
