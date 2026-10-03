@@ -8,6 +8,22 @@ evidence for their stated scope only. They do not prove a full monthly archive, 
 or a published dashboard. The exact status changes and evidence are recorded in
 [LABS_1_TO_9_COVERAGE.md](LABS_1_TO_9_COVERAGE.md).
 
+## Final safe Batch A read validation — 2026-10-03
+
+GP1 was already `RUNNING`; UrbanFlow made no lifecycle change. Databricks Connect 17.3.13 attached
+to the exact approved cluster and issued only `SHOW` and `SELECT` operations. It authenticated as
+the expected workspace user, found catalog `dbr_dev`, schema `parvinbadalov_urbanflow`, the exact
+sixteen-table inventory, one managed Volume, four expected Jobs and zero UrbanFlow pipelines.
+
+The read reproduced the corrected table counts and status composition. Great Expectations used an
+ephemeral context and passed 10/10 Silver expectations plus 10/10 historical expectations against
+the single 40-row development execution, with zero failures or unexpected rows. The detailed and
+machine-readable results are in [the Batch A evidence](../evidence/BATCH_A_READ_VALIDATION.md).
+
+This validation created no Job run, upload, checkpoint, table, view, pipeline update or persisted
+GE object. The Jobs API trigger and 1,000-file Auto Loader discovery remain separate write actions
+requiring approval.
+
 ## What was built
 
 | Area | Module | What it does | Tests |

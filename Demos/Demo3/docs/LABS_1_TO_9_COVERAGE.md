@@ -32,16 +32,23 @@ that run; everything else is unchanged and still honest about what has not run.
 
 See [SILVER_GOLD_RUNBOOK.md](SILVER_GOLD_RUNBOOK.md) and [PHASE3_STATUS.md](PHASE3_STATUS.md).
 
-**Current totals, 71 requirement rows:** 17 `Validated live`, 43 `Implemented locally`,
-3 `Discovered read-only`, **8** `Pending live`, 0 `Blocked`.
+**Final safe Batch A read validation completed 2026-10-03 on GP1.** Databricks Connect 17.3.13
+read the existing corrected tables without creating a Databricks object. All five required counts
+and both status distributions matched. Great Expectations passed 10/10 Silver and 10/10
+historical-sample expectations with zero unexpected rows. See
+[the dated evidence](../evidence/BATCH_A_READ_VALIDATION.md).
 
-The eight remaining rows are each analysed in [PENDING_REQUIREMENTS.md](PENDING_REQUIREMENTS.md),
+**Current totals, 71 requirement rows:** 19 `Validated live`, 42 `Implemented locally`,
+3 `Discovered read-only`, **7** `Pending live`, 0 `Blocked`.
+
+The seven remaining rows are each analysed in [PENDING_REQUIREMENTS.md](PENDING_REQUIREMENTS.md),
 with the resource they need, whether they change data, and a recommended batch order. Two of them
 are recommended as *documented rather than executed*: a workspace-wide legacy mount on a shared
 academy workspace is poor judgement regardless of authorization, and a second workspace for
 DEV-to-PROD is new paid infrastructure whose absence is more honest to state than to simulate.
 
-Nine rows moved to `Validated live` in this round. Deliberately NOT promoted: full monthly
+The 2026-10-03 read batch promoted Databricks Connect and Great Expectations only. Deliberately
+NOT promoted: full monthly
 historical ingestion (only a 40-row sample ran), Lakeflow, the published AI/BI dashboard and
 every governance policy - none of those executed, and a sample run does not evidence a
 full-scale one.
@@ -54,7 +61,7 @@ full-scale one.
 | 1 | DataFrames | Explicit Spark DataFrames for station information/status | `01_fundamentals.py` | Static review; live notebook pending | Implemented locally |
 | 1 | select/filter/join/groupBy | Operational filter, UUID join, availability aggregation | `01_fundamentals.py` | Pure business rules unit-tested | Implemented locally |
 | 1 | Delta and SQL | Opt-in idempotent MERGE plus dashboard-ready SQL | `01_fundamentals.py` | Write defaults off | Implemented locally |
-| 1 | Basic dashboard | 22 dashboard datasets as read-only SQL, a four-page layout and exact creation steps | `sql/10`-`sql/13`, `docs/DASHBOARD.md` | **All 22 queries executed read-only against the live corrected tables on GP1 2026-10-02** (run 242979365945407): 22/22 succeeded, and Page 1 returned 2,520 stations / 1,774 available / 89 out of service / 657 actionable. The AI/BI object itself is not created, since publishing needs a billable SQL warehouse | Implemented locally |
+| 1 | Basic dashboard | 22 dashboard datasets as read-only SQL, a four-page layout and exact creation steps | `sql/10`-`sql/13`, `docs/DASHBOARD.md` | **The underlying 22 queries executed read-only against the live corrected tables on GP1 2026-10-02** (run 242979365945407): 22/22 succeeded, and Page 1 returned 2,520 stations / 1,774 available / 89 out of service / 657 actionable. Required historical and weather execution-selection guards were added and tested locally on 2026-10-03; those parameterized versions have not been rerun through a SQL warehouse. The AI/BI object itself is not created, since publishing needs a billable SQL warehouse | Implemented locally |
 | 1 | Shared cluster / General schema differences | GP1 preferred and GP2 fallback through configuration; must already be running | config, Job resource, inventory | IDs/runtime/access/permissions discovered read-only | Implemented locally |
 | 2 | Azure provisioning settings | Existing workspace, ADLS Gen2, Key Vault settings documented | `RESOURCE_INVENTORY.md` | Azure CLI read-only inventory | Discovered read-only |
 | 2 | Personal container / external location | Existing identity external location identified | `RESOURCE_INVENTORY.md` | UC external location listed | Discovered read-only |
@@ -89,7 +96,7 @@ full-scale one.
 | 5 | Expectations, lineage, monitoring | 18 declarative expectations across Silver and Gold, all non-dropping so quarantine evidence survives; event-log and expectation-result queries prepared | `pipeline/silver.py`, `pipeline/gold.py`, `sql/13_dashboard_data_quality.sql` | Tests assert expectations exist on every table and that none drops or fails rows; event log needs a running pipeline | Implemented locally |
 | 5 | DAB deployment | Bundle targets plus undeployed Job and serverless Lakeflow resources | `databricks.yml`, `resources/` | Static validation | Implemented locally |
 | 6 | Fact/dimension model | Stable availability fact, 40-row development dimension, daily summary and shortage outputs | `gold.py`, notebook 05 | All five Gold tables verified live 2026-10-02: fact 2,520 with 2,520 distinct event IDs, daily summary 2,520 with observation total 2,520 and `is_trend_capable` true for 0 rows, dimension 40, shortage and priority 657 each | Validated live |
-| 6 | AI/BI dashboard and filters | Four pages, 22 datasets, with per-tile caveats so a snapshot is never charted as a trend | `docs/DASHBOARD.md`, `sql/10`-`sql/13` | Layout and queries complete; 22/22 ran read-only after the Phase 2 correction. The dashboard object is not published, and sample/full execution scopes remain separate | Implemented locally |
+| 6 | AI/BI dashboard and filters | Four pages, 22 datasets, with per-tile caveats so a snapshot is never charted as a trend | `docs/DASHBOARD.md`, `sql/10`-`sql/13` | Layout and queries complete; the underlying 22/22 ran read-only after the Phase 2 correction. Required execution-selection guards were added and tested locally on 2026-10-03, but not rerun through a SQL warehouse. The dashboard object is not published, and sample/full execution scopes remain separate | Implemented locally |
 | 6 | Alerts / email | Volume-drop and shortage alert requirement retained | Coverage matrix | Destination/warehouse unverified | Pending live |
 | 6 | Permissions, RLS, masking | Region row filter, coordinate-rounding mask, ride_id hashing mask, least-privilege grants, ABAC tagging explained, plus inspection queries | `sql/20_governance_rls_cls.sql` | Tests prove no `SET MASK`, `SET ROW FILTER` or `GRANT` is active; the fail-to-zero-rows hazard is documented | Implemented locally |
 | 6 | Weather enrichment | Bounded Open-Meteo archive retrieval, hourly normalization, left join preserving every trip, null readings kept null, weather dimension and demand comparison, plus notebook 07 | `weather.py`, `notebooks/07_weather_enrichment.py` | Ran live on GP1 2026-10-02 (run 472557041765891) with the committed **48-hour sample** and no external request: completeness 1.0, 40 trips in and 40 out with no fan-out, coverage 0.1 reported honestly. One city coordinate, comparisons only | Validated live |
@@ -102,9 +109,9 @@ full-scale one.
 | 7 | Duplicate, late, SCD edge cases | Cross-partition duplicate order, null transitions, invalid intervals and out-of-order SCD changes | tests | Local pytest | Implemented locally |
 | 7 | DQ dimensions | Completeness, uniqueness key, validity, consistency, referential integrity, freshness | `quality.py` | Unit tests | Implemented locally |
 | 7 | Lakeflow expectations / Delta constraints | Non-dropping `expect_all` rules on all eight pipeline tables, including one asserting an out-of-service station is never actionable and one asserting a single observation cannot claim a trend | `pipeline/silver.py`, `pipeline/gold.py` | Source-level tests; execution requires a Lakeflow run, which is not authorized | Implemented locally |
-| 7 | Great Expectations or Soda | Great Expectations 1.23.2 suites for the Silver and trip contracts, run through an ephemeral context so no project state is created | Coverage matrix | Chosen by measurement, not preference: `soda-core-spark-df` requires pyspark below 4 and resolves 3.5.9 here, while the base GE package leaves Spark 4.1.1 in place (`docs/QUALITY_FRAMEWORK.md`). Tests prove the suites FAIL on a duplicated event id, a negative count, an unknown status, a null execution id and a double-typed station id | Implemented locally |
+| 7 | Great Expectations or Soda | Great Expectations 1.23.2 suites for the Silver and trip contracts, run through an ephemeral context so no project state is created | `expectations.py`, `../evidence/BATCH_A_READ_VALIDATION.md` | Ran read-only against the persisted tables on GP1 on 2026-10-03: Silver 10/10 and the named 40-row historical development sample 10/10, with zero failures and zero unexpected rows. The rules come from the existing UrbanFlow contracts | Validated live |
 | 7 | Reconciliation / anomaly gates | Bronze outcome and Silver-to-Gold grain/aggregate gates | `silver.py`, `gold.py` | Ran live 2026-10-02: Silver reconciliation PASS (2,520 = 2,520 + 0 + 0), Gold PASS, historical PASS (40 = 40 + 0 + 0), weather PASS (40 in, 40 out) | Validated live |
-| 7 | Databricks Connect / monitoring | Environment capability not yet tested | Coverage matrix | None | Pending live |
+| 7 | Databricks Connect / monitoring | Local development session attached to the approved existing cluster and read corrected tables through Spark Connect | `../evidence/BATCH_A_READ_VALIDATION.md` | Databricks Connect 17.3.13 authenticated as the expected user, discovered the target catalog/schema and 16-table inventory, and reproduced all required counts and status distributions on GP1 without a Databricks write | Validated live |
 | 8 | DAB and GitHub Actions | Static workflow, two targets, two existing-cluster Jobs, managed-compute pipeline | workflow / bundle/resources | Static local validation | Implemented locally |
 | 8 | PR static checks | Ruff, Black, pytest, bundle validation | workflow | Milestone 1 PR #34 passed and merged | Implemented locally |
 | 8 | Environment config | `dev.yml`, `azure.yml`, DAB targets | config / bundle | Static only | Implemented locally |

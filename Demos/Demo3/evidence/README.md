@@ -26,6 +26,16 @@ attempts that stopped before publishing anything.
 | `urbanflow-hist-devsample40-20261002T0010Z.historical.run1.json` / `.run2.json` | The **40-ROW DEVELOPMENT SAMPLE** historical runs. NOT full January 2024 data |
 | `urbanflow-weather-devsample48h-20261002T0015Z.weather.json` | The 48-hour committed weather sample run, `source: sample_json`, no external request |
 
+## Final safe Batch A read validation, 2026-10-03 (GP1)
+
+| File | What it records |
+|---|---|
+| `BATCH_A_READ_VALIDATION.md` | Human-readable preflight, exact counts, status distributions, GE totals, safety boundary and monthly-isolation review |
+| `2026-10-03_batch_a_read_validation.json` | Machine-readable `SHOW`/`SELECT` and ephemeral GE results: Silver 10/10, historical sample 10/10, zero unexpected rows |
+
+This batch created no Databricks object. It did not submit a Job, upload a file, create a
+checkpoint, start Auto Loader, deploy Lakeflow or change GP1 lifecycle state.
+
 Two notes on reading these honestly:
 
 - The Volume report path is keyed only on `source_execution_id`, so a repeat run overwrites the

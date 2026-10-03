@@ -21,6 +21,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from urbanflow.historical import MAX_TRIP_HOURS, MIN_TRIP_SECONDS, trip_duration_seconds
+
 SILVER_SUITE = "urbanflow_silver_station_status"
 TRIP_SUITE = "urbanflow_historical_trips"
 
@@ -32,6 +34,7 @@ KNOWN_AVAILABILITY_STATUSES = (
     "OUT_OF_SERVICE",
 )
 RIDER_TYPES = ("member", "casual")
+TRIP_DURATION_SECONDS_COLUMN = "_urbanflow_contract_duration_seconds"
 
 
 def silver_expectations() -> list[Any]:
@@ -48,6 +51,7 @@ def silver_expectations() -> list[Any]:
         gxe.ExpectColumnValuesToNotBeNull(column="event_id"),
         gxe.ExpectColumnValuesToBeUnique(column="event_id"),
         gxe.ExpectColumnValuesToNotBeNull(column="station_id"),
+        gxe.ExpectColumnValuesToBeOfType(column="station_id", type_="StringType"),
         gxe.ExpectColumnValuesToNotBeNull(column="execution_id"),
         gxe.ExpectColumnValuesToNotBeNull(column="observed_at"),
         gxe.ExpectColumnValuesToBeBetween(column="num_bikes_available", min_value=0),
@@ -71,12 +75,29 @@ def trip_expectations() -> list[Any]:
     return [
         gxe.ExpectColumnValuesToNotBeNull(column="ride_id"),
         gxe.ExpectColumnValuesToBeUnique(column="ride_id"),
+        gxe.ExpectColumnValuesToNotBeNull(column="execution_id"),
         gxe.ExpectColumnValuesToNotBeNull(column="started_at"),
         gxe.ExpectColumnValuesToNotBeNull(column="ended_at"),
         gxe.ExpectColumnValuesToNotBeNull(column="start_station_id"),
         gxe.ExpectColumnValuesToBeOfType(column="start_station_id", type_="StringType"),
+        gxe.ExpectColumnValuesToBeOfType(column="end_station_id", type_="StringType"),
         gxe.ExpectColumnValuesToBeInSet(column="member_casual", value_set=list(RIDER_TYPES)),
+        gxe.ExpectColumnValuesToBeBetween(
+            column=TRIP_DURATION_SECONDS_COLUMN,
+            min_value=MIN_TRIP_SECONDS,
+            max_value=MAX_TRIP_HOURS * 3600,
+        ),
     ]
+
+
+def prepare_trip_validation_frame(frame: Any) -> Any:
+    """Add the derived duration used by the existing historical quality contract.
+
+    The source table remains unchanged. This expression is the same one used by
+    `validate_historical_trips`, and its bounds come from that module's defaults, so GE validates
+    the production rule rather than maintaining a second duration definition.
+    """
+    return frame.withColumn(TRIP_DURATION_SECONDS_COLUMN, trip_duration_seconds())
 
 
 def build_suite(context: Any, *, name: str, expectations: list[Any]) -> Any:

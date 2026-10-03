@@ -1,0 +1,290 @@
+{
+    "actionable_gold_status_composition":  {
+                                               "AVAILABLE":  0,
+                                               "LOW_BIKES":  278,
+                                               "LOW_BIKES_AND_DOCKS":  5,
+                                               "LOW_DOCKS":  374,
+                                               "OUT_OF_SERVICE":  0
+                                           },
+    "assertions":  {
+                       "actionable_status_matches":  true,
+                       "catalog_visible":  true,
+                       "counts_match":  true,
+                       "historical_ge_pass":  true,
+                       "historical_sample_is_40_rows":  true,
+                       "historical_sample_is_one_execution":  true,
+                       "identity_matches":  true,
+                       "schema_visible":  true,
+                       "silver_ge_pass":  true,
+                       "silver_status_matches":  true,
+                       "table_inventory_exact":  true
+                   },
+    "cluster_id":  "0702-132442-toro5spu",
+    "cluster_preflight":  {
+                              "access_mode":  "USER_ISOLATION",
+                              "name":  "GP1",
+                              "runtime":  "17.3.x-scala2.13",
+                              "state":  "RUNNING"
+                          },
+    "counts":  {
+                   "bronze_station_status":  2520,
+                   "fact_station_availability":  2520,
+                   "gold_rebalancing_priority":  657,
+                   "gold_station_shortage":  657,
+                   "silver_station_status":  2520
+               },
+    "discovered_tables":  [
+                              "bronze_historical_trips",
+                              "bronze_station_status",
+                              "dim_station_development_sample",
+                              "dim_weather_hourly",
+                              "duplicate_historical_trips",
+                              "duplicate_station_status",
+                              "fact_station_availability",
+                              "gold_daily_station_summary",
+                              "gold_daily_trip_demand",
+                              "gold_rebalancing_priority",
+                              "gold_station_shortage",
+                              "gold_weather_demand",
+                              "quarantine_historical_trips",
+                              "quarantine_station_status",
+                              "silver_historical_trips",
+                              "silver_station_status"
+                          ],
+    "evidence_type":  "urbanflow_batch_a_read_only_validation",
+    "great_expectations":  {
+                               "historical_sample":  {
+                                                         "checks":  [
+                                                                        {
+                                                                            "column":  "ride_id",
+                                                                            "expectation":  "expect_column_values_to_not_be_null",
+                                                                            "observed_value":  null,
+                                                                            "success":  true,
+                                                                            "unexpected_count":  0
+                                                                        },
+                                                                        {
+                                                                            "column":  "ride_id",
+                                                                            "expectation":  "expect_column_values_to_be_unique",
+                                                                            "observed_value":  null,
+                                                                            "success":  true,
+                                                                            "unexpected_count":  0
+                                                                        },
+                                                                        {
+                                                                            "column":  "execution_id",
+                                                                            "expectation":  "expect_column_values_to_not_be_null",
+                                                                            "observed_value":  null,
+                                                                            "success":  true,
+                                                                            "unexpected_count":  0
+                                                                        },
+                                                                        {
+                                                                            "column":  "started_at",
+                                                                            "expectation":  "expect_column_values_to_not_be_null",
+                                                                            "observed_value":  null,
+                                                                            "success":  true,
+                                                                            "unexpected_count":  0
+                                                                        },
+                                                                        {
+                                                                            "column":  "ended_at",
+                                                                            "expectation":  "expect_column_values_to_not_be_null",
+                                                                            "observed_value":  null,
+                                                                            "success":  true,
+                                                                            "unexpected_count":  0
+                                                                        },
+                                                                        {
+                                                                            "column":  "start_station_id",
+                                                                            "expectation":  "expect_column_values_to_not_be_null",
+                                                                            "observed_value":  null,
+                                                                            "success":  true,
+                                                                            "unexpected_count":  0
+                                                                        },
+                                                                        {
+                                                                            "column":  "start_station_id",
+                                                                            "expectation":  "expect_column_values_to_be_of_type",
+                                                                            "observed_value":  "StringType",
+                                                                            "success":  true,
+                                                                            "unexpected_count":  null
+                                                                        },
+                                                                        {
+                                                                            "column":  "end_station_id",
+                                                                            "expectation":  "expect_column_values_to_be_of_type",
+                                                                            "observed_value":  "StringType",
+                                                                            "success":  true,
+                                                                            "unexpected_count":  null
+                                                                        },
+                                                                        {
+                                                                            "column":  "member_casual",
+                                                                            "expectation":  "expect_column_values_to_be_in_set",
+                                                                            "observed_value":  null,
+                                                                            "success":  true,
+                                                                            "unexpected_count":  0
+                                                                        },
+                                                                        {
+                                                                            "column":  "_urbanflow_contract_duration_seconds",
+                                                                            "expectation":  "expect_column_values_to_be_between",
+                                                                            "observed_value":  null,
+                                                                            "success":  true,
+                                                                            "unexpected_count":  0
+                                                                        }
+                                                                    ],
+                                                         "evaluated_expectations":  10,
+                                                         "failed":  [
+
+                                                                    ],
+                                                         "failed_expectations":  0,
+                                                         "framework":  "great_expectations",
+                                                         "status":  "PASS",
+                                                         "successful_expectations":  10,
+                                                         "suite":  "urbanflow_historical_trips"
+                                                     },
+                               "silver":  {
+                                              "checks":  [
+                                                             {
+                                                                 "column":  "event_id",
+                                                                 "expectation":  "expect_column_values_to_not_be_null",
+                                                                 "observed_value":  null,
+                                                                 "success":  true,
+                                                                 "unexpected_count":  0
+                                                             },
+                                                             {
+                                                                 "column":  "event_id",
+                                                                 "expectation":  "expect_column_values_to_be_unique",
+                                                                 "observed_value":  null,
+                                                                 "success":  true,
+                                                                 "unexpected_count":  0
+                                                             },
+                                                             {
+                                                                 "column":  "station_id",
+                                                                 "expectation":  "expect_column_values_to_not_be_null",
+                                                                 "observed_value":  null,
+                                                                 "success":  true,
+                                                                 "unexpected_count":  0
+                                                             },
+                                                             {
+                                                                 "column":  "station_id",
+                                                                 "expectation":  "expect_column_values_to_be_of_type",
+                                                                 "observed_value":  "StringType",
+                                                                 "success":  true,
+                                                                 "unexpected_count":  null
+                                                             },
+                                                             {
+                                                                 "column":  "execution_id",
+                                                                 "expectation":  "expect_column_values_to_not_be_null",
+                                                                 "observed_value":  null,
+                                                                 "success":  true,
+                                                                 "unexpected_count":  0
+                                                             },
+                                                             {
+                                                                 "column":  "observed_at",
+                                                                 "expectation":  "expect_column_values_to_not_be_null",
+                                                                 "observed_value":  null,
+                                                                 "success":  true,
+                                                                 "unexpected_count":  0
+                                                             },
+                                                             {
+                                                                 "column":  "num_bikes_available",
+                                                                 "expectation":  "expect_column_values_to_be_between",
+                                                                 "observed_value":  null,
+                                                                 "success":  true,
+                                                                 "unexpected_count":  0
+                                                             },
+                                                             {
+                                                                 "column":  "num_docks_available",
+                                                                 "expectation":  "expect_column_values_to_be_between",
+                                                                 "observed_value":  null,
+                                                                 "success":  true,
+                                                                 "unexpected_count":  0
+                                                             },
+                                                             {
+                                                                 "column":  "availability_status",
+                                                                 "expectation":  "expect_column_values_to_be_in_set",
+                                                                 "observed_value":  null,
+                                                                 "success":  true,
+                                                                 "unexpected_count":  0
+                                                             },
+                                                             {
+                                                                 "column":  "is_operational",
+                                                                 "expectation":  "expect_column_values_to_not_be_null",
+                                                                 "observed_value":  null,
+                                                                 "success":  true,
+                                                                 "unexpected_count":  0
+                                                             }
+                                                         ],
+                                              "evaluated_expectations":  10,
+                                              "failed":  [
+
+                                                         ],
+                                              "failed_expectations":  0,
+                                              "framework":  "great_expectations",
+                                              "status":  "PASS",
+                                              "successful_expectations":  10,
+                                              "suite":  "urbanflow_silver_station_status"
+                                          }
+                           },
+    "historical_sample":  {
+                              "distinct_execution_ids":  [
+                                                             "urbanflow-hist-devsample40-20261002T0010Z"
+                                                         ],
+                              "execution_id":  "urbanflow-hist-devsample40-20261002T0010Z",
+                              "label":  "40-ROW DEVELOPMENT SAMPLE",
+                              "rows":  40
+                          },
+    "identity":  {
+                     "current_user":  "parvinbadalov@softserve.academy",
+                     "session_catalog":  "dbr_dev",
+                     "session_schema":  "default",
+                     "target_catalog_visible":  true,
+                     "target_schema_visible":  true
+                 },
+    "limitations":  [
+                        "Existing persisted tables were read only.",
+                        "The historical result covers the named 40-row development sample, not January 2024.",
+                        "GE used an ephemeral local context; no GE project or Databricks object was persisted."
+                    ],
+    "observed_at_utc":  "2026-10-02T23:34:45.901486+00:00",
+    "operations":  [
+                       "SHOW CATALOGS",
+                       "SHOW SCHEMAS",
+                       "SHOW TABLES",
+                       "SELECT"
+                   ],
+    "overall_status":  "PASS",
+    "silver_status_composition":  {
+                                      "AVAILABLE":  1774,
+                                      "LOW_BIKES":  278,
+                                      "LOW_BIKES_AND_DOCKS":  5,
+                                      "LOW_DOCKS":  374,
+                                      "OUT_OF_SERVICE":  89
+                                  },
+    "repository_head_observed":  "b6110cfcfbcc90609e53ce565e2d201708857d64",
+    "control_plane_inventory":  {
+                                    "urbanflow_jobs":  [
+                                                           {
+                                                               "job_id":  404404108673495,
+                                                               "name":  "[azure] urbanflow_bounded_stream_test"
+                                                           },
+                                                           {
+                                                               "job_id":  11834365763936,
+                                                               "name":  "[azure] urbanflow_silver_gold_test"
+                                                           },
+                                                           {
+                                                               "job_id":  974964732439608,
+                                                               "name":  "[azure] urbanflow_historical_trips_test"
+                                                           },
+                                                           {
+                                                               "job_id":  860666167537092,
+                                                               "name":  "[azure] urbanflow_weather_enrichment_test"
+                                                           }
+                                                       ],
+                                    "urbanflow_pipelines":  [
+
+                                                            ],
+                                    "volumes":  [
+                                                    "dbr_dev.parvinbadalov_urbanflow.urbanflow_landing"
+                                                ],
+                                    "table_count":  16,
+                                    "unexpected_resources":  [
+
+                                                             ]
+                                },
+    "workspace_id":  "7405604503619901"
+}
