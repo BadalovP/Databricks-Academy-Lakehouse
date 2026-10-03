@@ -19,6 +19,7 @@ from urbanflow.expectations import (  # noqa: E402 - after the skip guard
     KNOWN_AVAILABILITY_STATUSES,
     SILVER_SUITE,
     TRIP_SUITE,
+    prepare_trip_validation_frame,
     silver_expectations,
     trip_expectations,
     validate_frame,
@@ -137,20 +138,35 @@ def test_a_null_execution_id_fails_the_suite(spark_session) -> None:
 # --- the trip suite --------------------------------------------------------------
 
 
-def _trips(spark: Any, *, station_expr: str = "'7407.13'") -> Any:
+def _trips(
+    spark: Any,
+    *,
+    start_station_expr: str = "'7407.13'",
+    end_station_expr: str = "'7463.09'",
+    execution_expr: str = "'urbanflow-hist-devsample40-20261002T0010Z'",
+    first_started_at: str = "2024-01-24 09:00:00",
+    first_ended_at: str = "2024-01-24 09:10:00",
+    first_rider_type: str = "member",
+) -> Any:
     return spark.sql(
-        f"SELECT ride_id, started_at, ended_at, {station_expr} AS start_station_id, member_casual "
+        f"SELECT ride_id, {execution_expr} AS execution_id, started_at, ended_at, "
+        f"{start_station_expr} AS start_station_id, {end_station_expr} AS end_station_id, "
+        "member_casual "
         "FROM VALUES "
-        "('r1',TIMESTAMP'2024-01-24 09:00:00',TIMESTAMP'2024-01-24 09:10:00','member'), "
+        f"('r1',TIMESTAMP'{first_started_at}',TIMESTAMP'{first_ended_at}','{first_rider_type}'), "
         "('r2',TIMESTAMP'2024-01-24 10:00:00',TIMESTAMP'2024-01-24 10:20:00','casual') "
         "AS t(ride_id, started_at, ended_at, member_casual)"
     )
 
 
+def _prepared_trips(spark: Any, **kwargs: Any) -> Any:
+    return prepare_trip_validation_frame(_trips(spark, **kwargs))
+
+
 @pytest.mark.spark
 def test_the_trip_suite_passes_on_a_well_formed_batch(spark_session) -> None:
     report = validate_frame(
-        _trips(spark_session), suite_name=TRIP_SUITE, expectations=trip_expectations()
+        _prepared_trips(spark_session), suite_name=TRIP_SUITE, expectations=trip_expectations()
     )
 
     assert report["status"] == "PASS"
@@ -166,7 +182,7 @@ def test_a_numeric_station_id_fails_the_trip_suite(spark_session) -> None:
     makes that a loud failure instead.
     """
     report = validate_frame(
-        _trips(spark_session, station_expr="CAST(7407.13 AS DOUBLE)"),
+        _prepared_trips(spark_session, start_station_expr="CAST(7407.13 AS DOUBLE)"),
         suite_name=TRIP_SUITE,
         expectations=trip_expectations(),
     )
@@ -179,17 +195,68 @@ def test_a_numeric_station_id_fails_the_trip_suite(spark_session) -> None:
 @pytest.mark.spark
 def test_an_invalid_rider_type_fails_the_trip_suite(spark_session) -> None:
     report = validate_frame(
-        spark_session.sql(
-            "SELECT * FROM VALUES "
-            "('r1',TIMESTAMP'2024-01-24 09:00:00',TIMESTAMP'2024-01-24 09:10:00','7407.13','subscriber') "
-            "AS t(ride_id, started_at, ended_at, start_station_id, member_casual)"
-        ),
+        _prepared_trips(spark_session, first_rider_type="subscriber"),
         suite_name=TRIP_SUITE,
         expectations=trip_expectations(),
     )
 
     assert report["status"] == "FAIL"
     assert any(check["column"] == "member_casual" for check in report["failed"])
+
+
+@pytest.mark.spark
+def test_a_null_trip_execution_id_fails_the_trip_suite(spark_session) -> None:
+    report = validate_frame(
+        _prepared_trips(spark_session, execution_expr="CAST(NULL AS STRING)"),
+        suite_name=TRIP_SUITE,
+        expectations=trip_expectations(),
+    )
+
+    assert report["status"] == "FAIL"
+    assert any(check["column"] == "execution_id" for check in report["failed"])
+
+
+@pytest.mark.spark
+def test_a_numeric_silver_station_id_fails_the_suite(spark_session) -> None:
+    from pyspark.sql import functions as F
+
+    report = validate_frame(
+        _silver(spark_session, rows=GOOD_SILVER).withColumn("station_id", F.lit(7407.13)),
+        suite_name=SILVER_SUITE,
+        expectations=silver_expectations(),
+    )
+
+    assert report["status"] == "FAIL"
+    assert any(check["column"] == "station_id" for check in report["failed"])
+
+
+@pytest.mark.spark
+def test_a_numeric_end_station_id_fails_the_trip_suite(spark_session) -> None:
+    report = validate_frame(
+        _prepared_trips(spark_session, end_station_expr="CAST(7463.09 AS DOUBLE)"),
+        suite_name=TRIP_SUITE,
+        expectations=trip_expectations(),
+    )
+
+    assert report["status"] == "FAIL"
+    assert any(check["column"] == "end_station_id" for check in report["failed"])
+
+
+@pytest.mark.spark
+@pytest.mark.parametrize(
+    "ended_at",
+    ["2024-01-24 09:00:30", "2024-01-25 09:00:01"],
+    ids=["under-one-minute", "over-twenty-four-hours"],
+)
+def test_a_trip_outside_the_duration_contract_fails_the_suite(spark_session, ended_at: str) -> None:
+    report = validate_frame(
+        _prepared_trips(spark_session, first_ended_at=ended_at),
+        suite_name=TRIP_SUITE,
+        expectations=trip_expectations(),
+    )
+
+    assert report["status"] == "FAIL"
+    assert any("duration_seconds" in str(check["column"]) for check in report["failed"])
 
 
 # --- the suites must agree with the pipeline they validate ------------------------

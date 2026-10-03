@@ -7,6 +7,8 @@
 -- Every query keeps execution_id in its grain. That prevents the validated 40-row sample from
 -- being added to a later full-month execution, and it keeps the DEVELOPMENT SAMPLE label in the
 -- returned dataset where a dashboard author cannot crop it out accidentally.
+-- `:historical_execution_id` is a required dashboard parameter. A dataset cannot silently show
+-- every execution when the author forgets to configure a filter.
 --
 -- JOIN KEY NOTE, which is the easiest thing to get wrong in this whole project: historical
 -- trips carry values like '7407.13' in start_station_id. That is the GBFS SHORT NAME, not the
@@ -25,6 +27,7 @@ SELECT
   ROUND(AVG(avg_trip_minutes), 2)                                   AS avg_trip_minutes,
   COUNT(DISTINCT station_short_name)                                AS stations_with_trips
 FROM dbr_dev.parvinbadalov_urbanflow.gold_daily_trip_demand
+WHERE execution_id = :historical_execution_id
 GROUP BY execution_id, trip_date
 ORDER BY execution_id, trip_date;
 
@@ -44,6 +47,7 @@ SELECT
   MAX(CASE WHEN start_station_uuid IS NULL THEN 'retired or renamed' ELSE 'current' END)
                                                                     AS station_status
 FROM dbr_dev.parvinbadalov_urbanflow.gold_daily_trip_demand
+WHERE execution_id = :historical_execution_id
 GROUP BY execution_id, station_short_name
 ORDER BY execution_id, trips DESC;
 
@@ -59,6 +63,7 @@ SELECT
     100.0 * SUM(member_trips) / NULLIF(SUM(member_trips) + SUM(casual_trips), 0), 2
   )                                                                 AS member_percent
 FROM dbr_dev.parvinbadalov_urbanflow.gold_daily_trip_demand
+WHERE execution_id = :historical_execution_id
 GROUP BY execution_id, trip_date
 ORDER BY execution_id, trip_date;
 
@@ -75,6 +80,7 @@ SELECT
   SUM(CASE WHEN member_casual = 'member' THEN 1 ELSE 0 END)         AS member_trips,
   SUM(CASE WHEN member_casual = 'casual' THEN 1 ELSE 0 END)         AS casual_trips
 FROM dbr_dev.parvinbadalov_urbanflow.silver_historical_trips
+WHERE execution_id = :historical_execution_id
 GROUP BY ALL
 ORDER BY execution_id, day_of_week_number, hour_of_day;
 
@@ -102,6 +108,7 @@ FROM (
   SELECT execution_id,
          (UNIX_TIMESTAMP(ended_at) - UNIX_TIMESTAMP(started_at)) / 60.0 AS duration_minutes
   FROM dbr_dev.parvinbadalov_urbanflow.silver_historical_trips
+  WHERE execution_id = :historical_execution_id
 )
 GROUP BY execution_id, duration_bucket
 ORDER BY execution_id, duration_bucket;
@@ -121,5 +128,6 @@ SELECT
     2
   )                                                                 AS match_percent
 FROM dbr_dev.parvinbadalov_urbanflow.gold_daily_trip_demand
+WHERE execution_id = :historical_execution_id
 GROUP BY execution_id
 ORDER BY execution_id;

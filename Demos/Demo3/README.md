@@ -10,8 +10,10 @@ Event Hubs stream, Spark, Delta Lake, Unity Catalog, testing, CI/CD, and Databri
 > `dbr_dev.parvinbadalov_urbanflow.bronze_station_status`, with zero missing, unexpected, rejected,
 > or duplicate event IDs. On 2026-10-02 the corrected Silver/Gold path reconciled 2,520 rows and
 > removed 89 stale out-of-service priorities; its repeat was idempotent. The 40-row historical
-> **DEVELOPMENT SAMPLE** and 48-hour weather sample also passed bounded GP1 runs. The full monthly
-> archive, Lakeflow deployment, published dashboard, and governance changes remain unexecuted.
+> **DEVELOPMENT SAMPLE** and 48-hour weather sample also passed bounded GP1 runs. On 2026-10-03,
+> Databricks Connect reproduced the corrected counts read-only and GE passed 20/20 expectations
+> across Silver and the named historical sample. The full monthly archive, Lakeflow deployment,
+> published dashboard, and governance changes remain unexecuted.
 
 ## Business problem
 
@@ -62,7 +64,7 @@ switches compute without editing a notebook.
 
 | Cluster | Verified ID | Latest state | Runtime / access mode | Effective permission | Decision |
 |---|---|---|---|---|---|
-| GP1 | `0702-132442-toro5spu` | `TERMINATED` (read-only check 2026-10-02) | DBR `17.3.x-scala2.13`, `USER_ISOLATION` | `CAN_MANAGE` through `admins`; `users` has `CAN_RESTART` | Preferred target when already running; currently unavailable under the no-lifecycle-mutation rule |
+| GP1 | `0702-132442-toro5spu` | `RUNNING` (read-only check 2026-10-03) | DBR `17.3.x-scala2.13`, `USER_ISOLATION` | `CAN_MANAGE` through `admins`; `users` has `CAN_RESTART` | Used for the approved read-only Connect/GE validation; UrbanFlow did not change its lifecycle |
 | GP2 | `0702-171207-xo9bbc0y` | `TERMINATED` (read-only check 2026-10-02) | DBR `17.3.x-scala2.13`, `USER_ISOLATION` | `CAN_MANAGE` through `admins`; `users` has `CAN_RESTART` | Compatible fallback when already running; currently unavailable under the same rule |
 
 DBR 17.3 and standard access mode meet the documented
@@ -286,14 +288,14 @@ The first producer run is complete. Phase 2 must not run this command again: it 
 The detailed, evidence-based matrix is in
 [`docs/LABS_1_TO_9_COVERAGE.md`](docs/LABS_1_TO_9_COVERAGE.md). Current highlights:
 
-- **Implemented locally:** isolated Lakeflow declarations, dashboard and governance SQL, Great
-  Expectations suites, the 1,000-file generator, SCD audits, DAB configuration, and static CI.
+- **Implemented locally:** isolated Lakeflow declarations, dashboard and governance SQL, the
+  1,000-file generator, SCD audits, DAB configuration, and static CI.
 - **Discovered read-only:** target workspace identity, Unity Catalog resources, Event Hubs Kafka
   capability, Key Vault secret metadata, storage, secret scope, and compute policies.
 - **Validated live:** the 2,520-event Bronze stream and exact reconciliation; corrected Silver and
   Gold tables plus an idempotent repeat; the 40-row historical development sample; and the 48-hour
-  weather sample, all with stored evidence.
-- **Pending live:** exactly eight Academy rows remain; see
+  weather sample; plus read-only Databricks Connect and GE validation, all with stored evidence.
+- **Pending live:** exactly seven Academy rows remain; see
   [the classified execution batches](docs/PENDING_REQUIREMENTS.md).
 
 ## Documentation
@@ -305,6 +307,7 @@ The detailed, evidence-based matrix is in
 - [First bounded streaming test runbook](docs/FIRST_STREAMING_TEST.md) — Phase 1, validated live
 - [Silver and Gold bounded run runbook](docs/SILVER_GOLD_RUNBOOK.md) — Phase 2, validated live
 - [20–25 minute presentation guide](docs/PRESENTATION_GUIDE.md)
+- [Live execution evidence](evidence/README.md)
 - [Evidence policy and future screenshots](docs/evidence/README.md)
 
 ## Known limitations
@@ -312,8 +315,9 @@ The detailed, evidence-based matrix is in
 - Bronze is one real snapshot, so availability summaries are not historical trends.
 - The existing Event Hub has one day of retention, suitable for a short demonstration rather
   than durable history.
-- GP1 and GP2 were both `TERMINATED` during the latest read-only inspection on 2026-10-02.
-  UrbanFlow did not start or stop either cluster and will not change them.
+- GP1 was already `RUNNING` during the 2026-10-03 read-only inspection. GP2's latest recorded check
+  remains `TERMINATED` on 2026-10-02. UrbanFlow did not start, stop, resize or reconfigure either
+  cluster.
 - The existing secret and consumer group were exercised successfully during the completed Bronze
   run; Phase 2 performs no secret read and no Event Hubs operation.
 - Current and historical station identifiers require the documented `short_name` crosswalk.
@@ -322,8 +326,7 @@ The detailed, evidence-based matrix is in
 
 ## Cost and safety boundary
 
-The next recommended execution batch separates its read-only checks from its writes. Databricks
-Connect and GE can read existing tables on an already-running GP1. A Jobs API trigger creates a run
+The safe Databricks Connect and GE read checks are complete. A Jobs API trigger creates a run
 record, and the 1,000-file Auto Loader exercise uploads files and writes checkpoints and Delta rows,
-so those steps need explicit write approval. Exact commands and rollbacks are in
+so each remaining step needs explicit write approval. Exact commands and rollbacks are in
 [the pending-requirements plan](docs/PENDING_REQUIREMENTS.md).

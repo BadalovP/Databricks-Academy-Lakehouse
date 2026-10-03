@@ -1,9 +1,13 @@
 # UrbanFlow execution evidence
 
-No live UrbanFlow execution has occurred yet. This directory intentionally contains no fabricated
-screenshots or success reports.
+UrbanFlow now has dated live evidence for the bounded Event Hubs path, corrected Silver/Gold path,
+historical and weather development samples, and the final Batch A read-only validation. The newest
+record is:
 
-After an approved milestone, add dated evidence for:
+- [Batch A read-only validation](../../evidence/BATCH_A_READ_VALIDATION.md)
+- [Machine-readable Batch A result](../../evidence/2026-10-03_batch_a_read_validation.json)
+
+For each approved milestone, evidence should cover:
 
 1. producer count and bounded Event Hubs publication,
 2. Bronze Kafka metadata and reconciliation,

@@ -12,6 +12,8 @@
 --    "effect" for that reason.
 -- 3. Every demand comparison keeps execution_id in its grain. The committed weather run used
 --    the 40-trip development sample; it must never be summed together with a later monthly run.
+-- 4. `:weather_execution_id` is required by every dataset, including the provenance window. A
+--    missing dashboard selection therefore fails instead of displaying multiple executions.
 
 -- 1. Trip volume against temperature, by day. The dashboard's main weather comparison.
 SELECT
@@ -28,6 +30,7 @@ SELECT
   -- exactly as convincing as one built on full coverage.
   ROUND(AVG(weather_coverage), 4)                                   AS weather_coverage
 FROM dbr_dev.parvinbadalov_urbanflow.gold_weather_demand
+WHERE execution_id = :weather_execution_id
 GROUP BY execution_id, trip_date
 ORDER BY execution_id, trip_date;
 
@@ -43,6 +46,7 @@ SELECT
   ROUND(SUM(trips) / NULLIF(COUNT(DISTINCT trip_date), 0), 1)       AS avg_trips_per_day,
   ROUND(AVG(avg_temperature_celsius), 2)                            AS avg_temperature_celsius
 FROM dbr_dev.parvinbadalov_urbanflow.gold_weather_demand
+WHERE execution_id = :weather_execution_id
 GROUP BY execution_id, temperature_bucket
 ORDER BY execution_id, temperature_bucket;
 
@@ -66,13 +70,20 @@ FROM (
   SELECT execution_id, trip_date, SUM(trips) AS trips,
          SUM(total_precipitation_mm) AS total_precipitation_mm
   FROM dbr_dev.parvinbadalov_urbanflow.gold_weather_demand
+  WHERE execution_id = :weather_execution_id
   GROUP BY execution_id, trip_date
 )
 GROUP BY execution_id, precipitation_band
 ORDER BY execution_id, precipitation_band;
 
--- 4. The weather series itself, so a reader can see its grain and its gaps directly.
+-- 4. The weather series itself, restricted to the selected demand execution's date window.
+WITH selected_window AS (
+  SELECT MIN(trip_date) AS starts_on, MAX(trip_date) AS ends_on
+  FROM dbr_dev.parvinbadalov_urbanflow.gold_weather_demand
+  WHERE execution_id = :weather_execution_id
+)
 SELECT
+  :weather_execution_id                                             AS execution_id,
   weather_grid_label,
   MIN(weather_hour)                                                 AS covers_from,
   MAX(weather_hour)                                                 AS covers_to,
@@ -86,6 +97,8 @@ SELECT
   MAX(source)                                                       AS source,
   MAX(retrieved_at)                                                 AS retrieved_at
 FROM dbr_dev.parvinbadalov_urbanflow.dim_weather_hourly
+CROSS JOIN selected_window
+WHERE TO_DATE(weather_hour) BETWEEN starts_on AND ends_on
 GROUP BY weather_grid_label;
 
 -- 5. Trips that found no weather hour at all. Reported, not hidden: an uncovered hour is a
@@ -106,5 +119,6 @@ SELECT
   ROUND(100.0 * SUM(trips_with_weather) / NULLIF(SUM(trips), 0), 2) AS weather_coverage_percent,
   COUNT(DISTINCT trip_date)                                         AS days_covered
 FROM dbr_dev.parvinbadalov_urbanflow.gold_weather_demand
+WHERE execution_id = :weather_execution_id
 GROUP BY execution_id
 ORDER BY execution_id;

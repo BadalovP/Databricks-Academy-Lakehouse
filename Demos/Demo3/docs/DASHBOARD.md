@@ -138,6 +138,11 @@ the sample data. Pages 1 and 4 would be genuinely informative today. Pages 2 and
 for the monthly archive, or carry a prominent 40-row label - showing a 40-trip "demand trend" to a
 supervisor would invite exactly the wrong conclusion.
 
+Every Page 2 dataset requires one `:historical_execution_id`, and every Page 3 dataset requires
+one `:weather_execution_id`. A missing parameter fails the query, and each dataset also keeps the
+selected ID in its result grain. This prevents the development sample and a later monthly run from
+being combined.
+
 ## Exact creation steps, once approved
 
 1. **Run the prerequisites in order:** the Phase 2 correction run, then notebook 06 against a
@@ -150,13 +155,15 @@ supervisor would invite exactly the wrong conclusion.
    `[dev] UrbanFlow Operations`.
 5. **Add each dataset** from the table above: *Data → Create from SQL*, paste the query, name
    it with the dataset name given.
-6. **Build the four pages** per the layout, adding each caveat caption as you add its tile
+6. **Create and bind both required parameters:** `historical_execution_id` on every Page 2 dataset
+   and `weather_execution_id` on every Page 3 dataset. Select one execution for each page.
+7. **Build the four pages** per the layout, adding each caveat caption as you add its tile
    rather than afterwards.
-7. **Re-read every tile against the "what is real" table** at the top of this document. Any
+8. **Re-read every tile against the "what is real" table** at the top of this document. Any
    tile with a time axis must be on Page 2, or sourced from the weather daily series.
-8. **Stop the SQL warehouse** when finished. It does not stop itself immediately, and an idle
+9. **Stop the SQL warehouse** when finished. It does not stop itself immediately, and an idle
    warehouse still bills until its auto-stop elapses.
-9. **Record the evidence:** dashboard URL, the date, and the row counts each tile showed, then
+10. **Record the evidence:** dashboard URL, the date, and the row counts each tile showed, then
    move the Lab 1 and Lab 6 dashboard rows in
    [LABS_1_TO_9_COVERAGE.md](LABS_1_TO_9_COVERAGE.md) from `Pending live` to `Validated live`.
    Not before: a created dashboard with no recorded figures is not evidence.

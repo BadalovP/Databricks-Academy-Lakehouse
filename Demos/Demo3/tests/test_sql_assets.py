@@ -88,7 +88,7 @@ def test_every_table_reference_is_fully_qualified(path: Path) -> None:
 
     for reference in references:
         bare = reference.strip("`")
-        if bare.lower() in {"values", "counts", "exploded"}:
+        if bare.lower() in {"values", "counts", "exploded", "selected_window"}:
             continue  # a CTE or inline VALUES alias, not a table
         assert bare.count(".") >= 2, f"{path.name} references {bare!r} without a full name"
 
@@ -121,10 +121,13 @@ def test_historical_and_weather_queries_keep_execution_scopes_separate() -> None
 
     assert historical.count("40-ROW DEVELOPMENT SAMPLE") >= 6
     assert historical.count("execution_id") >= 12
+    assert historical.count("WHERE execution_id = :historical_execution_id") == 6
     assert "OVER (PARTITION BY execution_id)" in historical
     assert "LIMIT 25" not in historical
     assert weather.count("48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE") >= 4
     assert weather.count("execution_id") >= 8
+    assert weather.count("WHERE execution_id = :weather_execution_id") == 5
+    assert re.search(r"SELECT\s+:weather_execution_id\s+AS execution_id", weather)
 
 
 def test_weather_notebook_selects_one_historical_execution() -> None:

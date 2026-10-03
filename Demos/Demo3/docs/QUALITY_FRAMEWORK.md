@@ -41,6 +41,13 @@ The base Great Expectations 1.23.2 package installs 16 packages, none of them Sp
 against pyspark 4.1.1 before being adopted: a deliberately null-containing frame produced
 `success=False` with `unexpected_count=1`.
 
+On 2026-10-03 the suites also ran through Databricks Connect against the existing persisted tables
+on GP1. Silver passed 10/10 expectations and the named 40-row historical development sample passed
+10/10, with zero failures and zero unexpected rows. The historical duration check derives its
+expression and bounds from `historical.py`, so the external framework continues to validate the
+production contract rather than redefine it. See
+[the Batch A evidence](../evidence/BATCH_A_READ_VALIDATION.md).
+
 So "the lightest option that satisfies the requirement" is Great Expectations - lightest in the
 only sense that matters here, which is impact on what already works.
 

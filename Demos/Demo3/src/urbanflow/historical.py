@@ -22,6 +22,8 @@ from urbanflow.reporting import sanitize_path_token
 # schema-evolution and rescued-data requirement.
 RESCUED_COLUMN = "_rescued_data"
 SCHEMA_EVOLUTION_MODES = frozenset({"rescue", "addNewColumns", "failOnNewColumns", "none"})
+MIN_TRIP_SECONDS = 60
+MAX_TRIP_HOURS = 24
 
 TRIP_COLUMNS: tuple[str, ...] = (
     "ride_id",
@@ -158,8 +160,8 @@ def trip_duration_seconds() -> Any:
 def validate_historical_trips(
     trips: Any,
     *,
-    min_trip_seconds: int = 60,
-    max_trip_hours: int = 24,
+    min_trip_seconds: int = MIN_TRIP_SECONDS,
+    max_trip_hours: int = MAX_TRIP_HOURS,
 ) -> Any:
     """Attach explicit quality failures while preserving every input row.
 
