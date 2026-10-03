@@ -1,0 +1,158 @@
+{
+  "availability_history": "one real snapshot; not trend evidence",
+  "delta_merges": {
+    "daily_summary": {
+      "inserted_rows": 0,
+      "rows_after": 2520,
+      "rows_before": 2520,
+      "schema_migration": {
+        "added_columns": [],
+        "migrated": false,
+        "table_existed": true
+      },
+      "source_rows": 2520,
+      "table_existed": true
+    },
+    "dimension": {
+      "inserted_rows": 0,
+      "rows_after": 40,
+      "rows_before": 40,
+      "schema_migration": {
+        "added_columns": [],
+        "migrated": false,
+        "table_existed": true
+      },
+      "source_rows": 40,
+      "table_existed": true
+    },
+    "fact": {
+      "inserted_rows": 0,
+      "rows_after": 2520,
+      "rows_before": 2520,
+      "schema_migration": {
+        "added_columns": [],
+        "migrated": false,
+        "table_existed": true
+      },
+      "source_rows": 2520,
+      "table_existed": true
+    },
+    "priorities": {
+      "legacy_backfill": {
+        "attributable_rows": 0,
+        "backfilled_rows": 0,
+        "null_rows_after": 0,
+        "null_rows_before": 0,
+        "table_existed": true,
+        "unattributable_rows": 0
+      },
+      "other_execution_rows_after": 0,
+      "other_execution_rows_before": 0,
+      "other_executions_preserved": true,
+      "rows_after": 657,
+      "rows_before": 657,
+      "schema_migration": {
+        "added_columns": [],
+        "migrated": false,
+        "table_existed": true
+      },
+      "scope_matches_source": true,
+      "scope_rows_after": 657,
+      "scope_rows_before": 657,
+      "source_rows": 657,
+      "stale_rows_removed": 0,
+      "table_existed": true,
+      "verification": {
+        "missing_from_table": 0,
+        "no_unassigned_rows": true,
+        "other_execution_rows": 0,
+        "scope_matches_source": true,
+        "scope_rows": 657,
+        "source_rows": 657,
+        "status": "PASS",
+        "total_rows": 657,
+        "unassigned_rows": 0,
+        "unexpected_in_table": 0
+      }
+    },
+    "shortages": {
+      "other_execution_rows_after": 0,
+      "other_execution_rows_before": 0,
+      "other_executions_preserved": true,
+      "rows_after": 657,
+      "rows_before": 657,
+      "schema_migration": {
+        "added_columns": [],
+        "migrated": false,
+        "table_existed": true
+      },
+      "scope_matches_source": true,
+      "scope_rows_after": 657,
+      "scope_rows_before": 657,
+      "source_rows": 657,
+      "stale_rows_removed": 0,
+      "table_existed": true,
+      "verification": {
+        "missing_from_table": 0,
+        "no_unassigned_rows": true,
+        "other_execution_rows": 0,
+        "scope_matches_source": true,
+        "scope_rows": 657,
+        "source_rows": 657,
+        "status": "PASS",
+        "total_rows": 657,
+        "unassigned_rows": 0,
+        "unexpected_in_table": 0
+      }
+    }
+  },
+  "derived_table_verification": {
+    "priorities": {
+      "missing_from_table": 0,
+      "no_unassigned_rows": true,
+      "other_execution_rows": 0,
+      "scope_matches_source": true,
+      "scope_rows": 657,
+      "source_rows": 657,
+      "status": "PASS",
+      "total_rows": 657,
+      "unassigned_rows": 0,
+      "unexpected_in_table": 0
+    },
+    "shortages": {
+      "missing_from_table": 0,
+      "no_unassigned_rows": true,
+      "other_execution_rows": 0,
+      "scope_matches_source": true,
+      "scope_rows": 657,
+      "source_rows": 657,
+      "status": "PASS",
+      "total_rows": 657,
+      "unassigned_rows": 0,
+      "unexpected_in_table": 0
+    }
+  },
+  "legacy_priority_backfill": {
+    "attributable_rows": 0,
+    "backfilled_rows": 0,
+    "null_rows_after": 0,
+    "null_rows_before": 0,
+    "table_existed": true,
+    "unattributable_rows": 0
+  },
+  "matched_reference_rows": 40,
+  "phase": "silver_to_gold",
+  "reconciliation": {
+    "distinct_fact_event_ids": 2520,
+    "fact_ids_unique": true,
+    "fact_matches_silver": true,
+    "fact_rows": 2520,
+    "silver_rows": 2520,
+    "status": "PASS",
+    "summary_observation_total": 2520,
+    "summary_totals_match_fact": true
+  },
+  "source_execution_id": "urbanflow-20260929T195132Z-r3",
+  "station_reference_rows": 40,
+  "status": "PASS"
+}

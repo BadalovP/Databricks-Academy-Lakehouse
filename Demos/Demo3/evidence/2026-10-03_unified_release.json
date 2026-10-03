@@ -1,0 +1,756 @@
+{
+  "_note": "UrbanFlow unified Job release evidence. Every figure was read back from the Jobs API, the GitHub Actions API, the task reports in the Volume, or a read-only Databricks Connect session on GP1 after the runs. Nothing here is an expected value written in advance.",
+  "evidence_type": "urbanflow_unified_release",
+  "date": "2026-10-03",
+  "unified_job": {
+    "job_id": 991496516229387,
+    "name": "[azure] UrbanFlow End-to-End",
+    "tasks": 7,
+    "compute": "existing GP1 0702-132442-toro5spu only; no new_cluster, no serverless",
+    "schedule": null
+  },
+  "release_workflow": ".github/workflows/demo3_urbanflow_deploy.yml (workflow_dispatch only, protected environment azure-release-approval)",
+  "workflow_runs": {
+    "37136659149": {
+      "sha": "8b576f0",
+      "conclusion": "failure",
+      "outcome": "deploy and plans succeeded; unified run 157686710394279 failed at 06_weather_enrichment (job parameter shadowed the task's historical ID); repeat not submitted",
+      "approval_deployment": 6830087186
+    },
+    "37138096688": {
+      "sha": "423e74b",
+      "conclusion": "failure",
+      "outcome": "after PR #64; unified run 295677984549301 failed closed in 07_final_validation, exposing the shared historical Bronze table; repeat not submitted",
+      "approval_deployment": 6830341411
+    },
+    "37139449737": {
+      "sha": "7abc194",
+      "conclusion": "success",
+      "outcome": "after PR #65; sample run plus idempotency repeat",
+      "approval_deployment": 6830586533
+    },
+    "37140618864": {
+      "sha": "7abc194",
+      "conclusion": "success",
+      "outcome": "REAL JANUARY 2024 CITI BIKE MONTHLY ARCHIVE, single run",
+      "approval_deployment": 6830801387
+    }
+  },
+  "job_runs": {
+    "failed_attempt_1": {
+      "run_id": 157686710394279,
+      "life_cycle_state": "INTERNAL_ERROR",
+      "result_state": "FAILED",
+      "duration_seconds": 422,
+      "tasks": [
+        {
+          "task_key": "01_preflight",
+          "run_id": 394354251362681,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 50
+        },
+        {
+          "task_key": "02_station_source_check",
+          "run_id": 893521400750371,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 107
+        },
+        {
+          "task_key": "03_station_silver",
+          "run_id": 863268532997041,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 119
+        },
+        {
+          "task_key": "04_station_gold",
+          "run_id": 1018206043463148,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 144
+        },
+        {
+          "task_key": "05_historical_trips",
+          "run_id": 662003362919292,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 246
+        },
+        {
+          "task_key": "06_weather_enrichment",
+          "run_id": 519842981334730,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "FAILED",
+          "duration_seconds": 53
+        },
+        {
+          "task_key": "07_final_validation",
+          "run_id": 93367194036017,
+          "life_cycle_state": "SKIPPED",
+          "result_state": "UPSTREAM_FAILED",
+          "duration_seconds": 0
+        }
+      ],
+      "parameters": {
+        "run_full_month": "false",
+        "source_execution_id": "urbanflow-20260929T195132Z-r3",
+        "historical_execution_id": "urbanflow-hist-devsample40-20261002T0010Z",
+        "historical_landing_subdir": "",
+        "weather_execution_id": "urbanflow-weather-devsample48h-20261002T0015Z",
+        "weather_source": "sample_json",
+        "weather_start_date": "2024-01-24",
+        "weather_end_date": "2024-01-25"
+      }
+    },
+    "failed_attempt_2": {
+      "run_id": 295677984549301,
+      "life_cycle_state": "INTERNAL_ERROR",
+      "result_state": "FAILED",
+      "duration_seconds": 396,
+      "tasks": [
+        {
+          "task_key": "01_preflight",
+          "run_id": 149697789712144,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 43
+        },
+        {
+          "task_key": "02_station_source_check",
+          "run_id": 620433341739335,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 48
+        },
+        {
+          "task_key": "03_station_silver",
+          "run_id": 897720976482592,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 106
+        },
+        {
+          "task_key": "04_station_gold",
+          "run_id": 726777765064778,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 147
+        },
+        {
+          "task_key": "05_historical_trips",
+          "run_id": 478733775464941,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 153
+        },
+        {
+          "task_key": "06_weather_enrichment",
+          "run_id": 1025369281081832,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 108
+        },
+        {
+          "task_key": "07_final_validation",
+          "run_id": 260424673294873,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "FAILED",
+          "duration_seconds": 50
+        }
+      ],
+      "parameters": {
+        "run_full_month": "false",
+        "source_execution_id": "urbanflow-20260929T195132Z-r3",
+        "historical_execution_id": "urbanflow-hist-devsample40-20261002T0010Z",
+        "historical_landing_subdir": "",
+        "weather_execution_id": "urbanflow-weather-devsample48h-20261002T0015Z",
+        "weather_source": "sample_json",
+        "weather_start_date": "2024-01-24",
+        "weather_end_date": "2024-01-25"
+      }
+    },
+    "sample_run_1": {
+      "run_id": 4222809815373,
+      "life_cycle_state": "TERMINATED",
+      "result_state": "SUCCESS",
+      "duration_seconds": 471,
+      "tasks": [
+        {
+          "task_key": "01_preflight",
+          "run_id": 277516568734905,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 37
+        },
+        {
+          "task_key": "02_station_source_check",
+          "run_id": 959675103688310,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 52
+        },
+        {
+          "task_key": "03_station_silver",
+          "run_id": 577725734377861,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 86
+        },
+        {
+          "task_key": "04_station_gold",
+          "run_id": 247165221723900,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 218
+        },
+        {
+          "task_key": "05_historical_trips",
+          "run_id": 417280679143360,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 137
+        },
+        {
+          "task_key": "06_weather_enrichment",
+          "run_id": 27198519676204,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 170
+        },
+        {
+          "task_key": "07_final_validation",
+          "run_id": 739322882801699,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 76
+        }
+      ],
+      "parameters": {
+        "run_full_month": "false",
+        "source_execution_id": "urbanflow-20260929T195132Z-r3",
+        "historical_execution_id": "urbanflow-hist-devsample40-20261002T0010Z",
+        "historical_landing_subdir": "",
+        "weather_execution_id": "urbanflow-weather-devsample48h-20261002T0015Z",
+        "weather_source": "sample_json",
+        "weather_start_date": "2024-01-24",
+        "weather_end_date": "2024-01-25"
+      }
+    },
+    "sample_run_2_idempotency": {
+      "run_id": 284335864579341,
+      "life_cycle_state": "TERMINATED",
+      "result_state": "SUCCESS",
+      "duration_seconds": 389,
+      "tasks": [
+        {
+          "task_key": "01_preflight",
+          "run_id": 316608756033063,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 42
+        },
+        {
+          "task_key": "02_station_source_check",
+          "run_id": 849178869916001,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 55
+        },
+        {
+          "task_key": "03_station_silver",
+          "run_id": 248113269224093,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 96
+        },
+        {
+          "task_key": "04_station_gold",
+          "run_id": 434962522213986,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 135
+        },
+        {
+          "task_key": "05_historical_trips",
+          "run_id": 139347871687285,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 148
+        },
+        {
+          "task_key": "06_weather_enrichment",
+          "run_id": 754390735810592,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 89
+        },
+        {
+          "task_key": "07_final_validation",
+          "run_id": 977301558873656,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 60
+        }
+      ],
+      "parameters": {
+        "run_full_month": "false",
+        "source_execution_id": "urbanflow-20260929T195132Z-r3",
+        "historical_execution_id": "urbanflow-hist-devsample40-20261002T0010Z",
+        "historical_landing_subdir": "",
+        "weather_execution_id": "urbanflow-weather-devsample48h-20261002T0015Z",
+        "weather_source": "sample_json",
+        "weather_start_date": "2024-01-24",
+        "weather_end_date": "2024-01-25"
+      }
+    },
+    "full_month": {
+      "run_id": 96337578882467,
+      "life_cycle_state": "TERMINATED",
+      "result_state": "SUCCESS",
+      "duration_seconds": 1082,
+      "tasks": [
+        {
+          "task_key": "01_preflight",
+          "run_id": 963573998791096,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 39
+        },
+        {
+          "task_key": "02_station_source_check",
+          "run_id": 937175206889546,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 46
+        },
+        {
+          "task_key": "03_station_silver",
+          "run_id": 382563342405046,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 572
+        },
+        {
+          "task_key": "04_station_gold",
+          "run_id": 456705634557445,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 303
+        },
+        {
+          "task_key": "05_historical_trips",
+          "run_id": 262426692062355,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 748
+        },
+        {
+          "task_key": "06_weather_enrichment",
+          "run_id": 774898567067339,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 181
+        },
+        {
+          "task_key": "07_final_validation",
+          "run_id": 163480229195342,
+          "life_cycle_state": "TERMINATED",
+          "result_state": "SUCCESS",
+          "duration_seconds": 112
+        }
+      ],
+      "parameters": {
+        "run_full_month": "true",
+        "source_execution_id": "urbanflow-20260929T195132Z-r3",
+        "historical_execution_id": "urbanflow-hist-202401-full-gh-37140618864-1",
+        "historical_landing_subdir": "202401-full",
+        "weather_execution_id": "urbanflow-weather-202401-full-gh-37140618864-1",
+        "weather_source": "archive_api",
+        "weather_start_date": "2024-01-01",
+        "weather_end_date": "2024-01-31"
+      }
+    }
+  },
+  "idempotency": {
+    "verdict": "PROVEN",
+    "basis": "Run 284335864579341 repeated run 4222809815373 with identical parameters. Its silver, gold, historical and weather reports show inserted_rows 0, stale_rows_removed 0 and no schema migration in every table; all row counts are identical; historical Bronze still holds 40 rows because the checkpoint skipped the already-processed file; both final validations returned byte-identical check results.",
+    "station_counts": {
+      "bronze": 2520,
+      "silver": 2520,
+      "fact": 2520,
+      "shortage": 657,
+      "priority": 657
+    },
+    "status_composition": {
+      "AVAILABLE": 1774,
+      "LOW_BIKES": 278,
+      "LOW_DOCKS": 374,
+      "LOW_BIKES_AND_DOCKS": 5,
+      "OUT_OF_SERVICE": 89
+    },
+    "actionable_out_of_service": 0,
+    "historical_sample": {
+      "valid": 40,
+      "quarantine": 0,
+      "duplicates": 0,
+      "distinct_ride_ids": 40,
+      "station_matches": 40,
+      "member": 35,
+      "casual": 5,
+      "days": 17
+    },
+    "weather_sample": {
+      "hours": 48,
+      "temperature_completeness": 1.0,
+      "fanout": false
+    }
+  },
+  "monthly_archive": {
+    "label": "REAL JANUARY 2024 CITI BIKE MONTHLY ARCHIVE",
+    "historical_execution_id": "urbanflow-hist-202401-full-gh-37140618864-1",
+    "weather_execution_id": "urbanflow-weather-202401-full-gh-37140618864-1",
+    "landing_namespace": "landing/historical_trips_202401-full",
+    "bronze_table": "bronze_historical_trips_202401_full",
+    "source_files": [
+      "202401-citibike-tripdata_1.csv",
+      "202401-citibike-tripdata_2.csv"
+    ],
+    "measured_source_rows_before_run": 1888085,
+    "reconciliation": {
+      "accounted_rows": 1888085,
+      "counts_reconcile": true,
+      "demand_rows": 64794,
+      "duplicate_rows": 0,
+      "join_produced_no_matches": false,
+      "landed_rows": 1888085,
+      "match_rate": 0.0343,
+      "quarantine_rows": 1767,
+      "status": "PASS",
+      "valid_rows": 1886318
+    },
+    "reconciles": true,
+    "match_rate": {
+      "match_rate": 0.0343,
+      "matched_to_current_station": 64635,
+      "trips": 1886318,
+      "unmatched": 1821683
+    },
+    "match_rate_explanation": "The station dimension is the committed 40-station development sample; 39 of those 40 stations appear in the month, against 2,223 distinct start stations overall. The 3.43% rate measures dimension coverage, not renamed or retired stations, and was not treated as a failure.",
+    "duration_profile": {
+      "avg_minutes": 11.02,
+      "max_minutes": 1439.55,
+      "median_minutes": 7.73,
+      "min_minutes": 1.02,
+      "trips": 1886318
+    },
+    "measured_read_only_after_run": {
+      "label": "REAL JANUARY 2024 CITI BIKE MONTHLY ARCHIVE",
+      "execution_id": "urbanflow-hist-202401-full-gh-37140618864-1",
+      "bronze_rows": {
+        "bronze_historical_trips_202401_full": 1888085,
+        "bronze_historical_trips (sample)": 40
+      },
+      "silver_rows_by_execution": {
+        "urbanflow-hist-202401-full-gh-37140618864-1": 1886318,
+        "urbanflow-hist-devsample40-20261002T0010Z": 40
+      },
+      "valid_profile": {
+        "valid": 1886318,
+        "distinct_ride_ids": 1886318,
+        "null_ride_ids": 0,
+        "distinct_start_days": 32,
+        "distinct_start_station_ids": 2223,
+        "null_start_station_ids": 0,
+        "min_started_at": "2023-12-31 13:50:28",
+        "max_started_at": "2024-01-31 23:58:30",
+        "min_ended_at": "2024-01-01 00:00:08",
+        "max_ended_at": "2024-01-31 23:59:56",
+        "timestamps_session_time_zone": "Etc/UTC"
+      },
+      "station_id_type": "string",
+      "member_casual": {
+        "casual": 207822,
+        "member": 1678496
+      },
+      "rideable_type": {
+        "electric_bike": 1213279,
+        "classic_bike": 673039
+      },
+      "started_outside_january_2024": 374,
+      "daily_totals": [
+        {
+          "day": "2023-12-31",
+          "trips": 374,
+          "member": 177,
+          "casual": 197
+        },
+        {
+          "day": "2024-01-01",
+          "trips": 47200,
+          "member": 35954,
+          "casual": 11246
+        },
+        {
+          "day": "2024-01-02",
+          "trips": 68048,
+          "member": 59382,
+          "casual": 8666
+        },
+        {
+          "day": "2024-01-03",
+          "trips": 76474,
+          "member": 67690,
+          "casual": 8784
+        },
+        {
+          "day": "2024-01-04",
+          "trips": 77412,
+          "member": 68535,
+          "casual": 8877
+        },
+        {
+          "day": "2024-01-05",
+          "trips": 72387,
+          "member": 63274,
+          "casual": 9113
+        },
+        {
+          "day": "2024-01-06",
+          "trips": 43251,
+          "member": 37111,
+          "casual": 6140
+        },
+        {
+          "day": "2024-01-07",
+          "trips": 35649,
+          "member": 31331,
+          "casual": 4318
+        },
+        {
+          "day": "2024-01-08",
+          "trips": 78416,
+          "member": 70169,
+          "casual": 8247
+        },
+        {
+          "day": "2024-01-09",
+          "trips": 42999,
+          "member": 39426,
+          "casual": 3573
+        },
+        {
+          "day": "2024-01-10",
+          "trips": 81612,
+          "member": 73793,
+          "casual": 7819
+        },
+        {
+          "day": "2024-01-11",
+          "trips": 89134,
+          "member": 79777,
+          "casual": 9357
+        },
+        {
+          "day": "2024-01-12",
+          "trips": 86058,
+          "member": 75247,
+          "casual": 10811
+        },
+        {
+          "day": "2024-01-13",
+          "trips": 63811,
+          "member": 53098,
+          "casual": 10713
+        },
+        {
+          "day": "2024-01-14",
+          "trips": 48866,
+          "member": 41875,
+          "casual": 6991
+        },
+        {
+          "day": "2024-01-15",
+          "trips": 45532,
+          "member": 40969,
+          "casual": 4563
+        },
+        {
+          "day": "2024-01-16",
+          "trips": 27344,
+          "member": 25590,
+          "casual": 1754
+        },
+        {
+          "day": "2024-01-17",
+          "trips": 42745,
+          "member": 40042,
+          "casual": 2703
+        },
+        {
+          "day": "2024-01-18",
+          "trips": 55480,
+          "member": 51457,
+          "casual": 4023
+        },
+        {
+          "day": "2024-01-19",
+          "trips": 44005,
+          "member": 40644,
+          "casual": 3361
+        },
+        {
+          "day": "2024-01-20",
+          "trips": 37168,
+          "member": 33441,
+          "casual": 3727
+        },
+        {
+          "day": "2024-01-21",
+          "trips": 36281,
+          "member": 32565,
+          "casual": 3716
+        },
+        {
+          "day": "2024-01-22",
+          "trips": 61015,
+          "member": 56222,
+          "casual": 4793
+        },
+        {
+          "day": "2024-01-23",
+          "trips": 70604,
+          "member": 65036,
+          "casual": 5568
+        },
+        {
+          "day": "2024-01-24",
+          "trips": 65871,
+          "member": 60510,
+          "casual": 5361
+        },
+        {
+          "day": "2024-01-25",
+          "trips": 74859,
+          "member": 67033,
+          "casual": 7826
+        },
+        {
+          "day": "2024-01-26",
+          "trips": 72297,
+          "member": 63942,
+          "casual": 8355
+        },
+        {
+          "day": "2024-01-27",
+          "trips": 80140,
+          "member": 65781,
+          "casual": 14359
+        },
+        {
+          "day": "2024-01-28",
+          "trips": 29716,
+          "member": 26284,
+          "casual": 3432
+        },
+        {
+          "day": "2024-01-29",
+          "trips": 70736,
+          "member": 64863,
+          "casual": 5873
+        },
+        {
+          "day": "2024-01-30",
+          "trips": 78230,
+          "member": 71669,
+          "casual": 6561
+        },
+        {
+          "day": "2024-01-31",
+          "trips": 82604,
+          "member": 75609,
+          "casual": 6995
+        }
+      ],
+      "quarantine_rows": 1767,
+      "quarantine_reasons": {
+        "MISSING_START_STATION_ID": 1160,
+        "TRIP_TOO_LONG": 607
+      },
+      "quarantine_rows_without_reason": 0,
+      "duplicate_rows": 0,
+      "station_dimension_size": 40,
+      "dimension_stations_seen_in_month": 39,
+      "gold_daily_trip_demand_rows": 64794,
+      "gold_weather_demand_rows": 49
+    },
+    "weather": {
+      "source": "archive_api",
+      "coverage": {
+        "complete": true,
+        "hours": 744,
+        "hours_with_precipitation": 744,
+        "hours_with_temperature": 744,
+        "hours_with_wind": 744,
+        "missing_precipitation": 0,
+        "missing_temperature": 0,
+        "missing_wind": 0,
+        "temperature_completeness": 1.0
+      },
+      "reconciliation": {
+        "enriched_rows": 1886318,
+        "rows_preserved": true,
+        "status": "PASS",
+        "trip_rows": 1886318,
+        "trips_with_weather": 1885944,
+        "trips_without_weather": 374,
+        "weather_coverage": 0.9998
+      },
+      "trips_without_weather_explained": "374 rides started on 2023-12-31; the weather window is 2024-01-01..2024-01-31, and the LEFT join keeps them with null weather.",
+      "limitations": [
+        "one city coordinate, NOT per-station weather; see weather_grid_label",
+        "comparisons only, not predictions; nothing is modelled or controlled for",
+        "a missing reading stays null and is never replaced with zero"
+      ]
+    },
+    "execution_isolation": {
+      "silver_rows_by_execution": {
+        "urbanflow-hist-202401-full-gh-37140618864-1": 1886318,
+        "urbanflow-hist-devsample40-20261002T0010Z": 40
+      },
+      "sample_bronze_rows_unchanged": 40
+    }
+  },
+  "defects_found_and_fixed_during_release": [
+    {
+      "pr": 64,
+      "defect": "the unified Job's station source_execution_id job parameter overrode the weather task's source_execution_id <- historical_execution_id mapping",
+      "effect": "weather found no trips and failed closed before writing"
+    },
+    {
+      "pr": 65,
+      "defect": "historical Bronze was one shared table without an execution column, read whole and re-stamped by every execution",
+      "effect": "the month would have reported 1,888,125 landed rows and counted the 40 sample rides as duplicates; caught by final validation before any monthly data was written"
+    },
+    {
+      "pr": 65,
+      "defect": "preflight demanded weather_source=open_meteo_archive while notebook 07 accepts only sample_json or archive_api",
+      "effect": "the month would have passed preflight and failed at weather"
+    }
+  ],
+  "known_limitation": "silver_historical_trips.source_file is stamped from _metadata.file_path on the Delta Bronze read, so it records the Bronze Parquet file rather than the source CSV. Lineage to the CSV is recorded in the historical report's landed_files.",
+  "not_done": [
+    "Lakeflow deployment",
+    "dashboard publication",
+    "SQL warehouse",
+    "governance changes",
+    "OPTIMIZE",
+    "VACUUM",
+    "CDF",
+    "deletion vectors",
+    "clustering",
+    "retiring the four component Jobs",
+    "Event Hubs publishing"
+  ]
+}

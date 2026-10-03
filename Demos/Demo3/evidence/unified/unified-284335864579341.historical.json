@@ -1,0 +1,106 @@
+{
+  "delta_merges": {
+    "daily_demand": {
+      "other_execution_rows_after": 0,
+      "other_execution_rows_before": 0,
+      "other_executions_preserved": true,
+      "rows_after": 40,
+      "rows_before": 40,
+      "schema_migration": {
+        "added_columns": [],
+        "migrated": false,
+        "table_existed": true
+      },
+      "scope_matches_source": true,
+      "scope_rows_after": 40,
+      "scope_rows_before": 40,
+      "source_rows": 40,
+      "stale_rows_removed": 0,
+      "table_existed": true,
+      "verification": {
+        "missing_from_table": 0,
+        "no_unassigned_rows": true,
+        "other_execution_rows": 0,
+        "scope_matches_source": true,
+        "scope_rows": 40,
+        "source_rows": 40,
+        "status": "PASS",
+        "total_rows": 40,
+        "unassigned_rows": 0,
+        "unexpected_in_table": 0
+      }
+    },
+    "duplicates": {
+      "inserted_rows": 0,
+      "rows_after": 0,
+      "rows_before": 0,
+      "schema_migration": {
+        "added_columns": [],
+        "migrated": false,
+        "table_existed": true
+      },
+      "source_rows": 0,
+      "table_existed": true
+    },
+    "quarantine": {
+      "inserted_rows": 0,
+      "rows_after": 0,
+      "rows_before": 0,
+      "schema_migration": {
+        "added_columns": [],
+        "migrated": false,
+        "table_existed": true
+      },
+      "source_rows": 0,
+      "table_existed": true
+    },
+    "trips": {
+      "inserted_rows": 0,
+      "rows_after": 40,
+      "rows_before": 40,
+      "schema_migration": {
+        "added_columns": [],
+        "migrated": false,
+        "table_existed": true
+      },
+      "source_rows": 40,
+      "table_existed": true
+    }
+  },
+  "duration_profile": {
+    "avg_minutes": 10.49,
+    "max_minutes": 30.1,
+    "median_minutes": 7.98,
+    "min_minutes": 1.28,
+    "trips": 40
+  },
+  "execution_id": "urbanflow-hist-devsample40-20261002T0010Z",
+  "landed_files": [
+    "historical_trips_202401_DEVELOPMENT_SAMPLE_40rows.csv"
+  ],
+  "limitations": [
+    "the station dimension is a committed 40-row sample, so unmatched trips are expected",
+    "a match rate below 1.0 reflects renamed and retired stations, not a defect",
+    "trip demand IS real history; the availability tables remain one snapshot"
+  ],
+  "match_rate": {
+    "match_rate": 1.0,
+    "matched_to_current_station": 40,
+    "trips": 40,
+    "unmatched": 0
+  },
+  "phase": "historical_trips",
+  "reconciliation": {
+    "accounted_rows": 40,
+    "counts_reconcile": true,
+    "demand_rows": 40,
+    "duplicate_rows": 0,
+    "join_produced_no_matches": false,
+    "landed_rows": 40,
+    "match_rate": 1.0,
+    "quarantine_rows": 0,
+    "status": "PASS",
+    "valid_rows": 40
+  },
+  "status": "PASS"
+}

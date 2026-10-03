@@ -12,7 +12,7 @@
 # MAGIC
 # MAGIC **Safety:** Every operation in this notebook is a read-only `SELECT` or aggregate. It creates no tables, views, files, checkpoints or compute.
 # MAGIC
-# MAGIC **Actual validation:** This unified final-validation notebook has not been executed on Azure; its expected sample metrics come from the independent 2026-10-03 read-only validation.
+# MAGIC **Actual validation:** On 2026-10-03 it returned `PASS` for sample runs `4222809815373` and `284335864579341` with identical checks, and for full-month run `96337578882467`. Its first execution, in run `295677984549301`, failed closed and exposed the shared historical Bronze table.
 
 # COMMAND ----------
 

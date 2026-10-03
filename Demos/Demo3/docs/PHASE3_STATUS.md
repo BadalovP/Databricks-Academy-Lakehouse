@@ -1,7 +1,9 @@
 # Phase 3 - historical trips, weather, Lakeflow, dashboard and governance
 
-Status: **the 40-row historical sample and the 48-hour weather sample are now VALIDATED LIVE on
-GP1. The full monthly archive, Lakeflow and the published dashboard remain unexecuted.**
+Status: **the 40-row historical sample, the 48-hour weather sample AND the REAL JANUARY 2024 CITI
+BIKE MONTHLY ARCHIVE are VALIDATED LIVE on GP1, through the unified Job and its release workflow
+(full-month run `96337578882467`, 2026-10-03). Lakeflow and the published dashboard remain
+unexecuted.** Monthly results: [UNIFIED_RELEASE.md](UNIFIED_RELEASE.md).
 
 That distinction is the point of this document. The bounded sample runs provide real infrastructure
 evidence for their stated scope only. They do not prove a full monthly archive, a Lakeflow update,
@@ -161,8 +163,8 @@ are `DESCRIBE`.
 
 | Piece | Blocked on | Billable? |
 |---|---|---|
-| Full-month historical Auto Loader | The official archive landed in its isolated monthly subdirectory and GP1 already running | Cluster time only; GP1 already exists |
-| Full-month weather enrichment | The selected full-month trip execution, so sample and monthly rows remain separate | One public API call plus cluster time |
+| ~~Full-month historical Auto Loader~~ | **Done** - run `96337578882467`: 1,888,085 landed = 1,886,318 valid + 1,767 quarantine + 0 duplicate | - |
+| ~~Full-month weather enrichment~~ | **Done** - same run: 744 complete hours, 99.98% of trips matched, no fan-out | - |
 | Lakeflow pipeline | Explicit approval. Lakeflow runs on **serverless** compute, which this project does not assume is free | **Yes** |
 | AI/BI dashboard object | A SQL warehouse to execute the datasets | **Yes** |
 | RLS / column masks | Account groups (`urbanflow_admins`, `urbanflow_region_*`) that have not been created, and a decision to change visibility | No, but hard to reverse safely |
@@ -183,9 +185,11 @@ month.
 
 ## Honest limitations
 
-- **Only bounded Phase 3 samples have run on a cluster.** The 40-row historical sample and
-  48-hour weather sample validated the Auto Loader, `availableNow`, Delta persistence and
-  reconciliation path. The full January archive and Lakeflow pipeline remain unexecuted.
+- **The historical path has run at real scale, Lakeflow has not.** The samples and the full
+  January 2024 archive both ran through Auto Loader, `availableNow`, Delta persistence and
+  reconciliation. The Lakeflow pipeline remains unexecuted.
+- **The monthly station match rate is 3.43%.** That measures how much of the month the 40-station
+  development dimension covers, not data quality; it is reported, not treated as a failure.
 - **Lakeflow modules cannot be imported in tests.** `pyspark.pipelines` only exists inside a
   running pipeline and `spark` is an injected global, so those 22 tests are source- and
   config-level. That is a real limitation, not a workaround; importing a stub would only prove
