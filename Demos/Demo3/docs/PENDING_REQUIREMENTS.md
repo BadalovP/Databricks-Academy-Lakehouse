@@ -7,15 +7,29 @@
 > [CICD_BATCH_EVIDENCE.md](CICD_BATCH_EVIDENCE.md) section 9 for the pre- and post-change ACLs and
 > the proof that `IS_OWNER` and `admins CAN_MANAGE` survived.
 >
-> The three remaining rows are the two this document recommends **documenting rather than
-> executing** - the legacy mount and DEV-to-PROD promotion - plus Databricks Connect, which needs
-> an isolated virtualenv because `databricks-connect` replaces the local `pyspark` the suite
-> depends on.
+> **Final reconciliation, same day.** **One** row now remains `Pending live`: **Lab 6 alerts and
+> email**, which needs a billable SQL warehouse to evaluate its query on a schedule. That is real
+> outstanding work rather than a documentation gap, so it stays pending.
+>
+> The legacy mount and DEV-to-PROD promotion moved to `Implemented locally` rather than staying
+> pending, because for both the documentation **is** the deliverable and execution is a settled
+> decision, not outstanding work. Both are now backed by real sections in
+> [ARCHITECTURE.md](ARCHITECTURE.md). Two documentation defects were fixed in the process: the
+> mount row cited an architecture section that had never been written, and the two-workspace
+> section called the trial workspace "a genuine second environment for CI/CD promotion" while
+> justifying it with the fact that it reaches the same data - which refutes the claim rather than
+> supporting it.
+>
+> **A correction worth recording.** An earlier status report listed Databricks Connect as still
+> pending and proposed re-running it as the next batch. That was wrong: it had been
+> `Validated live` since PR #49, as the paragraph immediately below this blockquote already stated,
+> and acting on the recommendation would have repeated proven work. The pending set was Lab 2,
+> Lab 6 and Lab 8 - not Lab 2, Lab 7 and Lab 8.
 
-Seven rows remain `Pending live` after the 2026-10-03 Batch A read validation. Databricks Connect
-moved from `Pending live` to `Validated live`, and Great Expectations moved from `Implemented
-locally` to `Validated live`. Each remaining row is analysed below, then grouped into approval
-batches.
+The analysis below was written when seven rows were pending, and is kept because the
+resource/cost/destructiveness assessment for each remains accurate and useful. Read it against the
+blockquote above for current status: Databricks Connect and Great Expectations were closed by the
+Batch A read validation, four more by the CI/CD batch, and two by the documentation reconciliation.
 
 ## Completed preparation and read validation
 
