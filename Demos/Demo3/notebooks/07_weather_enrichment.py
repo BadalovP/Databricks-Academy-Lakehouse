@@ -99,6 +99,7 @@ dbutils.widgets.dropdown("weather_source", "sample_json", ["sample_json", "archi
 dbutils.widgets.text("weather_sample_file", "open_meteo_archive_202401.sample.json")
 dbutils.widgets.text("execution_id", "")
 dbutils.widgets.text("source_execution_id", "")
+dbutils.widgets.text("historical_execution_id", "")
 dbutils.widgets.text("start_date", "2024-01-01")
 dbutils.widgets.text("end_date", "2024-01-31")
 dbutils.widgets.text("latitude", "40.7128")
@@ -109,7 +110,9 @@ dbutils.widgets.text("volume", "")
 dbutils.widgets.text("run_attempt_id", "")
 run_enrichment = dbutils.widgets.get("run_enrichment").lower() == "true"
 execution_id = dbutils.widgets.get("execution_id").strip()
-source_execution_id = dbutils.widgets.get("source_execution_id").strip()
+# Unified Job: a job parameter would shadow `source_execution_id`; standalone Job: fallback.
+source_execution_id = dbutils.widgets.get("historical_execution_id").strip()
+source_execution_id = source_execution_id or dbutils.widgets.get("source_execution_id").strip()
 if not run_enrichment:
     dbutils.notebook.exit("DRY_RUN: no weather was requested and no Delta table was written.")
 cluster_id = spark.conf.get("spark.databricks.clusterUsageTags.clusterId", "")

@@ -323,3 +323,38 @@ def test_every_workflow_run_block_is_valid_shell() -> None:
 
     assert checked > 0, "no run blocks found - the glob is wrong and this test is vacuous"
     assert not failures, "shell syntax errors:\n" + "\n".join(failures)
+
+
+def test_no_task_parameter_is_shadowed_by_a_job_parameter() -> None:
+    # Databricks pushes job parameters down to every task and lets them win over a task
+    # parameter of the same key. Unified run 157686710394279 failed exactly this way: the
+    # weather task's `source_execution_id <- historical_execution_id` mapping was silently
+    # replaced by the station `source_execution_id` job parameter.
+    resources = yaml.safe_load((PROJECT_ROOT / "resources/jobs.yml").read_text(encoding="utf-8"))
+    checked = 0
+    for job_key, job in resources["resources"]["jobs"].items():
+        job_parameters = {parameter["name"] for parameter in job.get("parameters", [])}
+        for task in job["tasks"]:
+            for key, value in task.get("notebook_task", {}).get("base_parameters", {}).items():
+                checked += 1
+                if key in job_parameters:
+                    assert value == f"{{{{job.parameters.{key}}}}}", (
+                        job_key,
+                        task["task_key"],
+                        key,
+                    )
+    assert checked > 0
+
+
+def test_weather_task_selects_trips_by_an_unshadowable_historical_id() -> None:
+    task = {task["task_key"]: task for task in _job()["tasks"]}["06_weather_enrichment"]
+    parameters = task["notebook_task"]["base_parameters"]
+    assert parameters["historical_execution_id"] == "{{job.parameters.historical_execution_id}}"
+    assert "source_execution_id" not in parameters
+
+    notebook = (PROJECT_ROOT / "notebooks/07_weather_enrichment.py").read_text(encoding="utf-8")
+    assert 'dbutils.widgets.text("historical_execution_id", "")' in notebook
+    # The dedicated widget must take precedence; the fallback keeps the standalone Job working.
+    assert notebook.index('widgets.get("historical_execution_id")') < notebook.index(
+        'source_execution_id or dbutils.widgets.get("source_execution_id")'
+    )
