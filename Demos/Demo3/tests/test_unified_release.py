@@ -298,7 +298,7 @@ def test_every_workflow_run_block_is_valid_shell() -> None:
     if not _bash_usable():
         _pytest.skip("no usable bash on this platform")
 
-    root = WORKFLOW.resolve().parents[1]
+    root = WORKFLOW.resolve().parent  # the workflows directory itself, not .github/
     failures: list[str] = []
     checked = 0
     for workflow in sorted(root.glob("*.yml")):
