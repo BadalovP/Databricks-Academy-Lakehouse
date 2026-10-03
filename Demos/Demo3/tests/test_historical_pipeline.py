@@ -17,6 +17,8 @@ import yaml
 
 from urbanflow.historical import (
     daily_trip_demand,
+    foreign_checkpoint_owners,
+    historical_bronze_table,
     historical_landing_paths,
     persist_historical_outputs,
     reconcile_historical,
@@ -108,6 +110,7 @@ def test_monthly_archive_paths_are_isolated_from_the_validated_sample() -> None:
     assert sample == {
         "landing": f"{root}/landing/historical_trips",
         "schema": f"{root}/schemas/historical_trips",
+        "checkpoint_root": f"{root}/checkpoints/historical_trips",
         "checkpoint": f"{root}/checkpoints/historical_trips/urbanflow-hist-devsample40-r1",
         "archive": f"{root}/landing/historical_trips/_archive",
     }
@@ -116,6 +119,7 @@ def test_monthly_archive_paths_are_isolated_from_the_validated_sample() -> None:
         # would be discovered recursively by a sample-mode Auto Loader run.
         "landing": f"{root}/landing/historical_trips_202401-full",
         "schema": f"{root}/schemas/historical_trips_202401-full",
+        "checkpoint_root": f"{root}/checkpoints/historical_trips_202401-full",
         "checkpoint": (
             f"{root}/checkpoints/historical_trips_202401-full/urbanflow-hist-month202401-r1"
         ),
@@ -506,3 +510,29 @@ def test_an_empty_subdir_leaves_the_sample_paths_untouched() -> None:
     assert historical_landing_paths("/V", execution_id="e") == historical_landing_paths(
         "/V", execution_id="e", landing_subdir=""
     )
+
+
+def test_each_source_namespace_lands_in_its_own_bronze_table() -> None:
+    """Bronze carries no execution column, so namespaces are isolated physically.
+
+    Unified run 295677984549301 exposed the shared table: notebook 06 read ALL of Bronze and
+    stamped every row with the current execution, so a monthly run would have re-stamped the
+    sample's 40 rides as its own and counted them as duplicates of the same archive.
+    """
+    assert historical_bronze_table("c.s") == "c.s.bronze_historical_trips"
+    assert historical_bronze_table("c.s", landing_subdir="") == "c.s.bronze_historical_trips"
+    assert (
+        historical_bronze_table("c.s", landing_subdir="202401-full")
+        == "c.s.bronze_historical_trips_202401_full"
+    )
+    for unsafe in ("../x", "a b", "20.24"):
+        with pytest.raises(ValueError):
+            historical_bronze_table("c.s", landing_subdir=unsafe)
+
+
+def test_a_second_execution_cannot_claim_an_owned_namespace() -> None:
+    sample = "urbanflow-hist-devsample40-20261002T0010Z"
+    assert foreign_checkpoint_owners([], execution_id=sample) == []
+    assert foreign_checkpoint_owners([f"{sample}/"], execution_id=sample) == []
+    assert foreign_checkpoint_owners([f"{sample}/"], execution_id="urbanflow-hist-new") == [sample]
+    assert foreign_checkpoint_owners(["b/", "a/", "me/"], execution_id="me") == ["a", "b"]

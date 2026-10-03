@@ -376,6 +376,7 @@ resources:
               run_full_month: "{{job.parameters.run_full_month}}"
               source_execution_id: "{{job.parameters.source_execution_id}}"
               historical_execution_id: "{{job.parameters.historical_execution_id}}"
+              historical_landing_subdir: "{{job.parameters.historical_landing_subdir}}"
               weather_execution_id: "{{job.parameters.weather_execution_id}}"
               weather_start_date: "{{job.parameters.weather_start_date}}"
               weather_end_date: "{{job.parameters.weather_end_date}}"

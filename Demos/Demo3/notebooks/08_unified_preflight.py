@@ -104,7 +104,7 @@ if flags["run_full_month"]:
         raise ValueError("Full-month mode requires a new historical execution ID.")
     if values["weather_execution_id"] == SAMPLE_WEATHER_ID:
         raise ValueError("Full-month mode requires a new weather execution ID.")
-    if flags["run_weather"] and values["weather_source"] != "open_meteo_archive":
+    if flags["run_weather"] and values["weather_source"] != "archive_api":
         raise ValueError("Full-month weather must use the bounded Open-Meteo archive source.")
 elif (
     values["historical_landing_subdir"] or values["historical_execution_id"] != SAMPLE_HISTORICAL_ID

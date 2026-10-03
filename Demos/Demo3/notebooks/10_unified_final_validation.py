@@ -17,6 +17,36 @@
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## Step 0 - Import the shared Bronze naming contract
+# MAGIC
+# MAGIC **What:** Put the project package on the path and import the function that names each namespace's Bronze trips table.
+# MAGIC
+# MAGIC **Why:** Bronze has no execution column, so each source namespace has its own table. Importing the writer's own naming function means the validator can never read a different table from the one notebook 06 wrote.
+# MAGIC
+# MAGIC **Input:** The bundle's synced `src` directory.
+# MAGIC
+# MAGIC **Output:** `historical_bronze_table` available to the historical checks.
+# MAGIC
+# MAGIC **Key concepts:** Single source of truth, physical namespace isolation.
+# MAGIC
+# MAGIC **Expected result:** The import succeeds; nothing is read.
+# MAGIC
+# MAGIC **How to explain it to my supervisor:** "The checker asks the loader where it put the data instead of guessing."
+# MAGIC
+# MAGIC **Rerun and cost considerations:** A path change and an import; free.
+
+# COMMAND ----------
+
+import sys
+from pathlib import Path
+
+try:
+    NOTEBOOK_DIR = Path(__file__).resolve().parent
+except NameError:
+    NOTEBOOK_DIR = Path.cwd()
+sys.path.insert(0, str(NOTEBOOK_DIR.parent / "src"))
+# COMMAND ----------
+# MAGIC %md
 # MAGIC ## Step 1 - Read validation scope and define assertion helpers
 # MAGIC
 # MAGIC **What:** Parse the enabled branches, lineage IDs, weather window and Unity Catalog target, then define small helpers for measured assertions.
@@ -34,17 +64,18 @@
 # MAGIC **How to explain it to my supervisor:** "The validator uses the same lineage parameters as the writers, so it cannot accidentally certify a different run."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Parameter parsing is free and deterministic.
-
 # COMMAND ----------
-
 import json
 
 from pyspark.sql import functions as F
+
+from urbanflow.historical import historical_bronze_table  # noqa: E402
 
 boolean_names = ("run_station_pipeline", "run_historical", "run_weather", "run_full_month")
 text_names = (
     "source_execution_id",
     "historical_execution_id",
+    "historical_landing_subdir",
     "weather_execution_id",
     "weather_start_date",
     "weather_end_date",
@@ -230,15 +261,17 @@ if flags["run_station_pipeline"]:
 historical_valid_rows = None
 if flags["run_historical"]:
     historical_id = values["historical_execution_id"]
+    # Bronze has no execution column: one table and one owning execution per namespace.
+    bronze_table = historical_bronze_table(root, landing_subdir=values["historical_landing_subdir"])
     historical = {
         name: scoped(table, historical_id)
         for name, table in {
-            "bronze": "bronze_historical_trips",
             "valid": "silver_historical_trips",
             "quarantine": "quarantine_historical_trips",
             "duplicate": "duplicate_historical_trips",
         }.items()
     }
+    historical["bronze"] = spark.table(bronze_table)
     counts = {name: frame.count() for name, frame in historical.items()}
     historical_valid_rows = counts["valid"]
     require(
