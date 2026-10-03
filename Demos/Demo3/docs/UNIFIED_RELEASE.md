@@ -19,7 +19,7 @@ The read-only inventory on 2026-10-03 found:
 | Lakeflow | No deployed UrbanFlow pipeline; the prepared isolated path reads the preserved Bronze and station-reference tables without republishing Event Hubs |
 | AI/BI and SQL alerts | No UrbanFlow dashboard or alert |
 | Shared SQL warehouse | `3ed106620db591d9`, `STOPPED`, five-minute auto-stop |
-| GitHub OIDC identity | Active service principal `3ec7e8df-66a2-4102-ab57-e4448b4e0e01`; UC access is inherited through `account users` |
+| GitHub OIDC identity | Active service principal, identified by the repository variable `AZURE_CLIENT_ID`; UC access is inherited through `account users`. The literal client id is deliberately not reproduced: this repository is public, and while a client id is not a credential, publishing a service-principal and tenant identifier serves no purpose |
 | Existing DAB root ACL | Your user and `admins` have `CAN_MANAGE`; the GitHub service principal is not yet listed |
 
 The four component Jobs remain in place. They are evidence-bearing validation resources and are
@@ -110,6 +110,12 @@ Hubs messages.
 - a new historical execution ID;
 - a new weather execution ID;
 - the bounded Open-Meteo archive source and January 2024 date window.
+
+Monthly mode also raises the Auto Loader wait from the 15-minute sample default to a bounded
+45 minutes. The historical task has a 60-minute ceiling, the complete Job has a 90-minute
+ceiling, and the GitHub monitor watches for 105 minutes so it can always record the Job's terminal
+state. These are failure bounds rather than expected runtimes; they do not start, restart or extend
+GP1's lifecycle.
 
 The workflow does not download or upload the Citi Bike archive. Those remain separate approved
 actions that must finish before a full-month dispatch.

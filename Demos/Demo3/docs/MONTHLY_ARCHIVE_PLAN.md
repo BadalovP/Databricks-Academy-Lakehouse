@@ -99,7 +99,7 @@ matching `*.csv` goes up.
 
 ```bash
 databricks bundle run urbanflow_historical_trips_test -t azure --profile dev \
-  --params run_ingest=true,execution_id="$EID",landing_subdir=202401-full,stream_timeout_seconds=1200
+  --params run_ingest=true,execution_id="$EID",landing_subdir=202401-full,stream_timeout_seconds=2700
 ```
 
 The `landing_subdir` parameter isolates every Auto Loader state path for this source set:
@@ -113,6 +113,10 @@ run therefore neither moves the sample nor resumes its checkpoint. The new execu
 the monthly rows in their own business lineage scope inside the shared Delta tables. Valid trips
 MERGE on `(execution_id, ride_id)`, because the development sample is drawn from this archive and
 its 40 ride IDs must remain queryable under the sample execution after the month is loaded.
+
+The 45-minute stream wait is a ceiling for the real archive rather than an expected duration. The
+unified Job gives the historical task 60 minutes and the full DAG 90 minutes; the release monitor
+watches for 105 minutes so it cannot stop observing before the bounded Job itself terminates.
 
 ### Step 4 - validate
 

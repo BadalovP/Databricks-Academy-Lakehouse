@@ -201,6 +201,7 @@ jobs:
               "run_full_month": str(full).lower(), "source_execution_id": "urbanflow-20260929T195132Z-r3",
               "historical_execution_id": f"urbanflow-hist-202401-full-{suffix}" if full else "urbanflow-hist-devsample40-20261002T0010Z",
               "historical_landing_subdir": "202401-full" if full else "",
+              "stream_timeout_seconds": "2700" if full else "900",
               "weather_execution_id": f"urbanflow-weather-202401-full-{suffix}" if full else "urbanflow-weather-devsample48h-20261002T0015Z",
               "weather_source": "open_meteo_archive" if full else "sample_json",
               "weather_start_date": "2024-01-01" if full else "2024-01-24",
@@ -217,7 +218,10 @@ jobs:
             local run_id
             run_id=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["run_id"])' "$RUNNER_TEMP/${label}-submitted.json")
             local terminal=false
-            for _ in $(seq 1 240); do
+            # 420 polls = 105 minutes. This exceeds the Job's bounded 90-minute timeout, so the
+            # workflow always observes and validates the terminal state instead of abandoning a
+            # still-running full-month execution.
+            for _ in $(seq 1 420); do
               databricks jobs get-run "$run_id" --output json > "$RUNNER_TEMP/${label}-run.json"
               local lifecycle
               lifecycle=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["state"]["life_cycle_state"])' "$RUNNER_TEMP/${label}-run.json")
