@@ -84,3 +84,15 @@ shadowed the weather task's historical ID (PR #64), and historical Bronze was a 
 every execution re-stamped (PR #65). Neither attempt changed any table. The month then landed
 exactly the 1,888,085 rows measured in the source files. Narrative:
 [UNIFIED_RELEASE.md](../docs/UNIFIED_RELEASE.md).
+
+## Final depth batch, 2026-10-03
+
+| File | What it records |
+|---|---|
+| `2026-10-03_lakeflow_run.json` | Isolated Lakeflow pipeline `fb8a0b8a-…`, update `ba6710ed-…`: lifecycle and per-dataset results from the event log, 22 expectations with 0 failures, and read-only business-result parity with the imperative tables |
+| `2026-10-03_governance_demo.json` | Row filter and masks applied to disposable copies: before, after, filtered (0 / 28 / 40 rows), masked values, rollback and schema drop. The validated schema held no policy throughout |
+| `2026-10-03_maintenance_inspection.json` | DESCRIBE DETAIL / HISTORY for 12 tables, the auto-compaction finding, and why OPTIMIZE, CDF, clustering and VACUUM were not run |
+| `2026-10-03_retired_component_jobs.json` | Full definitions, ACLs and the 11 runs of the four component Jobs, captured before their retirement |
+| `2026-10-03_final_inventory.json` | Final Demo3 inventory: one Job, one pipeline, two schemas, one Volume, one dashboard, no alert or policy, and the CI service principal's three remaining grants |
+
+The dashboard definition itself is committed at [`../dashboards/urbanflow.lvdash.json`](../dashboards/urbanflow.lvdash.json).

@@ -1,0 +1,171 @@
+{
+  "_note": "Final read-only Demo3 resource inventory, taken after Lakeflow, dashboard publication, the governance demonstration and the retirement of the four component Jobs.",
+  "evidence_type": "urbanflow_final_inventory",
+  "date": "2026-10-03",
+  "gp1": {
+    "state": "TERMINATED",
+    "state_message": "Inactive cluster terminated (inactive for 61 minutes)."
+  },
+  "urbanflow_jobs": [
+    {
+      "job_id": 991496516229387,
+      "name": "[azure] UrbanFlow End-to-End"
+    }
+  ],
+  "urbanflow_pipelines": [
+    {
+      "pipeline_id": "fb8a0b8a-cdf8-45c4-bff6-2d117a516fb9",
+      "name": "[azure] urbanflow_pipeline",
+      "state": "IDLE"
+    }
+  ],
+  "schemas": [
+    "parvinbadalov_urbanflow",
+    "parvinbadalov_urbanflow_lakeflow"
+  ],
+  "tables": {
+    "parvinbadalov_urbanflow": [
+      "bronze_historical_trips (MANAGED)",
+      "bronze_historical_trips_202401_full (MANAGED)",
+      "bronze_station_status (MANAGED)",
+      "dim_station_development_sample (MANAGED)",
+      "dim_weather_hourly (MANAGED)",
+      "duplicate_historical_trips (MANAGED)",
+      "duplicate_station_status (MANAGED)",
+      "fact_station_availability (MANAGED)",
+      "gold_daily_station_summary (MANAGED)",
+      "gold_daily_trip_demand (MANAGED)",
+      "gold_rebalancing_priority (MANAGED)",
+      "gold_station_shortage (MANAGED)",
+      "gold_weather_demand (MANAGED)",
+      "quarantine_historical_trips (MANAGED)",
+      "quarantine_station_status (MANAGED)",
+      "silver_historical_trips (MANAGED)",
+      "silver_station_status (MANAGED)"
+    ],
+    "parvinbadalov_urbanflow_lakeflow": [
+      "__materialization_mat_fb8a0b8a_cdf8_45c4_bff6_2d117a516fb9_bronze_station_status_1 (MANAGED)",
+      "__materialization_mat_fb8a0b8a_cdf8_45c4_bff6_2d117a516fb9_dim_station_development_sample_1 (MANAGED)",
+      "__materialization_mat_fb8a0b8a_cdf8_45c4_bff6_2d117a516fb9_duplicate_station_status_1 (MANAGED)",
+      "__materialization_mat_fb8a0b8a_cdf8_45c4_bff6_2d117a516fb9_fact_station_availability_1 (MANAGED)",
+      "__materialization_mat_fb8a0b8a_cdf8_45c4_bff6_2d117a516fb9_gold_daily_station_summary_1 (MANAGED)",
+      "__materialization_mat_fb8a0b8a_cdf8_45c4_bff6_2d117a516fb9_gold_rebalancing_priority_1 (MANAGED)",
+      "__materialization_mat_fb8a0b8a_cdf8_45c4_bff6_2d117a516fb9_gold_station_shortage_1 (MANAGED)",
+      "__materialization_mat_fb8a0b8a_cdf8_45c4_bff6_2d117a516fb9_quarantine_station_status_1 (MANAGED)",
+      "__materialization_mat_fb8a0b8a_cdf8_45c4_bff6_2d117a516fb9_silver_station_status_1 (MANAGED)",
+      "__materialization_mat_fb8a0b8a_cdf8_45c4_bff6_2d117a516fb9_station_information_raw_1 (MANAGED)",
+      "bronze_station_status (STREAMING_TABLE)",
+      "dim_station_development_sample (MATERIALIZED_VIEW)",
+      "duplicate_station_status (MATERIALIZED_VIEW)",
+      "event_log_fb8a0b8a_cdf8_45c4_bff6_2d117a516fb9 (MANAGED)",
+      "fact_station_availability (MATERIALIZED_VIEW)",
+      "gold_daily_station_summary (MATERIALIZED_VIEW)",
+      "gold_rebalancing_priority (MATERIALIZED_VIEW)",
+      "gold_station_shortage (MATERIALIZED_VIEW)",
+      "quarantine_station_status (MATERIALIZED_VIEW)",
+      "silver_station_status (MATERIALIZED_VIEW)",
+      "station_information_raw (MATERIALIZED_VIEW)"
+    ]
+  },
+  "volumes": [
+    "parvinbadalov_urbanflow.urbanflow_landing"
+  ],
+  "functions": [],
+  "masks_and_filters": {
+    "masks": "0",
+    "filters": "0"
+  },
+  "dashboards": [
+    {
+      "dashboard_id": "01f1bf66a828102f9167c26cdd833277",
+      "name": "UrbanFlow — NYC Mobility Operations & Demand",
+      "state": "ACTIVE"
+    }
+  ],
+  "dashboard_schedules": [
+    0
+  ],
+  "alerts_total_in_workspace": 25,
+  "urbanflow_alerts": [],
+  "warehouse": {
+    "name": "Serverless Starter Warehouse",
+    "state": "State.RUNNING",
+    "size": "2X-Small",
+    "auto_stop_mins": 5,
+    "creator": "academy instructor (not ours)"
+  },
+  "acl_unified_job": [
+    {
+      "principal": "CI service principal (AZURE_CLIENT_ID)",
+      "levels": [
+        "IS_OWNER"
+      ]
+    },
+    {
+      "principal": "admins",
+      "levels": [
+        "CAN_MANAGE"
+      ]
+    }
+  ],
+  "acl_pipeline": [
+    {
+      "principal": "CI service principal (AZURE_CLIENT_ID)",
+      "levels": [
+        "CAN_VIEW"
+      ]
+    },
+    {
+      "principal": "parvinbadalov@softserve.academy",
+      "levels": [
+        "IS_OWNER"
+      ]
+    },
+    {
+      "principal": "admins",
+      "levels": [
+        "CAN_MANAGE"
+      ]
+    }
+  ],
+  "acl_bundle_root_directory_2449501099480664": [
+    {
+      "principal": "CI service principal (AZURE_CLIENT_ID)",
+      "levels": [
+        "CAN_MANAGE"
+      ]
+    },
+    {
+      "principal": "parvinbadalov@softserve.academy",
+      "levels": [
+        "CAN_MANAGE"
+      ]
+    },
+    {
+      "principal": "admins",
+      "levels": [
+        "CAN_MANAGE"
+      ]
+    }
+  ],
+  "acl_dashboard": [
+    {
+      "principal": "parvinbadalov@softserve.academy",
+      "levels": [
+        "CAN_MANAGE"
+      ]
+    },
+    {
+      "principal": "admins",
+      "levels": [
+        "CAN_MANAGE"
+      ]
+    }
+  ],
+  "ci_service_principal_final_access": {
+    "unified_job": "IS_OWNER - created it through the release workflow, which must update it",
+    "bundle_root_directory": "CAN_MANAGE - required to take the deployment lock and write state",
+    "pipeline": "CAN_VIEW - required by the read-only CI check, added 2026-10-03",
+    "retired": "its CAN_VIEW on the four component Jobs ended with their deletion; nothing obsolete remains to revoke"
+  }
+}

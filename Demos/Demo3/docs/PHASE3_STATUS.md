@@ -2,8 +2,8 @@
 
 Status: **the 40-row historical sample, the 48-hour weather sample AND the REAL JANUARY 2024 CITI
 BIKE MONTHLY ARCHIVE are VALIDATED LIVE on GP1, through the unified Job and its release workflow
-(full-month run `96337578882467`, 2026-10-03). Lakeflow and the published dashboard remain
-unexecuted.** Monthly results: [UNIFIED_RELEASE.md](UNIFIED_RELEASE.md).
+(full-month run `96337578882467`, 2026-10-03). The isolated Lakeflow comparison ran and the AI/BI
+dashboard is published (both 2026-10-03).** Monthly results: [UNIFIED_RELEASE.md](UNIFIED_RELEASE.md).
 
 That distinction is the point of this document. The bounded sample runs provide real infrastructure
 evidence for their stated scope only. They do not prove a full monthly archive, a Lakeflow update,
@@ -165,10 +165,10 @@ are `DESCRIBE`.
 |---|---|---|
 | ~~Full-month historical Auto Loader~~ | **Done** - run `96337578882467`: 1,888,085 landed = 1,886,318 valid + 1,767 quarantine + 0 duplicate | - |
 | ~~Full-month weather enrichment~~ | **Done** - same run: 744 complete hours, 99.98% of trips matched, no fan-out | - |
-| Lakeflow pipeline | Explicit approval. Lakeflow runs on **serverless** compute, which this project does not assume is free | **Yes** |
-| AI/BI dashboard object | A SQL warehouse to execute the datasets | **Yes** |
-| RLS / column masks | Account groups (`urbanflow_admins`, `urbanflow_region_*`) that have not been created, and a decision to change visibility | No, but hard to reverse safely |
-| OPTIMIZE / VACUUM | Nothing technically, but VACUUM is irreversible so it needs its own approval | Cluster time |
+| ~~Lakeflow pipeline~~ | **Done** - update `ba6710ed-…` COMPLETED in the isolated schema | - |
+| ~~AI/BI dashboard object~~ | **Done** - published `01f1bf66a828102f9167c26cdd833277` | - |
+| ~~RLS / column masks~~ | **Demonstrated** on disposable copies with a mapping-table filter, then rolled back | - |
+| OPTIMIZE / VACUUM | Inspected; OPTIMIZE not justified at this size, VACUUM deliberately never run | - |
 
 ### The archive download is deliberately not automated
 
@@ -187,7 +187,8 @@ month.
 
 - **The historical path has run at real scale, Lakeflow has not.** The samples and the full
   January 2024 archive both ran through Auto Loader, `availableNow`, Delta persistence and
-  reconciliation. The Lakeflow pipeline remains unexecuted.
+  reconciliation. The Lakeflow comparison then ran once in its isolated schema with exact
+  business-result parity.
 - **The monthly station match rate is 3.43%.** That measures how much of the month the 40-station
   development dimension covers, not data quality; it is reported, not treated as a failure.
 - **Lakeflow modules cannot be imported in tests.** `pyspark.pipelines` only exists inside a
@@ -199,6 +200,6 @@ month.
   the match rate is reported rather than assumed.
 - **The weather series is one city coordinate.** Not per-station weather. Every row carries
   `weather_grid_label`.
-- **The dashboard is not published.** Its 22 read-only datasets ran successfully after the Phase 2
+- **The dashboard is published (2026-10-03)** - see [DASHBOARD.md](DASHBOARD.md). Historically: Its 22 read-only datasets ran successfully after the Phase 2
   correction removed the 89 stale out-of-service priorities. Publishing still requires separate
   approval for billable SQL warehouse compute.

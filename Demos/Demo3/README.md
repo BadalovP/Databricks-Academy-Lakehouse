@@ -1,22 +1,30 @@
-# Demo 3 — UrbanFlow: Real-Time Bike-Sharing Analytics
+# Demo 3 — UrbanFlow: NYC Bike-Sharing Operations & Demand Lakehouse
 
-UrbanFlow is an educational Azure Databricks lakehouse for a practical operations problem:
-**which Citi Bike stations are empty, nearly empty, full, or nearly full, and which ones show
-repeated shortage patterns?** It combines real public APIs, historical trips, a Kafka-style
-Event Hubs stream, Spark, Delta Lake, Unity Catalog, testing, CI/CD, and Databricks SDK patterns.
+UrbanFlow is an Azure Databricks lakehouse for a practical operations problem: **which Citi Bike
+stations need rebalancing right now, and what does real demand look like?** It combines three kinds
+of real public data, each labelled for exactly what it is:
 
-> **Milestone status — Bronze, Silver/Gold, and bounded Phase 3 samples validated live.** On 2026-09-29 the
-> bounded producer published 2,520 events and Job `404404108673495` wrote 2,520 reconciled rows to
-> `dbr_dev.parvinbadalov_urbanflow.bronze_station_status`, with zero missing, unexpected, rejected,
-> or duplicate event IDs. On 2026-10-02 the corrected Silver/Gold path reconciled 2,520 rows and
-> removed 89 stale out-of-service priorities; its repeat was idempotent. The 40-row historical
-> **DEVELOPMENT SAMPLE** and 48-hour weather sample also passed bounded GP1 runs. On 2026-10-03,
-> Databricks Connect reproduced the corrected counts read-only and GE passed 20/20 expectations
-> across Silver and the named historical sample. On 2026-10-03 the protected release workflow
-> deployed the primary seven-task End-to-End Job (`991496516229387`) and ran it twice in sample
-> mode - the repeat inserting zero rows - and once on the **REAL JANUARY 2024 CITI BIKE MONTHLY
-> ARCHIVE**: 1,888,085 landed = 1,886,318 valid + 1,767 quarantine + 0 duplicate. Lakeflow
-> deployment, the published dashboard, and governance changes remain unexecuted.
+| Data | What it really is |
+|---|---|
+| Station availability | **ONE real GBFS snapshot** of 2,520 station observations, streamed through Event Hubs |
+| Trip history | The **FULL REAL JANUARY 2024 CITI BIKE MONTHLY ARCHIVE**: 1,888,085 rides |
+| Historical station reference | A committed **40-station DEVELOPMENT REFERENCE SAMPLE** |
+| Weather | Hourly Open-Meteo archive for **one NYC reference coordinate**, not per station |
+
+> **Status: complete (2026-10-03).** Every stage below ran live on Azure Databricks with stored,
+> reconciled evidence. Academy Labs 1–9 coverage is 100% with no row pending
+> ([matrix](docs/LABS_1_TO_9_COVERAGE.md)); the supervisor walkthrough is
+> [docs/SUPERVISOR_DEMO.md](docs/SUPERVISOR_DEMO.md).
+
+| Stage | Live result |
+|---|---|
+| Event Hubs → Bronze | 2,520 published = 2,520 landed, 0 missing / unexpected / duplicate (2026-09-29) |
+| Unified Job `[azure] UrbanFlow End-to-End` (`991496516229387`) | Sample run `4222809815373`, idempotent repeat `284335864579341` (0 rows inserted), full-month run `96337578882467` - all 7/7 tasks, final validation PASS |
+| January 2024 month | 1,888,085 landed = 1,886,318 valid + 1,767 quarantine + 0 duplicates |
+| Protected release | GitHub Actions → approval → OIDC → DAB deploy → Job run → validation (workflows `37139449737`, `37140618864`) |
+| Lakeflow comparison | Isolated pipeline update `ba6710ed-…` COMPLETED; 22/22 expectations pass; business results identical to the imperative path |
+| AI/BI dashboard | "UrbanFlow — NYC Mobility Operations & Demand", 4 pages, published |
+| Governance | Row filter + column masks demonstrated on disposable copies, then rolled back |
 
 ## Business problem
 
@@ -27,15 +35,15 @@ transparent demonstration rules:
 - **Low docking availability:** two or fewer available docks.
 
 These thresholds are configurable teaching rules. They are not claimed as validated Citi Bike
-operating standards. Later stages will add repeated observations, capacity ratios, historical
-demand, weather, and recency before producing a station-priority indicator.
+operating standards. The rebalancing priority is a plain sum of severity, deficit and size
+points, so every ranking can be recomputed by hand.
 
 ## Verified real data sources
 
 | Source | Verified use | Current observation |
 |---|---|---|
 | [Citi Bike GBFS](https://gbfs.citibikenyc.com/gbfs/2.3/gbfs.json) | Feed discovery, station reference, station status | The working versioned discovery URL resolves current feeds instead of hard-coding them; the legacy `/gbfs/en/gbfs.json` URL returned HTTP 403 on 2026-09-29. |
-| [Citi Bike trip history](https://citibikenyc.com/system-data) | January 2024 historical demand sample | The official archive uses the modern 13-column ride schema and is 369,035,302 bytes. UrbanFlow reads a bounded ZIP range and keeps only 40 attributed rows. |
+| [Citi Bike trip history](https://citibikenyc.com/system-data) | The full January 2024 monthly archive, plus a committed 40-row development sample for tests | The official archive is 369,035,302 bytes in the modern 13-column schema: two CSVs, 1,888,085 rides. The 40-row sample stays separate under its own execution ID. |
 | [Open-Meteo](https://open-meteo.com/en/docs) | New York weather enrichment | Current response contains observation time, temperature at 2 m, precipitation, and wind speed at 10 m. |
 
 The committed samples are dated observations for reproducible tests. They are not presented as
@@ -79,35 +87,40 @@ This is a compatibility assessment, not live network evidence. The preflight acc
 only when its ID, name, runtime, access mode, attach permission, and current `RUNNING` state all
 match. It never starts, restarts, resizes, or terminates GP1 or GP2.
 
-The four component Job resources default their live gates to `false` and use
-`existing_cluster_id`. A manual run
-against a terminated all-purpose cluster could start it, so Phase 2 deployment and execution remain
-blocked until an academy operator already has the selected cluster running and the consolidated
-live test is approved.
+Every unified Job task uses `existing_cluster_id`, and the release workflow refuses to run unless
+GP1 is already `RUNNING`, so a release can never start a shared cluster. The four component Jobs
+that validated each stage separately were retired on 2026-10-03 once the unified Job superseded
+them; their definitions are kept, undeployed, in `resources/retired/component_jobs.yml`.
 
 ## 1. Overall solution architecture
 
 ```mermaid
 flowchart LR
-    GBFS["Citi Bike GBFS REST API"] --> PRODUCER["Bounded Python producer"]
-    PRODUCER --> EH["Existing Azure Event Hub<br/>Kafka endpoint"]
-    EH --> STREAM["Spark Structured Streaming"]
-    STREAM --> BSTATUS["Bronze station status"]
+    GBFS["Citi Bike GBFS API<br/>(one real snapshot)"] --> PRODUCER["Bounded producer"]
+    PRODUCER --> EH["Azure Event Hubs<br/>Kafka endpoint"]
+    EH --> BSTATUS["Bronze station status"]
 
-    TRIPS["Official monthly trip ZIP"] --> VOLUME["Approved UC Volume"]
-    VOLUME --> AUTO["Auto Loader"]
-    AUTO --> BTRIPS["Bronze historical trips"]
+    TRIPS["Jan 2024 trip archive<br/>(full month)"] --> VOLUME["UC Volume<br/>isolated namespace"]
+    METEO["Open-Meteo archive<br/>(one NYC coordinate)"]
 
-    INFO["Station-information REST API"] --> DIM["Station reference / SCD"]
-    WEATHER["Open-Meteo REST API"] --> WREF["Weather reference"]
+    subgraph ORCH["[azure] UrbanFlow End-to-End - GP1, 7 tasks"]
+      SSILVER["Silver + quarantine + duplicates"]
+      SGOLD["Gold fact / shortage / priority"]
+      AUTO["Auto Loader availableNow"]
+      TSILVER["Silver trips + quarantine"]
+      DEMAND["Gold daily demand"]
+      WEATHER["Weather hourly + LEFT join"]
+    end
 
-    BSTATUS --> SILVER["Silver valid observations"]
-    BTRIPS --> SILVER
-    SILVER --> QUARANTINE["Quarantine + failed rules"]
-    SILVER --> GOLD["Gold operations model"]
-    DIM --> GOLD
-    WREF --> GOLD
-    GOLD --> DASH["AI/BI dashboard and alerts"]
+    BSTATUS --> SSILVER --> SGOLD
+    VOLUME --> AUTO --> TSILVER --> DEMAND
+    METEO --> WEATHER
+    TSILVER --> WEATHER
+
+    SGOLD --> DASH["AI/BI dashboard"]
+    DEMAND --> DASH
+    WEATHER --> DASH
+    BSTATUS -. "stream read, isolated schema" .-> LAKEFLOW["Lakeflow declarative comparison"]
 ```
 
 ## 2. Event Hubs and Kafka ingestion
@@ -215,6 +228,49 @@ execution IDs or reconciliation identities disagree. Sample runs `4222809815373`
 `284335864579341` and full-month run `96337578882467` all ended `TERMINATED / SUCCESS` with a
 final-validation `PASS`.
 
+## 6. Lakeflow declarative comparison
+
+The same station medallion is declared a second time as a serverless, triggered Lakeflow pipeline
+(`fb8a0b8a-cdf8-45c4-bff6-2d117a516fb9`) that writes **only** to the isolated schema
+`parvinbadalov_urbanflow_lakeflow`. Bronze is a streaming table over the preserved append-only
+Bronze Delta table, so Event Hubs is not republished. Silver and Gold are materialized views that
+call the same `urbanflow.silver` and `urbanflow.gold` functions as the notebooks.
+
+One bounded update (`ba6710ed-bd97-46e0-a0c0-616050e3c9b9`) completed with 22 expectations, 0
+failed records and no warning in the event log. Parity was measured on business results, not
+storage metadata: zero rows in either direction of `EXCEPT ALL` for Silver, fact, shortage,
+priority and the daily summary. The pipeline is not continuous and has no schedule. Evidence:
+[`evidence/2026-10-03_lakeflow_run.json`](evidence/2026-10-03_lakeflow_run.json).
+
+## 7. AI/BI dashboard
+
+"UrbanFlow — NYC Mobility Operations & Demand" (`01f1bf66a828102f9167c26cdd833277`) has four pages:
+Current Operations (the snapshot, never charted over time), January 2024 Historical Demand, Weather
+& Demand (association, not causation) and Data Quality & Reliability. Its 20 datasets are generated
+from `sql/10`-`sql/13` by `scripts/build_dashboard.py`, and every historical and weather dataset is
+bound to the one full-month execution. It runs on the shared academy warehouse with no schedule.
+See [docs/DASHBOARD.md](docs/DASHBOARD.md).
+
+## 8. Quality, governance and maintenance
+
+- **Quality:** explicit contracts, quarantine with named reasons, deterministic deduplication,
+  the `Bronze = Silver + Quarantine + Duplicates` identity at every stage, Great Expectations
+  suites, Lakeflow expectations, and a read-only final-validation task in the Job. See
+  [docs/QUALITY_FRAMEWORK.md](docs/QUALITY_FRAMEWORK.md).
+- **Governance:** a row filter, coordinate masks and a `ride_id` hashing mask were applied,
+  observed and rolled back on disposable copies (`scripts/run_governance_demo.py`); the validated
+  tables were never policed. Narrower grants were not demonstrated because `account users` already
+  holds `ALL_PRIVILEGES` on the shared catalog.
+- **Maintenance:** inspected live, executed sparingly. OPTIMIZE was not justified at 68 MB,
+  deletion vectors are already on, CDF and clustering have no consumer yet, and **VACUUM is never
+  run** because it destroys the time-travel history this project uses as evidence.
+
+## 9. Cost controls
+
+Bounded `availableNow` runs, no automatic cluster lifecycle (GP1 is used only when already
+running), no standing Lakeflow schedule or continuous mode, no dashboard schedule or recurring
+alert, and the shared SQL warehouse used only for bounded queries under its 5-minute auto-stop.
+
 ## Implemented modules
 
 | Module | Purpose |
@@ -305,18 +361,10 @@ The first producer run is complete. Phase 2 must not run this command again: it 
 
 ## Academy coverage
 
-The detailed, evidence-based matrix is in
-[`docs/LABS_1_TO_9_COVERAGE.md`](docs/LABS_1_TO_9_COVERAGE.md). Current highlights:
-
-- **Implemented locally:** isolated Lakeflow declarations, dashboard and governance SQL, the
-  1,000-file generator, SCD audits, DAB configuration, and static CI.
-- **Discovered read-only:** target workspace identity, Unity Catalog resources, Event Hubs Kafka
-  capability, Key Vault secret metadata, storage, secret scope, and compute policies.
-- **Validated live:** the 2,520-event Bronze stream and exact reconciliation; corrected Silver and
-  Gold tables plus an idempotent repeat; the 40-row historical development sample; and the 48-hour
-  weather sample; plus read-only Databricks Connect and GE validation, all with stored evidence.
-- **Pending live:** exactly seven Academy rows remain; see
-  [the classified execution batches](docs/PENDING_REQUIREMENTS.md).
+The evidence-based matrix is [`docs/LABS_1_TO_9_COVERAGE.md`](docs/LABS_1_TO_9_COVERAGE.md):
+**33 Validated live, 35 Implemented locally, 3 Discovered read-only, 0 Pending live** across 71
+requirement rows. Rows that stay `Implemented locally` say why in their own evidence column - for
+example a legacy mount is declined on shared infrastructure and VACUUM is deliberately never run.
 
 ## Documentation
 
@@ -326,28 +374,25 @@ The detailed, evidence-based matrix is in
 - [Cost and safety plan](docs/COST_AND_SAFETY.md)
 - [First bounded streaming test runbook](docs/FIRST_STREAMING_TEST.md) — Phase 1, validated live
 - [Silver and Gold bounded run runbook](docs/SILVER_GOLD_RUNBOOK.md) — Phase 2, validated live
+- [10–15 minute supervisor demo](docs/SUPERVISOR_DEMO.md)
 - [20–25 minute presentation guide](docs/PRESENTATION_GUIDE.md)
+- [Unified release and January 2024 results](docs/UNIFIED_RELEASE.md)
+- [AI/BI dashboard](docs/DASHBOARD.md)
 - [Live execution evidence](evidence/README.md)
 - [Evidence policy and future screenshots](docs/evidence/README.md)
 
 ## Known limitations
 
-- Bronze is one real snapshot, so availability summaries are not historical trends.
-- The existing Event Hub has one day of retention, suitable for a short demonstration rather
-  than durable history.
-- GP1 was already `RUNNING` during the 2026-10-03 read-only inspection. GP2's latest recorded check
-  remains `TERMINATED` on 2026-10-02. UrbanFlow did not start, stop, resize or reconfigure either
-  cluster.
-- The existing secret and consumer group were exercised successfully during the completed Bronze
-  run; Phase 2 performs no secret read and no Event Hubs operation.
-- Current and historical station identifiers require the documented `short_name` crosswalk.
-- The 1,000-file Auto Loader discovery run, Lakeflow deployment, published dashboard, governance
-  changes, and maintenance operations have not run. The SQL alert was validated live once and then
-  deleted, so none is left scheduled.
-
-## Cost and safety boundary
-
-The safe Databricks Connect and GE read checks are complete. A Jobs API trigger creates a run
-record, and the 1,000-file Auto Loader exercise uploads files and writes checkpoints and Delta rows,
-so each remaining step needs explicit write approval. Exact commands and rollbacks are in
-[the pending-requirements plan](docs/PENDING_REQUIREMENTS.md).
+- Station availability is **one real snapshot**, so availability is a point-in-time count, never a
+  trend. Trip demand is the part that is genuinely historical.
+- The historical station reference is the **40-station development sample**, so only 3.43% of
+  January rides start at a referenced station. That is coverage, not data quality.
+- Weather is one NYC coordinate, and the weather charts show association only.
+- `silver_historical_trips.source_file` records the Bronze Parquet file rather than the source CSV;
+  CSV names are in each historical report's `landed_files`.
+- The dashboard has no interactive filter widget; its execution scope is fixed on purpose.
+- The Event Hub keeps one day of retention, which is why later stages reuse the preserved Bronze
+  execution instead of republishing.
+- The 1,000-file Auto Loader discovery exercise is implemented and tested locally, not uploaded.
+- GP1 and GP2 are shared academy clusters; UrbanFlow never started, stopped, resized or
+  reconfigured either.

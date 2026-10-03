@@ -1,5 +1,12 @@
 # First bounded streaming test - EXECUTED AND RECONCILED (2026-09-29)
 
+> **Historical record.** The component Jobs named below (`urbanflow_*_test`) were retired on
+> 2026-10-03 after the unified `[azure] UrbanFlow End-to-End` Job superseded them. Their
+> definitions live, undeployed, in `resources/retired/component_jobs.yml`, and their workspace
+> definitions and run histories in `evidence/2026-10-03_retired_component_jobs.json`. Commands
+> below that deploy or run them describe what was done at the time; current runs go through the
+> unified Job - see [UNIFIED_RELEASE.md](UNIFIED_RELEASE.md).
+
 ## Result: PASS
 
 The bounded Citi Bike GBFS -> Event Hubs -> Bronze path ran live on GP1 and the

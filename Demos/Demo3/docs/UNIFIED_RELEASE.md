@@ -16,8 +16,8 @@ reports: [`evidence/unified/`](../evidence/unified/).
 | Sample run #2 (idempotency) | `284335864579341` - `TERMINATED / SUCCESS`, 7/7 tasks, 389 s |
 | Full-month run | `96337578882467` - `TERMINATED / SUCCESS`, 7/7 tasks, 1,082 s |
 | Release workflow runs | `37139449737` (sample + repeat) and `37140618864` (full month), both `success` on `7abc194` |
-| Component Jobs | All four retained; retirement is a separate, unapproved decision |
-| Lakeflow, dashboard, SQL warehouse, governance, maintenance | Untouched |
+| Component Jobs | **Retired 2026-10-03.** The four `_test` Jobs were deleted through the bundle after a plan asserted to contain exactly those four deletes; definitions kept undeployed in `resources/retired/component_jobs.yml`, workspace definitions and 11 runs in `evidence/2026-10-03_retired_component_jobs.json` |
+| Lakeflow, dashboard, governance, maintenance | Completed separately on 2026-10-03 - see the final-depth section below |
 
 **Idempotency is proven from the write reports rather than the green status.** Run #2 inserted 0
 rows and removed 0 in every table, migrated no schema, left every count identical, and found no new
@@ -162,8 +162,25 @@ GP1's lifecycle.
 The workflow does not download or upload the Citi Bike archive. Those remain separate approved
 actions that must finish before a full-month dispatch.
 
-## Still behind separate approval
+## Final depth, 2026-10-03
 
-Running Lakeflow, starting the SQL warehouse, publishing a dashboard, changing governance, running
-OPTIMIZE or VACUUM, enabling CDF or deletion vectors, changing clustering and retiring the four
-component Jobs all remain unapproved. None was performed.
+| Item | Result | Evidence |
+|---|---|---|
+| Lakeflow | Pipeline `fb8a0b8a-cdf8-45c4-bff6-2d117a516fb9`, isolated schema `parvinbadalov_urbanflow_lakeflow`; update `ba6710ed-bd97-46e0-a0c0-616050e3c9b9` COMPLETED; 22/22 expectations; exact business-result parity | `evidence/2026-10-03_lakeflow_run.json` |
+| Dashboard | `01f1bf66a828102f9167c26cdd833277`, four pages, bound to this month's executions, no schedule | [DASHBOARD.md](DASHBOARD.md) |
+| Governance | Row filter and masks on disposable copies, rolled back, schema dropped | `evidence/2026-10-03_governance_demo.json` |
+| Maintenance | Inspection only; VACUUM deliberately never run | `evidence/2026-10-03_maintenance_inspection.json` |
+| Component Jobs | Retired; the unified Job is the only UrbanFlow Job | `evidence/2026-10-03_retired_component_jobs.json` |
+| Read-only CI after retirement | Workflow `37151678220` SUCCESS, verifying the unified Job and the isolated pipeline | GitHub Actions |
+| Final inventory | One Job, one pipeline, two schemas, one Volume, one dashboard, no alert, no policies | `evidence/2026-10-03_final_inventory.json` |
+
+## Final least-privilege state of the CI service principal
+
+| Object | Level | Why it stays |
+|---|---|---|
+| Unified Job `991496516229387` | `IS_OWNER` | The release workflow created it and must be able to update it |
+| Bundle root directory `2449501099480664` | `CAN_MANAGE` | Required to take the deployment lock and write deployment state; removing it breaks every release |
+| Lakeflow pipeline | `CAN_VIEW` | Required by the read-only CI check; granted 2026-10-03 by an additive update, owner and `admins` preserved |
+
+Its earlier `CAN_VIEW` on the four component Jobs ended when those Jobs were deleted, so nothing
+obsolete remains to revoke. The principal is shared with Lab 8; no Lab 8 resource was modified.
