@@ -207,14 +207,25 @@ jobs:
               "weather_start_date": "2024-01-01" if full else "2024-01-24",
               "weather_end_date": "2024-01-31" if full else "2024-01-25",
           }
-          path = pathlib.Path(os.environ["RUNNER_TEMP"]) / "run-request.json"
-          path.write_text(json.dumps({"job_parameters": params}), encoding="utf-8")
+          path = pathlib.Path(os.environ["RUNNER_TEMP"]) / "run-params.json"
+          path.write_text(json.dumps(params), encoding="utf-8")
           PY
 
           run_once() {
             local label="$1"
             local token="urbanflow-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${label}"
-            databricks jobs run-now "$JOB_ID" --json @"$RUNNER_TEMP/run-request.json" --idempotency-token "$token" --no-wait --output json > "$RUNNER_TEMP/${label}-submitted.json"
+            python - "$JOB_ID" "$token" "$RUNNER_TEMP/run-params.json" "$RUNNER_TEMP/${label}-request.json" <<'PY'
+            import json, sys
+            job_id, token, params_path, out_path = sys.argv[1:5]
+            with open(params_path, encoding="utf-8") as handle:
+                params = json.load(handle)
+            # job_id and idempotency_token belong in the request body. Passing job_id positionally
+            # alongside --json is rejected by the CLI: "no positional arguments are allowed".
+            body = {"job_id": int(job_id), "idempotency_token": token, "job_parameters": params}
+            with open(out_path, "w", encoding="utf-8") as handle:
+                json.dump(body, handle)
+            PY
+            databricks jobs run-now --json @"$RUNNER_TEMP/${label}-request.json" --no-wait --output json > "$RUNNER_TEMP/${label}-submitted.json"
             local run_id
             run_id=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["run_id"])' "$RUNNER_TEMP/${label}-submitted.json")
             local terminal=false

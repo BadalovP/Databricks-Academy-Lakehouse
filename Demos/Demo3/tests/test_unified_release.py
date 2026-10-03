@@ -245,3 +245,22 @@ def test_job_run_validator_rejects_failure_retry_and_non_pass_output() -> None:
     output = {"notebook_output": {"result": json.dumps({"status": "FAIL"})}}
     with pytest.raises(ValueError, match="not PASS"):
         validate_job_run(_successful_run(), expected_job_id=123, final_output=output)
+
+
+def test_release_workflow_passes_job_id_in_the_run_now_body_not_positionally() -> None:
+    """`databricks jobs run-now` rejects a positional JOB_ID when --json is supplied.
+
+    The first live release attempt failed exactly here, after a successful deploy and a clean
+    post-deploy plan: "when --json flag is specified, no positional arguments are allowed.
+    Provide 'job_id' in your JSON input". The id and the idempotency token are body fields, so
+    this test pins the corrected shape rather than the error message.
+    """
+    text = WORKFLOW.read_text(encoding="utf-8")
+
+    assert 'databricks jobs run-now --json @"$RUNNER_TEMP/${label}-request.json"' in text
+    # No positional job id alongside --json, in any form.
+    assert 'run-now "$JOB_ID"' not in text
+    assert "--idempotency-token" not in text
+    # Both fields must travel inside the request body.
+    assert '"job_id": int(job_id)' in text
+    assert '"idempotency_token": token' in text
