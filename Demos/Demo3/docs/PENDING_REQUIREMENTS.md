@@ -1,11 +1,16 @@
 # The remaining Pending live requirements, and how to clear them
 
-> **Updated 2026-10-03.** The CI/CD batch cleared three of these rows - idempotent deployment and
-> approvals, post-deploy validation, and the Jobs API trigger - leaving **4** `Pending live`. The
-> analysis below is kept for the rows that remain, plus `CI integration`, which is now blocked on
-> one specific thing: the CI service principal has no ACL on the four Jobs, so `databricks jobs
-> get` is denied. See [CICD_BATCH_EVIDENCE.md](CICD_BATCH_EVIDENCE.md) section 5 for the proposed
-> read-only `CAN_VIEW` grant and the two cautions that go with it.
+> **Updated 2026-10-03.** The CI/CD batch cleared **four** of these rows - idempotent deployment
+> and approvals, post-deploy validation, the Jobs API trigger, and `CI integration` - leaving
+> **3** `Pending live`. `CI integration` was unblocked by four additive, read-only `CAN_VIEW` Job
+> ACL patches, after which workflow run `37084965415` completed SUCCESS end to end. See
+> [CICD_BATCH_EVIDENCE.md](CICD_BATCH_EVIDENCE.md) section 9 for the pre- and post-change ACLs and
+> the proof that `IS_OWNER` and `admins CAN_MANAGE` survived.
+>
+> The three remaining rows are the two this document recommends **documenting rather than
+> executing** - the legacy mount and DEV-to-PROD promotion - plus Databricks Connect, which needs
+> an isolated virtualenv because `databricks-connect` replaces the local `pyspark` the suite
+> depends on.
 
 Seven rows remain `Pending live` after the 2026-10-03 Batch A read validation. Databricks Connect
 moved from `Pending live` to `Validated live`, and Great Expectations moved from `Implemented
