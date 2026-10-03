@@ -38,8 +38,18 @@ and both status distributions matched. Great Expectations passed 10/10 Silver an
 historical-sample expectations with zero unexpected rows. See
 [the dated evidence](../evidence/BATCH_A_READ_VALIDATION.md).
 
-**Current totals, 71 requirement rows:** 23 `Validated live`, **44** `Implemented locally`,
-3 `Discovered read-only`, **1** `Pending live`, 0 `Blocked`.
+**Current totals, 71 requirement rows:** **24** `Validated live`, 44 `Implemented locally`,
+3 `Discovered read-only`, **0** `Pending live`, 0 `Blocked`.
+
+**Every Academy row is now closed.** The last one, Lab 6 alerts and email, was validated
+live on 2026-10-03 - see [ALERT_VALIDATION.md](../evidence/ALERT_VALIDATION.md). `Pending
+live` is now **zero**, and no row was closed by lowering a standard: two rows are
+`Implemented locally` because executing them was judged inappropriate rather than because
+they were unreachable, and each states that reasoning in its own evidence column.
+
+What remains is not Academy coverage but depth: the monthly archive, a Lakeflow run, a
+published dashboard and the governance/maintenance demonstrations are all prepared,
+unexecuted, and would make the existing evidence richer rather than close a new row.
 
 **Final reconciliation, 2026-10-03.** Two rows moved from `Pending live` to
 `Implemented locally` because their documentation is now the deliverable and execution is a
@@ -124,7 +134,7 @@ full-scale one.
 | 5 | DAB deployment | Bundle targets plus undeployed Job and serverless Lakeflow resources | `databricks.yml`, `resources/` | Static validation | Implemented locally |
 | 6 | Fact/dimension model | Stable availability fact, 40-row development dimension, daily summary and shortage outputs | `gold.py`, notebook 05 | All five Gold tables verified live 2026-10-02: fact 2,520 with 2,520 distinct event IDs, daily summary 2,520 with observation total 2,520 and `is_trend_capable` true for 0 rows, dimension 40, shortage and priority 657 each | Validated live |
 | 6 | AI/BI dashboard and filters | Four pages, 22 datasets, with per-tile caveats so a snapshot is never charted as a trend | `docs/DASHBOARD.md`, `sql/10`-`sql/13` | Layout and queries complete; the underlying 22/22 ran read-only after the Phase 2 correction. Required execution-selection guards were added and tested locally on 2026-10-03, but not rerun through a SQL warehouse. The dashboard object is not published, and sample/full execution scopes remain separate | Implemented locally |
-| 6 | Alerts / email | Volume-drop and shortage alert requirement retained | Coverage matrix | Destination/warehouse unverified | Pending live |
+| 6 | Alerts / email | SQL alert on the actionable-shortage measure, created on the shared academy serverless warehouse with an email subscription and a deliberately paused schedule | `../evidence/ALERT_VALIDATION.md` | Validated live 2026-10-03 on warehouse `3ed106620db591d9`. The read-only query (statement `01f1becb-…`) returned **657**, matching the validated baseline, and alert `3025530840217009` **TRIGGERED** at `01:40:30Z` against it - a genuine evaluation, obtained by briefly unpausing the schedule rather than asserting the arithmetic. Deleted afterwards so no scheduled alert is left in a shared workspace; the 25 pre-existing alerts from other labs were untouched. Email delivery is inferred from the triggered transition, not mailbox-confirmed | Validated live |
 | 6 | Permissions, RLS, masking | Region row filter, coordinate-rounding mask, ride_id hashing mask, least-privilege grants, ABAC tagging explained, plus inspection queries | `sql/20_governance_rls_cls.sql` | Tests prove no `SET MASK`, `SET ROW FILTER` or `GRANT` is active; the fail-to-zero-rows hazard is documented | Implemented locally |
 | 6 | Weather enrichment | Bounded Open-Meteo archive retrieval, hourly normalization, left join preserving every trip, null readings kept null, weather dimension and demand comparison, plus notebook 07 | `weather.py`, `notebooks/07_weather_enrichment.py` | Ran live on GP1 2026-10-02 (run 472557041765891) with the committed **48-hour sample** and no external request: completeness 1.0, 40 trips in and 40 out with no fan-out, coverage 0.1 reported honestly. One city coordinate, comparisons only | Validated live |
 | 6 | Historical trip quality and demand | Three-way valid/quarantine/duplicate split, deterministic dedup by `ride_id`, trip-duration bounds, member vs casual mix, daily demand keyed to `short_name` | `historical.py`, `notebooks/06_historical_trips.py` | Ran live on GP1 2026-10-02 on the **40-ROW DEVELOPMENT SAMPLE**: match rate 1.0 via `short_name`, demand 40 trips over 17 days reconciling exactly, member 35 / casual 5, durations 1.28-30.10 min - every figure identical to the local prediction | Validated live |

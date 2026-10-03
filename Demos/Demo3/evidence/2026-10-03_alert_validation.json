@@ -1,0 +1,107 @@
+{
+  "_note": "One bounded UrbanFlow SQL alert validation on an explicitly approved shared serverless SQL warehouse. Read-only query, one alert created, evaluated, then deleted. No data was read or written outside a single SELECT, and no other workspace object was touched.",
+  "evidence_type": "urbanflow_sql_alert_validation",
+  "date": "2026-10-03",
+  "warehouse": {
+    "id": "3ed106620db591d9",
+    "name": "Serverless Starter Warehouse",
+    "cluster_size": "2X-Small",
+    "warehouse_type": "PRO",
+    "serverless": true,
+    "auto_stop_mins": 5,
+    "min_num_clusters": 1,
+    "max_num_clusters": 1,
+    "owner": "lbiel@softserve.academy",
+    "our_access": "CAN_USE, granted to the `users` group",
+    "state_before": "STOPPED",
+    "state_after_validation": "RUNNING",
+    "stop_mechanism": "auto-stop after 5 idle minutes; CAN_USE does not permit a manual stop and none was attempted",
+    "billing_note": "serverless SQL on the shared academy account, not a personal account",
+    "state_after_autostop": "STOPPED",
+    "autostop_confirmed_at": "2026-10-03T01:47:15Z",
+    "billable_window_minutes_approx": 8
+  },
+  "query": {
+    "statement_id": "01f1becb-1e37-19aa-8023-6f5f1f8d5dfa",
+    "status": "SUCCEEDED",
+    "text": "SELECT SUM(CASE WHEN availability_status IN ('LOW_BIKES','LOW_DOCKS','LOW_BIKES_AND_DOCKS') THEN 1 ELSE 0 END) AS actionable_shortages FROM dbr_dev.parvinbadalov_urbanflow.silver_station_status",
+    "read_only": true,
+    "derived_from": "sql/10_dashboard_current_operations.sql query 1, reduced to the single alerting measure",
+    "result_column": "actionable_shortages",
+    "result_value": 657,
+    "matches_validated_baseline": true,
+    "baseline_composition": {
+      "LOW_BIKES": 278,
+      "LOW_DOCKS": 374,
+      "LOW_BIKES_AND_DOCKS": 5,
+      "total_actionable": 657,
+      "OUT_OF_SERVICE_in_actionable_gold": 0
+    }
+  },
+  "alert": {
+    "id": "3025530840217009",
+    "display_name": "UrbanFlow actionable station shortages",
+    "owner": "the workspace identity already recorded as `workspace_user` in databricks.yml",
+    "warehouse_id": "3ed106620db591d9",
+    "condition": {
+      "source_column": "actionable_shortages",
+      "comparison_operator": "GREATER_THAN",
+      "threshold": 0,
+      "threshold_rationale": "A defect-free threshold rather than a tuned one: zero actionable shortages genuinely means there is nothing for an operator to do, so `> 0` is the correct boundary and was not chosen to force a result."
+    },
+    "evaluation": {
+      "state": "TRIGGERED",
+      "last_evaluated_at": "2026-10-03T01:40:30Z",
+      "evaluated_against": 657,
+      "genuine_evaluation": true,
+      "how": "The schedule was created PAUSED. To obtain a real evaluation rather than asserting the arithmetic by hand, it was briefly UNPAUSED with a one-minute cron, allowed to evaluate exactly once, then re-PAUSED immediately."
+    },
+    "notification": {
+      "destination_type": "email subscription to the alert owner's own workspace identity",
+      "recipient_count": 1,
+      "arbitrary_recipients_added": false,
+      "webhooks_or_new_integrations_created": false,
+      "notify_on_ok": false,
+      "email_delivery_independently_verified": false,
+      "delivery_note": "The alert transitioned to TRIGGERED with one email subscription configured and `notify_on_ok` false, which is the condition under which Databricks sends the notification. The recipient mailbox was NOT inspected, so delivery is inferred from the triggered transition rather than independently confirmed."
+    },
+    "schedule": {
+      "created_as": "PAUSED",
+      "temporarily": "UNPAUSED with cron 0 * * * * ? for one evaluation",
+      "restored_to": "PAUSED with cron 0 0 12 * * ?",
+      "why_paused": "The underlying table is one frozen GBFS snapshot, so a live cron would fire identically forever and spend warehouse time while nobody is watching. A standing schedule becomes meaningful only once the data refreshes."
+    },
+    "final_lifecycle_state": "DELETED",
+    "cleanup_rationale": "Deleted after validation so no scheduled alert is left behind in a shared academy workspace, which already holds 25 alerts belonging to other labs and students."
+  },
+  "timeline_utc": {
+    "alert_created": "2026-10-03T01:37:25Z",
+    "schedule_unpaused": "2026-10-03T01:39:07Z",
+    "alert_evaluated_triggered": "2026-10-03T01:40:30Z",
+    "schedule_repaused": "2026-10-03T01:41Z",
+    "alert_deleted": "2026-10-03T01:42Z",
+    "warehouse_autostopped": "2026-10-03T01:47:15Z"
+  },
+  "untouched": {
+    "pre_existing_alerts_in_workspace": 25,
+    "pre_existing_alerts_modified": 0,
+    "urbanflow_alerts_remaining": 0,
+    "jobs_run": 0,
+    "deployments": 0,
+    "data_rows_written": 0,
+    "cluster_lifecycle_changes": 0,
+    "lakeflow_pipelines": 0
+  },
+  "assertions": {
+    "query_is_read_only": true,
+    "query_result_matches_validated_baseline": true,
+    "alert_created_exactly_one": true,
+    "alert_evaluated_genuinely": true,
+    "alert_triggered_as_expected": true,
+    "schedule_left_paused_before_deletion": true,
+    "alert_deleted_afterwards": true,
+    "no_other_workspace_object_modified": true,
+    "warehouse_left_to_auto_stop": true,
+    "warehouse_confirmed_stopped": true
+  }
+}
