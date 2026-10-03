@@ -16,7 +16,7 @@ The read-only inventory on 2026-10-03 found:
 | Primary `[azure] UrbanFlow End-to-End` Job | Not deployed |
 | Main schema | `dbr_dev.parvinbadalov_urbanflow`, 16 managed Delta tables |
 | Landing Volume | `dbr_dev.parvinbadalov_urbanflow.urbanflow_landing` |
-| Lakeflow | No deployed UrbanFlow pipeline; isolated output schema does not yet exist |
+| Lakeflow | No deployed UrbanFlow pipeline; the prepared isolated path reads the preserved Bronze and station-reference tables without republishing Event Hubs |
 | AI/BI and SQL alerts | No UrbanFlow dashboard or alert |
 | Shared SQL warehouse | `3ed106620db591d9`, `STOPPED`, five-minute auto-stop |
 | GitHub OIDC identity | Active service principal `3ec7e8df-66a2-4102-ab57-e4448b4e0e01`; UC access is inherited through `account users` |

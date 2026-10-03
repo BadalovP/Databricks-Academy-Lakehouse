@@ -132,7 +132,7 @@ def test_silver_declares_expectations_on_all_three_tables() -> None:
         "duplicate_station_status",
     ):
         assert table in functions, f"{table} is not declared"
-        assert "dp.table" in functions[table]
+        assert "dp.materialized_view" in functions[table]
         assert "dp.expect_all" in functions[table]
 
 
@@ -146,8 +146,19 @@ def test_gold_declares_expectations_on_every_derived_table() -> None:
         "gold_station_shortage",
         "gold_rebalancing_priority",
     ):
-        assert "dp.table" in functions[table]
+        assert "dp.materialized_view" in functions[table]
         assert "dp.expect_all" in functions[table], f"{table} has no expectations"
+
+
+def test_only_bronze_is_streaming_and_it_reads_the_preserved_delta_source() -> None:
+    functions = _decorated_functions(BRONZE)
+    source = _source(BRONZE)
+
+    assert functions["bronze_station_status"] == ["dp.table"]
+    assert 'spark.conf.get("urbanflow.station_bronze_source_table")' in source
+    assert "spark.readStream.table(source_table)" in source
+    assert "kafka" not in source.lower()
+    assert "dbutils.secrets" not in source
 
 
 def test_expectations_never_drop_or_fail_rows() -> None:
@@ -211,24 +222,32 @@ def test_thresholds_come_from_configuration_not_from_two_places() -> None:
         assert "urbanflow.low_bike_threshold" in _source(module)
 
 
-def test_the_pipeline_configuration_holds_a_secret_name_never_a_secret_value() -> None:
-    """The connection string is read through a scope at run time, never stored here."""
+def test_the_pipeline_configuration_uses_read_only_shared_source_tables() -> None:
+    """Expired Event Hubs data is never republished for the declarative comparison."""
     configuration = _pipeline_definition()["configuration"]
 
-    assert configuration["urbanflow.event_hubs_secret_name"] == "parvinbadalov-eventhub-cs"
+    assert configuration["urbanflow.station_bronze_source_table"] == (
+        "${var.catalog}.${var.schema}.bronze_station_status"
+    )
+    assert configuration["urbanflow.station_reference_source_table"] == (
+        "${var.catalog}.${var.schema}.dim_station_development_sample"
+    )
     rendered = yaml.safe_dump(configuration)
-    for marker in ("SharedAccessKey", "EntityPath", "sb://", "Endpoint="):
+    for marker in ("SharedAccessKey", "EntityPath", "sb://", "Endpoint=", "secret_scope"):
         assert marker not in rendered
-    assert "dbutils.secrets.get" in _source(BRONZE)
+    assert "event_hub" not in rendered.lower()
 
 
-def test_the_station_reference_path_is_configuration_not_a_hardcoded_catalog() -> None:
-    """A dev-target run must read dev-target storage."""
-    path = _pipeline_definition()["configuration"]["urbanflow.station_information_path"]
+def test_the_station_reference_source_is_configuration_not_a_hardcoded_catalog() -> None:
+    """A dev-target run must read its own target's validated source tables."""
+    configuration = _pipeline_definition()["configuration"]
 
-    assert "${var.catalog}" in path
-    assert "${var.schema}" in path
-    assert "${var.volume}" in path
+    for key in (
+        "urbanflow.station_bronze_source_table",
+        "urbanflow.station_reference_source_table",
+    ):
+        assert "${var.catalog}" in configuration[key]
+        assert "${var.schema}" in configuration[key]
 
 
 def test_pipeline_code_cannot_bypass_the_isolated_target_schema() -> None:
@@ -241,7 +260,10 @@ def test_pipeline_code_cannot_bypass_the_isolated_target_schema() -> None:
         assert "spark.sql(" not in source
 
         for node in ast.walk(_tree(module)):
-            if not isinstance(node, ast.Call) or ast.unparse(node.func) != "dp.table":
+            if not isinstance(node, ast.Call) or ast.unparse(node.func) not in {
+                "dp.table",
+                "dp.materialized_view",
+            }:
                 continue
             name = next(
                 (

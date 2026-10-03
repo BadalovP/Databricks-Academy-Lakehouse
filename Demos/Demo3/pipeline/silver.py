@@ -69,7 +69,7 @@ def _split(session):
     )
 
 
-@dp.table(
+@dp.materialized_view(
     name="silver_station_status",
     comment=(
         "Deduplicated, contract-checked station observations with operational flags and "
@@ -83,7 +83,7 @@ def silver_station_status():
     return _split(spark).silver  # noqa: F821 - spark is a Lakeflow-injected global
 
 
-@dp.table(
+@dp.materialized_view(
     name="quarantine_station_status",
     comment=(
         "Rows rejected by the Silver contract, each carrying the rules it failed. Preserved "
@@ -98,7 +98,7 @@ def quarantine_station_status():
     return _split(spark).quarantine  # noqa: F821 - spark is a Lakeflow-injected global
 
 
-@dp.table(
+@dp.materialized_view(
     name="duplicate_station_status",
     comment=(
         "Later copies of an already-seen event_id. Recorded rather than discarded so the "
