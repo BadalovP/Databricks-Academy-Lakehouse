@@ -261,6 +261,65 @@ def test_release_workflow_passes_job_id_in_the_run_now_body_not_positionally() -
     # No positional job id alongside --json, in any form.
     assert 'run-now "$JOB_ID"' not in text
     assert "--idempotency-token" not in text
-    # Both fields must travel inside the request body.
-    assert '"job_id": int(job_id)' in text
-    assert '"idempotency_token": token' in text
+    # Both fields must travel inside the request body, built without a heredoc.
+    assert '"job_id": int(sys.argv[1])' in text
+    assert '"idempotency_token": sys.argv[2]' in text
+    # A heredoc inside the function body is what broke this step once; keep it out.
+    assert "<<'PY'" not in text.split("run_once()")[-1]
+
+
+def _bash_usable() -> bool:
+    """True only when a real bash can execute. On Windows, `bash` may resolve to a WSL shim."""
+    import subprocess
+
+    try:
+        return subprocess.run(["bash", "-c", "exit 0"], capture_output=True).returncode == 0
+    except OSError:
+        return False
+
+
+def test_every_workflow_run_block_is_valid_shell() -> None:
+    """`bash -n` over every `run:` block in every workflow.
+
+    This exists because of a real failure that reached the live workspace. A `<<'PY'` heredoc was
+    added inside a bash function with its terminator indented to match the surrounding code. Bash
+    only matches an unindented terminator, so it consumed the rest of the script and failed with
+    "syntax error: unexpected end of file" - after a successful deploy, in the step that triggers
+    the Job. YAML parsing cannot catch that, because the block is a valid YAML string.
+
+    Skipped where bash cannot execute; CI runs on ubuntu, which is where it matters.
+    """
+    import subprocess
+    import tempfile
+
+    import pytest as _pytest
+    import yaml as _yaml
+
+    if not _bash_usable():
+        _pytest.skip("no usable bash on this platform")
+
+    root = WORKFLOW.resolve().parents[1]
+    failures: list[str] = []
+    checked = 0
+    for workflow in sorted(root.glob("*.yml")):
+        document = _yaml.safe_load(workflow.read_text(encoding="utf-8"))
+        for job_name, job in (document.get("jobs") or {}).items():
+            for index, step in enumerate(job.get("steps") or [], start=1):
+                script = step.get("run")
+                if not script:
+                    continue
+                checked += 1
+                with tempfile.NamedTemporaryFile(
+                    "w", suffix=".sh", delete=False, encoding="utf-8"
+                ) as handle:
+                    handle.write(script)
+                    path = handle.name
+                result = subprocess.run(["bash", "-n", path], capture_output=True, text=True)
+                Path(path).unlink(missing_ok=True)
+                if result.returncode != 0:
+                    failures.append(
+                        f"{workflow.name}/{job_name}/step {index}: {result.stderr.strip()}"
+                    )
+
+    assert checked > 0, "no run blocks found - the glob is wrong and this test is vacuous"
+    assert not failures, "shell syntax errors:\n" + "\n".join(failures)
