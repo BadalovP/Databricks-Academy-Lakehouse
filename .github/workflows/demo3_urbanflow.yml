@@ -97,7 +97,7 @@ jobs:
           }
           databricks current-user me --output json > "$RUNNER_TEMP/urbanflow-current-user.json"
           python -c "import json, pathlib; p=pathlib.Path('$RUNNER_TEMP/urbanflow-current-user.json'); u=json.loads(p.read_text())['userName']; print(f'Authenticated Databricks identity: {u}')"
-      - name: Validate unchanged Job bundle and discover owned resources
+      - name: Validate bundle and discover owned resources
         env:
           DATABRICKS_AUTH_TYPE: azure-cli
           DATABRICKS_HOST: ${{ vars.DATABRICKS_AZURE_HOST }}
@@ -105,10 +105,6 @@ jobs:
         run: |
           set -euo pipefail
           databricks bundle validate -t azure
-          plan_output="$(databricks bundle plan -t azure \
-            --select jobs.urbanflow_bounded_stream_test,jobs.urbanflow_silver_gold_test,jobs.urbanflow_historical_trips_test,jobs.urbanflow_weather_enrichment_test)"
-          printf '%s\n' "$plan_output"
-          grep -Fq "Plan: 0 to add, 0 to change, 0 to delete, 4 unchanged" <<< "$plan_output"
 
           while IFS='|' read -r job_id expected_name; do
             output="$RUNNER_TEMP/urbanflow-job-$job_id.json"
@@ -125,5 +121,7 @@ jobs:
             > "$RUNNER_TEMP/urbanflow-pipelines.json"
           python -c "import json, pathlib; p=pathlib.Path('$RUNNER_TEMP/urbanflow-pipelines.json'); pipelines=json.loads(p.read_text()); assert pipelines == [], f'Unexpected UrbanFlow pipelines: {pipelines}'; print('Verified: no deployed UrbanFlow pipeline.')"
 
-      # This live path performs only authentication, bundle validation/plan, and resource reads.
+      # A fresh runner has no local DAB deployment state, so idempotency is proved by the separate
+      # authenticated before/deploy/after plan sequence rather than a misleading CI plan.
+      # This live path performs only authentication, bundle validation, and resource reads.
       # It has no deploy, run, cluster lifecycle, pipeline update, or data-plane command.

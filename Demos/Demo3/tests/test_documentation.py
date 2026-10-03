@@ -62,7 +62,6 @@ def test_workflow_keeps_live_control_plane_validation_manually_gated_and_read_on
     assert "azure/login@v2" in workflow
     assert "databricks current-user me" in workflow
     assert "databricks bundle validate -t azure" in workflow
-    assert "databricks bundle plan -t azure" in workflow
+    assert "databricks bundle plan" not in workflow
     assert "databricks jobs get" in workflow
     assert "databricks pipelines list-pipelines" in workflow
-    assert "Plan: 0 to add, 0 to change, 0 to delete, 4 unchanged" in workflow
