@@ -208,3 +208,175 @@ resources:
         phase: weather
         compute: existing_shared_cluster
         safety: dry_run_by_default
+
+    # Primary user-facing orchestrator. It deliberately excludes the Event Hubs producer:
+    # the station branch starts from the already-validated Bronze execution instead of
+    # republishing messages whose retention window has passed.
+    urbanflow_end_to_end:
+      name: "[${bundle.target}] UrbanFlow End-to-End"
+      max_concurrent_runs: 1
+      timeout_seconds: 3600
+      parameters:
+        - name: run_station_pipeline
+          default: "true"
+        - name: run_historical
+          default: "true"
+        - name: run_weather
+          default: "true"
+        - name: run_full_month
+          default: "false"
+        - name: source_execution_id
+          default: urbanflow-20260929T195132Z-r3
+        - name: run_attempt_id
+          default: "{{job.run_id}}"
+        - name: historical_execution_id
+          default: urbanflow-hist-devsample40-20261002T0010Z
+        - name: historical_landing_subdir
+          default: ""
+        - name: weather_execution_id
+          default: urbanflow-weather-devsample48h-20261002T0015Z
+        - name: weather_source
+          default: sample_json
+        - name: weather_sample_file
+          default: open_meteo_archive_202401.sample.json
+        - name: weather_start_date
+          default: "2024-01-24"
+        - name: weather_end_date
+          default: "2024-01-25"
+        - name: stream_timeout_seconds
+          default: "900"
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema
+          default: ${var.schema}
+        - name: volume
+          default: ${var.volume}
+      tasks:
+        - task_key: 01_preflight
+          existing_cluster_id: 0702-132442-toro5spu
+          timeout_seconds: 300
+          notebook_task:
+            notebook_path: ../notebooks/08_unified_preflight.py
+            base_parameters:
+              run_station_pipeline: "{{job.parameters.run_station_pipeline}}"
+              run_historical: "{{job.parameters.run_historical}}"
+              run_weather: "{{job.parameters.run_weather}}"
+              run_full_month: "{{job.parameters.run_full_month}}"
+              source_execution_id: "{{job.parameters.source_execution_id}}"
+              historical_execution_id: "{{job.parameters.historical_execution_id}}"
+              historical_landing_subdir: "{{job.parameters.historical_landing_subdir}}"
+              weather_execution_id: "{{job.parameters.weather_execution_id}}"
+              weather_source: "{{job.parameters.weather_source}}"
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume: "{{job.parameters.volume}}"
+
+        - task_key: 02_station_source_check
+          depends_on:
+            - task_key: 01_preflight
+          existing_cluster_id: 0702-132442-toro5spu
+          timeout_seconds: 600
+          notebook_task:
+            notebook_path: ../notebooks/09_station_source_check.py
+            base_parameters:
+              run_station_pipeline: "{{job.parameters.run_station_pipeline}}"
+              source_execution_id: "{{job.parameters.source_execution_id}}"
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+
+        - task_key: 03_station_silver
+          depends_on:
+            - task_key: 02_station_source_check
+          existing_cluster_id: 0702-132442-toro5spu
+          timeout_seconds: 600
+          notebook_task:
+            notebook_path: ../notebooks/04_bronze_to_silver.py
+            base_parameters:
+              run_transform: "{{job.parameters.run_station_pipeline}}"
+              run_attempt_id: "{{job.parameters.run_attempt_id}}"
+              source_execution_id: "{{job.parameters.source_execution_id}}"
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume: "{{job.parameters.volume}}"
+
+        - task_key: 04_station_gold
+          depends_on:
+            - task_key: 03_station_silver
+          existing_cluster_id: 0702-132442-toro5spu
+          timeout_seconds: 600
+          notebook_task:
+            notebook_path: ../notebooks/05_silver_to_gold.py
+            base_parameters:
+              run_transform: "{{job.parameters.run_station_pipeline}}"
+              run_attempt_id: "{{job.parameters.run_attempt_id}}"
+              source_execution_id: "{{job.parameters.source_execution_id}}"
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume: "{{job.parameters.volume}}"
+
+        - task_key: 05_historical_trips
+          depends_on:
+            - task_key: 01_preflight
+          existing_cluster_id: 0702-132442-toro5spu
+          timeout_seconds: 1500
+          notebook_task:
+            notebook_path: ../notebooks/06_historical_trips.py
+            base_parameters:
+              run_ingest: "{{job.parameters.run_historical}}"
+              run_attempt_id: "{{job.parameters.run_attempt_id}}"
+              execution_id: "{{job.parameters.historical_execution_id}}"
+              stream_timeout_seconds: "{{job.parameters.stream_timeout_seconds}}"
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume: "{{job.parameters.volume}}"
+              landing_subdir: "{{job.parameters.historical_landing_subdir}}"
+
+        - task_key: 06_weather_enrichment
+          depends_on:
+            - task_key: 05_historical_trips
+          existing_cluster_id: 0702-132442-toro5spu
+          timeout_seconds: 600
+          notebook_task:
+            notebook_path: ../notebooks/07_weather_enrichment.py
+            base_parameters:
+              run_enrichment: "{{job.parameters.run_weather}}"
+              run_attempt_id: "{{job.parameters.run_attempt_id}}"
+              execution_id: "{{job.parameters.weather_execution_id}}"
+              source_execution_id: "{{job.parameters.historical_execution_id}}"
+              weather_source: "{{job.parameters.weather_source}}"
+              weather_sample_file: "{{job.parameters.weather_sample_file}}"
+              start_date: "{{job.parameters.weather_start_date}}"
+              end_date: "{{job.parameters.weather_end_date}}"
+              latitude: "40.7128"
+              longitude: "-74.0060"
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume: "{{job.parameters.volume}}"
+
+        - task_key: 07_final_validation
+          depends_on:
+            - task_key: 04_station_gold
+            - task_key: 05_historical_trips
+            - task_key: 06_weather_enrichment
+          existing_cluster_id: 0702-132442-toro5spu
+          timeout_seconds: 900
+          notebook_task:
+            notebook_path: ../notebooks/10_unified_final_validation.py
+            base_parameters:
+              run_station_pipeline: "{{job.parameters.run_station_pipeline}}"
+              run_historical: "{{job.parameters.run_historical}}"
+              run_weather: "{{job.parameters.run_weather}}"
+              run_full_month: "{{job.parameters.run_full_month}}"
+              source_execution_id: "{{job.parameters.source_execution_id}}"
+              historical_execution_id: "{{job.parameters.historical_execution_id}}"
+              weather_execution_id: "{{job.parameters.weather_execution_id}}"
+              weather_start_date: "{{job.parameters.weather_start_date}}"
+              weather_end_date: "{{job.parameters.weather_end_date}}"
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+      tags:
+        project: urbanflow
+        role: primary_orchestrator
+        compute: existing_gp1_only
+        event_hubs_producer: excluded
+        release: protected_manual_only

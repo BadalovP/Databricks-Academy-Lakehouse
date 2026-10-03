@@ -5,11 +5,13 @@ on:
     paths:
       - "Demos/Demo3/**"
       - ".github/workflows/demo3_urbanflow.yml"
+      - ".github/workflows/demo3_urbanflow_deploy.yml"
   push:
     branches: [main]
     paths:
       - "Demos/Demo3/**"
       - ".github/workflows/demo3_urbanflow.yml"
+      - ".github/workflows/demo3_urbanflow_deploy.yml"
   workflow_dispatch:
     inputs:
       run_live_control_plane:
