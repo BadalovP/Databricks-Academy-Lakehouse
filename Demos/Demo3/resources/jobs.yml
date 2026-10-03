@@ -347,7 +347,9 @@ resources:
               run_enrichment: "{{job.parameters.run_weather}}"
               run_attempt_id: "{{job.parameters.run_attempt_id}}"
               execution_id: "{{job.parameters.weather_execution_id}}"
-              source_execution_id: "{{job.parameters.historical_execution_id}}"
+              # Not `source_execution_id`: that job parameter (the station execution) would
+              # override a task parameter of the same name.
+              historical_execution_id: "{{job.parameters.historical_execution_id}}"
               weather_source: "{{job.parameters.weather_source}}"
               weather_sample_file: "{{job.parameters.weather_sample_file}}"
               start_date: "{{job.parameters.weather_start_date}}"
