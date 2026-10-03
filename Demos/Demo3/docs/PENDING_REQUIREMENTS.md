@@ -1,5 +1,12 @@
 # The remaining Pending live requirements, and how to clear them
 
+> **Updated 2026-10-03.** The CI/CD batch cleared three of these rows - idempotent deployment and
+> approvals, post-deploy validation, and the Jobs API trigger - leaving **4** `Pending live`. The
+> analysis below is kept for the rows that remain, plus `CI integration`, which is now blocked on
+> one specific thing: the CI service principal has no ACL on the four Jobs, so `databricks jobs
+> get` is denied. See [CICD_BATCH_EVIDENCE.md](CICD_BATCH_EVIDENCE.md) section 5 for the proposed
+> read-only `CAN_VIEW` grant and the two cautions that go with it.
+
 Seven rows remain `Pending live` after the 2026-10-03 Batch A read validation. Databricks Connect
 moved from `Pending live` to `Validated live`, and Great Expectations moved from `Implemented
 locally` to `Validated live`. Each remaining row is analysed below, then grouped into approval

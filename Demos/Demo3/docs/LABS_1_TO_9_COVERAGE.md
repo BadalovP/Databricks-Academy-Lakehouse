@@ -38,8 +38,18 @@ and both status distributions matched. Great Expectations passed 10/10 Silver an
 historical-sample expectations with zero unexpected rows. See
 [the dated evidence](../evidence/BATCH_A_READ_VALIDATION.md).
 
-**Current totals, 71 requirement rows:** 19 `Validated live`, 42 `Implemented locally`,
-3 `Discovered read-only`, **7** `Pending live`, 0 `Blocked`.
+**Current totals, 71 requirement rows:** **22** `Validated live`, 42 `Implemented locally`,
+3 `Discovered read-only`, **4** `Pending live`, 0 `Blocked`.
+
+**CI/CD batch, 2026-10-03.** Three rows promoted on live evidence - idempotent deployment and
+approvals, post-deploy validation, and the Jobs API trigger. See
+[CICD_BATCH_EVIDENCE.md](CICD_BATCH_EVIDENCE.md) for the run IDs and the independent checks.
+
+`CI integration` was deliberately **not** promoted. The approval gate, Azure OIDC login, Databricks
+identity check and authenticated `bundle validate` all succeeded live from CI, but the run then
+failed reading the Jobs: the CI service principal holds no ACL on them. Promoting a requirement on
+the strength of a failed workflow is the kind of overclaiming this project avoids, so it stays
+`Pending live` with the blocker and the proposed read-only grant recorded.
 
 The seven remaining rows are each analysed in [PENDING_REQUIREMENTS.md](PENDING_REQUIREMENTS.md),
 with the resource they need, whether they change data, and a recommended batch order. Two of them
@@ -115,17 +125,17 @@ full-scale one.
 | 8 | DAB and GitHub Actions | Static workflow, two targets, two existing-cluster Jobs, managed-compute pipeline | workflow / bundle/resources | Static local validation | Implemented locally |
 | 8 | PR static checks | Ruff, Black, pytest, bundle validation | workflow | Milestone 1 PR #34 passed and merged | Implemented locally |
 | 8 | Environment config | `dev.yml`, `azure.yml`, DAB targets | config / bundle | Static only | Implemented locally |
-| 8 | Idempotent deployment / approvals | Live job deliberately absent pending resource approval | cost plan | None | Pending live |
+| 8 | Idempotent deployment / approvals | Job-only DAB deployment plus a GitHub protected environment requiring a named reviewer before any Azure step runs | cost plan | Deployed 2026-10-03 after a plan showing 0 add / 2 change / 0 delete, the two changes being the new `run_attempt_id` and `landing_subdir` parameters. The follow-up plan returned **0 add / 0 change / 0 delete, 4 unchanged**, re-confirmed independently on 2026-10-03. The `azure-release-approval` environment held two separate workflow runs in WAITING until BadalovP approved (runs 37082229544 and 37083109424); approval records are in the GitHub deployments API | Validated live |
 | 8 | DEV-to-PROD promotion | Second authorized environment not established | resource inventory | One real target confirmed | Pending live |
-| 8 | Post-deploy validation | Success criteria specified | cost plan | None | Pending live |
+| 8 | Post-deploy validation | Read-only verification of the deployed state: table inventory, row counts, Gold status composition and Great Expectations suites, plus a bounded Job dry-run asserting its own DRY_RUN output | cost plan | Ran live on GP1 2026-10-03 against the deployed Jobs: 16 tables exactly as expected, Bronze/Silver/fact 2,520, shortage and priority 657 each, composition LOW_BIKES 278 / LOW_DOCKS 374 / LOW_BIKES_AND_DOCKS 5 / OUT_OF_SERVICE 0, GE suites PASS. Independently corroborated by the whole-table verification run 618116231829401 and by a Unity Catalog inventory match on 2026-10-03. Performed as an authorized step, **not yet wired as an automatic CI step** - that is blocked by the ACL gap in the CI-integration row below | Validated live |
 | 9 | Authentication / workspace verification | Explicit profile and exact host checks | `automation.py`, CLI | Real identity verified read-only outside module | Implemented locally |
 | 9 | Cluster provisioning | Optional create helper is disabled by default; GP1/GP2 mutation and termination are blocked | config/automation/tests | Mocked negative-path tests | Implemented locally |
 | 9 | Notebook upload | Base64 SOURCE import helper | `automation.py` | Mock/live test pending | Implemented locally |
-| 9 | Jobs API / pipeline trigger | Polling primitives implemented | automation/monitoring | Create/reset/trigger orchestration pending | Pending live |
+| 9 | Jobs API / pipeline trigger | Bounded Job trigger through the Jobs API with a fail-closed parameter, plus one-off `jobs submit` runs for read-only verification | automation/monitoring | Job 11834365763936 run **180887598258786** TERMINATED/SUCCESS on 2026-10-03 with `run_transform=false`; both tasks returned DRY_RUN and no Bronze read or Delta write occurred. Verified independently on 2026-10-03. Read-only `jobs submit` runs 618116231829401 and 242979365945407 also exercised the API | Validated live |
 | 9 | Explicit polling/timeouts/errors | Generic bounded polling and domain errors | monitoring/client/tests | Unit tests | Implemented locally |
 | 9 | JSON reports | Producer, Bronze, and offline end-to-end reconciliation reports | CLI / `reporting.py` / runbook | Offline tests; live report pending | Implemented locally |
 | 9 | Termination verification | Exact `TERMINATED` required | `automation.py` | Mocked test | Implemented locally |
-| 9 | CI integration | Static CI only; live integration requires approval | workflow | No live workflow | Pending live |
+| 9 | CI integration | Approval-gated `workflow_dispatch` job performing Azure OIDC login, Databricks identity verification, authenticated `bundle validate` and direct Job/pipeline reads | workflow | **Partially proven, workflow still failing.** On run 37083109424 the gate, OIDC login, Databricks identity check and authenticated `databricks bundle validate -t azure` ("Validation OK!") all SUCCEEDED live from CI. The run then FAILED on `databricks jobs get`: the CI Entra service principal (repository variable `AZURE_CLIENT_ID`) has no ACL entry on the four Jobs, whose ACL is `parvinbadalov@softserve.academy` IS_OWNER plus `admins` CAN_MANAGE. A read-only permission grant is needed and is not yet authorized. No Databricks write or workload occurred | Pending live |
 
 ## Next status changes allowed
 
