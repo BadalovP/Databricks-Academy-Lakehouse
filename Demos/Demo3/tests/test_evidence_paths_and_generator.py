@@ -83,11 +83,12 @@ def test_the_execution_id_remains_the_grouping_key() -> None:
 # --- 2. the data layer still keys on the business columns ------------------------
 
 
-def test_the_data_layer_keys_are_unchanged_by_the_filename_fix() -> None:
-    """The fix must not have leaked an attempt id into a MERGE key.
+def test_the_data_layer_keys_never_use_attempt_ids() -> None:
+    """Evidence attempt ids must not leak into any business MERGE key.
 
     If it had, a repeat run would stop matching the rows it wrote last time and would insert
-    duplicates instead of updating - trading a cosmetic filename problem for a data defect.
+    duplicates instead of updating. Historical rides deliberately include execution_id because
+    the development sample is a subset of the later full-month archive.
     """
     import inspect
 
@@ -102,7 +103,7 @@ def test_the_data_layer_keys_are_unchanged_by_the_filename_fix() -> None:
     assert 'key_columns=("event_id",)' in gold_source
     assert 'execution_column="execution_id"' in gold_source
     historical_source = inspect.getsource(historical.persist_historical_outputs)
-    assert 'key_columns=("ride_id",)' in historical_source
+    assert 'key_columns=("execution_id", "ride_id")' in historical_source
     assert 'execution_column="execution_id"' in historical_source
 
 

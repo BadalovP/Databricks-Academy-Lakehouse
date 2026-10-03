@@ -469,7 +469,9 @@ def test_demand_is_execution_scoped_while_trips_are_merged(monkeypatch) -> None:
 
     assert scoped == [HISTORICAL_TABLES["daily_demand"]]
     keys = dict(merged)
-    assert keys[HISTORICAL_TABLES["trips"]] == ("ride_id",)
+    # The 40-row sample is drawn from the full January archive. Including execution_id keeps
+    # both lineages instead of letting the monthly MERGE overwrite the sample's 40 rides.
+    assert keys[HISTORICAL_TABLES["trips"]] == ("execution_id", "ride_id")
     # Quarantine and duplicate rows are not unique by ride_id alone.
     assert "ride_id" in keys[HISTORICAL_TABLES["quarantine"]]
     assert len(keys[HISTORICAL_TABLES["duplicates"]]) > 1

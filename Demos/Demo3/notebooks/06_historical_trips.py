@@ -392,7 +392,7 @@ if reconciliation["status"] != "PASS":
 # MAGIC
 # MAGIC **What:** MERGE the trip, quarantine and duplicate tables by their keys, and replace this execution's scope in the daily demand aggregate.
 # MAGIC
-# MAGIC **Why:** `ride_id` is the archive's own unique key, so the trip tables MERGE on it and a rerun updates rather than duplicates. Daily demand is different: it is a derived aggregate whose row set legitimately shrinks when a trip moves to quarantine, and UPDATE with INSERT alone can never remove a row. So it uses the same execution-scoped atomic replacement the Gold shortage list uses.
+# MAGIC **Why:** `ride_id` is unique inside one archive, but the committed 40-row development sample is drawn from the same January archive as the full-month run. The valid trip table therefore MERGEs on `(execution_id, ride_id)`: rerunning one execution updates rather than duplicates its rides, while a later monthly execution cannot overwrite the sample's lineage. Daily demand is different: it is a derived aggregate whose row set legitimately shrinks when a trip moves to quarantine, and UPDATE with INSERT alone can never remove a row. So it uses the same execution-scoped atomic replacement the Gold shortage list uses.
 # MAGIC
 # MAGIC **Input:** The three split frames, the demand frame and the explicit table map.
 # MAGIC

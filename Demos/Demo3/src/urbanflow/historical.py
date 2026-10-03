@@ -457,10 +457,12 @@ def persist_historical_outputs(
 ) -> dict[str, dict[str, Any]]:
     """Persist the historical tables idempotently, migrating schemas first.
 
-    `ride_id` is the archive's unique key, so the trip tables MERGE on it. Daily demand is an
-    aggregate keyed by station and date, and it is execution-scoped rather than merged: if a
-    rerun of the same archive produces fewer rows for a day - because a trip moved to
-    quarantine, say - the old aggregate row has to go, exactly as with the Gold shortage list.
+    `ride_id` is unique inside an archive, while `execution_id` isolates the committed 40-row
+    sample from a later full-month load that contains the same rides. The valid trip table MERGEs
+    on both columns so one execution can never steal another execution's lineage. Daily demand is
+    execution-scoped rather than merged: if a rerun of the same archive produces fewer rows for a
+    day - because a trip moved to quarantine, say - the old aggregate row has to go, exactly as
+    with the Gold shortage list.
     """
     from urbanflow.persistence import (
         evolve_delta_schema,
@@ -483,7 +485,12 @@ def persist_historical_outputs(
         )
     }
     results: dict[str, dict[str, Any]] = {
-        "trips": merge_delta_table(spark, valid, table_names["trips"], key_columns=("ride_id",)),
+        "trips": merge_delta_table(
+            spark,
+            valid,
+            table_names["trips"],
+            key_columns=("execution_id", "ride_id"),
+        ),
         "quarantine": merge_delta_table(
             spark,
             quarantine,
