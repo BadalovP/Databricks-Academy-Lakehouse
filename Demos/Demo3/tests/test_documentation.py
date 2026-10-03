@@ -64,4 +64,17 @@ def test_workflow_keeps_live_control_plane_validation_manually_gated_and_read_on
     assert "databricks bundle validate -t azure" in workflow
     assert "databricks bundle plan" not in workflow
     assert "databricks jobs get" in workflow
-    assert "databricks pipelines list-pipelines" in workflow
+    # The read-only path verifies the unified Job and the isolated pipeline, never the four
+    # component Jobs retired on 2026-10-03.
+    assert "databricks jobs get 991496516229387" in workflow
+    assert "databricks pipelines get fb8a0b8a-cdf8-45c4-bff6-2d117a516fb9" in workflow
+    assert "parvinbadalov_urbanflow_lakeflow" in workflow
+    for retired in ("404404108673495", "11834365763936", "974964732439608", "860666167537092"):
+        assert retired not in workflow
+    for mutation in (
+        "bundle deploy",
+        "jobs run-now",
+        "pipelines start-update",
+        "databricks permissions",
+    ):
+        assert mutation not in workflow

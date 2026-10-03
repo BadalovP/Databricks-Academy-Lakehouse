@@ -90,7 +90,14 @@ def test_every_table_reference_is_fully_qualified(path: Path) -> None:
         bare = reference.strip("`")
         if bare.lower() in {"values", "counts", "exploded", "selected_window"}:
             continue  # a CTE or inline VALUES alias, not a table
+        if bare.lower() == "event_log":
+            continue  # a table-valued function; its TABLE(...) argument is checked below
         assert bare.count(".") >= 2, f"{path.name} references {bare!r} without a full name"
+    for argument in re.findall(r"EVENT_LOG\(TABLE\(([^)]+)\)\)", active, flags=re.IGNORECASE):
+        assert argument.strip().count(".") == 2, f"{path.name} event_log({argument}) is unqualified"
+        assert (
+            ".parvinbadalov_urbanflow_lakeflow." in argument
+        ), "event_log must read the isolated pipeline"
 
 
 def test_the_snapshot_limitation_is_stated_where_it_matters() -> None:
@@ -121,7 +128,7 @@ def test_historical_and_weather_queries_keep_execution_scopes_separate() -> None
 
     assert historical.count("40-ROW DEVELOPMENT SAMPLE") >= 6
     assert historical.count("execution_id") >= 12
-    assert historical.count("WHERE execution_id = :historical_execution_id") == 6
+    assert historical.count("WHERE execution_id = :historical_execution_id") >= 6
     assert "OVER (PARTITION BY execution_id)" in historical
     assert "LIMIT 25" not in historical
     assert weather.count("48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE") >= 4
@@ -230,3 +237,32 @@ def test_abac_is_described_without_claiming_a_working_policy() -> None:
 
     assert "ABAC" in text
     assert "NOT as a working policy" in text
+
+
+SCOPED_TABLES = {
+    "silver_historical_trips": ":historical_execution_id",
+    "quarantine_historical_trips": ":historical_execution_id",
+    "duplicate_historical_trips": ":historical_execution_id",
+    "gold_daily_trip_demand": ":historical_execution_id",
+    "gold_weather_demand": ":weather_execution_id",
+}
+
+
+def _statements(path: Path) -> list[str]:
+    return [part for part in _active_sql(path).split(";") if part.strip()]
+
+
+@pytest.mark.parametrize("path", DASHBOARD_FILES, ids=lambda p: p.name)
+def test_every_statement_reading_an_execution_table_selects_one_execution(path: Path) -> None:
+    """The sample and the full month live in the same tables, keyed by execution_id.
+
+    An earlier version of sql/13 query 6 counted silver_historical_trips across every
+    execution: on the real data it reported 1,886,358 valid trips (month plus sample) and
+    ride_ids_unique = false, because the sample is drawn from the same archive.
+    """
+    for statement in _statements(path):
+        for table, parameter in SCOPED_TABLES.items():
+            reads = len(re.findall(rf"\.{table}", statement))
+            if reads:
+                scoped = len(re.findall(rf"execution_id\s*=\s*{parameter}", statement))
+                assert scoped >= reads, f"{path.name}: a read of {table} is not execution-scoped"

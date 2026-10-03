@@ -138,7 +138,9 @@ def test_landing_subdir_refuses_path_traversal_and_nested_paths(landing_subdir: 
 
 def test_historical_job_wires_the_landing_subdir_to_notebook_06() -> None:
     root = Path(__file__).resolve().parents[1]
-    jobs = yaml.safe_load((root / "resources" / "jobs.yml").read_text(encoding="utf-8"))
+    jobs = yaml.safe_load(
+        (root / "resources" / "retired" / "component_jobs.yml").read_text(encoding="utf-8")
+    )
     job = jobs["resources"]["jobs"]["urbanflow_historical_trips_test"]
     defaults = {parameter["name"]: parameter["default"] for parameter in job["parameters"]}
 

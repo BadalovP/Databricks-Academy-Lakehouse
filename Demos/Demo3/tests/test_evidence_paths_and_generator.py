@@ -321,7 +321,9 @@ def test_notebooks_pass_the_run_id_rather_than_inventing_an_attempt_id() -> None
 
 def test_jobs_supply_the_platform_run_id_to_every_evidence_writing_task() -> None:
     """`{{job.run_id}}` is substituted by Databricks, so the id is the platform's, not ours."""
-    jobs = yaml.safe_load((PROJECT_ROOT / "resources" / "jobs.yml").read_text(encoding="utf-8"))
+    jobs = yaml.safe_load(
+        (PROJECT_ROOT / "resources" / "retired" / "component_jobs.yml").read_text(encoding="utf-8")
+    )
 
     for name in (
         "urbanflow_silver_gold_test",

@@ -1,0 +1,247 @@
+{
+  "_note": "Read-only maintenance inspection on the shared SQL warehouse: DESCRIBE DETAIL and DESCRIBE HISTORY only. No table was modified.",
+  "evidence_type": "urbanflow_maintenance_inspection",
+  "date": "2026-10-03",
+  "tables": {
+    "bronze_station_status": {
+      "num_files": 1,
+      "size_bytes": 336180,
+      "avg_file_bytes": 336180,
+      "clustering_columns": "[]",
+      "partition_columns": "[]",
+      "table_features": "[\"appendOnly\",\"deletionVectors\",\"domainMetadata\",\"invariants\",\"rowTracking\"]",
+      "deletion_vectors": "true",
+      "change_data_feed": null,
+      "history_versions": 2,
+      "operations": {
+        "STREAMING UPDATE": 1,
+        "CREATE TABLE": 1
+      },
+      "latest_version": 1,
+      "oldest_retained_version": 0
+    },
+    "silver_station_status": {
+      "num_files": 1,
+      "size_bytes": 155199,
+      "avg_file_bytes": 155199,
+      "clustering_columns": "[]",
+      "partition_columns": "[]",
+      "table_features": "[\"appendOnly\",\"deletionVectors\",\"invariants\"]",
+      "deletion_vectors": "true",
+      "change_data_feed": null,
+      "history_versions": 11,
+      "operations": {
+        "MERGE": 9,
+        "ADD COLUMNS": 1,
+        "CREATE TABLE AS SELECT": 1
+      },
+      "latest_version": 10,
+      "oldest_retained_version": 0
+    },
+    "fact_station_availability": {
+      "num_files": 1,
+      "size_bytes": 141234,
+      "avg_file_bytes": 141234,
+      "clustering_columns": "[]",
+      "partition_columns": "[]",
+      "table_features": "[\"appendOnly\",\"deletionVectors\",\"invariants\"]",
+      "deletion_vectors": "true",
+      "change_data_feed": null,
+      "history_versions": 10,
+      "operations": {
+        "MERGE": 9,
+        "CREATE TABLE AS SELECT": 1
+      },
+      "latest_version": 9,
+      "oldest_retained_version": 0
+    },
+    "gold_station_shortage": {
+      "num_files": 1,
+      "size_bytes": 38731,
+      "avg_file_bytes": 38731,
+      "clustering_columns": "[]",
+      "partition_columns": "[]",
+      "table_features": "[\"appendOnly\",\"deletionVectors\",\"invariants\"]",
+      "deletion_vectors": "true",
+      "change_data_feed": null,
+      "history_versions": 11,
+      "operations": {
+        "MERGE": 9,
+        "OPTIMIZE": 1,
+        "CREATE TABLE AS SELECT": 1
+      },
+      "latest_version": 10,
+      "oldest_retained_version": 0
+    },
+    "gold_rebalancing_priority": {
+      "num_files": 1,
+      "size_bytes": 16942,
+      "avg_file_bytes": 16942,
+      "clustering_columns": "[]",
+      "partition_columns": "[]",
+      "table_features": "[\"appendOnly\",\"deletionVectors\",\"invariants\"]",
+      "deletion_vectors": "true",
+      "change_data_feed": null,
+      "history_versions": 13,
+      "operations": {
+        "MERGE": 10,
+        "OPTIMIZE": 1,
+        "ADD COLUMNS": 1,
+        "CREATE TABLE AS SELECT": 1
+      },
+      "latest_version": 12,
+      "oldest_retained_version": 0
+    },
+    "bronze_historical_trips": {
+      "num_files": 1,
+      "size_bytes": 8404,
+      "avg_file_bytes": 8404,
+      "clustering_columns": "[]",
+      "partition_columns": "[]",
+      "table_features": "[\"appendOnly\",\"deletionVectors\",\"domainMetadata\",\"invariants\",\"rowTracking\"]",
+      "deletion_vectors": "true",
+      "change_data_feed": null,
+      "history_versions": 2,
+      "operations": {
+        "STREAMING UPDATE": 1,
+        "CREATE TABLE": 1
+      },
+      "latest_version": 1,
+      "oldest_retained_version": 0
+    },
+    "bronze_historical_trips_202401_full": {
+      "num_files": 4,
+      "size_bytes": 63498732,
+      "avg_file_bytes": 15874683,
+      "clustering_columns": "[]",
+      "partition_columns": "[]",
+      "table_features": "[\"appendOnly\",\"deletionVectors\",\"domainMetadata\",\"invariants\",\"rowTracking\"]",
+      "deletion_vectors": "true",
+      "change_data_feed": null,
+      "history_versions": 2,
+      "operations": {
+        "STREAMING UPDATE": 1,
+        "CREATE TABLE": 1
+      },
+      "latest_version": 1,
+      "oldest_retained_version": 0
+    },
+    "silver_historical_trips": {
+      "num_files": 10,
+      "size_bytes": 68504422,
+      "avg_file_bytes": 6850442,
+      "clustering_columns": "[]",
+      "partition_columns": "[]",
+      "table_features": "[\"appendOnly\",\"deletionVectors\",\"invariants\"]",
+      "deletion_vectors": "true",
+      "change_data_feed": null,
+      "history_versions": 8,
+      "operations": {
+        "MERGE": 7,
+        "CREATE TABLE AS SELECT": 1
+      },
+      "latest_version": 7,
+      "oldest_retained_version": 0
+    },
+    "quarantine_historical_trips": {
+      "num_files": 4,
+      "size_bytes": 117895,
+      "avg_file_bytes": 29473,
+      "clustering_columns": "[]",
+      "partition_columns": "[]",
+      "table_features": "[\"appendOnly\",\"deletionVectors\",\"invariants\"]",
+      "deletion_vectors": "true",
+      "change_data_feed": null,
+      "history_versions": 8,
+      "operations": {
+        "MERGE": 7,
+        "CREATE TABLE AS SELECT": 1
+      },
+      "latest_version": 7,
+      "oldest_retained_version": 0
+    },
+    "gold_daily_trip_demand": {
+      "num_files": 4,
+      "size_bytes": 460145,
+      "avg_file_bytes": 115036,
+      "clustering_columns": "[]",
+      "partition_columns": "[]",
+      "table_features": "[\"appendOnly\",\"deletionVectors\",\"invariants\"]",
+      "deletion_vectors": "true",
+      "change_data_feed": null,
+      "history_versions": 8,
+      "operations": {
+        "MERGE": 7,
+        "CREATE TABLE AS SELECT": 1
+      },
+      "latest_version": 7,
+      "oldest_retained_version": 0
+    },
+    "dim_weather_hourly": {
+      "num_files": 4,
+      "size_bytes": 26177,
+      "avg_file_bytes": 6544,
+      "clustering_columns": "[]",
+      "partition_columns": "[]",
+      "table_features": "[\"appendOnly\",\"deletionVectors\",\"invariants\"]",
+      "deletion_vectors": "true",
+      "change_data_feed": null,
+      "history_versions": 6,
+      "operations": {
+        "MERGE": 5,
+        "CREATE TABLE AS SELECT": 1
+      },
+      "latest_version": 5,
+      "oldest_retained_version": 0
+    },
+    "gold_weather_demand": {
+      "num_files": 2,
+      "size_bytes": 9228,
+      "avg_file_bytes": 4614,
+      "clustering_columns": "[]",
+      "partition_columns": "[]",
+      "table_features": "[\"appendOnly\",\"deletionVectors\",\"invariants\"]",
+      "deletion_vectors": "true",
+      "change_data_feed": null,
+      "history_versions": 6,
+      "operations": {
+        "MERGE": 5,
+        "CREATE TABLE AS SELECT": 1
+      },
+      "latest_version": 5,
+      "oldest_retained_version": 0
+    }
+  },
+  "existing_auto_compaction": {
+    "tables": [
+      "gold_station_shortage",
+      "gold_rebalancing_priority"
+    ],
+    "detail": "Each history holds one OPTIMIZE with operationParameters auto=true on 2026-10-01 (DBR 17.3): Delta auto-compaction after MERGE folded 2 files and 1 deletion vector into 1 file. Performed by the runtime, not by a manual command."
+  },
+  "decisions": {
+    "OPTIMIZE": {
+      "executed": false,
+      "reason": "Not justified. The largest table, silver_historical_trips, is 10 files / 68.5 MB (avg 6.9 MB); every station table is a single file; auto-compaction is already active. A manual OPTIMIZE would merge a handful of small files with no measurable query benefit at this size, and GP1 - the precondition set for running it - was TERMINATED, so it was not started for this."
+    },
+    "CHANGE_DATA_FEED": {
+      "executed": false,
+      "state": "not enabled on any table",
+      "reason": "No downstream consumer reads row-level changes. Lakeflow reads the append-only Bronze as a stream, which does not need CDF. Enabling it would only add storage."
+    },
+    "DELETION_VECTORS": {
+      "executed": false,
+      "state": "already enabled on every table by the platform default (delta.enableDeletionVectors=true)",
+      "reason": "Inspected and documented, not changed. They are what make the execution-scoped MERGE deletes cheap."
+    },
+    "LIQUID_CLUSTERING": {
+      "executed": false,
+      "state": "no clustering or partition columns on any table",
+      "reason": "At 68 MB every query is a full scan anyway. The concrete future case is clustering silver_historical_trips by execution_id once many months accumulate; that is documented, not applied."
+    },
+    "VACUUM": {
+      "executed": false,
+      "reason": "Deliberately never executed. VACUUM permanently deletes files outside the retention window and removes time-travel rollback. This project's evidence includes table history (for example the Phase 2 correction versions), which it values more than a VACUUM checkbox."
+    }
+  }
+}

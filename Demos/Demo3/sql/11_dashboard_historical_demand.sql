@@ -131,3 +131,63 @@ FROM dbr_dev.parvinbadalov_urbanflow.gold_daily_trip_demand
 WHERE execution_id = :historical_execution_id
 GROUP BY execution_id
 ORDER BY execution_id;
+
+-- 7. Monthly headline: valid trips and the rider mix for ONE selected execution.
+SELECT
+  execution_id,
+  CASE WHEN execution_id LIKE 'urbanflow-hist-devsample40-%'
+       THEN '40-ROW DEVELOPMENT SAMPLE' ELSE 'FULL ARCHIVE EXECUTION' END AS data_scope,
+  COUNT(*)                                                          AS valid_trips,
+  SUM(CASE WHEN member_casual = 'member' THEN 1 ELSE 0 END)         AS member_trips,
+  SUM(CASE WHEN member_casual = 'casual' THEN 1 ELSE 0 END)         AS casual_trips,
+  COUNT(DISTINCT start_station_id)                                  AS distinct_start_stations,
+  MIN(started_at)                                                   AS first_ride_started,
+  MAX(ended_at)                                                     AS last_ride_ended
+FROM dbr_dev.parvinbadalov_urbanflow.silver_historical_trips
+WHERE execution_id = :historical_execution_id
+GROUP BY execution_id;
+
+-- 8. Rideable type distribution.
+SELECT
+  execution_id,
+  rideable_type,
+  COUNT(*)                                                          AS trips,
+  ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER (PARTITION BY execution_id), 2) AS percent_of_trips
+FROM dbr_dev.parvinbadalov_urbanflow.silver_historical_trips
+WHERE execution_id = :historical_execution_id
+GROUP BY execution_id, rideable_type
+ORDER BY execution_id, trips DESC;
+
+-- 9. Top origin and destination stations by the archive's own station names. These are read
+--    from the trips themselves, so they cover all stations, not only the 40-station sample.
+SELECT * FROM (
+  SELECT execution_id, 'origin' AS direction, start_station_name AS station_name,
+         start_station_id AS station_short_name, COUNT(*) AS trips
+  FROM dbr_dev.parvinbadalov_urbanflow.silver_historical_trips
+  WHERE execution_id = :historical_execution_id AND start_station_name IS NOT NULL
+  GROUP BY ALL ORDER BY trips DESC LIMIT 15
+)
+UNION ALL
+SELECT * FROM (
+  SELECT execution_id, 'destination' AS direction, end_station_name AS station_name,
+         end_station_id AS station_short_name, COUNT(*) AS trips
+  FROM dbr_dev.parvinbadalov_urbanflow.silver_historical_trips
+  WHERE execution_id = :historical_execution_id AND end_station_name IS NOT NULL
+  GROUP BY ALL ORDER BY trips DESC LIMIT 15
+);
+
+-- 10. Weekday versus weekend: average trips per day of each kind, so the comparison is not
+--     distorted by there being more weekdays than weekend days in a month.
+SELECT
+  execution_id,
+  CASE WHEN DAYOFWEEK(started_at) IN (1, 7) THEN 'weekend' ELSE 'weekday' END AS day_type,
+  COUNT(DISTINCT TO_DATE(started_at))                               AS days,
+  COUNT(*)                                                          AS trips,
+  ROUND(COUNT(*) / COUNT(DISTINCT TO_DATE(started_at)), 0)          AS avg_trips_per_day,
+  ROUND(100.0 * SUM(CASE WHEN member_casual = 'casual' THEN 1 ELSE 0 END) / COUNT(*), 2)
+                                                                    AS casual_percent
+FROM dbr_dev.parvinbadalov_urbanflow.silver_historical_trips
+WHERE execution_id = :historical_execution_id
+  AND started_at >= TIMESTAMP'2024-01-01 00:00:00'
+GROUP BY execution_id, day_type
+ORDER BY execution_id, day_type;

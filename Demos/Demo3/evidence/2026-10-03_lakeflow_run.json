@@ -1,0 +1,366 @@
+{
+  "_note": "One bounded, triggered Lakeflow update in an isolated schema, with read-only business-result parity against the imperative path. Event-log figures come from GET /api/2.0/pipelines/{id}/events; parity from read-only SQL on the shared warehouse.",
+  "evidence_type": "urbanflow_lakeflow_run",
+  "date": "2026-10-03",
+  "pipeline": {
+    "pipeline_id": "fb8a0b8a-cdf8-45c4-bff6-2d117a516fb9",
+    "name": "[azure] urbanflow_pipeline",
+    "catalog": "dbr_dev",
+    "schema": "parvinbadalov_urbanflow_lakeflow",
+    "serverless": true,
+    "continuous": false,
+    "schedule": null,
+    "deployed_by": "databricks bundle deploy -t azure --select pipelines.urbanflow_pipeline after a plan with exactly one create and no delete",
+    "isolated_schema_created": "dbr_dev.parvinbadalov_urbanflow_lakeflow, created for this pipeline only"
+  },
+  "update": {
+    "update_id": "ba6710ed-bd97-46e0-a0c0-616050e3c9b9",
+    "state": "COMPLETED",
+    "cause": "API_CALL",
+    "creation_time": 1791057733740,
+    "full_refresh": false
+  },
+  "lifecycle": [
+    {
+      "timestamp": "2026-10-03T20:02:15.373Z",
+      "state": "WAITING_FOR_RESOURCES"
+    },
+    {
+      "timestamp": "2026-10-03T20:02:28.472Z",
+      "state": "INITIALIZING"
+    },
+    {
+      "timestamp": "2026-10-03T20:03:07.170Z",
+      "state": "SETTING_UP_TABLES"
+    },
+    {
+      "timestamp": "2026-10-03T20:03:16.563Z",
+      "state": "RUNNING"
+    },
+    {
+      "timestamp": "2026-10-03T20:03:42.895Z",
+      "state": "COMPLETED"
+    }
+  ],
+  "event_log_summary": {
+    "events": 99,
+    "warn_or_error_events": 0,
+    "datasets_completed": 10,
+    "expectations_evaluated": 22,
+    "expectations_with_failures": 0,
+    "dropped_records": 0
+  },
+  "datasets": [
+    {
+      "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.bronze_station_status",
+      "status": "COMPLETED",
+      "completed_at": "2026-10-03T20:03:25.932Z",
+      "num_output_rows": null,
+      "dropped_records": null,
+      "expectations": []
+    },
+    {
+      "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.station_information_raw",
+      "status": "COMPLETED",
+      "completed_at": "2026-10-03T20:03:26.522Z",
+      "num_output_rows": 40,
+      "dropped_records": 0,
+      "expectations": []
+    },
+    {
+      "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.dim_station_development_sample",
+      "status": "COMPLETED",
+      "completed_at": "2026-10-03T20:03:32.771Z",
+      "num_output_rows": 40,
+      "dropped_records": 0,
+      "expectations": [
+        {
+          "name": "station_id_present",
+          "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.dim_station_development_sample",
+          "passed": 40,
+          "failed": 0
+        },
+        {
+          "name": "short_name_present",
+          "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.dim_station_development_sample",
+          "passed": 40,
+          "failed": 0
+        }
+      ]
+    },
+    {
+      "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.duplicate_station_status",
+      "status": "COMPLETED",
+      "completed_at": "2026-10-03T20:03:32.844Z",
+      "num_output_rows": 0,
+      "dropped_records": 0,
+      "expectations": [
+        {
+          "name": "duplicate_has_event_id",
+          "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.duplicate_station_status",
+          "passed": 0,
+          "failed": 0
+        }
+      ]
+    },
+    {
+      "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.quarantine_station_status",
+      "status": "COMPLETED",
+      "completed_at": "2026-10-03T20:03:32.888Z",
+      "num_output_rows": 0,
+      "dropped_records": 0,
+      "expectations": [
+        {
+          "name": "has_failure_reason",
+          "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.quarantine_station_status",
+          "passed": 0,
+          "failed": 0
+        }
+      ]
+    },
+    {
+      "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.silver_station_status",
+      "status": "COMPLETED",
+      "completed_at": "2026-10-03T20:03:33.534Z",
+      "num_output_rows": 2520,
+      "dropped_records": 0,
+      "expectations": [
+        {
+          "name": "observed_at_present",
+          "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.silver_station_status",
+          "passed": 2520,
+          "failed": 0
+        },
+        {
+          "name": "station_id_present",
+          "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.silver_station_status",
+          "passed": 2520,
+          "failed": 0
+        },
+        {
+          "name": "docks_not_negative",
+          "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.silver_station_status",
+          "passed": 2520,
+          "failed": 0
+        },
+        {
+          "name": "bikes_not_negative",
+          "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.silver_station_status",
+          "passed": 2520,
+          "failed": 0
+        },
+        {
+          "name": "event_id_present",
+          "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.silver_station_status",
+          "passed": 2520,
+          "failed": 0
+        },
+        {
+          "name": "status_is_known",
+          "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.silver_station_status",
+          "passed": 2520,
+          "failed": 0
+        },
+        {
+          "name": "out_of_service_is_not_actionable",
+          "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.silver_station_status",
+          "passed": 2520,
+          "failed": 0
+        }
+      ]
+    },
+    {
+      "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.fact_station_availability",
+      "status": "COMPLETED",
+      "completed_at": "2026-10-03T20:03:37.686Z",
+      "num_output_rows": 2520,
+      "dropped_records": 0,
+      "expectations": [
+        {
+          "name": "event_id_present",
+          "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.fact_station_availability",
+          "passed": 2520,
+          "failed": 0
+        },
+        {
+          "name": "observation_date_present",
+          "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.fact_station_availability",
+          "passed": 2520,
+          "failed": 0
+        }
+      ]
+    },
+    {
+      "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.gold_station_shortage",
+      "status": "COMPLETED",
+      "completed_at": "2026-10-03T20:03:42.055Z",
+      "num_output_rows": 657,
+      "dropped_records": 0,
+      "expectations": [
+        {
+          "name": "execution_is_attributed",
+          "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.gold_station_shortage",
+          "passed": 657,
+          "failed": 0
+        },
+        {
+          "name": "shortage_status_is_known",
+          "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.gold_station_shortage",
+          "passed": 657,
+          "failed": 0
+        },
+        {
+          "name": "shortage_is_actionable",
+          "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.gold_station_shortage",
+          "passed": 657,
+          "failed": 0
+        }
+      ]
+    },
+    {
+      "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.gold_rebalancing_priority",
+      "status": "COMPLETED",
+      "completed_at": "2026-10-03T20:03:42.702Z",
+      "num_output_rows": 657,
+      "dropped_records": 0,
+      "expectations": [
+        {
+          "name": "score_is_explainable",
+          "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.gold_rebalancing_priority",
+          "passed": 657,
+          "failed": 0
+        },
+        {
+          "name": "priority_is_actionable",
+          "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.gold_rebalancing_priority",
+          "passed": 657,
+          "failed": 0
+        },
+        {
+          "name": "execution_is_attributed",
+          "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.gold_rebalancing_priority",
+          "passed": 657,
+          "failed": 0
+        },
+        {
+          "name": "action_is_known",
+          "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.gold_rebalancing_priority",
+          "passed": 657,
+          "failed": 0
+        }
+      ]
+    },
+    {
+      "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.gold_daily_station_summary",
+      "status": "COMPLETED",
+      "completed_at": "2026-10-03T20:03:42.728Z",
+      "num_output_rows": 2520,
+      "dropped_records": 0,
+      "expectations": [
+        {
+          "name": "trend_claim_matches_observations",
+          "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.gold_daily_station_summary",
+          "passed": 2520,
+          "failed": 0
+        },
+        {
+          "name": "counts_are_positive",
+          "dataset": "dbr_dev.parvinbadalov_urbanflow_lakeflow.gold_daily_station_summary",
+          "passed": 2520,
+          "failed": 0
+        }
+      ]
+    }
+  ],
+  "parity": {
+    "row_counts": {
+      "bronze_station_status": {
+        "imperative_execution_scoped": "2520",
+        "lakeflow": "2520"
+      },
+      "silver_station_status": {
+        "imperative_execution_scoped": "2520",
+        "lakeflow": "2520"
+      },
+      "quarantine_station_status": {
+        "imperative_execution_scoped": "0",
+        "lakeflow": "0"
+      },
+      "duplicate_station_status": {
+        "imperative_execution_scoped": "0",
+        "lakeflow": "0"
+      },
+      "fact_station_availability": {
+        "imperative_execution_scoped": "2520",
+        "lakeflow": "2520"
+      },
+      "gold_station_shortage": {
+        "imperative_execution_scoped": "657",
+        "lakeflow": "657"
+      },
+      "gold_rebalancing_priority": {
+        "imperative_execution_scoped": "657",
+        "lakeflow": "657"
+      },
+      "gold_daily_station_summary": {
+        "imperative_execution_scoped": "2520 (table has no execution_id; compared unscoped)",
+        "lakeflow": "2520"
+      },
+      "dim_station_development_sample": {
+        "imperative_execution_scoped": "40",
+        "lakeflow": "40"
+      }
+    },
+    "business_result_differences": {
+      "silver_status": {
+        "imperative_only": "0",
+        "lakeflow_only": "0"
+      },
+      "shortage": {
+        "imperative_only": "0",
+        "lakeflow_only": "0"
+      },
+      "priority": {
+        "imperative_only": "0",
+        "lakeflow_only": "0"
+      },
+      "fact": {
+        "imperative_only": "0",
+        "lakeflow_only": "0"
+      },
+      "daily_summary_all_12_columns": {
+        "imperative_only": "0",
+        "lakeflow_only": "0"
+      }
+    },
+    "composition": {
+      "imperative": {
+        "AVAILABLE": "1774",
+        "LOW_BIKES": "278",
+        "LOW_DOCKS": "374",
+        "OUT_OF_SERVICE": "89",
+        "LOW_BIKES_AND_DOCKS": "5"
+      },
+      "lakeflow": {
+        "AVAILABLE": "1774",
+        "LOW_BIKES": "278",
+        "LOW_DOCKS": "374",
+        "OUT_OF_SERVICE": "89",
+        "LOW_BIKES_AND_DOCKS": "5"
+      }
+    },
+    "lakeflow_out_of_service_in_shortage_or_priority": "0",
+    "lakeflow_duplicate_keys": {
+      "silver_event_id": "0",
+      "fact_event_id": "0",
+      "priority_station_observed": "0"
+    },
+    "imperative_main_schema_untouched_owner_check": "2520"
+  },
+  "parity_verdict": "EXACT on business results: every compared table has identical row counts and zero rows in either direction of EXCEPT ALL over its business columns; identical status composition; zero OUT_OF_SERVICE in actionable Gold; zero duplicate business keys.",
+  "notes": [
+    "The Lakeflow Bronze is a streaming table over the preserved append-only main-schema Bronze (one commit), so Event Hubs was not republished.",
+    "Silver/Gold are materialized views calling the same urbanflow.silver and urbanflow.gold functions as the notebooks, which is why parity is expected rather than coincidental.",
+    "Lakeflow covers the station path only; the historical and weather branches remain imperative by design."
+  ]
+}
