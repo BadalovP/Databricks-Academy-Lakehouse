@@ -110,7 +110,9 @@ The `landing_subdir` parameter isolates every Auto Loader state path for this so
 
 The empty default retains all three legacy paths used by the validated 40-row sample. The monthly
 run therefore neither moves the sample nor resumes its checkpoint. The new execution id also keeps
-the monthly rows in their own business lineage scope inside the shared Delta tables.
+the monthly rows in their own business lineage scope inside the shared Delta tables. Valid trips
+MERGE on `(execution_id, ride_id)`, because the development sample is drawn from this archive and
+its 40 ride IDs must remain queryable under the sample execution after the month is loaded.
 
 ### Step 4 - validate
 
