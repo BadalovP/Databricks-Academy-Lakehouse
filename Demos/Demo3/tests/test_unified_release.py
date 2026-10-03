@@ -358,3 +358,36 @@ def test_weather_task_selects_trips_by_an_unshadowable_historical_id() -> None:
     assert notebook.index('widgets.get("historical_execution_id")') < notebook.index(
         'source_execution_id or dbutils.widgets.get("source_execution_id")'
     )
+
+
+def test_full_month_weather_source_is_one_the_weather_notebook_accepts() -> None:
+    import re
+
+    notebook = (PROJECT_ROOT / "notebooks/07_weather_enrichment.py").read_text(encoding="utf-8")
+    choices = re.search(r'dropdown\("weather_source", "[^"]+", (\[[^\]]+\])\)', notebook)
+    accepted = set(json.loads(choices.group(1)))
+    workflow = WORKFLOW.read_text(encoding="utf-8")
+    sent = set(re.findall(r'"weather_source": "([a-z_]+)" if full else "([a-z_]+)"', workflow)[0])
+    preflight = (PROJECT_ROOT / "notebooks/08_unified_preflight.py").read_text(encoding="utf-8")
+    required = set(re.findall(r'values\["weather_source"\] != "([a-z_]+)"', preflight))
+    assert sent == {"archive_api", "sample_json"}
+    assert sent <= accepted and required <= accepted
+
+
+def test_historical_bronze_is_read_from_the_namespace_table_everywhere() -> None:
+    ingest = (PROJECT_ROOT / "notebooks/06_historical_trips.py").read_text(encoding="utf-8")
+    validate = (PROJECT_ROOT / "notebooks/10_unified_final_validation.py").read_text(
+        encoding="utf-8"
+    )
+    assert "historical_bronze_table(table_root, landing_subdir=landing_subdir)" in ingest
+    assert "foreign_checkpoint_owners(owners, execution_id=execution_id)" in ingest
+    # The guard must run before the stream can append anything.
+    assert ingest.index("foreign_checkpoint_owners(owners") < ingest.index("read_trips_autoloader(")
+    assert '"bronze_historical_trips"' not in validate
+    assert 'historical_bronze_table(root, landing_subdir=values["historical_landing_subdir"])' in (
+        validate
+    )
+    task = {task["task_key"]: task for task in _job()["tasks"]}["07_final_validation"]
+    assert task["notebook_task"]["base_parameters"]["historical_landing_subdir"] == (
+        "{{job.parameters.historical_landing_subdir}}"
+    )

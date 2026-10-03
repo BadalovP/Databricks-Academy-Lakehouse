@@ -52,6 +52,8 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 from urbanflow.automation import APPROVED_RUN_CLUSTER_IDS
 from urbanflow.historical import (
     daily_trip_demand,
+    foreign_checkpoint_owners,
+    historical_bronze_table,
     historical_landing_paths,
     join_trips_to_stations,
     persist_historical_outputs,
@@ -64,11 +66,7 @@ from urbanflow.historical import (
     trip_join_match_rate,
     with_trip_lineage,
 )
-from urbanflow.reporting import (
-    evidence_report_path,
-    resolve_attempt_id,
-    write_json_report,
-)
+from urbanflow.reporting import evidence_report_path, resolve_attempt_id, write_json_report
 from urbanflow.streaming import await_bounded_completion
 
 # COMMAND ----------
@@ -152,7 +150,7 @@ volume_root = f"/Volumes/{target_catalog}/{target_schema}/{target_volume}"
 paths = historical_landing_paths(
     volume_root, execution_id=execution_id, landing_subdir=landing_subdir
 )
-bronze_trips_table = f"{table_root}.bronze_historical_trips"
+bronze_trips_table = historical_bronze_table(table_root, landing_subdir=landing_subdir)
 historical_tables = {
     "trips": f"{table_root}.silver_historical_trips",
     "quarantine": f"{table_root}.quarantine_historical_trips",
@@ -174,7 +172,7 @@ print({"paths": paths, "tables": historical_tables})
 # MAGIC %md
 # MAGIC ## Step 4 - Confirm the archive has actually been landed
 # MAGIC
-# MAGIC **What:** List the landing directory and refuse to continue if it holds no CSV file.
+# MAGIC **What:** List the landing directory and refuse to continue if it holds no CSV file, or if another execution already owns this namespace's checkpoint root.
 # MAGIC
 # MAGIC **Why:** Auto Loader on an empty directory succeeds and processes nothing, which looks identical to a successful run that found no new data. Checking first turns a silent no-op into a clear error, and it also confirms this notebook never downloads the archive itself.
 # MAGIC
@@ -183,6 +181,8 @@ print({"paths": paths, "tables": historical_tables})
 # MAGIC **Output:** The list of files found, or a raised error.
 # MAGIC
 # MAGIC **Key concepts:** Explicit preconditions, operator-supplied data, distinguishing "nothing new" from "nothing there".
+# MAGIC
+# MAGIC **Ownership guard:** Bronze has no execution column, so each source namespace has its own Bronze table and one owning execution. A second execution ID would get a fresh checkpoint, re-read every file and append the whole source set again, so it is refused before the stream starts.
 # MAGIC
 # MAGIC **Expected result:** At least one `.csv` file is listed. A zipped archive must be expanded before this step, because Auto Loader reads CSV and not ZIP.
 # MAGIC
@@ -193,6 +193,12 @@ print({"paths": paths, "tables": historical_tables})
 # COMMAND ----------
 
 landed = [entry for entry in dbutils.fs.ls(paths["landing"]) if entry.name.endswith(".csv")]
+checkpoints_dir, namespace = paths["checkpoint_root"].rsplit("/", 1)
+ingested = namespace in {entry.name.rstrip("/") for entry in dbutils.fs.ls(checkpoints_dir)}
+owners = [entry.name for entry in dbutils.fs.ls(paths["checkpoint_root"])] if ingested else []
+foreign = foreign_checkpoint_owners(owners, execution_id=execution_id)
+if foreign:
+    raise RuntimeError(f"{bronze_trips_table} already belongs to {foreign}; use a new subdir.")
 if not landed:
     raise RuntimeError(
         f"No CSV file found under {paths['landing']}. Land an official Citi Bike trip "

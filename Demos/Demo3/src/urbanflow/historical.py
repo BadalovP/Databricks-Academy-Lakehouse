@@ -348,9 +348,42 @@ def historical_landing_paths(
     return {
         "landing": f"{root}/landing/{source_namespace}",
         "schema": f"{root}/schemas/{source_namespace}",
+        "checkpoint_root": f"{root}/checkpoints/{source_namespace}",
         "checkpoint": f"{root}/checkpoints/{source_namespace}/{execution}",
         "archive": f"{root}/landing/{source_namespace}/_archive",
     }
+
+
+def historical_bronze_table(table_root: str, *, landing_subdir: str = "") -> str:
+    """The Bronze trips table for one source namespace.
+
+    Bronze is the raw Auto Loader landing and carries no execution column, so isolation has to
+    be physical. When every namespace shared `bronze_historical_trips`, a monthly run would have
+    read the sample's 40 rides back out of Bronze, re-stamped them as its own execution and,
+    because the sample is drawn from the same archive, counted them as duplicates. The empty
+    subdirectory keeps the validated sample's original table name.
+    """
+    if not table_root.strip():
+        raise ValueError("table_root must be non-empty.")
+    subdir = str(landing_subdir).strip()
+    if not subdir:
+        return f"{table_root}.bronze_historical_trips"
+    token = sanitize_path_token(subdir, label="landing_subdir").replace("-", "_")
+    if not token.replace("_", "").isalnum():
+        raise ValueError(f"landing_subdir {landing_subdir!r} cannot form a table name.")
+    return f"{table_root}.bronze_historical_trips_{token}"
+
+
+def foreign_checkpoint_owners(checkpoint_entries: list[str], *, execution_id: str) -> list[str]:
+    """Executions other than this one that already own a checkpoint in the namespace.
+
+    A new execution ID gets a new checkpoint, and a new checkpoint re-reads every landed file,
+    so a second execution in one namespace would append the whole source set to Bronze again.
+    Any foreign owner therefore means the namespace's Bronze table would mix executions.
+    """
+    current = sanitize_path_token(execution_id, label="execution_id")
+    owners = {entry.strip().rstrip("/") for entry in checkpoint_entries}
+    return sorted(owner for owner in owners if owner and owner != current)
 
 
 def with_trip_lineage(trips: Any, *, execution_id: str, include_source_file: bool = True) -> Any:
