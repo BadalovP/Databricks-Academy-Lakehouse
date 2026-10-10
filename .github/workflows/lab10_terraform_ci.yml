@@ -1,0 +1,44 @@
+
+name: Lab 10 - Terraform CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "labs/lab_10_federation_cdc/**"
+      - ".github/workflows/lab10_terraform_ci.yml"
+
+  pull_request:
+    paths:
+      - "labs/lab_10_federation_cdc/**"
+      - ".github/workflows/lab10_terraform_ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  terraform-validation:
+    name: Validate Lab 10 Terraform
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: labs/lab_10_federation_cdc/terraform
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.8"
+
+      - name: Terraform Format Check
+        run: terraform fmt -check
+
+      - name: Terraform Init
+        run: terraform init -backend=false
+
+      - name: Terraform Validate
+        run: terraform validate

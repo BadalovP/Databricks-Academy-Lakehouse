@@ -10,7 +10,15 @@ __pycache__/
 .venv-lab07/
 .vscode/
 labs/lab_06_gold_analytics_external/evidence/*.txt
-
+# Terraform
+**/.terraform/
+**/terraform.tfstate
+**/terraform.tfstate.*
+**/crash.log
+**/crash.*.log
+**/*.tfplan
+**/*.tfvars
+**/*.tfvars.json
 # Claude Code's own local, per-machine settings/permissions -- not project source.
 .claude/
 
