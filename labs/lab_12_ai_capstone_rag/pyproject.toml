@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lab12-rag"
+version = "0.1.0"
+description = "Offline-testable Databricks RAG capstone for an IT operations knowledge assistant"
+requires-python = ">=3.11"
+dependencies = ["PyYAML>=6.0"]
+
+[project.optional-dependencies]
+databricks = [
+  "databricks-ai-search>=0.70.0",
+  "databricks-openai>=0.14.0",
+  "databricks-sdk>=0.70.0",
+  "pypdf>=5.0.0",
+]
+dev = [
+  "build>=1.2.0",
+  "pytest>=8.0",
+  "ruff>=0.9.0",
+]
+
+[project.scripts]
+lab12 = "lab12.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = ["live: requires explicitly approved Databricks access and may incur charges"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+builtins = ["dbutils", "display", "spark"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["lab12"]
+
+[tool.ruff.lint.per-file-ignores]
+"notebooks/*.py" = ["E402"]
+

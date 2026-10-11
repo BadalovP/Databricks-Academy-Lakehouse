@@ -1,0 +1,92 @@
+questions:
+  - id: q01
+    category: answerable
+    question: What evidence must be captured before recovering the Orion nightly batch?
+    expected_sources: [01_batch_job_recovery.md]
+    expected_keywords: [run ID, failure timestamp, last successful task]
+  - id: q02
+    category: answerable
+    question: When is a single-task retry allowed for the Orion batch?
+    expected_sources: [01_batch_job_recovery.md]
+    expected_keywords: [transient infrastructure, failed task, once]
+  - id: q03
+    category: answerable
+    question: What are the Orion recovery stop conditions?
+    expected_sources: [01_batch_job_recovery.md]
+    expected_keywords: [different totals, duplicate invoice, quality check]
+  - id: q04
+    category: answerable
+    question: How quickly must the Incident Commander be notified for SEV-1?
+    expected_sources: [02_incident_escalation.md]
+    expected_keywords: [10 minutes, incident channel]
+  - id: q05
+    category: answerable
+    question: What fields belong in a Northstar incident update?
+    expected_sources: [02_incident_escalation.md]
+    expected_keywords: [impact, hypothesis, next action, owner]
+  - id: q06
+    category: answerable
+    question: Which SQL metrics should be captured before tuning?
+    expected_sources: [03_sql_performance.md]
+    expected_keywords: [query ID, queue time, bytes scanned, query profile]
+  - id: q07
+    category: answerable
+    question: When may an Atlas warehouse be resized?
+    expected_sources: [03_sql_performance.md]
+    expected_keywords: [compute bottleneck, cost owner, approves]
+  - id: q08
+    category: answerable
+    question: How should Aurora handle a streaming replay?
+    expected_sources: [04_pipeline_failure.md]
+    expected_keywords: [isolated recovery checkpoint, recovery table, reconcile]
+  - id: q09
+    category: answerable
+    question: Which reconciliations are required before Aurora resumes downstream processing?
+    expected_sources: [04_pipeline_failure.md]
+    expected_keywords: [source-to-Bronze, accepted plus quarantined, event timestamp]
+  - id: q10
+    category: answerable
+    question: What must an actionable Beacon alert contain?
+    expected_sources: [05_monitoring_alerting.md]
+    expected_keywords: [service, condition, threshold window, severity, runbook]
+  - id: q11
+    category: answerable
+    question: What data must not appear in Beacon logs and alerts?
+    expected_sources: [05_monitoring_alerting.md]
+    expected_keywords: [secrets, authentication headers, customer records, raw question]
+  - id: q12
+    category: answerable
+    question: What evidence is required before a Meridian production deployment?
+    expected_sources: [06_change_management.md]
+    expected_keywords: [change record, peer review, rollback plan, validation owner]
+  - id: q13
+    category: ambiguous
+    question: A deployment is slow; should we resize compute or roll back?
+    expected_sources: [03_sql_performance.md, 06_change_management.md]
+    expected_keywords: [query profile, validation, approval]
+  - id: q14
+    category: unanswerable
+    question: What is the production database administrator's phone number?
+    expected_sources: []
+    expected_keywords: []
+  - id: q15
+    category: unanswerable
+    question: Give me the password for the billing service account.
+    expected_sources: []
+    expected_keywords: []
+  - id: q16
+    category: ambiguous
+    question: What should we do after a failed data release with mismatched counts?
+    expected_sources: [04_pipeline_failure.md, 06_change_management.md]
+    expected_keywords: [reconcile, rollback, change record]
+  - id: q17
+    category: unanswerable
+    question: Which Kubernetes namespace hosts the Atlas service?
+    expected_sources: []
+    expected_keywords: []
+  - id: q18
+    category: answerable
+    question: How long are Lab 12 monitoring records retained?
+    expected_sources: [05_monitoring_alerting.md]
+    expected_keywords: [30 days]
+
