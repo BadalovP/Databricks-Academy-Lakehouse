@@ -40,10 +40,16 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Validate Lab 10 notebooks and deployment safety
+        run: python3 ../scripts/validate_lab10_static.py
+
+      - name: Test that the validator rejects unsafe changes
+        run: python3 -m unittest discover -s ../tests -v
 
       - name: Install Terraform
-        uses: hashicorp/setup-terraform@v4
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4
         with:
           terraform_version: "1.15.8"
 

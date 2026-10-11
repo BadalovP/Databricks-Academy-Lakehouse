@@ -62,7 +62,7 @@ jobs:
       # Step 1 - Checkout must happen before commands
       # that use the repository working directory.
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
       # Step 2 - Resolve the operation ONCE from the confirmation.
       # Later steps use steps.request.outputs.action, never the raw input.
@@ -106,7 +106,7 @@ jobs:
 
       # Step 3 - Install the pinned Terraform CLI.
       - name: Install Terraform
-        uses: hashicorp/setup-terraform@v4
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4
         with:
           terraform_version: "1.15.8"
           terraform_wrapper: false
