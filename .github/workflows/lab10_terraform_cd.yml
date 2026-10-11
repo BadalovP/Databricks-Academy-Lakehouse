@@ -1,0 +1,133 @@
+
+# LAB 10 - Lakehouse Federation & CDC
+#
+# Manual Terraform deployment using HCP Terraform remote state.
+# HCP organization: badalov-lakehouse-labs
+# HCP workspace: lab10-personal-dev
+#
+# Authentication:
+# - HCP_TERRAFORM_TOKEN: GitHub environment secret
+# - DATABRICKS_PERSONAL_TOKEN: GitHub repository secret
+#
+# Manages existing Databricks Job 453391098761164.
+# Does not migrate state, create a new Job, or trigger notebook execution.
+
+
+name: Lab 10 - Terraform CD
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Terraform operation"
+        required: true
+        type: choice
+        default: plan
+        options:
+          - plan
+          - apply
+      confirmation:
+        description: "For apply, type APPLY-453391098761164"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lab10-personal-dev-terraform
+  cancel-in-progress: false
+
+jobs:
+  terraform-deploy:
+    name: Lab 10 Terraform Plan or Apply
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+
+    environment:
+      name: lab10-personal-dev
+
+    defaults:
+      run:
+        working-directory: labs/lab_10_federation_cdc/terraform
+
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "0"
+      TF_TOKEN_app_terraform_io: ${{ secrets.HCP_TERRAFORM_TOKEN }}
+      DATABRICKS_HOST: https://dbc-1750318a-76a9.cloud.databricks.com
+      DATABRICKS_AUTH_TYPE: pat
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_PERSONAL_TOKEN }}
+
+    steps:
+      - name: Check deployment request
+        env:
+          REQUESTED_ACTION: ${{ inputs.action }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          if [[ "$REQUESTED_ACTION" == "apply" &&
+                "$CONFIRMATION" != "APPLY-453391098761164" ]]; then
+            echo "::error::Incorrect apply confirmation."
+            exit 1
+          fi
+
+          test -n "$TF_TOKEN_app_terraform_io"
+          test -n "$DATABRICKS_TOKEN"
+
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: "1.15.8"
+          terraform_wrapper: false
+
+      - name: Terraform Format Check
+        run: terraform fmt -check
+
+      - name: Terraform Init
+        run: terraform init -input=false -lockfile=readonly
+
+      - name: Verify existing Job state
+        run: |
+          terraform state list | grep -Fxq "databricks_job.lab10"
+
+          JOB_ID="$(terraform output -raw job_id)"
+
+          if [[ "$JOB_ID" != "453391098761164" ]]; then
+            echo "::error::Unexpected Databricks Job ID."
+            exit 1
+          fi
+
+      - name: Terraform Plan
+        run: |
+          terraform plan \
+            -input=false \
+            -lock-timeout=5m \
+            -out=lab10.tfplan \
+            -no-color
+
+      - name: Block unsafe resource changes
+        run: |
+          terraform show -json lab10.tfplan |
+            jq -e '
+              all(.resource_changes[]?;
+                .address == "databricks_job.lab10" and
+                (
+                  .change.actions == ["no-op"] or
+                  .change.actions == ["update"]
+                )
+              )
+            '
+
+      - name: Terraform Apply
+        if: inputs.action == 'apply'
+        run: terraform apply -input=false -no-color lab10.tfplan
+
+      - name: Verify Job ID after deployment
+        if: inputs.action == 'apply'
+        run: |
+          JOB_ID="$(terraform output -raw job_id)"
+          test "$JOB_ID" = "453391098761164"
