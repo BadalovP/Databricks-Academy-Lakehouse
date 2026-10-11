@@ -67,17 +67,40 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      # Step 2 - Validate manual deployment request.
+      # Step 2 - Validate manual deployment request and resolve the action ONCE.
+      # Later steps use steps.request.outputs.action, never the raw input.
       - name: Check deployment request
+        id: request
         env:
           REQUESTED_ACTION: ${{ inputs.action }}
           CONFIRMATION: ${{ inputs.confirmation }}
         run: |
+          echo "Selected action: ${REQUESTED_ACTION:-<empty>}"
+
+          case "$REQUESTED_ACTION" in
+            plan | apply) ;;
+            *)
+              echo "::error::Action must be 'plan' or 'apply', got '${REQUESTED_ACTION}'."
+              exit 1
+              ;;
+          esac
+
           if [[ "$REQUESTED_ACTION" == "apply" &&
                 "$CONFIRMATION" != "APPLY-453391098761164" ]]; then
             echo "::error::Incorrect apply confirmation."
             exit 1
           fi
+
+          # A confirmation with action=plan means apply was intended but the
+          # Action dropdown was left at its default. Fail instead of succeeding
+          # with a silently skipped apply.
+          if [[ "$REQUESTED_ACTION" == "plan" && -n "$CONFIRMATION" ]]; then
+            echo "::error::Apply confirmation was entered, but Action is 'plan'. Select Action = apply, or clear the confirmation for a plan-only run."
+            exit 1
+          fi
+
+          echo "action=$REQUESTED_ACTION" >> "$GITHUB_OUTPUT"
+          echo "### Lab 10 CD - selected action: \`$REQUESTED_ACTION\`" >> "$GITHUB_STEP_SUMMARY"
 
           if [[ -z "$TF_TOKEN_app_terraform_io" ]]; then
             echo "::error::Missing HCP Terraform token."
@@ -142,12 +165,14 @@ jobs:
 
       # Step 9 - Apply only when explicitly requested.
       - name: Terraform Apply
-        if: inputs.action == 'apply'
+        id: apply
+        if: steps.request.outputs.action == 'apply'
         run: terraform apply -input=false -no-color lab10.tfplan
 
       # Step 10 - Confirm the existing Job is preserved.
       - name: Verify Job ID after deployment
-        if: inputs.action == 'apply'
+        id: verify
+        if: steps.request.outputs.action == 'apply'
         run: |
           JOB_ID="$(terraform output -raw job_id)"
 
@@ -155,3 +180,23 @@ jobs:
             echo "::error::Unexpected Job ID after deployment."
             exit 1
           fi
+          echo "Verified existing Job $JOB_ID after apply." >> "$GITHUB_STEP_SUMMARY"
+
+      # Step 11 - An explicitly requested apply must never end as a skipped step
+      # inside a green run.
+      - name: Require apply to have executed
+        if: always() && steps.request.outputs.action == 'apply'
+        env:
+          APPLY_OUTCOME: ${{ steps.apply.outcome }}
+          VERIFY_OUTCOME: ${{ steps.verify.outcome }}
+        run: |
+          echo "Apply outcome: $APPLY_OUTCOME; Job ID verification outcome: $VERIFY_OUTCOME"
+          if [[ "$APPLY_OUTCOME" != "success" || "$VERIFY_OUTCOME" != "success" ]]; then
+            echo "::error::Apply was requested but did not complete successfully."
+            exit 1
+          fi
+
+      # Step 12 - Make a plan-only run unmistakable in the summary.
+      - name: Report plan-only run
+        if: steps.request.outputs.action == 'plan'
+        run: echo "Plan only - Terraform Apply was intentionally not run." >> "$GITHUB_STEP_SUMMARY"
