@@ -2,7 +2,7 @@
 
 An offline-testable, deployment-ready knowledge assistant over six original fictional IT operations runbooks. The project demonstrates deterministic ingestion and chunking, Unity Catalog Delta design, Databricks AI Search Delta Sync, grounded generation, evaluation, monitoring, and an independent Declarative Automation Bundle.
 
-> **Status (2026-10-11):** Personal DEV Stages 1-3 done - bundle deployed (Job `463111948320208`), corpus ingested into `dbr_dev.parvinbadalov_lab12_rag_dev` (6 documents, 30 chunks, CDF on, zero-change rerun proven), and AI Search endpoint `lab12-rag-dev` ONLINE with the Delta Sync index ready at 30 indexed rows ([stage 1](evidence/2026-10-11_personal_dev_stage1_dry_run.md), [stage 2](evidence/2026-10-11_personal_dev_stage2_ingestion.md), [stage 3](evidence/2026-10-11_personal_dev_stage3_ai_search.md)). The full 18-question live evaluation ran once ([stage 4A/4B](evidence/2026-10-11_personal_dev_stage4ab_rag_smoke.md), [stage 4C/4D](evidence/2026-10-11_personal_dev_stage4cd_full_evaluation.md)): RAG correctness 0.843 vs 0.181 for the same model without retrieval; manual review 14 correct, 3 partial, 1 false refusal; retrieval recall 1.0, citation precision 0.929, no RAG errors. Stage 5A ([evidence](evidence/2026-10-11_personal_dev_stage5a_quality_and_skills.md)) added grounding fixes for the four imperfect answers and installed the Databricks Agent Skills for Claude Code; Stage 5B ([evidence](evidence/2026-10-11_personal_dev_stage5b_repeat_sync.md)) ran one repeat sync with the skills invoked natively (30 rows kept); Stage 5C ([evidence](evidence/2026-10-11_personal_dev_stage5c_targeted_reevaluation.md)) deployed the fixes and re-ran q01, q09, q12, q13 RAG-only: q01, q09, q12 now correct; Phase A ([evidence](evidence/2026-10-11_personal_dev_phase_a_final.md)) added allowlisted monitoring diagnostics and section-aware retrieval, after which q13 retrieved the Rollback section and answered completely (1 GPT-OSS call). Azure PROD is untouched. Deployment order is fixed: **Personal DEV → GitHub → Azure PROD** ([runbook](docs/DEPLOYMENT.md)).
+> **Status (2026-10-11): complete in Personal DEV and deployed to Azure PROD.** Merged to `main` via [PR #70](https://github.com/BadalovP/Databricks-Academy-Lakehouse/pull/70) (commit `92fc130`, CI green). Personal DEV: full 18-question live evaluation (RAG 0.843 vs 0.181 without retrieval; manual review 14/3/1), one repeat sync, and live re-runs after the quality fixes - all four originally imperfect answers (q01, q09, q12, q13) now correct. Azure PROD (`dbr_dev_trial_2`): Job `477888651684662`, 6 documents / 30 chunks, Standard endpoint and TRIGGERED index ready at 30/30, one grounded smoke answer. Evidence for every stage is in [`evidence/`](evidence/); the runbook is [Deployment](docs/DEPLOYMENT.md).
 
 ## What it answers
 
@@ -92,13 +92,17 @@ retrieval, embeddings and generation are only exercised by an approved Personal 
 
 | | Personal DEV (`personal_dev`) | Azure PROD (`azure_prod`) |
 |---|---|---|
-| Workspace | `dbc-1750318a-76a9.cloud.databricks.com` | `adb-7405618361895520.0.azuredatabricks.net` (Academy `dbr_dev_trial_2`) |
+| Workspace | `dbc-1750318a-76a9.cloud.databricks.com` | `adb-7405618361895520.0.azuredatabricks.net` (Academy `dbr_dev_trial_2`, trial SKU, ends about 2026-10-20) |
+| Auth | CLI profile `personal_lab10` | Azure CLI (`DATABRICKS_AUTH_TYPE=azure-cli`) |
+| Bundle mode | development | production |
+| Job | `463111948320208` | `477888651684662` |
 | Schema | `dbr_dev.parvinbadalov_lab12_rag_dev` | `dbr_dev.parvinbadalov_lab12_rag_prod` |
-| AI Search endpoint | `lab12-rag-dev` | `parvinbadalov-lab12-rag-prod` |
+| AI Search endpoint | `lab12-rag-dev` (STANDARD, ONLINE) | `parvinbadalov-lab12-rag-prod` (STANDARD, ONLINE) |
+| Index | `...rag_dev.document_chunks_index`, 30 rows, 2 sync updates | `...rag_prod.document_chunks_index`, 30 rows, 1 sync update |
+| Live answers | 18-question evaluation + targeted re-runs | 1 smoke answer (q01) |
 | Models | `databricks-gte-large-en`, `databricks-gpt-oss-20b` | same |
-| Bundle state | own root path per target | own root path per target |
 
-Same source, separate schema, endpoint, index and deployment state. See [Deployment](docs/DEPLOYMENT.md).
+Same source (`92fc130`), separate schema, endpoint, index and deployment state.
 
 ## Databricks configuration
 
@@ -135,14 +139,14 @@ The access script is read-only and refuses a profile whose host differs from the
 | Fictional corpus, ingestion, stable IDs, deduplication | Implemented, tested offline |
 | Section-aware chunking with overlap | Implemented, tested offline |
 | Delta tables, idempotent snapshot MERGE with pruning, CDF | **Executed in Personal DEV**: 6 / 30 rows, CDF on, zero-change rerun proven by MERGE and Delta metrics |
-| AI Search Standard endpoint + TRIGGERED Delta Sync, managed embeddings, sync + readiness wait | **Created in Personal DEV**: endpoint ONLINE, index ready with 30/30 rows; repeat sync not yet validated |
+| AI Search Standard endpoint + TRIGGERED Delta Sync, managed embeddings, sync + readiness wait | **Personal DEV and Azure PROD**: endpoints ONLINE, indexes ready at 30/30; one repeat sync validated in Personal DEV |
 | HYBRID top-k retrieval, filters, citations, zero results | Live (18 questions): expected document retrieved 15/15, ranked 1st 13/15; citation precision 0.929, no invalid citations |
 | Grounded generation (`databricks-openai` 0.17.1), reasoning-model output handling, safe errors | Live: 18/18 RAG calls `stop`, no errors; baseline empty/truncated/429 responses recorded as errors, not refusals |
 | 18-case evaluation: live no-retrieval baseline vs RAG, persisted results | **Executed**: 36 `evaluation_results` rows; per-question manual review in evidence |
 | Redacted monitoring persisted to Delta | **Executed**: 18 `query_monitoring` rows with diagnostics, no question/answer text |
-| Standalone bundle, two isolated targets, manual serverless Job | Deployed to Personal DEV and dry-run succeeded; Azure PROD validated and planned only |
+| Standalone bundle, two isolated targets, manual serverless Job | **Deployed to both** from the same merged source; offline CI green on the PR and on `main` |
 | AI Dev Kit used with an AI coding agent | **Done**: skills installed project-scoped and invoked natively by Claude Code (`databricks-core`, `databricks-vector-search`) for the Stage 5B sync - see [AI Dev Kit](docs/AI_DEV_KIT.md) |
-| Live semantic quality, costs, Azure AI Search endpoint permission | Unverified until approved runs |
+| Live semantic quality, costs, Azure AI Search endpoint permission | Quality: manual review in evidence; Azure endpoint creation permitted (verified by creating it); billing tables lag, so costs are estimates |
 
 ## Documentation
 

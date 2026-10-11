@@ -76,14 +76,40 @@ the only resource that bills while idle; delete it after the evaluation evidence
 is not needed for review. Whether the Personal workspace is quota-limited (Free Edition) or
 pay-as-you-go determines the actual charge.
 
-## Promotion to Azure PROD (after Personal DEV passes)
+## Promotion to Azure PROD - done (2026-10-11)
 
-1. Commit the exact validated source; open a PR; CI must pass; merge.
-2. From that commit: `databricks bundle deploy -t azure_prod`, then the same run sequence.
-3. Prerequisites in `dbr_dev_trial_2`: you hold `ALL_PRIVILEGES` on `dbr_dev` and `CAN_QUERY` on
-   both models. **Creating an AI Search endpoint is unverified** (no endpoint exists; `CAN_CREATE`
-   is not documented as a default) - confirm with the Academy administrator, or ask for an existing
-   endpoint with `CAN_USE`. The workspace is a trial that ends about 2026-10-20.
+1. Committed the validated source, PR [#70](https://github.com/BadalovP/Databricks-Academy-Lakehouse/pull/70),
+   CI green, squash-merged as `92fc130` (tree identical to the reviewed commit).
+2. Deployed `azure_prod` from that tree (Job `477888651684662`) and ran the staged sequence: dry run,
+   ingest, provision, one bounded smoke test. Details:
+   [Azure PROD evidence](../evidence/2026-10-11_azure_prod_deployment.md).
+3. AI Search endpoint creation is permitted for this workspace admin (verified by creating
+   `parvinbadalov-lab12-rag-prod`).
+
+Running a targeted live check (both targets):
+
+```powershell
+databricks jobs run-now --no-wait --json '{"job_id": <JOB_ID>, "job_parameters": {"run_live_inference": "true",
+  "allow_table_writes": "true", "eval_question_ids": "q01", "eval_include_baseline": "false"}}'
+```
+
+Use `jobs run-now --no-wait` with JSON parameters: `bundle run --params` splits values on commas,
+and `run-now` without `--no-wait` gives up after 20 minutes while the run continues.
+
+## Recovery
+
+- **Provisioning timeout:** the endpoint can report ONLINE long before its capacity serves the index
+  (26 min in Personal DEV, about 24 min in Azure PROD; the bounded wait is 25 min). Do not rerun with
+  `allow_ai_search_mutation=true`; watch the index and its pipeline read-only until ready, then run with
+  `allow_ai_search_mutation=false` - the readiness gate verifies it.
+- **Retries:** every task sets `disable_auto_optimization: true`; the chat and search clients make no
+  hidden retries. A failed run is inspected, never retried automatically.
+- **Index out of date after an approved corpus change:** one run with `allow_table_writes=true` then one
+  with `allow_ai_search_mutation=true` (it syncs the existing index), or one
+  `databricks vector-search-indexes sync-index <index>`.
+- **Cleanup (only with approval):** delete the index, then the endpoint
+  (`databricks vector-search-endpoints delete-endpoint <name>`); the endpoint is the only resource that
+  bills while idle. The Delta tables and Job can stay.
 
 No schedule or trigger exists in the Job. `bundle destroy` and delete commands are intentionally
 not part of this runbook.
