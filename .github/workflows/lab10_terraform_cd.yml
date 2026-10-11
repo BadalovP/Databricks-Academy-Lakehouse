@@ -12,7 +12,6 @@
 # Manages existing Databricks Job 453391098761164.
 # Does not migrate state, create a new Job, or trigger notebook execution.
 
-
 name: Lab 10 - Terraform CD
 
 on:
@@ -26,6 +25,7 @@ on:
         options:
           - plan
           - apply
+
       confirmation:
         description: "For apply, type APPLY-453391098761164"
         required: false
@@ -56,11 +56,18 @@ jobs:
       TF_IN_AUTOMATION: "true"
       TF_INPUT: "0"
       TF_TOKEN_app_terraform_io: ${{ secrets.HCP_TERRAFORM_TOKEN }}
+
       DATABRICKS_HOST: https://dbc-1750318a-76a9.cloud.databricks.com
       DATABRICKS_AUTH_TYPE: pat
       DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_PERSONAL_TOKEN }}
 
     steps:
+      # Step 1 - Checkout must happen before commands
+      # that use the repository working directory.
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      # Step 2 - Validate manual deployment request.
       - name: Check deployment request
         env:
           REQUESTED_ACTION: ${{ inputs.action }}
@@ -72,24 +79,32 @@ jobs:
             exit 1
           fi
 
-          test -n "$TF_TOKEN_app_terraform_io"
-          test -n "$DATABRICKS_TOKEN"
+          if [[ -z "$TF_TOKEN_app_terraform_io" ]]; then
+            echo "::error::Missing HCP Terraform token."
+            exit 1
+          fi
 
-      - name: Checkout repository
-        uses: actions/checkout@v5
+          if [[ -z "$DATABRICKS_TOKEN" ]]; then
+            echo "::error::Missing Databricks token."
+            exit 1
+          fi
 
+      # Step 3 - Install the pinned Terraform CLI.
       - name: Install Terraform
         uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "1.15.8"
           terraform_wrapper: false
 
+      # Step 4 - Check Terraform formatting.
       - name: Terraform Format Check
         run: terraform fmt -check
 
+      # Step 5 - Initialize HCP Terraform backend.
       - name: Terraform Init
         run: terraform init -input=false -lockfile=readonly
 
+      # Step 6 - Verify remote state manages the existing Job.
       - name: Verify existing Job state
         run: |
           terraform state list | grep -Fxq "databricks_job.lab10"
@@ -101,6 +116,7 @@ jobs:
             exit 1
           fi
 
+      # Step 7 - Generate the Terraform execution plan.
       - name: Terraform Plan
         run: |
           terraform plan \
@@ -109,6 +125,8 @@ jobs:
             -out=lab10.tfplan \
             -no-color
 
+      # Step 8 - Allow only no-op or in-place updates.
+      # Block resource creation, deletion, and replacement.
       - name: Block unsafe resource changes
         run: |
           terraform show -json lab10.tfplan |
@@ -122,12 +140,18 @@ jobs:
               )
             '
 
+      # Step 9 - Apply only when explicitly requested.
       - name: Terraform Apply
         if: inputs.action == 'apply'
         run: terraform apply -input=false -no-color lab10.tfplan
 
+      # Step 10 - Confirm the existing Job is preserved.
       - name: Verify Job ID after deployment
         if: inputs.action == 'apply'
         run: |
           JOB_ID="$(terraform output -raw job_id)"
-          test "$JOB_ID" = "453391098761164"
+
+          if [[ "$JOB_ID" != "453391098761164" ]]; then
+            echo "::error::Unexpected Job ID after deployment."
+            exit 1
+          fi
