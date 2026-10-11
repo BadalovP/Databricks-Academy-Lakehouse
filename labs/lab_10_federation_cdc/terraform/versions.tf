@@ -10,7 +10,6 @@ terraform {
   }
 }
 
-
 provider "databricks" {
   # Pin the target Databricks workspace.
   # Local execution: use DATABRICKS_CONFIG_PROFILE=personal_lab10.
