@@ -38,7 +38,7 @@ jobs:
         run: terraform fmt -check
 
       - name: Terraform Init
-        run: terraform init -backend=false
+        run: terraform init -backend=false -input=false -lockfile=readonly
 
       - name: Terraform Validate
-        run: terraform validate
+        run: terraform validate -no-color

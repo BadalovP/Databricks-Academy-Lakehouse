@@ -12,13 +12,16 @@ __pycache__/
 labs/lab_06_gold_analytics_external/evidence/*.txt
 # Terraform
 **/.terraform/
-**/terraform.tfstate
-**/terraform.tfstate.*
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfbackend
 **/crash.log
 **/crash.*.log
 **/*.tfplan
 **/*.tfvars
 **/*.tfvars.json
+# Added only on an authorized operator's machine during Lab 10 state migration.
+/labs/lab_10_federation_cdc/terraform/backend.local.tf
 # Claude Code's own local, per-machine settings/permissions -- not project source.
 .claude/
 
