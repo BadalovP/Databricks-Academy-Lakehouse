@@ -63,12 +63,13 @@ jobs:
       DATABRICKS_HOST: https://adb-7405604503619901.1.azuredatabricks.net
       DATABRICKS_AUTH_TYPE: azure-cli
       JOB_ID: ${{ vars.LAB10_AZURE_PROD_JOB_ID }}
-    defaults:
-      run:
-        # Outside the repository so no bundle configuration can override the host.
-        working-directory: ${{ runner.temp }}
+    # No checkout: every step runs in the runner's temp directory, outside any
+    # repository, so no bundle configuration can override DATABRICKS_HOST.
+    # (The runner context is not allowed in job-level defaults, so each run
+    # step sets working-directory itself.)
     steps:
       - name: Check configuration
+        working-directory: ${{ runner.temp }}
         run: |
           [[ "$DATABRICKS_HOST" == "$EXPECTED_HOST" ]] || { echo "::error::Host is not the pinned Azure workspace."; exit 1; }
           [[ "$JOB_ID" =~ ^[0-9]+$ ]] || {
@@ -87,6 +88,7 @@ jobs:
         uses: databricks/setup-cli@main
 
       - name: Verify the Job before running it
+        working-directory: ${{ runner.temp }}
         run: |
           databricks jobs get "$JOB_ID" --output json > job.json
           jq -e --arg name "$JOB_NAME" '.settings.name == $name' job.json > /dev/null || {
@@ -102,6 +104,7 @@ jobs:
 
       - name: Run the Job and wait for completion
         id: run
+        working-directory: ${{ runner.temp }}
         run: |
           token="lab10-azure-prod-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           jq -n --argjson job "$JOB_ID" --arg token "$token" '{job_id: $job, idempotency_token: $token}' > request.json
@@ -122,6 +125,7 @@ jobs:
         if: always() && steps.run.outputs.run_id != ''
         env:
           RUN_ID: ${{ steps.run.outputs.run_id }}
+        working-directory: ${{ runner.temp }}
         run: |
           databricks jobs get-run "$RUN_ID" --output json > run.json
           {
@@ -144,6 +148,7 @@ jobs:
       - name: Require a successful run
         env:
           RUN_ID: ${{ steps.run.outputs.run_id }}
+        working-directory: ${{ runner.temp }}
         run: |
           result="$(databricks jobs get-run "$RUN_ID" --output json | jq -r '.state.result_state // "none"')"
           [[ "$result" == "SUCCESS" ]] || {
