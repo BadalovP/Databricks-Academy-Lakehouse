@@ -112,6 +112,9 @@ class TerraformContract(unittest.TestCase):
     def test_cluster_is_rejected(self) -> None:
         self._reject_main("  task {", '  task {\n    existing_cluster_id = "0000-000000-abcdefgh"')
 
+    def test_serverless_auto_retry_left_on_is_rejected(self) -> None:
+        self._reject_main("    disable_auto_optimization = true\n", "")
+
     def test_schedule_is_rejected(self) -> None:
         self._reject_main("  task {", "  schedule {\n    quartz_cron_expression = \"0 0 * * * ?\"\n  }\n  task {")
 

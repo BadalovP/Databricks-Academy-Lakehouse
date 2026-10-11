@@ -30,6 +30,8 @@ resource "databricks_job" "lab10_azure_prod" {
 
   task {
     task_key = "01_federation_validation"
+    # Serverless Jobs retry failed tasks by default; a failed CDC run must be inspected, not repeated.
+    disable_auto_optimization = true
 
     notebook_task {
       source          = "GIT"
@@ -39,7 +41,8 @@ resource "databricks_job" "lab10_azure_prod" {
   }
 
   task {
-    task_key = "02_incremental_cdc_sync"
+    task_key                  = "02_incremental_cdc_sync"
+    disable_auto_optimization = true
 
     depends_on {
       task_key = "01_federation_validation"
@@ -53,7 +56,8 @@ resource "databricks_job" "lab10_azure_prod" {
   }
 
   task {
-    task_key = "03_final_validation"
+    task_key                  = "03_final_validation"
+    disable_auto_optimization = true
 
     depends_on {
       task_key = "02_incremental_cdc_sync"

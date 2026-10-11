@@ -108,6 +108,10 @@ def check_terraform(versions: str, main_tf: str) -> None:
         require(not re.search(forbidden, code), f"Azure Job violates safety contract: {forbidden}")
     task_blocks = re.findall(r"(?m)^\s{2}task\s*\{", code)
     require(len(task_blocks) == 3, "Azure Job must contain exactly three tasks")
+    require(
+        len(re.findall(r"(?m)^\s+disable_auto_optimization\s*=\s*true\b", code)) == 3,
+        "Every Azure Job task must disable serverless auto-retry (disable_auto_optimization = true)",
+    )
     for notebook in (
         "01_federation_validation.ipynb",
         "02_incremental_cdc_sync.ipynb",
