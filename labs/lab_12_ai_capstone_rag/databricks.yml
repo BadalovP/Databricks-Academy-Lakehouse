@@ -1,0 +1,63 @@
+# Lab 12 - standalone bundle with two independent targets.
+#
+# There is deliberately NO default target: every bundle command must name `-t personal_dev`
+# or `-t azure_prod`, so an unqualified `databricks bundle deploy` cannot pick a workspace.
+# Each target pins its own host; the CLI refuses a profile whose host differs, and the Job's
+# expected_host parameter (= ${workspace.host}) makes every notebook re-check it at runtime.
+#
+# Deployment state lives under each target's own root_path, so DEV and PROD never share state.
+
+bundle:
+  name: lab12_ai_capstone_rag
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    description: Unity Catalog catalog for this target
+  schema:
+    description: Lab 12 schema for this target (separate per environment)
+  ai_search_endpoint:
+    description: Standard AI Search endpoint for this target
+  ai_search_index:
+    description: Optional explicit index name; empty derives <catalog>.<schema>.document_chunks_index
+    default: ""
+  embedding_endpoint:
+    description: Managed embedding model used by the Delta Sync index
+    default: databricks-gte-large-en
+  chat_endpoint:
+    description: Foundation Model chat endpoint used for generation
+    default: databricks-gpt-oss-20b
+
+# Everything Git tracks is synced. Include patterns are not anchored to this folder (a former
+# `config/**` also matched .venv/.../_pytest/config/), so only the corpus is listed, and local
+# environments and caches are excluded outright.
+sync:
+  include:
+    - data/sample_docs/*.md
+  exclude:
+    - .venv/**
+    - "**/__pycache__/**"
+
+targets:
+  personal_dev:
+    mode: development
+    workspace:
+      host: https://dbc-1750318a-76a9.cloud.databricks.com
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: dbr_dev
+      schema: parvinbadalov_lab12_rag_dev
+      ai_search_endpoint: lab12-rag-dev
+
+  azure_prod:
+    mode: production
+    workspace:
+      host: https://adb-7405618361895520.0.azuredatabricks.net
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: dbr_dev
+      schema: parvinbadalov_lab12_rag_prod
+      # Shared Academy workspace: the owner's name avoids colliding with other students.
+      ai_search_endpoint: parvinbadalov-lab12-rag-prod

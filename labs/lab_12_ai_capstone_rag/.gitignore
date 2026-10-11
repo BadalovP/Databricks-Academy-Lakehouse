@@ -1,0 +1,19 @@
+.venv/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+*.egg-info/
+*.whl
+__pycache__/
+*.py[cod]
+.databricks/
+*.log
+evidence/*.json
+!evidence/README.md
+
+# The repository root ignores every data/ folder; Lab 12 needs its fictional corpus in Git so
+# CI, GitHub and the Azure deployment use exactly the documents validated in Personal DEV.
+!/data/
+!/data/sample_docs/
+!/data/sample_docs/*.md
