@@ -1,0 +1,78 @@
+resources:
+  jobs:
+    lab12_rag_workflow:
+      name: "[${bundle.target}] Lab 12 - IT Operations RAG"
+      description: >-
+        Manual-only Lab 12 workflow: ingest -> provision/sync AI Search -> evaluate baseline vs RAG.
+        Every write, AI Search mutation and model call is off by default and must be enabled per run.
+      max_concurrent_runs: 1
+      queue:
+        enabled: true
+      timeout_seconds: 5400
+      # All settings are Job parameters. Databricks pushes them down to every notebook task, so
+      # no task declares a same-named parameter that a Job parameter could silently override.
+      parameters:
+        - name: expected_host
+          default: ${workspace.host}
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema
+          default: ${var.schema}
+        - name: ai_search_endpoint
+          default: ${var.ai_search_endpoint}
+        - name: ai_search_index
+          default: ${var.ai_search_index}
+        - name: embedding_endpoint
+          default: ${var.embedding_endpoint}
+        - name: chat_endpoint
+          default: ${var.chat_endpoint}
+        - name: eval_question_limit
+          default: "18"
+        # Targeted runs only: comma-separated IDs (e.g. q01,q09) and an optional RAG-only mode.
+        # The defaults keep the full 18-question baseline-vs-RAG evaluation.
+        - name: eval_question_ids
+          default: ""
+        - name: eval_include_baseline
+          default: "true"
+        - name: allow_table_writes
+          default: "false"
+        - name: allow_ai_search_mutation
+          default: "false"
+        - name: run_live_inference
+          default: "false"
+      # Serverless installs dependencies through an environment, not task `libraries`.
+      # Only the two SDKs are installed; the project code is imported from synced src/.
+      environments:
+        - environment_key: lab12_serverless
+          spec:
+            client: "4"
+            dependencies:
+              - databricks-ai-search==0.78
+              - databricks-openai==0.17.1
+      tasks:
+        - task_key: ingest_documents
+          environment_key: lab12_serverless
+          disable_auto_optimization: true
+          timeout_seconds: 1200
+          notebook_task:
+            notebook_path: ../notebooks/01_ingest_documents.py
+            source: WORKSPACE
+        - task_key: provision_ai_search
+          depends_on:
+            - task_key: ingest_documents
+          environment_key: lab12_serverless
+          disable_auto_optimization: true
+          # Endpoint creation (<= 25 min) plus initial indexing (<= 25 min), both bounded in code.
+          timeout_seconds: 3600
+          notebook_task:
+            notebook_path: ../notebooks/02_prepare_ai_search.py
+            source: WORKSPACE
+        - task_key: evaluate_rag
+          depends_on:
+            - task_key: provision_ai_search
+          environment_key: lab12_serverless
+          disable_auto_optimization: true
+          timeout_seconds: 1800
+          notebook_task:
+            notebook_path: ../notebooks/04_evaluate.py
+            source: WORKSPACE

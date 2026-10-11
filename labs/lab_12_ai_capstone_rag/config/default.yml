@@ -1,0 +1,55 @@
+# Local/offline defaults. Deployed Jobs take catalog, schema, endpoints and the workspace host
+# from the bundle target (databricks.yml), never from this file.
+workspace:
+  host: https://dbc-1750318a-76a9.cloud.databricks.com
+  catalog: dbr_dev
+  schema: parvinbadalov_lab12_rag_dev
+
+tables:
+  documents: documents
+  chunks: document_chunks
+  evaluation_results: evaluation_results
+  monitoring: query_monitoring
+
+chunking:
+  max_chars: 900
+  overlap_chars: 120
+  min_chunk_chars: 40
+
+ai_search:
+  endpoint_type: STANDARD
+  pipeline_type: TRIGGERED
+  embedding_endpoint: databricks-gte-large-en
+  primary_key: chunk_id
+  embedding_source_column: content
+  columns_to_sync:
+    - chunk_id
+    - document_id
+    - source_name
+    - section_heading
+    - section_ref
+    - content
+    - content_hash
+
+retrieval:
+  # HYBRID = vector similarity + BM25 keywords; suits exact service names in the runbooks.
+  query_type: HYBRID
+  top_k: 4
+  # Extra searches, each filtered to a section the question names explicitly ("roll back" ->
+  # Rollback). Bounded per question; 0 disables them.
+  max_supplemental_queries: 2
+  score_threshold: 0.05
+  max_context_chars: 6000
+
+generation:
+  chat_endpoint: databricks-gpt-oss-20b
+  temperature: 0.0
+  # GPT-OSS spends completion tokens on reasoning first; at 700 the Stage 4B baseline used 663
+  # tokens for an 88-character answer. 2000 leaves headroom; truncation is reported if it occurs.
+  max_tokens: 2000
+
+monitoring:
+  retention_days: 30
+  log_raw_questions: false
+  log_raw_answers: false
+
