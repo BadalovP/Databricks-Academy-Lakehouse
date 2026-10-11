@@ -7,23 +7,36 @@ on:
     paths:
       - "labs/lab_10_federation_cdc/**"
       - ".github/workflows/lab10_terraform_ci.yml"
+      - ".github/workflows/lab10_azure_prod_cd.yml"
+      - ".github/workflows/lab10_azure_prod_run.yml"
 
   pull_request:
     paths:
       - "labs/lab_10_federation_cdc/**"
       - ".github/workflows/lab10_terraform_ci.yml"
+      - ".github/workflows/lab10_azure_prod_cd.yml"
+      - ".github/workflows/lab10_azure_prod_run.yml"
 
 permissions:
   contents: read
 
 jobs:
   terraform-validation:
-    name: Validate Lab 10 Terraform
+    name: Validate Lab 10 Terraform (${{ matrix.root }})
     runs-on: ubuntu-24.04
+
+    # Personal DEV and Azure PROD are separate roots with separate HCP state;
+    # both get the same static checks. Neither job contacts a workspace.
+    strategy:
+      fail-fast: false
+      matrix:
+        root:
+          - terraform
+          - terraform_azure_prod
 
     defaults:
       run:
-        working-directory: labs/lab_10_federation_cdc/terraform
+        working-directory: labs/lab_10_federation_cdc/${{ matrix.root }}
 
     steps:
       - name: Checkout repository

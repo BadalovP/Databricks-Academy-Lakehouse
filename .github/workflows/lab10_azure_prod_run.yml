@@ -1,0 +1,153 @@
+# LAB 10 - Lakehouse Federation & CDC - Run the Azure PROD Job
+#
+# Separately approved execution of the Terraform-managed serverless Job.
+# Deploying (lab10_azure_prod_cd.yml) never runs it; this workflow only runs
+# it, and never changes infrastructure.
+#
+#   Confirmation:  RUN-LAB10-AZURE-PROD (anything else fails)
+#   Approval:      azure-release-approval environment
+#   Auth:          GitHub OIDC (environment azure-prod) -> azure-cli
+#   Compute:       serverless Jobs compute; the workflow refuses to run a Job
+#                  whose tasks reference any cluster
+#   Evidence:      run ID, run URL, per-task results and the final
+#                  validation summary returned by 03_final_validation
+
+name: Lab 10 - Run Azure PROD Job
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type RUN-LAB10-AZURE-PROD to run the deployed Azure PROD Job (serverless compute is billed)."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lab10-azure-prod-run
+  cancel-in-progress: false
+
+env:
+  EXPECTED_HOST: https://adb-7405604503619901.1.azuredatabricks.net
+  JOB_NAME: "[Azure PROD] Lab 10 Federation & CDC"
+
+jobs:
+  approve:
+    name: Approve Azure PROD Job run
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    environment: azure-release-approval
+    steps:
+      - name: Check confirmation
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          [[ "$CONFIRMATION" == "RUN-LAB10-AZURE-PROD" ]] || {
+            echo "::error::Type exactly RUN-LAB10-AZURE-PROD to run the Azure PROD Job."
+            exit 1
+          }
+          echo "Azure PROD Job run approved."
+
+  run-job:
+    name: Run and verify Azure PROD Job
+    needs: approve
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: azure-prod
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      DATABRICKS_HOST: https://adb-7405604503619901.1.azuredatabricks.net
+      DATABRICKS_AUTH_TYPE: azure-cli
+      JOB_ID: ${{ vars.LAB10_AZURE_PROD_JOB_ID }}
+    defaults:
+      run:
+        # Outside the repository so no bundle configuration can override the host.
+        working-directory: ${{ runner.temp }}
+    steps:
+      - name: Check configuration
+        run: |
+          [[ "$DATABRICKS_HOST" == "$EXPECTED_HOST" ]] || { echo "::error::Host is not the pinned Azure workspace."; exit 1; }
+          [[ "$JOB_ID" =~ ^[0-9]+$ ]] || {
+            echo "::error::Repository variable LAB10_AZURE_PROD_JOB_ID is not set; deploy first and record the Job ID."
+            exit 1
+          }
+
+      - name: Authenticate to Azure with GitHub OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Install Databricks CLI
+        uses: databricks/setup-cli@main
+
+      - name: Verify the Job before running it
+        run: |
+          databricks jobs get "$JOB_ID" --output json > job.json
+          jq -e --arg name "$JOB_NAME" '.settings.name == $name' job.json > /dev/null || {
+            echo "::error::Job $JOB_ID is not '$JOB_NAME'."
+            exit 1
+          }
+          jq -e '([.settings.tasks[] | select((.existing_cluster_id // "") != "" or .new_cluster != null or (.job_cluster_key // "") != "")] | length == 0)
+                 and ((.settings.job_clusters // []) | length == 0)' job.json > /dev/null || {
+            echo "::error::Job $JOB_ID references cluster compute; refusing to run anything but serverless."
+            exit 1
+          }
+          echo "Verified serverless Job $JOB_ID: $(jq -r '[.settings.tasks[].task_key] | join(" -> ")' job.json)"
+
+      - name: Run the Job and wait for completion
+        id: run
+        run: |
+          token="lab10-azure-prod-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          jq -n --argjson job "$JOB_ID" --arg token "$token" '{job_id: $job, idempotency_token: $token}' > request.json
+          databricks jobs run-now --json @request.json --no-wait --output json > submitted.json
+          run_id="$(jq -r '.run_id' submitted.json)"
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+          echo "Started run $run_id"
+          # 2 minutes x 25 = 50 minutes, inside the 60-minute job timeout.
+          for _ in $(seq 1 25); do
+            databricks jobs get-run "$run_id" --output json > run.json
+            state="$(jq -r '.state.life_cycle_state' run.json)"
+            echo "$(date -u +%H:%M:%S) $state"
+            case "$state" in TERMINATED|SKIPPED|INTERNAL_ERROR) break ;; esac
+            sleep 120
+          done
+
+      - name: Record evidence
+        if: always() && steps.run.outputs.run_id != ''
+        env:
+          RUN_ID: ${{ steps.run.outputs.run_id }}
+        run: |
+          databricks jobs get-run "$RUN_ID" --output json > run.json
+          {
+            echo "### Azure PROD Job run \`$RUN_ID\`"
+            echo ""
+            echo "Result: \`$(jq -r '.state.life_cycle_state + " / " + (.state.result_state // "none")' run.json)\` - $(jq -r '.run_page_url' run.json)"
+            echo ""
+            echo "| Task | State | Result |"
+            echo "|---|---|---|"
+            jq -r '.tasks[] | "| \(.task_key) | \(.state.life_cycle_state) | \(.state.result_state // "-") |"' run.json
+          } >> "$GITHUB_STEP_SUMMARY"
+          final_task="$(jq -r '.tasks[] | select(.task_key == "03_final_validation") | .run_id' run.json)"
+          if [[ -n "$final_task" ]]; then
+            summary="$(databricks jobs get-run-output "$final_task" --output json | jq -r '.notebook_output.result // empty')"
+            if [[ -n "$summary" ]]; then
+              { echo ""; echo "Final validation:"; echo '```json'; jq . <<<"$summary"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+            fi
+          fi
+
+      - name: Require a successful run
+        env:
+          RUN_ID: ${{ steps.run.outputs.run_id }}
+        run: |
+          result="$(databricks jobs get-run "$RUN_ID" --output json | jq -r '.state.result_state // "none"')"
+          [[ "$result" == "SUCCESS" ]] || {
+            echo "::error::Azure PROD Job run $RUN_ID finished with $result."
+            exit 1
+          }
+          echo "Azure PROD Job run $RUN_ID succeeded."

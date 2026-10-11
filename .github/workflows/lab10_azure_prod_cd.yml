@@ -1,0 +1,258 @@
+# LAB 10 - Lakehouse Federation & CDC - Azure PROD Terraform CD
+#
+# Manual Terraform deployment of the Azure PROD serverless Job.
+#   Workspace:  https://adb-7405604503619901.1.azuredatabricks.net (pinned)
+#   State:      HCP Terraform badalov-lakehouse-labs / lab10-azure-prod
+#               (separate from Personal DEV's lab10-personal-dev)
+#   Auth:       GitHub OIDC -> managed identity trusted for environment
+#               azure-prod -> Databricks azure-cli auth. No Databricks PAT.
+#   Approval:   apply requires the azure-release-approval environment.
+#
+# The confirmation field alone decides the operation:
+#   empty                      -> plan only (no approval needed; read-only)
+#   APPLY-LAB10-AZURE-PROD     -> approval, plan, then apply that saved plan
+#   anything else              -> fail
+#
+# This workflow never runs the Job. Running it is a separate workflow with
+# its own confirmation and approval (lab10_azure_prod_run.yml).
+
+name: Lab 10 - Azure PROD Terraform CD
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Leave EMPTY for plan only. Type APPLY-LAB10-AZURE-PROD to apply."
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lab10-azure-prod-terraform
+  cancel-in-progress: false
+
+env:
+  EXPECTED_HOST: https://adb-7405604503619901.1.azuredatabricks.net
+  JOB_NAME: "[Azure PROD] Lab 10 Federation & CDC"
+  JOB_ADDRESS: databricks_job.lab10_azure_prod
+  TF_ROOT: labs/lab_10_federation_cdc/terraform_azure_prod
+
+jobs:
+  request:
+    name: Resolve requested operation
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    outputs:
+      action: ${{ steps.resolve.outputs.action }}
+    steps:
+      - name: Resolve operation from confirmation
+        id: resolve
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          if [[ -z "$CONFIRMATION" ]]; then
+            ACTION="plan"
+          elif [[ "$CONFIRMATION" == "APPLY-LAB10-AZURE-PROD" ]]; then
+            ACTION="apply"
+          else
+            echo "::error::Unrecognised confirmation. Leave it empty for a plan, or type exactly APPLY-LAB10-AZURE-PROD to apply."
+            exit 1
+          fi
+          echo "Resolved operation: $ACTION"
+          echo "action=$ACTION" >> "$GITHUB_OUTPUT"
+          echo "### Lab 10 Azure PROD CD - operation: \`${ACTION^^}\`" >> "$GITHUB_STEP_SUMMARY"
+
+  approve:
+    name: Approve Azure PROD apply
+    needs: request
+    if: needs.request.outputs.action == 'apply'
+    runs-on: ubuntu-24.04
+    environment: azure-release-approval
+    steps:
+      - name: Record approval
+        run: echo "Azure PROD Terraform apply approved for Job '$JOB_NAME'."
+
+  terraform:
+    name: Azure PROD Terraform ${{ needs.request.outputs.action }}
+    needs: [request, approve]
+    # Plan runs without approval; apply runs only after a successful approval.
+    if: >-
+      always() &&
+      needs.request.result == 'success' &&
+      (needs.request.outputs.action == 'plan' || needs.approve.result == 'success')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    # The OIDC identity trusts only this environment's subject.
+    environment: azure-prod
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: labs/lab_10_federation_cdc/terraform_azure_prod
+    env:
+      ACTION: ${{ needs.request.outputs.action }}
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "0"
+      TF_TOKEN_app_terraform_io: ${{ secrets.HCP_TERRAFORM_TOKEN }}
+      DATABRICKS_HOST: https://adb-7405604503619901.1.azuredatabricks.net
+      DATABRICKS_AUTH_TYPE: azure-cli
+      EXPECTED_JOB_ID: ${{ vars.LAB10_AZURE_PROD_JOB_ID }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Check configuration
+        run: |
+          [[ -n "$TF_TOKEN_app_terraform_io" ]] || {
+            echo "::error::HCP_TERRAFORM_TOKEN is not configured for the azure-prod environment."
+            exit 1
+          }
+          # Three independent pins must agree: the workflow, the repository
+          # variable used by earlier labs, and the provider block in Terraform.
+          [[ "$DATABRICKS_HOST" == "$EXPECTED_HOST" ]] || { echo "::error::Workflow host is not the pinned Azure workspace."; exit 1; }
+          [[ "${{ vars.DATABRICKS_AZURE_HOST }}" == "$EXPECTED_HOST" ]] || { echo "::error::DATABRICKS_AZURE_HOST does not match the pinned Azure workspace."; exit 1; }
+          grep -Fq "host = \"$EXPECTED_HOST\"" versions.tf || { echo "::error::Terraform provider host is not the pinned Azure workspace."; exit 1; }
+          echo "Azure workspace host verified: $EXPECTED_HOST"
+
+      - name: Authenticate to Azure with GitHub OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Install Databricks CLI
+        uses: databricks/setup-cli@main
+
+      - name: Verify Databricks identity
+        working-directory: ${{ runner.temp }}
+        run: |
+          # Run outside the repository so no bundle configuration can override the host.
+          databricks current-user me --output json > identity.json
+          echo "Authenticated to $DATABRICKS_HOST as $(jq -r '.displayName // .userName' identity.json)"
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: "1.15.8"
+          terraform_wrapper: false
+
+      - name: Terraform format and init
+        run: |
+          terraform fmt -check
+          terraform init -input=false -lockfile=readonly
+
+      - name: Verify state and detect first deployment
+        id: state
+        run: |
+          state_list="$(terraform state list)"
+          if [[ -z "$state_list" ]]; then
+            # First deployment. Refuse if a Job with this name already exists,
+            # so Terraform can never create a duplicate beside an unmanaged Job.
+            # Run the CLI outside the repository: its root databricks.yml would
+            # otherwise let bundle auto-detection override DATABRICKS_HOST.
+            matches="$(cd "$RUNNER_TEMP" && databricks jobs list --name "$JOB_NAME" --output json | jq 'if type == "array" then length else ((.jobs // []) | length) end')"
+            [[ "$matches" == "0" ]] || {
+              echo "::error::A Job named '$JOB_NAME' already exists but is not in state. Import it instead of creating a duplicate."
+              exit 1
+            }
+            echo "bootstrap=true" >> "$GITHUB_OUTPUT"
+            echo "State is empty and no Job named '$JOB_NAME' exists: first deployment allowed to create it."
+          else
+            [[ "$state_list" == "$JOB_ADDRESS" ]] || {
+              echo "::error::State must contain exactly $JOB_ADDRESS."
+              exit 1
+            }
+            actual="$(terraform output -raw job_id)"
+            [[ -n "$EXPECTED_JOB_ID" ]] || {
+              echo "::error::State holds Job $actual. Set repository variable LAB10_AZURE_PROD_JOB_ID=$actual before further deployments."
+              exit 1
+            }
+            [[ "$actual" == "$EXPECTED_JOB_ID" ]] || {
+              echo "::error::State Job ID $actual does not match LAB10_AZURE_PROD_JOB_ID."
+              exit 1
+            }
+            echo "bootstrap=false" >> "$GITHUB_OUTPUT"
+            echo "Verified existing Azure PROD Job $actual."
+          fi
+
+      - name: Terraform validate and plan
+        run: |
+          terraform validate -no-color
+          terraform plan -input=false -lock-timeout=5m -no-color -out=lab10-azure-prod.tfplan
+
+      - name: Block unsafe resource changes
+        env:
+          BOOTSTRAP: ${{ steps.state.outputs.bootstrap }}
+        run: |
+          terraform show -json lab10-azure-prod.tfplan > plan.json
+          # Only the one Job may appear. A create is allowed only on the very
+          # first deployment; afterwards only no-op or an in-place update.
+          if [[ "$BOOTSTRAP" == "true" ]]; then allowed='[["create"]]'; else allowed='[["no-op"],["update"]]'; fi
+          jq -e --arg address "$JOB_ADDRESS" --argjson allowed "$allowed" '
+            ([.resource_changes[]?] | length) == 1 and
+            all(.resource_changes[]?;
+              .address == $address and (.change.actions as $a | $allowed | index([$a]) != null))
+          ' plan.json > /dev/null || {
+            echo "::error::Plan contains a change outside the allowed set for $JOB_ADDRESS (bootstrap=$BOOTSTRAP)."
+            jq -r '.resource_changes[]? | "  \(.address): \(.change.actions | join(","))"' plan.json
+            exit 1
+          }
+          jq -r '.resource_changes[]? | "Planned: \(.address) -> \(.change.actions | join(","))"' plan.json | tee -a "$GITHUB_STEP_SUMMARY"
+          # Serverless only: no task may reference cluster compute.
+          jq -e '[.resource_changes[]?.change.after // {} |
+                  ((.job_cluster // []) | length > 0),
+                  (.task[]? | ((.existing_cluster_id // "") != "" or (.new_cluster // []) != [] or (.job_cluster_key // "") != ""))
+                 ] | any | not' plan.json > /dev/null || {
+            echo "::error::A task references cluster compute; the Azure PROD Job must be serverless."
+            exit 1
+          }
+
+      - name: Terraform Apply
+        id: apply
+        if: env.ACTION == 'apply'
+        run: terraform apply -input=false -no-color lab10-azure-prod.tfplan
+
+      - name: Verify Job after deployment
+        id: verify
+        if: env.ACTION == 'apply'
+        working-directory: labs/lab_10_federation_cdc/terraform_azure_prod
+        run: |
+          job_id="$(terraform output -raw job_id)"
+          if [[ -n "$EXPECTED_JOB_ID" && "$job_id" != "$EXPECTED_JOB_ID" ]]; then
+            echo "::error::Job ID changed after apply."
+            exit 1
+          fi
+          (cd "$RUNNER_TEMP" && databricks jobs get "$job_id" --output json) > job.json
+          jq -e --arg name "$JOB_NAME" '.settings.name == $name and (.settings.schedule == null) and (.settings.max_concurrent_runs == 1)' job.json > /dev/null || {
+            echo "::error::Deployed Job does not match the expected name, schedule or concurrency."
+            exit 1
+          }
+          {
+            echo "Azure PROD Job: \`$job_id\` - $(terraform output -raw job_url)"
+            if [[ -z "$EXPECTED_JOB_ID" ]]; then
+              echo ""
+              echo "**Next:** set repository variable \`LAB10_AZURE_PROD_JOB_ID=$job_id\` before the next deployment or run."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Require apply to have executed
+        if: always() && env.ACTION == 'apply'
+        env:
+          APPLY_OUTCOME: ${{ steps.apply.outcome }}
+          VERIFY_OUTCOME: ${{ steps.verify.outcome }}
+        run: |
+          echo "Apply outcome: $APPLY_OUTCOME; verification outcome: $VERIFY_OUTCOME"
+          [[ "$APPLY_OUTCOME" == "success" && "$VERIFY_OUTCOME" == "success" ]] || {
+            echo "::error::Apply was requested but did not complete successfully."
+            exit 1
+          }
+
+      - name: Report plan-only run
+        if: env.ACTION == 'plan'
+        run: echo "Plan only - Terraform Apply was intentionally not run." >> "$GITHUB_STEP_SUMMARY"
