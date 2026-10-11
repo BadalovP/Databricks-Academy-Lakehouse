@@ -17,19 +17,16 @@ name: Lab 10 - Terraform CD
 on:
   workflow_dispatch:
     inputs:
-      action:
-        description: "Terraform operation"
-        required: true
-        type: choice
-        default: plan
-        options:
-          - plan
-          - apply
-
+      # The confirmation alone decides the operation, so there is no second
+      # input that can disagree with it:
+      #   empty                    -> plan only
+      #   APPLY-453391098761164    -> plan, then apply that saved plan
+      #   anything else            -> fail
       confirmation:
-        description: "For apply, type APPLY-453391098761164"
+        description: "Leave EMPTY for plan only. Type APPLY-453391098761164 to apply."
         required: false
         type: string
+        default: ""
 
 permissions:
   contents: read
@@ -67,40 +64,35 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      # Step 2 - Validate manual deployment request and resolve the action ONCE.
+      # Step 2 - Resolve the operation ONCE from the confirmation.
       # Later steps use steps.request.outputs.action, never the raw input.
       - name: Check deployment request
         id: request
         env:
-          REQUESTED_ACTION: ${{ inputs.action }}
           CONFIRMATION: ${{ inputs.confirmation }}
         run: |
-          echo "Selected action: ${REQUESTED_ACTION:-<empty>}"
-
-          case "$REQUESTED_ACTION" in
-            plan | apply) ;;
-            *)
-              echo "::error::Action must be 'plan' or 'apply', got '${REQUESTED_ACTION}'."
-              exit 1
-              ;;
-          esac
-
-          if [[ "$REQUESTED_ACTION" == "apply" &&
-                "$CONFIRMATION" != "APPLY-453391098761164" ]]; then
-            echo "::error::Incorrect apply confirmation."
+          # Exact matching only. Whitespace is never trimmed: a stray space is
+          # rejected rather than guessed at, so an apply always needs the exact
+          # phrase and a plan needs a truly empty field.
+          if [[ -z "$CONFIRMATION" ]]; then
+            ACTION="plan"
+          elif [[ "$CONFIRMATION" == "APPLY-453391098761164" ]]; then
+            ACTION="apply"
+          elif [[ -z "${CONFIRMATION//[[:space:]]/}" ]]; then
+            echo "::error::Confirmation contains only whitespace. Leave it completely empty for a plan, or type APPLY-453391098761164 to apply."
+            exit 1
+          else
+            echo "::error::Unrecognised confirmation. Leave it empty for a plan, or type exactly APPLY-453391098761164 (no spaces) to apply."
             exit 1
           fi
 
-          # A confirmation with action=plan means apply was intended but the
-          # Action dropdown was left at its default. Fail instead of succeeding
-          # with a silently skipped apply.
-          if [[ "$REQUESTED_ACTION" == "plan" && -n "$CONFIRMATION" ]]; then
-            echo "::error::Apply confirmation was entered, but Action is 'plan'. Select Action = apply, or clear the confirmation for a plan-only run."
-            exit 1
+          echo "Resolved operation: $ACTION"
+          echo "action=$ACTION" >> "$GITHUB_OUTPUT"
+          if [[ "$ACTION" == "apply" ]]; then
+            echo "### Lab 10 CD - operation: \`APPLY\` (plan, then apply the saved plan)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### Lab 10 CD - operation: \`PLAN ONLY\`" >> "$GITHUB_STEP_SUMMARY"
           fi
-
-          echo "action=$REQUESTED_ACTION" >> "$GITHUB_OUTPUT"
-          echo "### Lab 10 CD - selected action: \`$REQUESTED_ACTION\`" >> "$GITHUB_STEP_SUMMARY"
 
           if [[ -z "$TF_TOKEN_app_terraform_io" ]]; then
             echo "::error::Missing HCP Terraform token."
