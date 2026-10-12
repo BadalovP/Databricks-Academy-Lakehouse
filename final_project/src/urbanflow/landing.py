@@ -181,6 +181,9 @@ LANDING_PARAMETERS = (
     "schema",
     "volume",
     "stream_timeout_seconds",
+    "run_weather",
+    "weather_source",
+    "weather_sample_file",
 )
 
 
@@ -262,3 +265,24 @@ def historical_dimension_problem(
             "same run (the Job builds the dimension before the historical task) or run it first."
         )
     return None
+
+
+def weather_sample_landing(values: dict[str, str], volume_root: str) -> str | None:
+    """Volume path to land the committed weather sample at, or None when not needed.
+
+    `07_weather_enrichment` reads `<volume>/landing/weather/<weather_sample_file>` for
+    `weather_source=sample_json`. Nothing landed that file, so the first complete DEV run failed
+    there (run 896235701785511). Full-month runs use the archive API instead.
+    """
+    flag = {name: values.get(name, "").strip().lower() == "true" for name in LANDING_PARAMETERS}
+    if not flag["run_weather"] or flag["run_full_month"]:
+        return None
+    if values.get("weather_source", "").strip() != "sample_json":
+        return None
+    name = safe_segment(values.get("weather_sample_file", "").strip(), "weather_sample_file")
+    if not name.endswith(".json"):
+        raise ValueError(f"weather_sample_file must be a .json sample: {name!r}")
+    root = PurePosixPath(volume_root)
+    if not str(root).startswith("/Volumes/") or len(root.parts) != 5:
+        raise ValueError("volume_root must be /Volumes/<catalog>/<schema>/<volume>.")
+    return str(root / "landing" / "weather" / name)

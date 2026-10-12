@@ -240,3 +240,24 @@ def test_no_platform_notebook_asserts_a_fixed_demo3_row_count(project_root) -> N
         )
         code = "\n".join(line for line in code.splitlines() if not line.strip().startswith("#"))
         assert not re.search(r"\b(2520|657|746|1888085|1886318)\b", code), path.name
+
+
+def test_the_weather_sample_is_landed_exactly_where_notebook_07_reads_it(project_root) -> None:
+    """Notebook 07 read a Volume file that no task landed (run 896235701785511)."""
+    from urbanflow.landing import weather_sample_landing
+
+    volume = "/Volumes/workspace/urbanflow_final_dev/urbanflow_final_landing"
+    sample = {"run_weather": "true", "weather_source": "sample_json",
+              "weather_sample_file": "open_meteo_archive_202401.sample.json"}  # fmt: skip
+    target = weather_sample_landing(sample, volume)
+    assert target == f"{volume}/landing/weather/open_meteo_archive_202401.sample.json"
+    assert (project_root / "fixtures" / "samples" / sample["weather_sample_file"]).exists()
+    reader = (project_root / "notebooks" / "07_weather_enrichment.py").read_text(encoding="utf-8")
+    assert (
+        'f"{volume_root}/landing/weather/" + dbutils.widgets.get("weather_sample_file")' in reader
+    )
+    assert weather_sample_landing({**sample, "weather_source": "archive_api"}, volume) is None
+    assert weather_sample_landing({**sample, "run_weather": "false"}, volume) is None
+    assert weather_sample_landing({**sample, "run_full_month": "true"}, volume) is None
+    with pytest.raises(ValueError):
+        weather_sample_landing({**sample, "weather_sample_file": "../x.json"}, volume)

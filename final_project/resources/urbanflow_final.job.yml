@@ -111,6 +111,9 @@ resources:
               catalog: "{{job.parameters.catalog}}"
               schema: "{{job.parameters.schema}}"
               volume: "{{job.parameters.volume}}"
+              run_weather: "{{job.parameters.run_weather}}"
+              weather_source: "{{job.parameters.weather_source}}"
+              weather_sample_file: "{{job.parameters.weather_sample_file}}"
         - task_key: station_source_check
           depends_on:
             - task_key: land_sources

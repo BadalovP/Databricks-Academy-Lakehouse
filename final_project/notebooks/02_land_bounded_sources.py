@@ -49,17 +49,19 @@ from urbanflow.landing import (
     landing_paths,
     landing_plan,
     validate_station_source,
+    weather_sample_landing,
 )
 
 for name in LANDING_PARAMETERS:
     dbutils.widgets.text(name, "")
 values = {name: dbutils.widgets.get(name).strip() for name in LANDING_PARAMETERS}
 land_station, land_trips = landing_plan(values)
-if not (land_station or land_trips):
+volume_root = f"/Volumes/{values['catalog']}/{values['schema']}/{values['volume']}"
+weather_target = weather_sample_landing(values, volume_root)
+if not (land_station or land_trips or weather_target):
     dbutils.notebook.exit(json.dumps({"status": "NOTHING_TO_LAND"}))
 assert_serverless_compute(spark.conf.get)
 validate_station_source(values["station_source"], values["source_execution_id"])
-volume_root = f"/Volumes/{values['catalog']}/{values['schema']}/{values['volume']}"
 paths = landing_paths(
     volume_root,
     source_execution_id=values["source_execution_id"],
@@ -178,23 +180,23 @@ if land_station:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Step 4 - Land the historical trip sample
+# MAGIC ## Step 4 - Land the historical trip and weather samples
 # MAGIC
-# MAGIC **What:** Copy the committed 40-row January 2024 trip sample into this run's historical landing folder.
+# MAGIC **What:** Copy the committed 40-row January 2024 trip sample into the historical landing folder, and the committed 48-hour Open-Meteo archive sample into `landing/weather/` when the run uses `weather_source=sample_json`.
 # MAGIC
-# MAGIC **Why:** Notebook 06 ingests trips with Auto Loader from the sample namespace; the full month lives in a sibling namespace, so the two never mix.
+# MAGIC **Why:** Notebook 06 ingests trips with Auto Loader from the sample namespace (the full month lives in a sibling namespace, so the two never mix), and notebook 07 reads the weather sample from the Volume. Nothing else lands that file; the first complete DEV run failed without it.
 # MAGIC
-# MAGIC **Input:** `fixtures/samples/historical_trips_202401_sample.csv`.
+# MAGIC **Input:** `fixtures/samples/historical_trips_202401_sample.csv` and `fixtures/samples/<weather_sample_file>`.
 # MAGIC
-# MAGIC **Output:** `landing/historical_trips/historical_trips_202401_sample.csv` - the sample namespace notebook 06 reads.
+# MAGIC **Output:** `landing/historical_trips/historical_trips_202401_sample.csv` (read by notebook 06) and `landing/weather/<weather_sample_file>` (read by notebook 07).
 # MAGIC
 # MAGIC **Key concepts:** Separate sample and full-month namespaces, idempotent copy.
 # MAGIC
-# MAGIC **Expected result:** The sample file is present in the run's folder.
+# MAGIC **Expected result:** Both sample files are present, `landed` the first time and `already_landed` on a rerun.
 # MAGIC
 # MAGIC **How to explain it:** "Development runs read the 40-row sample namespace; the full month uses a sibling, approved namespace."
 # MAGIC
-# MAGIC **Rerun and cost considerations:** One small copy, skipped when the identical file exists. Full-month mode lands nothing here.
+# MAGIC **Rerun and cost considerations:** Two small copies, skipped when the identical file exists. Full-month mode lands neither (it uses its own namespace and the archive API).
 
 # COMMAND ----------
 
@@ -203,6 +205,12 @@ if land_trips:
     trip_target = Path(paths.historical_dir) / trip_sample.name
     report["historical_landing"] = land_once(trip_target, trip_sample.read_text(encoding="utf-8"))
     report["historical_landing_dir"] = paths.historical_dir
+if weather_target:
+    weather_sample = PROJECT_ROOT / "fixtures" / "samples" / values["weather_sample_file"]
+    report["weather_landing"] = land_once(
+        Path(weather_target), weather_sample.read_text(encoding="utf-8")
+    )
+    report["weather_landing_path"] = weather_target
 print(json.dumps(report, sort_keys=True))
 
 # COMMAND ----------
