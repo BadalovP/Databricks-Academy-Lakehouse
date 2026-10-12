@@ -216,3 +216,33 @@ def await_bounded_completion(query: Any, *, timeout_seconds: float) -> dict[str,
         "timed_out": not terminated,
         "timeout_seconds": timeout_seconds,
     }
+
+
+AUTOLOADER_LINEAGE_TOPIC = "volume:station_events"
+
+
+def read_landed_station_events(spark: Any, landing_dir: str) -> Any:
+    """Auto Loader stream over landed JSON-lines station events (one event per line)."""
+    if not str(landing_dir).startswith("/Volumes/"):
+        raise ValueError("Landed station events must be read from a Unity Catalog Volume.")
+    return (
+        spark.readStream.format("cloudFiles").option("cloudFiles.format", "text").load(landing_dir)
+    )
+
+
+def landed_text_as_kafka_records(text_dataframe: Any) -> Any:
+    """Give Auto Loader text rows the Kafka record shape that ``parse_station_events`` expects.
+
+    Reusing the Event Hubs parser - instead of a second one - guarantees both ingestion paths
+    produce the same Bronze columns, types and ``parse_error`` rule. The lineage columns say
+    honestly where the row came from: a Volume landing, so no Kafka partition or offset exists.
+    """
+    from pyspark.sql import functions as F
+
+    return text_dataframe.select(
+        F.col("value").cast("binary").alias("value"),
+        F.lit(AUTOLOADER_LINEAGE_TOPIC).alias("topic"),
+        F.lit(None).cast("int").alias("partition"),
+        F.lit(None).cast("long").alias("offset"),
+        F.lit(None).cast("timestamp").alias("timestamp"),
+    )

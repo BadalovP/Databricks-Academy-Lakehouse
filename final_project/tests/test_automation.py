@@ -9,7 +9,9 @@ import pytest
 from urbanflow.automation import (
     PROTECTED_SHARED_CLUSTER_IDS,
     WorkspaceSafetyError,
+    assert_serverless_compute,
     assess_existing_cluster,
+    classic_cluster_id,
     create_demonstration_cluster,
     select_ready_existing_cluster,
     terminate_and_verify_cluster,
@@ -181,3 +183,21 @@ def test_cluster_selection_falls_back_to_running_gp2(tmp_path: Path) -> None:
     assert len(assessments) == 2
     assert selected is not None
     assert selected.alias == "gp2"
+
+
+def test_serverless_compute_is_accepted_when_the_cluster_tag_is_unavailable() -> None:
+    def unavailable(_key: str) -> str:
+        raise RuntimeError("[CONFIG_NOT_AVAILABLE] Configuration is not available.")
+
+    assert classic_cluster_id(unavailable) == ""
+    assert_serverless_compute(unavailable)
+    assert_serverless_compute(lambda _key: "")
+
+
+def test_every_classic_cluster_is_refused_and_shared_ones_are_named() -> None:
+    with pytest.raises(WorkspaceSafetyError, match="Academy shared cluster"):
+        assert_serverless_compute(lambda _key: "0702-132442-toro5spu")
+    with pytest.raises(
+        WorkspaceSafetyError, match="refusing classic cluster '1234-567890-abcdefgh'"
+    ):
+        assert_serverless_compute(lambda _key: "1234-567890-abcdefgh")

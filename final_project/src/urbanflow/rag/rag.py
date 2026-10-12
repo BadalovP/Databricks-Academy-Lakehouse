@@ -103,7 +103,9 @@ class DatabricksChatModel:
         return text
 
 
-def call_diagnostics(response: Any, text: str, generation_ms: int, max_tokens: int) -> dict[str, Any]:
+def call_diagnostics(
+    response: Any, text: str, generation_ms: int, max_tokens: int
+) -> dict[str, Any]:
     """Finish reason, token usage and content shape of one chat completion.
 
     A field the endpoint does not return is "unavailable", never 0. ``truncated`` means the model
@@ -172,7 +174,9 @@ def message_text(content: Any) -> str:
     if isinstance(content, list):
         parts: list[str] = []
         for block in content:
-            block_type = block.get("type") if isinstance(block, dict) else getattr(block, "type", None)
+            block_type = (
+                block.get("type") if isinstance(block, dict) else getattr(block, "type", None)
+            )
             text = block.get("text") if isinstance(block, dict) else getattr(block, "text", None)
             if block_type in (None, "text", "output_text") and isinstance(text, str):
                 parts.append(text)
@@ -283,7 +287,9 @@ class RagService:
             sources = self._retriever.search(clean_question, top_k=self._top_k, filters=filters)
             if not sources:
                 diagnostics.update(retrieval_ms=_elapsed_ms(search_started), sources=0)
-                return self._result(clean_question, INSUFFICIENT, (), started, diagnostics=diagnostics)
+                return self._result(
+                    clean_question, INSUFFICIENT, (), started, diagnostics=diagnostics
+                )
             sources, supplemental = self._sections.supplement(
                 self._retriever, clean_question, sources, filters
             )
@@ -292,7 +298,9 @@ class RagService:
             sources, dropped = drop_preamble(sources, self._titles)
             diagnostics["preamble_dropped"] = dropped
             if not sources:
-                return self._result(clean_question, INSUFFICIENT, (), started, diagnostics=diagnostics)
+                return self._result(
+                    clean_question, INSUFFICIENT, (), started, diagnostics=diagnostics
+                )
             sources, scope = self._scope.apply(clean_question, sources)
             if scope:
                 diagnostics["scope"] = scope
@@ -389,14 +397,17 @@ class SectionTopics:
     """
 
     def __init__(self, headings: list[str], max_queries: int = 2) -> None:
-        self._headings = sorted({h for h in headings if _words(h)}, key=lambda h: (-len(_words(h)), h))
+        self._headings = sorted(
+            {h for h in headings if _words(h)}, key=lambda h: (-len(_words(h)), h)
+        )
         self._max = max(0, max_queries)
 
     def topics(self, question: str) -> list[str]:
         words = _words(question)
         compact = "".join(words)
         found = [
-            h for h in self._headings
+            h
+            for h in self._headings
             if "".join(_words(h)) in compact or set(_words(h)) <= set(words)
         ]
         return found[: self._max]
@@ -447,7 +458,8 @@ def drop_preamble(
     extractive fixture quoted one as an "answer" to an unanswerable question (q17).
     """
     kept = [
-        s for s in sources
+        s
+        for s in sources
         if not (titles.get(s.source_name) == s.section_heading and len(s.content) <= max_chars)
     ]
     return kept, len(sources) - len(kept)

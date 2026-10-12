@@ -26,7 +26,12 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from urbanflow.rag.cli import build_offline_service
 from urbanflow.rag.config import load_config
-from urbanflow.rag.delta_store import EVALUATION_SCHEMA, MONITORING_SCHEMA, append_rows, qualified_name
+from urbanflow.rag.delta_store import (
+    EVALUATION_SCHEMA,
+    MONITORING_SCHEMA,
+    append_rows,
+    qualified_name,
+)
 from urbanflow.rag.evaluation import (
     baseline_answer,
     citation_map,
@@ -192,8 +197,13 @@ if live:
             "question": case.question,
             "expected_sources": list(case.expected_sources),
             "retrieved": [
-                {"rank": rank, "source": s.source_name, "section": s.section_ref,
-                 "score": round(s.score, 4), "chunk_id": s.chunk_id}
+                {
+                    "rank": rank,
+                    "source": s.source_name,
+                    "section": s.section_ref,
+                    "score": round(s.score, 4),
+                    "chunk_id": s.chunk_id,
+                }
                 for rank, s in enumerate(rag_answer.sources, start=1)
             ],
             "rag": {
@@ -204,15 +214,19 @@ if live:
                 "diagnostics": rag_answer.diagnostics,
                 "score": score_to_row(rag_score, "review", "n/a")["metrics_json"],
             },
-            "baseline": {
-                "answer": baseline_answers[position].answer,
-                "error": baseline_answers[position].error,
-                "latency_ms": baseline_answers[position].latency_ms,
-                "diagnostics": baseline_answers[position].diagnostics,
-                "score": score_to_row(baseline_scores[position], "review", "n/a")["metrics_json"],
-            }
-            if include_baseline
-            else "not_run",
+            "baseline": (
+                {
+                    "answer": baseline_answers[position].answer,
+                    "error": baseline_answers[position].error,
+                    "latency_ms": baseline_answers[position].latency_ms,
+                    "diagnostics": baseline_answers[position].diagnostics,
+                    "score": score_to_row(baseline_scores[position], "review", "n/a")[
+                        "metrics_json"
+                    ],
+                }
+                if include_baseline
+                else "not_run"
+            ),
         }
         print(json.dumps(review, indent=2, default=str))
 

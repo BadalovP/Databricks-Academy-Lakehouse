@@ -10,7 +10,7 @@
 # MAGIC
 # MAGIC **Academy labs:** Lab 3 streaming, Lab 4 data quality, Lab 5 Lakeflow preparation, Lab 7 testing, and Lab 9 automation safety.
 # MAGIC
-# MAGIC **Prerequisites:** The operator has approved one live run; GP1 or GP2 is already `RUNNING`; the deployed target's UrbanFlow schema and Volume already exist; the notebook identity can read the named secret; and the producer report supplies the execution ID, source timestamp, and published count.
+# MAGIC **Prerequisites:** The operator has approved one live run; the task runs on serverless compute; the deployed target's UrbanFlow schema and Volume already exist; the notebook identity can read the named secret; and the producer report supplies the execution ID, source timestamp, and published count.
 # MAGIC
 # MAGIC **Inputs:** JSON station-status events from `urbanflow producer`, tagged with deterministic event IDs and one execution ID, plus job parameters for the run gate, the producer manifest values, the storage target, and the streaming wait bound.
 # MAGIC
@@ -35,7 +35,7 @@
 # MAGIC
 # MAGIC **Expected result:** The imports succeed silently.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "The notebook orchestrates small tested functions, so the risky live path stays visible and reviewable."
+# MAGIC **How to explain it:** "The notebook orchestrates small tested functions, so the risky live path stays visible and reviewable."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Imports do not contact Event Hubs, do not touch shared compute, and never start a query.
 
@@ -53,7 +53,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from pyspark.sql import functions as F
 
-from urbanflow.automation import APPROVED_RUN_CLUSTER_IDS
+from urbanflow.automation import assert_serverless_compute
 from urbanflow.config import load_config
 from urbanflow.medallion import prepare_station_batch
 from urbanflow.reporting import build_bronze_execution_report, write_json_report
@@ -86,7 +86,7 @@ from urbanflow.streaming import (
 # MAGIC
 # MAGIC **Expected result:** Only non-secret project, namespace, hub, and consumer-group names are printed.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "Every resource name is declared in version control, and the file contains references to secrets rather than secret values."
+# MAGIC **How to explain it:** "Every resource name is declared in version control, and the file contains references to secrets rather than secret values."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** A local YAML read is free and repeatable; it contacts no cloud service.
 
@@ -119,7 +119,7 @@ print(
 # MAGIC
 # MAGIC **Expected result:** Defaults show `run_stream=False`, expected count zero, and a 900-second wait bound, so no query is eligible to start.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "The producer and consumer share a run ID, and the operator can see exactly how long the job is allowed to wait before we give up."
+# MAGIC **How to explain it:** "The producer and consumer share a run ID, and the operator can see exactly how long the job is allowed to wait before we give up."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Widgets have no cloud side effect. The wait bound is the notebook's own cost ceiling and stays below the job's `timeout_seconds: 1200`, so a stalled stream ends with evidence instead of an open-ended bill.
 
@@ -165,7 +165,7 @@ print({"run_stream": run_stream, "stream_timeout_seconds": stream_timeout_second
 # MAGIC
 # MAGIC **Expected result:** A `dev` deployment prints `dbr_dev.parvinbadalov_urbanflow_dev.bronze_station_status`; the committed default prints the `azure` schema.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "The job passes the deployed target's own catalog, schema, and volume, so a development run can never write production evidence."
+# MAGIC **How to explain it:** "The job passes the deployed target's own catalog, schema, and volume, so a development run can never write production evidence."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Building strings is free. Each execution ID gets its own report file, and the checkpoint stays inside the target's Volume, so a rerun cannot mix two targets' offsets.
 
@@ -199,9 +199,9 @@ print({"target_table": target_table, "checkpoint": stream_paths.checkpoint})
 # MAGIC %md
 # MAGIC ## Step 5 - Verify approved compute, Unity Catalog storage, and secret access
 # MAGIC
-# MAGIC **What:** Refuse any cluster outside `APPROVED_RUN_CLUSTER_IDS`, confirm the target Volume is readable, and retrieve the connection string only inside an approved run.
+# MAGIC **What:** Refuse any classic cluster with `assert_serverless_compute`, confirm the target Volume is readable, and retrieve the connection string only inside an approved run.
 # MAGIC
-# MAGIC **Why:** GP1 and GP2 are shared academy resources, so a live UrbanFlow run must attach only where it is explicitly approved. `APPROVED_RUN_CLUSTER_IDS` is the attach allowlist; `PROTECTED_SHARED_CLUSTER_IDS` is a different rule that forbids terminating those clusters. Using the never-terminate list as an allowlist was a real defect, because the two lists answer two different questions.
+# MAGIC **Why:** UrbanFlow 2.0 is serverless-only. The Academy's shared clusters (GP1, GP2) belong to everyone, so this project never attaches to them: `assert_serverless_compute` refuses every classic cluster and accepts only serverless compute. `PROTECTED_SHARED_CLUSTER_IDS` remains a separate rule that forbids terminating those clusters.
 # MAGIC
 # MAGIC **Input:** Current cluster ID, resolved Volume path, secret scope, and Key Vault-backed secret name.
 # MAGIC
@@ -211,7 +211,7 @@ print({"target_table": target_table, "checkpoint": stream_paths.checkpoint})
 # MAGIC
 # MAGIC **Expected result:** An approved run prints the allowed cluster ID, storage readiness, and secret retrieval without displaying credentials; anywhere else the cell raises and stops.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "We attach only to a pre-approved cluster and verify our storage boundary before any stream starts, and we never reuse a protection list as a permission list."
+# MAGIC **How to explain it:** "We attach only to a pre-approved cluster and verify our storage boundary before any stream starts, and we never reuse a protection list as a permission list."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** These checks never start, stop, restart, resize, install libraries on, or terminate a cluster. Secret lookup and path listing are read-only.
 
@@ -223,17 +223,15 @@ if run_stream:
         raise ValueError("Producer count and source timestamp must be positive for a live run.")
     if not secret_scope:
         raise ValueError("secret_scope is required when run_stream=true.")
-    cluster_id = spark.conf.get("spark.databricks.clusterUsageTags.clusterId")
-    if cluster_id not in APPROVED_RUN_CLUSTER_IDS:
-        raise RuntimeError(f"Refusing unapproved cluster ID {cluster_id!r}.")
+    assert_serverless_compute(spark.conf.get)
     dbutils.fs.ls(volume_root)
     connection_string = dbutils.secrets.get(
         scope=secret_scope,
         key=config.azure.event_hubs_secret_name,
     )
-    print({"cluster_id": cluster_id, "volume_ready": True, "secret_retrieved": True})
+    print({"compute": "serverless", "volume_ready": True, "secret_retrieved": True})
 else:
-    print("Dry run: cluster, Volume, and secret were not accessed.")
+    print("Dry run: compute check, Volume, and secret were not accessed.")
 
 # COMMAND ----------
 
@@ -252,7 +250,7 @@ else:
 # MAGIC
 # MAGIC **Expected result:** Approved runs report `isStreaming=True`; diagnostic options show `[REDACTED]` in place of the credential.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "Event Hubs is the managed broker, Kafka is the protocol Spark uses, and partition plus offset identifies each broker record."
+# MAGIC **How to explain it:** "Event Hubs is the managed broker, Kafka is the protocol Spark uses, and partition plus offset identifies each broker record."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Building a streaming DataFrame is lazy. `startingOffsets=earliest` is used only when this dedicated checkpoint has no prior offsets, so retained messages are preserved and safely correlated by execution ID.
 
@@ -292,7 +290,7 @@ else:
 # MAGIC
 # MAGIC **Expected result:** A filtered plan. Rows that failed to parse carry a null `execution_id`, so they cannot match and are not written; they are still accounted for by comparing the query's own input-row count with the rows actually written.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "We stamp every event with a unique run ID, and the consumer only writes rows carrying that ID. So even though the Event Hub is shared and we deliberately read from the beginning of the retention window, our Bronze table contains exactly our own bounded snapshot and nothing else."
+# MAGIC **How to explain it:** "We stamp every event with a unique run ID, and the consumer only writes rows carrying that ID. So even though the Event Hub is shared and we deliberately read from the beginning of the retention window, our Bronze table contains exactly our own bounded snapshot and nothing else."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** A filter is a lazy plan change and costs nothing extra. Because the checkpoint is also per-execution, a rerun with a new ID starts from a genuinely fresh offset position rather than inheriting a checkpoint that already advanced past our data.
 
@@ -311,7 +309,7 @@ else:
 # MAGIC
 # MAGIC **What:** Append available broker records to Delta, save offsets in the isolated checkpoint, and wait for completion through `await_bounded_completion(query, timeout_seconds=...)`.
 # MAGIC
-# MAGIC **Why:** The previous version called `query.awaitTermination()` with no timeout. On shared cluster GP1 or GP2 a stalled query would then hold billable academy compute with no ceiling at all. The bounded helper returns after at most `stream_timeout_seconds`, and we record whether the query really finished before stopping it.
+# MAGIC **Why:** The previous version called `query.awaitTermination()` with no timeout. A stalled query would then hold billable compute with no ceiling at all. The bounded helper returns after at most `stream_timeout_seconds`, and we record whether the query really finished before stopping it.
 # MAGIC
 # MAGIC **Input:** Parsed Kafka stream, the resolved Bronze table, the dedicated checkpoint directory, and the wait bound from Step 3.
 # MAGIC
@@ -321,7 +319,7 @@ else:
 # MAGIC
 # MAGIC **Expected result:** The query processes all data available at its start and becomes inactive well inside the bound, without any cluster lifecycle action.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "The checkpoint remembers offsets, `availableNow` bounds the work, and the timeout bounds the waiting, so a stuck stream costs minutes instead of hours."
+# MAGIC **How to explain it:** "The checkpoint remembers offsets, `availableNow` bounds the work, and the timeout bounds the waiting, so a stuck stream costs minutes instead of hours."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** This is the billable step, and its cost is now capped twice: by `availableNow` and by the visible timeout. If the bound elapses we stop the query so nothing keeps streaming on shared compute, then let Step 10 fail the task. A rerun continues from committed offsets and never deletes Event Hub data or changes shared compute.
 
@@ -372,7 +370,7 @@ else:
 # MAGIC
 # MAGIC **Expected result:** The printed row count equals the producer's published count for this execution ID.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "The execution filter is a typed column comparison, so the parameter is always treated as data and never as query text."
+# MAGIC **How to explain it:** "The execution filter is a typed column comparison, so the parameter is always treated as data and never as query text."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** This reads only the one execution slice and never restarts the stream, so it is cheap and safe to repeat.
 
@@ -415,7 +413,7 @@ else:
 # MAGIC
 # MAGIC **Expected result:** The run passes only when the query terminated on its own and all expected records are unique, valid, timestamped, and from the expected snapshot.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "We prove data movement by matching producer facts to Bronze records, not by relying on a green task icon."
+# MAGIC **How to explain it:** "We prove data movement by matching producer facts to Bronze records, not by relying on a green task icon."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** This is pure driver-side arithmetic over the small slice already collected. It starts no query and adds no cloud cost.
 
@@ -458,7 +456,7 @@ else:
 # MAGIC
 # MAGIC **Expected result:** Bronze count equals Silver plus Quarantine plus duplicates; no additional cloud table is written in this first test.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "Every Bronze row has an accountable outcome, and the useful result is the set of stations that need bikes or docks."
+# MAGIC **How to explain it:** "Every Bronze row has an accountable outcome, and the useful result is the set of stations that need bikes or docks."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** This bounded driver-side calculation handles only the one-snapshot test data and creates no second workload or Lakeflow update.
 
@@ -500,9 +498,9 @@ else:
 # MAGIC
 # MAGIC **Expected result:** A passing run prints the report path and finishes; a failed or timed-out run still writes diagnostics and then raises an error.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "The task produces auditable JSON and cannot report success when counts, IDs, timestamps, or the termination check disagree."
+# MAGIC **How to explain it:** "The task produces auditable JSON and cannot report success when counts, IDs, timestamps, or the termination check disagree."
 # MAGIC
-# MAGIC **Rerun and cost considerations:** One small Volume write occurs only in the approved live run, inside the deployed target's own Volume. The shared cluster remains unchanged and is never terminated by this notebook.
+# MAGIC **Rerun and cost considerations:** One small Volume write occurs only in the approved live run, inside the deployed target's own Volume. No cluster is used; serverless compute is released when the task ends.
 
 # COMMAND ----------
 
@@ -528,13 +526,13 @@ else:
 # MAGIC **Lessons learned from the Milestone 2 audit:** Four defects were fixed in this notebook, and each one is worth explaining.
 # MAGIC
 # MAGIC 1. An unbounded `awaitTermination()` on shared compute has no cost ceiling; `await_bounded_completion(query, timeout_seconds=...)` with a visible parameter does.
-# MAGIC 2. A never-terminate protection list is not an approved-to-attach permission list. The gate now uses `APPROVED_RUN_CLUSTER_IDS`, and still refuses every other cluster.
+# MAGIC 2. A never-terminate protection list is not an approved-to-attach permission list. UrbanFlow 2.0 goes further and refuses every classic cluster: it runs only on serverless compute.
 # MAGIC 3. Hardcoding the config file meant a `dev` deployment wrote the `azure` target's table and checkpoint. The job now passes the bundle's catalog, schema, and volume, so targets are isolated.
 # MAGIC 4. Safety that depends on an earlier cell is fragile. The execution filter is now a typed column comparison instead of interpolated SQL text, so it is safe on its own.
 # MAGIC
-# MAGIC **Actual validation:** This notebook ran in Azure on 2026-09-29 as Job run `873010921866250`: 2,520 published events produced 2,520 Bronze rows, with zero rejected, duplicate, missing, or unexpected event IDs and final reconciliation `PASS`.
+# MAGIC **Actual validation:** In the Final Project this notebook has not been run yet; offline tests cover its logic. Its Demo 3 predecessor ran live on 2026-09-29 - that is Demo 3 evidence, not Final Project evidence.
 # MAGIC
-# MAGIC **Validated outputs:** managed Bronze table `dbr_dev.parvinbadalov_urbanflow.bronze_station_status`, its isolated checkpoint, a Bronze JSON report with `status: PASS`, and the local medallion preview for execution `urbanflow-20260929T195132Z-r3`.
+# MAGIC **Expected outputs:** the target's managed Bronze table `<catalog>.<schema>.bronze_station_status`, its per-execution checkpoint, and a Bronze JSON report with `status: PASS` for the selected execution.
 # MAGIC
 # MAGIC **Common errors:** Cluster not already running or not on the approved list, missing schema or Volume for the deployed target, denied secret read, incorrect policy in the connection string, checkpoint collision with the superseded `03_streaming.py`, unavailable Kafka connector, source count mismatch, malformed retained events, or a wait bound set too low for the published volume.
 # MAGIC

@@ -4,7 +4,7 @@
 # MAGIC
 # MAGIC **Business context:** The unified Job reuses the validated 2,520-row Bronze snapshot because the original Event Hubs retention window has passed.
 # MAGIC
-# MAGIC **Prerequisites:** Preflight passed on GP1 and `bronze_station_status` already contains the selected execution.
+# MAGIC **Prerequisites:** Preflight passed on serverless compute and `bronze_station_status` already contains the selected execution.
 # MAGIC
 # MAGIC **Learning objectives:** Verify source lineage, required business IDs and uniqueness before the Silver write begins.
 # MAGIC
@@ -12,7 +12,7 @@
 # MAGIC
 # MAGIC **Safety:** This task runs only `tableExists`, filtered `SELECT` and aggregate actions. It never invokes the producer or writes a table.
 # MAGIC
-# MAGIC **Actual validation:** On 2026-10-03 it returned `PASS` with 2,520 Bronze rows and 2,520 distinct event IDs in unified runs `4222809815373`, `284335864579341` and `96337578882467`.
+# MAGIC **Actual validation:** In the Final Project this notebook has not been run yet; offline tests cover its logic. Its Demo 3 predecessor ran live on 2026-10-03 - that is Demo 3 evidence, not Final Project evidence.
 
 # COMMAND ----------
 
@@ -29,9 +29,9 @@
 # MAGIC
 # MAGIC **Key concepts:** Execution-scoped reads, target isolation, optional branch behavior.
 # MAGIC
-# MAGIC **Expected result:** Sample release selects `urbanflow-20260929T195132Z-r3` from the Azure target.
+# MAGIC **Expected result:** The selected execution has Bronze rows - 40 for a sample run landed by `land_sources`.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "Before transforming anything, we prove the exact Bronze snapshot still exists."
+# MAGIC **How to explain it:** "Before transforming anything, we prove the exact Bronze snapshot still exists."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** The query is bounded to one existing execution and performs no write.
 
@@ -76,7 +76,7 @@ source = spark.table(table_name).where(F.col("execution_id") == F.lit(source_exe
 # MAGIC
 # MAGIC **Expected result:** 2,520 rows, 2,520 distinct event IDs and zero null event, station or execution IDs.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "The source gate catches a missing or duplicated snapshot before any durable transformation runs."
+# MAGIC **How to explain it:** "The source gate catches a missing or duplicated snapshot before any durable transformation runs."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** These are read-only aggregates over one bounded execution.
 

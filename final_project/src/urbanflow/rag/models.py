@@ -59,4 +59,3 @@ class RagAnswer:
     error: str | None = None
     # Operational metadata only (timings, token counts, finish reason) - never prompt or answer text.
     diagnostics: dict[str, Any] = field(default_factory=dict)
-

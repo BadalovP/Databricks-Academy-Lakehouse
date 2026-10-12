@@ -97,13 +97,17 @@ class ComputeSettings:
     @property
     def preferred_cluster(self) -> ExistingCluster:
         if self.preferred is None:
-            raise ValueError("This environment uses serverless compute and has no preferred cluster.")
+            raise ValueError(
+                "This environment uses serverless compute and has no preferred cluster."
+            )
         return self.clusters[self.preferred]
 
     @property
     def fallback_cluster(self) -> ExistingCluster:
         if self.fallback is None:
-            raise ValueError("This environment uses serverless compute and has no fallback cluster.")
+            raise ValueError(
+                "This environment uses serverless compute and has no fallback cluster."
+            )
         return self.clusters[self.fallback]
 
     @property

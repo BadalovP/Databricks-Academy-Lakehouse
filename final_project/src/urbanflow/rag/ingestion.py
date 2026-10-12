@@ -43,7 +43,9 @@ def discover_files(inputs: Iterable[str | Path]) -> list[Path]:
         path = Path(item)
         if path.is_dir():
             discovered.update(
-                child for child in path.rglob("*") if child.is_file() and child.suffix.lower() in _SUPPORTED
+                child
+                for child in path.rglob("*")
+                if child.is_file() and child.suffix.lower() in _SUPPORTED
             )
         elif path.is_file() and path.suffix.lower() in _SUPPORTED:
             discovered.add(path)
@@ -136,4 +138,3 @@ def _title_for(path: Path, sections: tuple[Section, ...]) -> str:
     if sections and sections[0].heading not in {"Introduction", "Document"}:
         return sections[0].heading
     return path.stem.replace("_", " ").replace("-", " ").title()
-

@@ -36,4 +36,3 @@ def select_statement(source: FederationSource) -> str:
         "SELECT maintenance_id, station_id, status, severity, updated_at "
         f"FROM {source.qualified_table}"
     )
-

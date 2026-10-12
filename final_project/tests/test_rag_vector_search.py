@@ -58,4 +58,3 @@ def test_ensure_creates_only_when_allowed() -> None:
 def test_sync_refuses_by_default() -> None:
     with pytest.raises(PermissionError):
         VectorSearchManager(MissingClient()).sync(_spec())
-

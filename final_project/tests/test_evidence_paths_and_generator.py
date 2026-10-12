@@ -335,7 +335,11 @@ def test_jobs_supply_the_platform_run_id_to_every_evidence_writing_task() -> Non
     # Job parameters reach every task; no task may shadow the platform id with its own value.
     for task in job["tasks"]:
         parameters = (task.get("notebook_task") or {}).get("base_parameters") or {}
-        assert "run_attempt_id" not in parameters, task["task_key"]
+        if "run_attempt_id" in parameters:
+            assert parameters["run_attempt_id"] == "{{job.parameters.run_attempt_id}}", task[
+                "task_key"
+            ]
+
 
 # --- the Lakeflow isolation guard ------------------------------------------------
 
@@ -368,11 +372,14 @@ def test_the_lakeflow_schema_is_a_personal_urbanflow_schema() -> None:
     for name, target in bundle["targets"].items():
         overrides = target["variables"]
         # The shared Academy catalog needs the owner prefix; the personal catalog does not.
-        prefix = "urbanflow_final" if overrides["catalog"] == "workspace" else (
-            "parvinbadalov_urbanflow_final"
+        prefix = (
+            "urbanflow_final"
+            if overrides["catalog"] == "workspace"
+            else ("parvinbadalov_urbanflow_final")
         )
         for key in ("schema", "lakeflow_schema"):
             assert overrides[key].startswith(prefix), (name, overrides[key])
+
 
 # --- the small-file generator ----------------------------------------------------
 

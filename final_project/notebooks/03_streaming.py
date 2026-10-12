@@ -37,7 +37,7 @@
 # MAGIC
 # MAGIC **Expected result:** "Run all" fails here with an explanatory message, and no later cell executes.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "The old consumer is kept for comparison, but it refuses to run unless someone deliberately acknowledges that it shares a checkpoint with the current notebook."
+# MAGIC **How to explain it:** "The old consumer is kept for comparison, but it refuses to run unless someone deliberately acknowledges that it shares a checkpoint with the current notebook."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** The guard itself costs nothing and contacts no cloud service. Leaving it at the default is the cheapest and safest outcome, because it prevents an unnecessary Event Hubs read on shared academy compute.
 # MAGIC
@@ -73,7 +73,7 @@ if dbutils.widgets.get("acknowledge_superseded").lower() != "true":
 # MAGIC
 # MAGIC **Expected result:** The cell prints only non-secret namespace, hub, and consumer-group names.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** “Configuration identifies the approved resource, while credentials stay in the secret manager.”
+# MAGIC **How to explain it:** “Configuration identifies the approved resource, while credentials stay in the secret manager.”
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Local file reads only. No Event Hubs messages are consumed.
 
@@ -121,7 +121,7 @@ print(
 # MAGIC
 # MAGIC **Expected result:** The default gate is false and the notebook remains a dry run.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** “A normal notebook run cannot silently start the stream; the operator must name the approved secret scope and opt in.”
+# MAGIC **How to explain it:** “A normal notebook run cannot silently start the stream; the operator must name the approved secret scope and opt in.”
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Widget operations are safe. Do not enable the stream before the combined Azure approval.
 
@@ -153,7 +153,7 @@ print(f"run_stream={run_stream}; target_table={target_table}; checkpoint={checkp
 # MAGIC
 # MAGIC **Expected result:** Dry runs print a gate message. Approved runs confirm retrieval without printing the secret.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** “The code references a secret by name; the credential never enters Git or notebook output.”
+# MAGIC **How to explain it:** “The code references a secret by name; the credential never enters Git or notebook output.”
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Secret lookup is read-only. Enabling the gate prepares a real Event Hubs connection and requires prior approval.
 
@@ -188,7 +188,7 @@ else:
 # MAGIC
 # MAGIC **Expected result:** Approved runs show `isStreaming=True` and the Bronze schema; dry runs skip construction.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** “An Event Hub behaves like a Kafka topic. Spark records partition and offset so each consumed message has traceable broker lineage.”
+# MAGIC **How to explain it:** “An Event Hub behaves like a Kafka topic. Spark records partition and offset so each consumed message has traceable broker lineage.”
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Constructing the plan does not start the stream. The connection string is never displayed.
 
@@ -227,7 +227,7 @@ else:
 # MAGIC
 # MAGIC **Expected result:** With approval, the query stops after available data is consumed. With the default gate, no query starts.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** “The checkpoint remembers Kafka offsets; `availableNow` gives us a finite demonstration instead of leaving costly compute running.”
+# MAGIC **How to explain it:** “The checkpoint remembers Kafka offsets; `availableNow` gives us a finite demonstration instead of leaving costly compute running.”
 # MAGIC
 # MAGIC **Rerun and cost considerations:** This is the billable step. Run only after approval; monitor until completion and stop the compute afterward.
 
@@ -262,7 +262,7 @@ else:
 # MAGIC
 # MAGIC **Expected result:** An approved run reports batch ID and row/rate metrics; credentials are absent.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** “We validate both data and operational behavior, while deliberately excluding security configuration from logs.”
+# MAGIC **How to explain it:** “We validate both data and operational behavior, while deliberately excluding security configuration from logs.”
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Reading query metadata is free once the query exists. It never restarts the stream.
 

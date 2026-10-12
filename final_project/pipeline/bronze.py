@@ -5,9 +5,7 @@ from pyspark import pipelines as dp
 
 @dp.table(
     name="bronze_station_status",
-    comment=(
-        "Pipeline-owned streaming copy of Final Project Bronze station observations."
-    ),
+    comment=("Pipeline-owned streaming copy of Final Project Bronze station observations."),
     table_properties={"quality": "bronze", "project": "urbanflow_final_project"},
 )
 def bronze_station_status():

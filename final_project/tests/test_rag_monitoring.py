@@ -15,4 +15,3 @@ def test_monitoring_event_excludes_raw_text() -> None:
     assert "raw answer" not in serialized
     assert "sensitive context" not in serialized
     assert payload["retrieved_chunk_ids"] == ("c1",)
-

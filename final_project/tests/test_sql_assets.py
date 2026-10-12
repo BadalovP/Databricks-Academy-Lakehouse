@@ -139,11 +139,12 @@ def test_historical_and_weather_queries_keep_execution_scopes_separate() -> None
 
 def test_weather_notebook_selects_one_historical_execution() -> None:
     notebook = (PROJECT_ROOT / "notebooks" / "07_weather_enrichment.py").read_text(encoding="utf-8")
-    jobs = (PROJECT_ROOT / "resources" / "jobs.yml").read_text(encoding="utf-8")
+    jobs = (PROJECT_ROOT / "resources" / "urbanflow_final.job.yml").read_text(encoding="utf-8")
 
     assert 'dbutils.widgets.text("source_execution_id", "")' in notebook
     assert 'F.col("execution_id") == F.lit(source_execution_id)' in notebook
-    assert 'source_execution_id: "{{job.parameters.source_execution_id}}"' in jobs
+    # The platform Job selects trips by the historical execution, never the station execution.
+    assert 'historical_execution_id: "{{job.parameters.historical_execution_id}}"' in jobs
 
 
 def test_the_quality_section_checks_the_reconciliation_identity() -> None:

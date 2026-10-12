@@ -13,7 +13,9 @@ def test_dev_config_is_safe_and_isolated() -> None:
     assert config.azure.expected_databricks_host == "https://dbc-1750318a-76a9.cloud.databricks.com"
     assert config.azure.catalog == "workspace"
     assert config.azure.schema == "urbanflow_final_dev"
-    assert config.azure.volume_root == "/Volumes/workspace/urbanflow_final_dev/urbanflow_final_landing"
+    assert (
+        config.azure.volume_root == "/Volumes/workspace/urbanflow_final_dev/urbanflow_final_landing"
+    )
     assert config.sources.gbfs_discovery_url == "https://gbfs.citibikenyc.com/gbfs/2.3/gbfs.json"
     assert config.compute.mode == "serverless"
     assert config.compute.clusters == {}
@@ -33,7 +35,10 @@ def test_dev_config_is_safe_and_isolated() -> None:
 
 def test_prod_config_uses_an_owner_prefixed_schema_in_the_shared_catalog() -> None:
     config = load_config(Path(__file__).resolve().parents[1] / "config" / "azure.yml")
-    assert config.azure.expected_databricks_host == "https://adb-7405618361895520.0.azuredatabricks.net"
+    assert (
+        config.azure.expected_databricks_host
+        == "https://adb-7405618361895520.0.azuredatabricks.net"
+    )
     assert config.azure.catalog == "dbr_dev"
     assert config.azure.schema == "parvinbadalov_urbanflow_final_prod"
     assert config.azure.volume_root.startswith("/Volumes/dbr_dev/parvinbadalov_urbanflow_final_")

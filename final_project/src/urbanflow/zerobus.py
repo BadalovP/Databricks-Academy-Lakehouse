@@ -124,4 +124,3 @@ def canonical_deliveries(rows: Iterable[Mapping[str, object]]) -> dict[str, dict
         first = min(deliveries, key=lambda row: (row["produced_at_micros"], row["batch_id"]))
         result[event_id] = {**first, "delivery_count": len(deliveries)}
     return result
-

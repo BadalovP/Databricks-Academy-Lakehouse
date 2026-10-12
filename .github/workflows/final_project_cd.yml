@@ -1,0 +1,182 @@
+name: Final Project · UrbanFlow 2.0 release
+
+# Manual only. A release deploys exactly the Final Project bundle to ONE selected target and can
+# run one bounded development-sample platform run. No PAT or long-lived Azure secret is used:
+#   personal_dev - Databricks OAuth M2M of a dedicated service principal (environment secret)
+#   azure_prod   - native Databricks GitHub OIDC (workload identity federation), no secret at all
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Bundle target to release
+        required: true
+        type: choice
+        options: [personal_dev, azure_prod]
+      confirm_release:
+        description: Type RELEASE_URBANFLOW_FINAL_<TARGET> exactly, e.g. RELEASE_URBANFLOW_FINAL_PERSONAL_DEV
+        required: true
+        type: string
+      run_platform:
+        description: After the deployment, run the platform Job once in development-sample mode
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: final-project-release-${{ inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  static-validation:
+    name: Validate release request and repository
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: final_project
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require explicit release confirmation
+        shell: bash
+        env:
+          TARGET: ${{ inputs.target }}
+          CONFIRM_RELEASE: ${{ inputs.confirm_release }}
+        run: |
+          set -euo pipefail
+          expected="RELEASE_URBANFLOW_FINAL_${TARGET^^}"
+          [[ "$CONFIRM_RELEASE" == "$expected" ]] || {
+            echo "::error::confirm_release must equal $expected"
+            exit 1
+          }
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: final_project/pyproject.toml
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Install package and test tools
+        run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
+      - name: Static quality gates
+        run: |
+          set -euo pipefail
+          ruff check .
+          black --check .
+          pytest
+          python scripts/validate_bundle.py
+
+  approve-release:
+    name: Approve the selected target
+    needs: static-validation
+    runs-on: ubuntu-latest
+    environment: final-project-approval
+    steps:
+      - name: Record protected approval
+        run: echo "UrbanFlow 2.0 release to ${{ inputs.target }} approved."
+
+  release:
+    name: Deploy and validate the selected target
+    needs: approve-release
+    runs-on: ubuntu-latest
+    environment: final-project-${{ inputs.target }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      TARGET: ${{ inputs.target }}
+      DATABRICKS_CLIENT_ID: ${{ vars.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+      DATABRICKS_WAREHOUSE_ID: ${{ vars.DATABRICKS_WAREHOUSE_ID }}
+      FORBIDDEN_HOST_DBR_DEV: https://adb-7405604503619901.1.azuredatabricks.net
+      FORBIDDEN_HOST_DBR_DEV_TRIAL: https://adb-7405615123305702.2.azuredatabricks.net
+    defaults:
+      run:
+        working-directory: final_project
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: databricks/setup-cli@main
+        with:
+          version: 1.12.1
+      - name: Select pinned workspace and authentication
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$TARGET" in
+            personal_dev)
+              host="https://dbc-1750318a-76a9.cloud.databricks.com"
+              auth="oauth-m2m"
+              [[ -n "${DATABRICKS_CLIENT_SECRET:-}" ]] || { echo "::error::DATABRICKS_CLIENT_SECRET is required for personal_dev."; exit 1; } ;;
+            azure_prod)
+              host="https://adb-7405618361895520.0.azuredatabricks.net"
+              auth="github-oidc" ;;
+            *) echo "::error::Unknown target $TARGET"; exit 1 ;;
+          esac
+          for forbidden in "$FORBIDDEN_HOST_DBR_DEV" "$FORBIDDEN_HOST_DBR_DEV_TRIAL"; do
+            [[ "$host" != "$forbidden" ]] || { echo "::error::Refusing a shared Academy workspace."; exit 1; }
+          done
+          [[ -n "${DATABRICKS_CLIENT_ID:-}" ]] || { echo "::error::DATABRICKS_CLIENT_ID is required."; exit 1; }
+          [[ -n "${DATABRICKS_WAREHOUSE_ID:-}" ]] || { echo "::error::DATABRICKS_WAREHOUSE_ID is required."; exit 1; }
+          {
+            echo "DATABRICKS_HOST=$host"
+            echo "DATABRICKS_AUTH_TYPE=$auth"
+          } >> "$GITHUB_ENV"
+          if [[ "$auth" == "github-oidc" ]]; then echo "DATABRICKS_CLIENT_SECRET=" >> "$GITHUB_ENV"; fi
+      - name: Verify the deploying identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          databricks current-user me --output json > "$RUNNER_TEMP/identity.json"
+          python -c "import json,sys; u=json.load(open(sys.argv[1])); print('Deploying as', u.get('displayName'), u.get('userName'))" "$RUNNER_TEMP/identity.json"
+      - name: Validate bundle and the pre-deploy plan
+        shell: bash
+        run: |
+          set -euo pipefail
+          databricks bundle validate -t "$TARGET"
+          databricks bundle plan -t "$TARGET" --output json > "$RUNNER_TEMP/pre-plan.json"
+          databricks jobs list --output json > "$RUNNER_TEMP/pre-jobs.json"
+          python scripts/validate_release_plan.py --phase pre --target "$TARGET" --plan "$RUNNER_TEMP/pre-plan.json" --jobs "$RUNNER_TEMP/pre-jobs.json"
+      - name: Deploy the Final Project bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          databricks bundle deploy -t "$TARGET" --auto-approve --fail-on-active-runs
+      - name: Require an unchanged post-deploy plan
+        id: deployed
+        shell: bash
+        run: |
+          set -euo pipefail
+          databricks bundle plan -t "$TARGET" --output json > "$RUNNER_TEMP/post-plan.json"
+          python scripts/validate_release_plan.py --phase post --target "$TARGET" --plan "$RUNNER_TEMP/post-plan.json" > "$RUNNER_TEMP/post-result.json"
+          cat "$RUNNER_TEMP/post-result.json"
+          job_id=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["job_ids"]["urbanflow_final_platform"])' "$RUNNER_TEMP/post-result.json")
+          echo "job_id=$job_id" >> "$GITHUB_OUTPUT"
+      - name: Run the platform Job once in development-sample mode
+        if: inputs.run_platform == true
+        shell: bash
+        env:
+          JOB_ID: ${{ steps.deployed.outputs.job_id }}
+        run: |
+          set -euo pipefail
+          token="urbanflow-final-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          python -c 'import json,sys; json.dump({"job_id": int(sys.argv[1]), "idempotency_token": sys.argv[2], "job_parameters": {"run_station_pipeline": "true", "run_historical": "true", "run_weather": "true"}}, open(sys.argv[3], "w"))' "$JOB_ID" "$token" "$RUNNER_TEMP/run-request.json"
+          databricks jobs run-now --json @"$RUNNER_TEMP/run-request.json" --no-wait --output json > "$RUNNER_TEMP/submitted.json"
+          run_id=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["run_id"])' "$RUNNER_TEMP/submitted.json")
+          terminal=false
+          # 160 polls x 15 s = 40 minutes, longer than the bounded sample run needs.
+          for _ in $(seq 1 160); do
+            databricks jobs get-run "$run_id" --output json > "$RUNNER_TEMP/run.json"
+            lifecycle=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["state"]["life_cycle_state"])' "$RUNNER_TEMP/run.json")
+            if [[ "$lifecycle" =~ ^(TERMINATED|SKIPPED|INTERNAL_ERROR)$ ]]; then terminal=true; break; fi
+            sleep 15
+          done
+          [[ "$terminal" == "true" ]] || { echo "::error::Run $run_id did not finish in time."; exit 1; }
+          final_run_id=$(python -c 'import json,sys; d=json.load(open(sys.argv[1])); print(next(t["run_id"] for t in d["tasks"] if t["task_key"]=="validate_medallion"))' "$RUNNER_TEMP/run.json")
+          databricks jobs get-run-output "$final_run_id" --output json > "$RUNNER_TEMP/final-output.json"
+          python scripts/validate_job_run.py --run "$RUNNER_TEMP/run.json" --job-id "$JOB_ID" --final-output "$RUNNER_TEMP/final-output.json"

@@ -66,7 +66,10 @@ def _split_text(text: str, config: ChunkingConfig) -> list[str]:
         end = hard_end
         if hard_end < len(text):
             boundary_floor = start + max(config.min_chunk_chars, config.max_chars // 2)
-            candidates = [text.rfind("\n\n", boundary_floor, hard_end), text.rfind(". ", boundary_floor, hard_end)]
+            candidates = [
+                text.rfind("\n\n", boundary_floor, hard_end),
+                text.rfind(". ", boundary_floor, hard_end),
+            ]
             boundary = max(candidates)
             if boundary >= boundary_floor:
                 end = boundary + (1 if text[boundary] == "." else 0)
@@ -88,4 +91,3 @@ def _split_text(text: str, config: ChunkingConfig) -> list[str]:
 def _slug(value: str) -> str:
     slug = "".join(character.lower() if character.isalnum() else "-" for character in value)
     return "-".join(part for part in slug.split("-") if part) or "section"
-

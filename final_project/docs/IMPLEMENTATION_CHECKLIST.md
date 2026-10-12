@@ -41,6 +41,17 @@ Working log for finishing the Final Project from the Codex handoff. Worktree:
 - [ ] I. Live validation (only after explicit approval), evidence
 - [ ] J. PR, CI green, review
 
+## Findings to resolve (stage E/F)
+
+- The copied notebooks gated on GP1/GP2 cluster IDs and would fail on serverless: replaced by
+  `automation.assert_serverless_compute` (refuses any classic cluster, accepts serverless).
+- Codex's Job had no `base_parameters`, so tasks would ignore Job parameters (Silver/Gold would
+  silently skip): restore the task-to-Job parameter mapping.
+- Sample mode in preflight/validation is pinned to Demo 3 execution IDs, and the station path
+  assumes Bronze rows Demo 3 landed via Event Hubs. A fresh Final Project environment needs its
+  own bounded ingestion task: sample snapshot -> Volume -> Auto Loader (DEV) or Event Hubs (Azure),
+  plus landing of the trip sample for the historical path.
+
 ## Progress log
 
 - 2026-10-12: handoff inspected, checkpoint commit `e2af127`, `.gitignore` added, venv created, baseline test run recorded.

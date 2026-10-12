@@ -145,4 +145,3 @@ def _change_order(change_type: ChangeType) -> int:
         ChangeType.INSERT: 2,
         ChangeType.UPDATE_POSTIMAGE: 3,
     }[change_type]
-

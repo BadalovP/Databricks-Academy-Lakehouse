@@ -8,8 +8,8 @@ created by MERGEing successive read-only snapshots into a Final Project-owned De
 
 # COMMAND ----------
 
-from pathlib import Path
 import sys
+from pathlib import Path
 
 PROJECT_ROOT = Path.cwd().parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
@@ -233,8 +233,9 @@ if current_version > checkpoint:
 
 # COMMAND ----------
 
-reconciliation = spark.sql(  # noqa: F821
-    f"""
+reconciliation = (
+    spark.sql(  # noqa: F821
+        f"""
     SELECT
       (SELECT COUNT(*) FROM urbanflow_final_foreign_maintenance) AS source_count,
       (SELECT COUNT(*) FROM {target_table}) AS target_count,
@@ -244,7 +245,10 @@ reconciliation = spark.sql(  # noqa: F821
        LEFT ANTI JOIN urbanflow_final_foreign_maintenance source USING (maintenance_id))
         AS unexpected_in_target
     """
-).first().asDict()
+    )
+    .first()
+    .asDict()
+)
 if reconciliation["source_count"] != reconciliation["target_count"] or any(
     reconciliation[name] for name in ("missing_in_target", "unexpected_in_target")
 ):
@@ -260,4 +264,3 @@ print(
         **reconciliation,
     }
 )
-

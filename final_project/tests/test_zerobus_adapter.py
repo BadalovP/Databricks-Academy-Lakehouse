@@ -26,16 +26,15 @@ def test_health_generation_is_stable_and_clearly_synthetic() -> None:
 def test_replay_has_same_ids_and_silver_is_idempotent() -> None:
     events = generate_health_events(run_id="offline-002", station_ids=["station-a"])
     replay = replay_plan(events, 2)
-    primary_rows = [
-        event.record(batch_id="primary", produced_at_micros=10) for event in events
-    ]
+    primary_rows = [event.record(batch_id="primary", produced_at_micros=10) for event in events]
     replay_rows = [event.record(batch_id="replay", produced_at_micros=20) for event in replay]
     silver = canonical_deliveries([*primary_rows, *replay_rows])
     assert set(silver) == {event.event_id for event in events}
-    assert sum(row["delivery_count"] for row in silver.values()) == len(primary_rows) + len(replay_rows)
+    assert sum(row["delivery_count"] for row in silver.values()) == len(primary_rows) + len(
+        replay_rows
+    )
 
 
 def test_replay_count_cannot_exceed_event_count() -> None:
     with pytest.raises(ValueError):
         replay_plan([], 1)
-

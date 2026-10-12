@@ -14,12 +14,18 @@ from urbanflow.rag.evaluation import (
 from urbanflow.rag.models import RagAnswer, SearchResult
 
 ANSWERABLE = EvaluationCase(
-    "q01", "What evidence?", "answerable", ("01_batch_job_recovery.md",),
+    "q01",
+    "What evidence?",
+    "answerable",
+    ("01_batch_job_recovery.md",),
     ("run id", "failure timestamp", "last successful task"),
 )
 AMBIGUOUS = EvaluationCase(
-    "q13", "Resize or roll back?", "ambiguous",
-    ("03_sql_performance.md", "06_change_management.md"), ("query profile", "validation", "approval"),
+    "q13",
+    "Resize or roll back?",
+    "ambiguous",
+    ("03_sql_performance.md", "06_change_management.md"),
+    ("query profile", "validation", "approval"),
 )
 UNANSWERABLE = EvaluationCase("q14", "DBA phone number?", "unanswerable", (), ())
 
@@ -43,15 +49,24 @@ def _answer(text: str, sources=SOURCES, error=None) -> RagAnswer:
 @pytest.mark.parametrize(
     "text, expected",
     [
-        ("I’m sorry, but the available documents do not contain enough information to answer that.",
-         "clean"),
-        ("The available documents do not contain enough information to answer this question.", "clean"),
+        (
+            "I’m sorry, but the available documents do not contain enough information to answer that.",
+            "clean",
+        ),
+        (
+            "The available documents do not contain enough information to answer this question.",
+            "clean",
+        ),
         ("I can’t help with that.", "clean"),
         ("The provided context does not specify a namespace.", "clean"),
-        ("The runbooks don’t mention a phone number. Escalate through the incident channel [1].",
-         "with_extra_content"),
-        ("The documents do not contain this information. The namespace is atlas-prod-east.",
-         "with_specific_claims"),
+        (
+            "The runbooks don’t mention a phone number. Escalate through the incident channel [1].",
+            "with_extra_content",
+        ),
+        (
+            "The documents do not contain this information. The namespace is atlas-prod-east.",
+            "with_specific_claims",
+        ),
         ("The documents do not list it, but try 555-0100.", "with_specific_claims"),
         ("The DBA phone number is 555-0100.", "none"),
         ("The replay does not include production tables; use an isolated checkpoint [1].", "none"),
@@ -63,7 +78,9 @@ def test_refusal_classification(text: str, expected: str) -> None:
 
 
 def test_paraphrased_refusal_is_correct_for_unanswerable_questions() -> None:
-    text = "I’m sorry, but the available documents do not contain enough information to answer that."
+    text = (
+        "I’m sorry, but the available documents do not contain enough information to answer that."
+    )
     score = score_answer(UNANSWERABLE, _answer(text, sources=()), "live-baseline")
     assert score.answer_correctness == 1.0 and score.refusal == "clean"
 

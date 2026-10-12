@@ -20,7 +20,4 @@ def test_federation_identifiers_fail_closed() -> None:
 
 def test_federation_contract_lists_missing_columns() -> None:
     with pytest.raises(ValueError, match="severity"):
-        validate_maintenance_columns(
-            {"maintenance_id", "station_id", "status", "updated_at"}
-        )
-
+        validate_maintenance_columns({"maintenance_id", "station_id", "status", "updated_at"})

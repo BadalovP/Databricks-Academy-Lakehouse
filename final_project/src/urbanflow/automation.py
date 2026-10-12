@@ -5,7 +5,7 @@ from __future__ import annotations
 import base64
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from urbanflow.config import ComputeSettings, ExistingCluster, normalize_host
 from urbanflow.monitoring import PollResult, poll_state, state_name
@@ -175,6 +175,32 @@ def assess_existing_cluster(
         ready=ready,
         reasons=tuple(reasons),
     )
+
+
+def classic_cluster_id(conf_get: Callable[[str], Any]) -> str:
+    """Return the classic cluster ID, or "" on serverless compute.
+
+    Serverless compute does not expose the cluster-usage tag (reading it raises or returns
+    nothing), while every classic cluster - including the Academy's shared GP1/GP2 - does.
+    """
+    try:
+        value = conf_get("spark.databricks.clusterUsageTags.clusterId")
+    except Exception:  # serverless: the configuration is not available
+        return ""
+    return str(value or "").strip()
+
+
+def assert_serverless_compute(conf_get: Callable[[str], Any]) -> None:
+    """UrbanFlow 2.0 runs only on serverless compute and never attaches to a classic cluster."""
+    cluster_id = classic_cluster_id(conf_get)
+    if cluster_id:
+        shared = (
+            " (an Academy shared cluster)" if cluster_id in PROTECTED_SHARED_CLUSTER_IDS else ""
+        )
+        raise WorkspaceSafetyError(
+            "UrbanFlow 2.0 runs only on serverless compute; refusing classic cluster "
+            f"{cluster_id!r}{shared}."
+        )
 
 
 def select_ready_existing_cluster(

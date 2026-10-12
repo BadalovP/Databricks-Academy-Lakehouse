@@ -4,15 +4,15 @@
 # MAGIC
 # MAGIC **Business context:** The primary UrbanFlow Job needs one visible gate that proves a bounded, approved mode was selected before any transformation branch starts.
 # MAGIC
-# MAGIC **Prerequisites:** The protected release workflow has verified that GP1 is already `RUNNING`; the bundle passes target parameters into this notebook.
+# MAGIC **Prerequisites:** The Job runs on serverless compute; the bundle passes target parameters into this notebook.
 # MAGIC
-# MAGIC **Learning objectives:** Validate high-level orchestration parameters, enforce sample and monthly path isolation, and refuse any compute other than GP1.
+# MAGIC **Learning objectives:** Validate high-level orchestration parameters, enforce sample and monthly path isolation, and refuse any compute other than serverless.
 # MAGIC
 # MAGIC **Academy labs:** Labs 8 and 9.
 # MAGIC
 # MAGIC **Safety:** This notebook performs parameter and Spark-context reads only. It never starts compute, reads a data table, publishes Event Hubs messages, or writes data.
 # MAGIC
-# MAGIC **Actual validation:** On 2026-10-03 it returned `PASS` in sample mode for unified runs `4222809815373` and `284335864579341`, and in full-month mode for run `96337578882467`.
+# MAGIC **Actual validation:** In the Final Project this notebook has not been run yet; offline tests cover its logic. Its Demo 3 predecessor ran live on 2026-10-03 - that is Demo 3 evidence, not Final Project evidence.
 
 # COMMAND ----------
 
@@ -31,20 +31,28 @@
 # MAGIC
 # MAGIC **Expected result:** Every boolean is exactly `true` or `false` and every identifier is visible in the run inputs.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "The release declares what it will process before any branch can touch a table."
+# MAGIC **How to explain it:** "The release declares what it will process before any branch can touch a table."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Widget reads are repeatable and do not trigger a Spark action.
 
 # COMMAND ----------
 
 import json
+import sys
+from pathlib import Path
 
-GP1_CLUSTER_ID = "0702-132442-toro5spu"
-SAMPLE_HISTORICAL_ID = "urbanflow-hist-devsample40-20261002T0010Z"
-SAMPLE_WEATHER_ID = "urbanflow-weather-devsample48h-20261002T0015Z"
+try:
+    NOTEBOOK_DIR = Path(__file__).resolve().parent
+except NameError:
+    NOTEBOOK_DIR = Path.cwd()
+sys.path.insert(0, str(NOTEBOOK_DIR.parent / "src"))
+
+from urbanflow.automation import assert_serverless_compute
+from urbanflow.landing import SAMPLE_HISTORICAL_ID, SAMPLE_WEATHER_ID, validate_station_source
 
 boolean_names = ("run_station_pipeline", "run_historical", "run_weather", "run_full_month")
 text_names = (
+    "station_source",
     "source_execution_id",
     "historical_execution_id",
     "historical_landing_subdir",
@@ -67,7 +75,7 @@ values = {name: dbutils.widgets.get(name).strip() for name in text_names}
 # MAGIC %md
 # MAGIC ## Step 2 - Enforce compute and mode isolation
 # MAGIC
-# MAGIC **What:** Require GP1, validate target identifiers, and keep sample and full-month parameters in separate namespaces.
+# MAGIC **What:** Require serverless compute, validate target identifiers, and keep sample and full-month parameters in separate namespaces.
 # MAGIC
 # MAGIC **Why:** A Job attached to a different cluster or a monthly run pointed at the sample checkpoint could create cost or silently skip data.
 # MAGIC
@@ -79,15 +87,13 @@ values = {name: dbutils.widgets.get(name).strip() for name in text_names}
 # MAGIC
 # MAGIC **Expected result:** Sample mode selects the committed 40-row and 48-hour assets; monthly mode selects `202401-full` and new execution IDs.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "The same Job supports two modes, but the preflight prevents their checkpoints and lineage IDs from ever being mixed."
+# MAGIC **How to explain it:** "The same Job supports two modes, but the preflight prevents their checkpoints and lineage IDs from ever being mixed."
 # MAGIC
-# MAGIC **Rerun and cost considerations:** Reading the cluster tag is metadata-only; this notebook never changes GP1 lifecycle.
+# MAGIC **Rerun and cost considerations:** Reading the cluster tag is metadata-only; this notebook never starts or changes any cluster.
 
 # COMMAND ----------
 
-cluster_id = spark.conf.get("spark.databricks.clusterUsageTags.clusterId", "")
-if cluster_id != GP1_CLUSTER_ID:
-    raise RuntimeError(f"Unified UrbanFlow must run on GP1 {GP1_CLUSTER_ID}, found {cluster_id!r}.")
+assert_serverless_compute(spark.conf.get)
 if not any(flags[name] for name in ("run_station_pipeline", "run_historical", "run_weather")):
     raise ValueError("At least one UrbanFlow processing branch must be enabled.")
 if flags["run_weather"] and not flags["run_historical"]:
@@ -95,8 +101,8 @@ if flags["run_weather"] and not flags["run_historical"]:
 for name in ("catalog", "schema", "volume"):
     if not values[name].isidentifier():
         raise ValueError(f"{name} {values[name]!r} is not a plain identifier.")
-if flags["run_station_pipeline"] and not values["source_execution_id"]:
-    raise ValueError("The station branch requires a Bronze source_execution_id.")
+if flags["run_station_pipeline"]:
+    validate_station_source(values["station_source"], values["source_execution_id"])
 if flags["run_full_month"]:
     if not flags["run_historical"] or values["historical_landing_subdir"] != "202401-full":
         raise ValueError("Full-month mode requires historical ingestion from 202401-full.")
@@ -130,9 +136,9 @@ elif flags["run_weather"] and (
 # MAGIC
 # MAGIC **Key concepts:** Auditable orchestration, lineage, secret-free evidence.
 # MAGIC
-# MAGIC **Expected result:** `status` is `PASS`, cluster is GP1 and `event_hubs_producer` is `excluded`.
+# MAGIC **Expected result:** `status` is `PASS`, compute is `serverless` and `event_hubs_producer` is `excluded`.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "The first task leaves a small receipt for the exact safe mode the workflow approved."
+# MAGIC **How to explain it:** "The first task leaves a small receipt for the exact safe mode the workflow approved."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Returning JSON is deterministic and does not persist a table or file.
 
@@ -140,7 +146,7 @@ elif flags["run_weather"] and (
 
 report = {
     "status": "PASS",
-    "cluster_id": cluster_id,
+    "compute": "serverless",
     "mode": "full_month" if flags["run_full_month"] else "development_sample",
     "branches": flags,
     "source_execution_id": values["source_execution_id"],
@@ -157,11 +163,11 @@ dbutils.notebook.exit(json.dumps(report, sort_keys=True))
 # MAGIC %md
 # MAGIC ## What we learned
 # MAGIC
-# MAGIC A multi-task Job is safer when its first task validates the operator's intent as data. The checks make sample and monthly lineage mutually exclusive, require GP1 explicitly, and record that Event Hubs publishing is outside this DAG.
+# MAGIC A multi-task Job is safer when its first task validates the operator's intent as data. The checks make sample and monthly lineage mutually exclusive, require serverless compute explicitly, and record that Event Hubs publishing is outside this DAG.
 # MAGIC
 # MAGIC **Common errors:** Reusing the sample checkpoint for a monthly archive, selecting weather without its historical source, or treating a protected cluster ID as permission to start that cluster.
 # MAGIC
-# MAGIC **Troubleshooting:** If preflight fails, compare the Job parameters with the selected mode. If GP1 is not already running, stop the release and wait for its owner; never start it from UrbanFlow.
+# MAGIC **Troubleshooting:** If preflight fails, compare the Job parameters with the selected mode. If it reports a classic cluster, the task was attached to the wrong compute: redeploy the bundle so the task uses its serverless environment.
 # MAGIC
 # MAGIC **Review questions:** Why is a new execution ID required for the monthly archive? Why does weather depend on historical ingestion? Where is the Event Hubs producer excluded?
 # MAGIC

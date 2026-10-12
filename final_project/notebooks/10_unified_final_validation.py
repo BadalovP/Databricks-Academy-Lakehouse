@@ -12,7 +12,7 @@
 # MAGIC
 # MAGIC **Safety:** Every operation in this notebook is a read-only `SELECT` or aggregate. It creates no tables, views, files, checkpoints or compute.
 # MAGIC
-# MAGIC **Actual validation:** On 2026-10-03 it returned `PASS` for sample runs `4222809815373` and `284335864579341` with identical checks, and for full-month run `96337578882467`. Its first execution, in run `295677984549301`, failed closed and exposed the shared historical Bronze table.
+# MAGIC **Actual validation:** In the Final Project this notebook has not been run yet; offline tests cover its logic. Its Demo 3 predecessor ran live on 2026-10-03 - that is Demo 3 evidence, not Final Project evidence.
 
 # COMMAND ----------
 
@@ -31,7 +31,7 @@
 # MAGIC
 # MAGIC **Expected result:** The import succeeds; nothing is read.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "The checker asks the loader where it put the data instead of guessing."
+# MAGIC **How to explain it:** "The checker asks the loader where it put the data instead of guessing."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** A path change and an import; free.
 
@@ -61,7 +61,7 @@ sys.path.insert(0, str(NOTEBOOK_DIR.parent / "src"))
 # MAGIC
 # MAGIC **Expected result:** All identifiers are non-empty and target names are plain identifiers.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "The validator uses the same lineage parameters as the writers, so it cannot accidentally certify a different run."
+# MAGIC **How to explain it:** "The validator uses the same lineage parameters as the writers, so it cannot accidentally certify a different run."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Parameter parsing is free and deterministic.
 # COMMAND ----------
@@ -70,9 +70,13 @@ import json
 from pyspark.sql import functions as F
 
 from urbanflow.historical import historical_bronze_table  # noqa: E402
+from urbanflow.landing import STATION_LAYER_TABLES, expected_sample_profile, station_expectations
+
+STATUS_SAMPLE = NOTEBOOK_DIR.parent / "fixtures" / "samples" / "station_status.sample.json"
 
 boolean_names = ("run_station_pipeline", "run_historical", "run_weather", "run_full_month")
 text_names = (
+    "station_source",
     "source_execution_id",
     "historical_execution_id",
     "historical_landing_subdir",
@@ -110,7 +114,7 @@ metrics = {}
 # MAGIC
 # MAGIC **Expected result:** Missing tables fail immediately, while measured contract failures accumulate for the terminal report.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "Every table check goes through the same lineage filter and evidence recorder."
+# MAGIC **How to explain it:** "Every table check goes through the same lineage filter and evidence recorder."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Defining functions is free and has no data side effect.
 
@@ -147,7 +151,7 @@ def scoped(name, execution_id):
 # MAGIC
 # MAGIC **Expected result:** 2,520 Bronze/Silver/fact rows and 657 shortage/priority rows, with unique business keys.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "The same 2,520 events survive to the fact table, while exactly 657 actionable stations enter both operational lists."
+# MAGIC **How to explain it:** "The same 2,520 events survive to the fact table, while exactly 657 actionable stations enter both operational lists."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Aggregates are bounded to one station execution and do not write evidence files.
 
@@ -156,20 +160,17 @@ def scoped(name, execution_id):
 if flags["run_station_pipeline"]:
     station_id = values["source_execution_id"]
     station_frames = {
-        "bronze": scoped("bronze_station_status", station_id),
-        "silver": scoped("silver_station_status", station_id),
-        "fact": scoped("fact_station_availability", station_id),
-        "shortage": scoped("gold_station_shortage", station_id),
-        "priority": scoped("gold_rebalancing_priority", station_id),
-    }
-    expected_counts = {
-        "bronze": 2520,
-        "silver": 2520,
-        "fact": 2520,
-        "shortage": 657,
-        "priority": 657,
+        name: scoped(table, station_id) for name, table in STATION_LAYER_TABLES.items()
     }
     station_counts = {name: frame.count() for name, frame in station_frames.items()}
+    is_sample = values["station_source"] == "sample_autoloader"
+    # Sample: the pure-Python reference over the same snapshot. Event Hubs: layers reconcile.
+    profile = (
+        expected_sample_profile(json.loads(STATUS_SAMPLE.read_text("utf-8"))) if is_sample else None
+    )
+    expected_counts = station_expectations(values["station_source"], station_counts, profile)
+    if not is_sample:
+        require("station_bronze_nonempty", station_counts["bronze"] > 0, station_counts["bronze"])
     for name, expected in expected_counts.items():
         require(f"station_{name}_rows", station_counts[name] == expected, station_counts[name])
     for name in ("bronze", "silver", "fact", "shortage"):
@@ -201,7 +202,7 @@ if flags["run_station_pipeline"]:
 # MAGIC
 # MAGIC **Expected result:** 1,774 available, 278 low bikes, 374 low docks, 5 low both and 89 out of service; Gold contains zero out-of-service actions.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "We validate the meaning of the 657 rows, not only the number."
+# MAGIC **How to explain it:** "We validate the meaning of the 657 rows, not only the number."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Grouped counts and null filters are read-only and execution bounded where possible.
 
@@ -210,13 +211,18 @@ if flags["run_station_pipeline"]:
 if flags["run_station_pipeline"]:
     rows = station_frames["silver"].groupBy("availability_status").count().collect()
     composition = {row["availability_status"]: row["count"] for row in rows}
-    expected = {
-        "AVAILABLE": 1774,
-        "LOW_BIKES": 278,
-        "LOW_DOCKS": 374,
-        "LOW_BIKES_AND_DOCKS": 5,
-        "OUT_OF_SERVICE": 89,
-    }
+    if is_sample:
+        expected = profile["composition"]
+    else:
+        actionable = sum(
+            composition.get(s, 0) for s in ("LOW_BIKES", "LOW_DOCKS", "LOW_BIKES_AND_DOCKS")
+        )
+        require(
+            "station_shortage_matches_composition",
+            actionable == station_counts["shortage"],
+            actionable,
+        )
+        expected = composition
     require("station_status_composition", composition == expected, composition)
     for name in ("shortage", "priority"):
         out_of_service = (
@@ -226,12 +232,7 @@ if flags["run_station_pipeline"]:
     for name, frame in station_frames.items():
         null_ids = frame.where(F.col("station_id").isNull()).count()
         require(f"station_{name}_null_station_ids", null_ids == 0, null_ids)
-    for name in (
-        "silver_station_status",
-        "fact_station_availability",
-        "gold_station_shortage",
-        "gold_rebalancing_priority",
-    ):
+    for name in [table for key, table in STATION_LAYER_TABLES.items() if key != "bronze"]:
         unassigned = spark.table(f"{root}.{name}").where(F.col("execution_id").isNull()).count()
         require(f"{name}_unassigned_execution_ids", unassigned == 0, unassigned)
 
@@ -252,7 +253,7 @@ if flags["run_station_pipeline"]:
 # MAGIC
 # MAGIC **Expected result:** Sample mode is 40 valid, zero quarantine, zero duplicate, 40 unique rides, 35 members, 5 casual riders and 17 days.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "The sample has exact expected answers; the monthly mode keeps the identities but measures station drift honestly."
+# MAGIC **How to explain it:** "The sample has exact expected answers; the monthly mode keeps the identities but measures station drift honestly."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** All reads are restricted to one historical execution.
 
@@ -306,7 +307,7 @@ if flags["run_historical"]:
 # MAGIC
 # MAGIC **Expected result:** Sample mode matches all 40 rides, 35 members, 5 casual riders and 17 dates.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "We require the known sample answer and report monthly station drift instead of hiding it."
+# MAGIC **How to explain it:** "We require the known sample answer and report monthly station drift instead of hiding it."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** This is a read-only join bounded to one execution and a small dimension.
 
@@ -354,7 +355,7 @@ if flags["run_historical"]:
 # MAGIC
 # MAGIC **Expected result:** Sample mode has 48 unique complete hours and its demand summary accounts for all 40 trips without fanout.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "Weather can add columns to a ride, but it may never add another copy of the ride."
+# MAGIC **How to explain it:** "Weather can add columns to a ride, but it may never add another copy of the ride."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** The two-day sample or bounded monthly window is read-only.
 
@@ -397,7 +398,7 @@ if flags["run_weather"]:
 # MAGIC
 # MAGIC **Expected result:** The summary accounts for every selected trip exactly once and has no unassigned execution rows.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "The weather result must add up to the trip input, so a duplicated hour cannot inflate demand."
+# MAGIC **How to explain it:** "The weather result must add up to the trip input, so a duplicated hour cannot inflate demand."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** These are read-only aggregates over the selected execution.
 
@@ -435,7 +436,7 @@ if flags["run_weather"]:
 # MAGIC
 # MAGIC **Expected result:** No failures and a result naming the three selected execution IDs.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "The last task is the release acceptance test for the data, not a cosmetic success message."
+# MAGIC **How to explain it:** "The last task is the release acceptance test for the data, not a cosmetic success message."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** The report is returned through the Jobs API and is not persisted as a new object.
 

@@ -47,4 +47,3 @@ def test_citation_and_keyword_metrics() -> None:
 
 def test_summary_empty() -> None:
     assert summarize([]) == {"questions": 0}
-

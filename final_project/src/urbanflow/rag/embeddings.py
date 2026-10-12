@@ -38,4 +38,3 @@ class DeterministicHashEmbedding:
             values[index] += -1.0 if digest[4] % 2 else 1.0
         norm = math.sqrt(sum(value * value for value in values)) or 1.0
         return [value / norm for value in values]
-

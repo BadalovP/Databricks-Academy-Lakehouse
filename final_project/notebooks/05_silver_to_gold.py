@@ -17,7 +17,7 @@
 # MAGIC %md
 # MAGIC ## Step 1 - Import the tested Gold and reporting helpers
 # MAGIC
-# MAGIC **What:** Load JSON, Spark types, Gold transformations, Delta persistence, and the shared cluster allowlist.
+# MAGIC **What:** Load JSON, Spark types, Gold transformations, Delta persistence, and the serverless compute gate.
 # MAGIC
 # MAGIC **Why:** Keeping table grains and scoring rules in tested modules makes the notebook concise and reviewable.
 # MAGIC
@@ -29,7 +29,7 @@
 # MAGIC
 # MAGIC **Expected result:** Imports succeed without reading Silver.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "The presentation notebook calls the same tested functions that the Job uses."
+# MAGIC **How to explain it:** "The presentation notebook calls the same tested functions that the Job uses."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Imports are free and idempotent.
 
@@ -49,7 +49,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 from pyspark.sql import functions as F
 from pyspark.sql import types as T
 
-from urbanflow.automation import APPROVED_RUN_CLUSTER_IDS
+from urbanflow.automation import assert_serverless_compute
 from urbanflow.gold import (
     daily_station_summary,
     persist_gold_outputs,
@@ -82,14 +82,14 @@ from urbanflow.reporting import (
 # MAGIC
 # MAGIC **Expected result:** Only an explicitly approved run continues.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "Silver and Gold share one visible approval gate and one target."
+# MAGIC **How to explain it:** "Silver and Gold share one visible approval gate and one target."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** The dry-run path performs no Spark read or write and never changes cluster state.
 
 # COMMAND ----------
 
 dbutils.widgets.dropdown("run_transform", "false", ["false", "true"])
-dbutils.widgets.text("source_execution_id", "urbanflow-20260929T195132Z-r3")
+dbutils.widgets.text("source_execution_id", "")
 dbutils.widgets.text("catalog", "")
 dbutils.widgets.text("schema", "")
 dbutils.widgets.text("volume", "")
@@ -101,9 +101,7 @@ target_schema = dbutils.widgets.get("schema").strip()
 target_volume = dbutils.widgets.get("volume").strip()
 if not run_transform:
     dbutils.notebook.exit("DRY_RUN: no Silver read and no Gold write occurred.")
-cluster_id = spark.conf.get("spark.databricks.clusterUsageTags.clusterId", "")
-if cluster_id not in APPROVED_RUN_CLUSTER_IDS:
-    raise RuntimeError(f"Cluster {cluster_id!r} is not approved for UrbanFlow.")
+assert_serverless_compute(spark.conf.get)
 
 # COMMAND ----------
 
@@ -122,7 +120,7 @@ if cluster_id not in APPROVED_RUN_CLUSTER_IDS:
 # MAGIC
 # MAGIC **Expected result:** No root or unrelated lab table appears in the map.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "Each Gold product has its own declared grain and stable MERGE key."
+# MAGIC **How to explain it:** "Each Gold product has its own declared grain and stable MERGE key."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Constructing and validating names has no cloud side effect.
 
@@ -170,7 +168,7 @@ report_path = evidence_report_path(
 # MAGIC
 # MAGIC **Expected result:** Exactly 40 reference rows; most of the 2,520 availability facts remain unenriched.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "The sample proves the join design while the left join preserves every real observation."
+# MAGIC **How to explain it:** "The sample proves the join design while the left join preserves every real observation."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** This reads a small synchronized file and creates no network traffic.
 
@@ -215,7 +213,7 @@ if dimension.count() != 40:
 # MAGIC
 # MAGIC **Expected result:** Fact rows equal Silver rows; daily rows report one observation and `is_trend_capable=false`.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "The values are real snapshot analytics, while the trend flag prevents one reading from becoming a fake trend."
+# MAGIC **How to explain it:** "The values are real snapshot analytics, while the trend flag prevents one reading from becoming a fake trend."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** All calculations are bounded to the completed execution and use no streaming source.
 
@@ -256,7 +254,7 @@ print(
 # MAGIC
 # MAGIC **Expected result:** Fact count and daily observation total both equal the Silver count.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "Gold cannot pass by appearance; its lowest and aggregated grains both add back to Silver."
+# MAGIC **How to explain it:** "Gold cannot pass by appearance; its lowest and aggregated grains both add back to Silver."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Count actions scan only the bounded Phase 2 data and stop the task before writes on failure.
 
@@ -284,7 +282,7 @@ if gold_report["status"] != "PASS":
 # MAGIC
 # MAGIC **Expected result:** Repeating the same source execution inserts zero additional rows.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "Every output has a key that matches its grain, from event ID to station and observation date."
+# MAGIC **How to explain it:** "Every output has a key that matches its grain, from event ID to station and observation date."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** These are bounded writes requiring approval; the notebook never uses serverless or Lakeflow compute.
 
@@ -319,7 +317,7 @@ print({"delta_merges": merge_report})
 # MAGIC
 # MAGIC **Expected result:** `legacy_backfill` reports 746 rows attributed on the first corrected run and 0 on any later run; shortages and priorities each report 657 rows with 89 stale rows removed, 0 unassigned rows and status `PASS`.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "We checked the whole table, not just the part we wrote. A row that belonged to no run would have slipped past a narrower check, and that is exactly the row that would have kept a broken station on the repair list."
+# MAGIC **How to explain it:** "We checked the whole table, not just the part we wrote. A row that belonged to no run would have slipped past a narrower check, and that is exactly the row that would have kept a broken station on the repair list."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** These are small counting queries over tables already in memory for this run, and they add no write, no new table and no extra compute.
 
@@ -366,7 +364,7 @@ if verification_failures:
 # MAGIC
 # MAGIC **Expected result:** Status `PASS`, 2,520 fact observations, and an explicit 40-row reference-sample label.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "The report records what is complete, what is sampled, and why one snapshot cannot prove a trend."
+# MAGIC **How to explain it:** "The report records what is complete, what is sampled, and why one snapshot cannot prove a trend."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Each Job run or interactive attempt gets a distinct evidence filename under the same business execution directory.
 
@@ -397,7 +395,7 @@ print({"status": evidence["status"], "report_path": report_path})
 # MAGIC
 # MAGIC Gold now has durable designs for a station development dimension, an availability fact, daily station summaries, shortage indicators, and explainable rebalancing priorities. Left enrichment keeps all real observations even when the 40-row sample cannot name every station.
 # MAGIC
-# MAGIC **Actual validation:** The corrected GP1 runs on 2026-10-02 produced 2,520 availability facts, 657 shortages and 657 priorities, removed 89 stale out-of-service priorities, and repeated with zero new inserts or stale-row removals.
+# MAGIC **Actual validation:** In the Final Project this notebook has not been run yet; offline tests cover its logic. Its Demo 3 predecessor ran live on 2026-10-02 - that is Demo 3 evidence, not Final Project evidence.
 # MAGIC
 # MAGIC **Common errors:** Treating `short_name` as the UUID, dropping unmatched facts with an inner join, describing one snapshot as a trend, or using an aggregate key that does not match its grain.
 # MAGIC

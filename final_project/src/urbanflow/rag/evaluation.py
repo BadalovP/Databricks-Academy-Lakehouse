@@ -61,7 +61,6 @@ class EvaluationScore:
     diagnostics: dict[str, Any] = field(default_factory=dict)
 
 
-
 def load_cases(path: str | Path) -> list[EvaluationCase]:
     payload = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     cases = payload.get("questions", []) if isinstance(payload, dict) else []
@@ -73,7 +72,9 @@ def load_cases(path: str | Path) -> list[EvaluationCase]:
             question=str(item["question"]),
             category=str(item["category"]),
             expected_sources=tuple(item.get("expected_sources", [])),
-            expected_keywords=tuple(str(value).lower() for value in item.get("expected_keywords", [])),
+            expected_keywords=tuple(
+                str(value).lower() for value in item.get("expected_keywords", [])
+            ),
         )
         for item in cases
     ]
@@ -223,9 +224,11 @@ def cited_numbers(text: str) -> set[int]:
 def citation_map(answer: RagAnswer) -> dict[int, str]:
     """Citation number -> section_ref of the retrieved source it points at (or 'INVALID')."""
     return {
-        number: answer.sources[number - 1].section_ref
-        if 1 <= number <= len(answer.sources)
-        else "INVALID"
+        number: (
+            answer.sources[number - 1].section_ref
+            if 1 <= number <= len(answer.sources)
+            else "INVALID"
+        )
         for number in sorted(cited_numbers(answer.answer))
     }
 
@@ -401,10 +404,54 @@ def summarize_by_category(scores: list[EvaluationScore]) -> dict[str, dict[str, 
 
 _STOP = frozenset(
     {
-        "a", "an", "and", "are", "as", "at", "be", "before", "by", "can", "do", "does", "for",
-        "from", "has", "have", "if", "in", "is", "it", "its", "may", "must", "not", "of", "on",
-        "or", "should", "so", "that", "the", "their", "then", "there", "these", "this", "to",
-        "was", "were", "what", "when", "which", "while", "who", "will", "with", "within", "you",
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "be",
+        "before",
+        "by",
+        "can",
+        "do",
+        "does",
+        "for",
+        "from",
+        "has",
+        "have",
+        "if",
+        "in",
+        "is",
+        "it",
+        "its",
+        "may",
+        "must",
+        "not",
+        "of",
+        "on",
+        "or",
+        "should",
+        "so",
+        "that",
+        "the",
+        "their",
+        "then",
+        "there",
+        "these",
+        "this",
+        "to",
+        "was",
+        "were",
+        "what",
+        "when",
+        "which",
+        "while",
+        "who",
+        "will",
+        "with",
+        "within",
+        "you",
         "your",
     }
 )

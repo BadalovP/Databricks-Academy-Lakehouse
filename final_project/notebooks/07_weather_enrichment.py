@@ -4,7 +4,7 @@
 # MAGIC
 # MAGIC **Business context:** Bike-share demand is weather-driven in a way almost nothing else explains: the same station on a mild dry morning and a freezing wet one behaves completely differently. Joining real weather observations to real trip history turns "demand varies" into something an operator can plan around.
 # MAGIC
-# MAGIC **Prerequisites:** The historical trip tables exist from notebook 06, the UrbanFlow schema and Volume exist, GP1 or GP2 is already `RUNNING`, this run has explicit approval, and the cluster can reach the public Open-Meteo archive API.
+# MAGIC **Prerequisites:** The historical trip tables exist from notebook 06, the UrbanFlow schema and Volume exist, the task runs on serverless compute, this run has explicit approval, and the compute can reach the public Open-Meteo archive API.
 # MAGIC
 # MAGIC **Learning objectives:** Retrieve real observations from a public API within an explicit bound, normalise timestamps to an hourly grain, join without losing or multiplying facts, keep a missing reading missing, and state the resolution of the data honestly.
 # MAGIC
@@ -12,7 +12,7 @@
 # MAGIC
 # MAGIC **Safety:** `run_enrichment` defaults to `false`, so the committed default exits before any call or write. The request window is bounded and refused above 62 days. The notebook never starts, stops or resizes a cluster.
 # MAGIC
-# MAGIC **Actual validation:** On 2026-10-02 Job run `472557041765891` used the committed **48-HOUR WEATHER SAMPLE** and the 40-trip development execution on GP1: 40 trips entered and 40 left the join, coverage 0.1, and no external request occurred. On 2026-10-03 unified run `96337578882467` made one Open-Meteo archive request for January 2024: 744 complete hours, 1,886,318 trips in and out of the join, and 1,885,944 with weather.
+# MAGIC **Actual validation:** In the Final Project this notebook has not been run yet; offline tests cover its logic. Its Demo 3 predecessor ran live on 2026-10-02 - that is Demo 3 evidence, not Final Project evidence.
 # MAGIC
 # MAGIC **Two limitations that must be read before any chart from this is shown:** the weather series is ONE COORDINATE for New York City, not per-station weather, and every row carries `weather_grid_label` so that resolution stays visible. And these are COMPARISONS, not predictions: grouping trips by temperature bucket shows that cold wet days have fewer rides, but it models nothing and controls for nothing, not day of week, not holidays, not closures.
 
@@ -33,7 +33,7 @@
 # MAGIC
 # MAGIC **Expected result:** Imports complete without contacting the API.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "The risky parsing has unit tests against a real saved response; the notebook just calls it."
+# MAGIC **How to explain it:** "The risky parsing has unit tests against a real saved response; the notebook just calls it."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Imports are free and change nothing.
 
@@ -52,7 +52,7 @@ except NameError:
 PROJECT_ROOT = NOTEBOOK_DIR.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from urbanflow.automation import APPROVED_RUN_CLUSTER_IDS
+from urbanflow.automation import assert_serverless_compute
 from urbanflow.reporting import (
     evidence_report_path,
     resolve_attempt_id,
@@ -86,9 +86,9 @@ from urbanflow.weather import (
 # MAGIC
 # MAGIC **Key concepts:** Fail-closed defaults, existing-cluster allowlist, bounded external requests, courtesy toward public APIs.
 # MAGIC
-# MAGIC **Expected result:** The committed default exits with `DRY_RUN`; an approved run continues only on GP1 or GP2.
+# MAGIC **Expected result:** The committed default exits with `DRY_RUN`; an approved run continues only on serverless compute.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "Nothing is requested and nothing is written until someone sets one parameter to true."
+# MAGIC **How to explain it:** "Nothing is requested and nothing is written until someone sets one parameter to true."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** The default path makes no network call and no Spark action, so it is free.
 
@@ -115,9 +115,7 @@ source_execution_id = dbutils.widgets.get("historical_execution_id").strip()
 source_execution_id = source_execution_id or dbutils.widgets.get("source_execution_id").strip()
 if not run_enrichment:
     dbutils.notebook.exit("DRY_RUN: no weather was requested and no Delta table was written.")
-cluster_id = spark.conf.get("spark.databricks.clusterUsageTags.clusterId", "")
-if cluster_id not in APPROVED_RUN_CLUSTER_IDS:
-    raise RuntimeError(f"Cluster {cluster_id!r} is not approved for UrbanFlow.")
+assert_serverless_compute(spark.conf.get)
 if not execution_id:
     raise ValueError("execution_id must identify this weather enrichment run.")
 if not source_execution_id:
@@ -140,7 +138,7 @@ if not source_execution_id:
 # MAGIC
 # MAGIC **Expected result:** A 31-day January window is accepted; anything above 62 days is refused in the next step.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "The log shows the exact request we made, so the numbers can be checked against the source."
+# MAGIC **How to explain it:** "The log shows the exact request we made, so the numbers can be checked against the source."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Building the request costs nothing and makes no call.
 
@@ -187,7 +185,7 @@ print({"url": build_archive_url(request), "grid": request.grid_label})
 # MAGIC
 # MAGIC **Expected result:** 24 records per requested day, so 744 for a 31-day January window.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "These are real published observations. Where the source has no reading, we keep the gap rather than filling it in."
+# MAGIC **How to explain it:** "These are real published observations. Where the source has no reading, we keep the gap rather than filling it in."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** The default sample source makes NO external request at all, so a rerun costs only cluster time and cannot burden a public API. The `archive_api` source makes one HTTPS GET, with a 62-day ceiling so a typo in a year cannot become a very large request. Both paths run through the same parser, so choosing the sample does not bypass the validation.
 
@@ -225,7 +223,7 @@ print({"source": weather_source, "hours": coverage["hours"], "coverage": coverag
 # MAGIC
 # MAGIC **Expected result:** `complete` is true for a historical January window, because the archive is settled. Recent dates can legitimately be incomplete.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "We say how much weather we actually got before we show any chart that depends on it."
+# MAGIC **How to explain it:** "We say how much weather we actually got before we show any chart that depends on it."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** This is arithmetic over a list already in memory and costs nothing.
 
@@ -260,7 +258,7 @@ if not coverage["complete"]:
 # MAGIC
 # MAGIC **Expected result:** Every trip survives the join, and trips outside the requested window have null weather and `has_weather` false.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "Each ride is matched to the weather for the hour it started. Rides we have no weather for are kept and labelled."
+# MAGIC **How to explain it:** "Each ride is matched to the weather for the hour it started. Rides we have no weather for are kept and labelled."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** The weather series is at most a few hundred rows, so the join is broadcast-sized.
 
@@ -297,7 +295,7 @@ print({"trip_rows": trip_rows, "enriched_rows": enriched_rows, "matched_rows": m
 # MAGIC
 # MAGIC **Expected result:** `PASS` with `rows_preserved` true, and `weather_coverage` at or near 1.0 for a window covering the archive month.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "We check we still have exactly the same number of rides after adding weather. More rides would mean we had double-counted."
+# MAGIC **How to explain it:** "We check we still have exactly the same number of rides after adding weather. More rides would mean we had double-counted."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** The counts are already computed, so this adds no new scan.
 
@@ -325,7 +323,7 @@ if reconciliation["status"] != "PASS":
 # MAGIC
 # MAGIC **Expected result:** A second identical run inserts zero rows and removes zero stale rows. Trips with no weather appear in the `UNKNOWN` temperature bucket rather than being dropped or counted as cold.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "Running it again gives the same two tables, and a day that stops having rides loses its summary row instead of lingering."
+# MAGIC **How to explain it:** "Running it again gives the same two tables, and a day that stops having rides loses its summary row instead of lingering."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Two bounded MERGE statements on the attached cluster; no serverless or Lakeflow compute.
 
@@ -359,7 +357,7 @@ display(summary.orderBy("trip_date"))
 # MAGIC
 # MAGIC **Expected result:** Status `PASS`, with the grid label and the retrieval timestamp recorded.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "The report records where the weather came from, how complete it was, and what it cannot be used to claim."
+# MAGIC **How to explain it:** "The report records where the weather came from, how complete it was, and what it cannot be used to claim."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** The report is small; each Job run or interactive attempt gets a distinct evidence filename under the same business execution directory.
 

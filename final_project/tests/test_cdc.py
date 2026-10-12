@@ -29,7 +29,12 @@ def test_cdf_handles_insert_update_delete_and_preimage() -> None:
     result = apply_cdf({}, events, checkpoint=-1)
     assert set(result.target) == {"m1"}
     assert result.target["m1"]["status"] == "CLOSED"
-    assert (result.inserted, result.updated, result.deleted, result.ignored_preimages) == (2, 1, 1, 1)
+    assert (result.inserted, result.updated, result.deleted, result.ignored_preimages) == (
+        2,
+        1,
+        1,
+        1,
+    )
     assert result.checkpoint == 3
     assert len({item.change_id for item in result.history}) == len(result.history)
 
@@ -50,4 +55,3 @@ def test_reconciliation_reports_exact_differences() -> None:
     assert result.missing_in_target == ("m1",)
     assert result.unexpected_in_target == ("m2",)
     assert not result.matches
-

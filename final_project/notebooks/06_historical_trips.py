@@ -4,7 +4,7 @@
 # MAGIC
 # MAGIC **Business context:** The availability tables hold one real snapshot, which can never show a trend. Official Citi Bike trip archives contain weeks of real rides, so this is where genuine historical demand comes from, and it is the evidence an operator would use to plan capacity rather than react to a single reading.
 # MAGIC
-# MAGIC **Prerequisites:** The existing UrbanFlow schema and managed Volume exist, at least one official trip CSV has been landed under the selected `landing/historical_trips/<landing_subdir>` directory (the empty legacy subdirectory retains the validated 40-row sample), GP1 or GP2 is already `RUNNING`, and this run has explicit approval.
+# MAGIC **Prerequisites:** The existing UrbanFlow schema and managed Volume exist, at least one official trip CSV has been landed under the selected `landing/historical_trips/<landing_subdir>` directory (the platform Job lands the committed 40-row sample for development runs), the task runs on serverless compute, and this run has explicit approval.
 # MAGIC
 # MAGIC **Learning objectives:** Use Auto Loader with an explicit schema and a rescued-data column, keep station identifiers as strings, join historical trips to current stations on `short_name` rather than the UUID, route every row to valid, quarantine or duplicate, and prove the counts reconcile.
 # MAGIC
@@ -12,7 +12,7 @@
 # MAGIC
 # MAGIC **Safety:** `run_ingest` defaults to `false`, so the committed default exits before any read or write. The notebook never starts, stops or resizes a cluster, never downloads an archive, and never writes outside the UrbanFlow schema.
 # MAGIC
-# MAGIC **Actual validation:** On 2026-10-02 Job run `848541476068172` processed the **40-ROW DEVELOPMENT SAMPLE** on GP1: 40 landed = 40 valid + 0 quarantine + 0 duplicate, match rate 1.0, and a repeat discovered no new file. On 2026-10-03 unified run `96337578882467` processed the **REAL JANUARY 2024 CITI BIKE MONTHLY ARCHIVE** into its own namespace: 1,888,085 landed = 1,886,318 valid + 1,767 quarantine + 0 duplicate, with 1,886,318 distinct ride IDs.
+# MAGIC **Actual validation:** In the Final Project this notebook has not been run yet; offline tests cover its logic. Its Demo 3 predecessor ran live on 2026-10-02 - that is Demo 3 evidence, not Final Project evidence.
 # MAGIC
 # MAGIC **The one mistake this notebook exists to prevent:** historical trips carry values like `7407.13` in `start_station_id`. That is the GBFS **short name**, not the UUID `station_id`. Joining on `station_id` matches nothing and produces an empty result that looks like missing data rather than a join bug, so the match rate is reported and a rate of exactly zero fails the run.
 
@@ -33,7 +33,7 @@
 # MAGIC
 # MAGIC **Expected result:** Imports complete without touching storage.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "The notebook orchestrates functions that already have tests; it does not define the business rules itself."
+# MAGIC **How to explain it:** "The notebook orchestrates functions that already have tests; it does not define the business rules itself."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Imports are free and repeatable, and change no data.
 
@@ -49,7 +49,7 @@ except NameError:
 PROJECT_ROOT = NOTEBOOK_DIR.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from urbanflow.automation import APPROVED_RUN_CLUSTER_IDS
+from urbanflow.automation import assert_serverless_compute
 from urbanflow.historical import (
     daily_trip_demand,
     foreign_checkpoint_owners,
@@ -84,9 +84,9 @@ from urbanflow.streaming import await_bounded_completion
 # MAGIC
 # MAGIC **Key concepts:** Fail-closed defaults, existing-cluster allowlist, bounded waits, target isolation.
 # MAGIC
-# MAGIC **Expected result:** The committed default exits with `DRY_RUN`; an approved run continues only on GP1 or GP2.
+# MAGIC **Expected result:** The committed default exits with `DRY_RUN`; an approved run continues only on serverless compute.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "Nothing happens until one visible parameter is set to true and the cluster is on the approved list."
+# MAGIC **How to explain it:** "Nothing happens until one visible parameter is set to true and the cluster is on the approved list."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** The default path performs no Spark action at all, so a scheduled or accidental run is free.
 
@@ -109,9 +109,7 @@ landing_subdir = dbutils.widgets.get("landing_subdir").strip()
 stream_timeout_seconds = float(dbutils.widgets.get("stream_timeout_seconds"))
 if not run_ingest:
     dbutils.notebook.exit("DRY_RUN: no archive was read and no Delta table was written.")
-cluster_id = spark.conf.get("spark.databricks.clusterUsageTags.clusterId", "")
-if cluster_id not in APPROVED_RUN_CLUSTER_IDS:
-    raise RuntimeError(f"Cluster {cluster_id!r} is not approved for UrbanFlow.")
+assert_serverless_compute(spark.conf.get)
 if not execution_id:
     raise ValueError("execution_id must identify this historical ingestion run.")
 
@@ -132,7 +130,7 @@ if not execution_id:
 # MAGIC
 # MAGIC **Expected result:** Paths resolve under the existing `urbanflow_landing` Volume; the Auto Loader schema location and the streaming checkpoint are different directories.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "Everything this run touches lives inside the one Volume and schema the project already owns."
+# MAGIC **How to explain it:** "Everything this run touches lives inside the one Volume and schema the project already owns."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Name construction is free. The checkpoint is per execution, so a rerun is a clean bounded read rather than a resume of partial progress.
 
@@ -186,7 +184,7 @@ print({"paths": paths, "tables": historical_tables})
 # MAGIC
 # MAGIC **Expected result:** At least one `.csv` file is listed. A zipped archive must be expanded before this step, because Auto Loader reads CSV and not ZIP.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "We check the data is really there before claiming a successful load of nothing."
+# MAGIC **How to explain it:** "We check the data is really there before claiming a successful load of nothing."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** A directory listing is a metadata operation and costs effectively nothing.
 
@@ -228,7 +226,7 @@ print(
 # MAGIC
 # MAGIC **Expected result:** The stream terminates by itself well inside the timeout, and the Bronze row count equals the number of data rows in the landed files.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "It reads the files that are there, writes them once, and stops. It cannot run indefinitely."
+# MAGIC **How to explain it:** "It reads the files that are there, writes them once, and stops. It cannot run indefinitely."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** A rerun with the same execution ID uses the same checkpoint and reprocesses nothing. A new execution ID reprocesses every file, so the ID is the deliberate control over cost here.
 
@@ -266,7 +264,7 @@ print({"progress": progress, "query_stopped": query_inactive_after_cleanup})
 # MAGIC
 # MAGIC **Expected result:** Sub-minute trips are flagged `TRIP_TOO_SHORT` as false starts and trips over a day `TRIP_TOO_LONG` as unreturned bikes. Both are quarantined, not deleted.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "Every landed ride ends up in exactly one place, and we can say which rule sent it there."
+# MAGIC **How to explain it:** "Every landed ride ends up in exactly one place, and we can say which rule sent it there."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** These are lazy transformations; the counts in the next steps are what trigger the actual work.
 
@@ -307,7 +305,7 @@ print(
 # MAGIC
 # MAGIC **Expected result:** A match rate below 1.0 is normal and expected, because stations really are renamed and retired. A match rate of exactly 0.0 means the key is wrong, and the reconciliation step fails the run. For the committed 40-row development sample the rate is 1.0, measured locally.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "Old trips name stations the way the archive did. We translate that to today's station IDs and report how many we could translate."
+# MAGIC **How to explain it:** "Old trips name stations the way the archive did. We translate that to today's station IDs and report how many we could translate."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** The dimension is 40 rows, so the join is broadcast-sized and cheap. Nothing is re-derived and no file is read.
 
@@ -343,7 +341,7 @@ print({"dimension_rows": dimension.count(), "match_rate": match_rate})
 # MAGIC
 # MAGIC **Expected result:** One demand row per station per day. The duration profile's minimum and maximum should sit inside the configured bounds, because the rows outside them were quarantined.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "This is the real history. The availability tables are one photograph; this is weeks of rides."
+# MAGIC **How to explain it:** "This is the real history. The availability tables are one photograph; this is weeks of rides."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Aggregations over one monthly archive are bounded and run on the already-attached cluster.
 
@@ -373,7 +371,7 @@ display(rider_mix.orderBy("trips", ascending=False).limit(10))
 # MAGIC
 # MAGIC **Expected result:** `PASS`, with `accounted_rows` equal to `landed_rows` and `join_produced_no_matches` false.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "We prove every ride is accounted for before we store anything."
+# MAGIC **How to explain it:** "We prove every ride is accounted for before we store anything."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** The counts are already computed, so this step adds no new scan.
 
@@ -408,7 +406,7 @@ if reconciliation["status"] != "PASS":
 # MAGIC
 # MAGIC **Expected result:** A second identical run reports `inserted_rows = 0` everywhere and `stale_rows_removed = 0` for demand.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "Running it twice gives the same tables, and a ride that stops qualifying actually disappears from the summary."
+# MAGIC **How to explain it:** "Running it twice gives the same tables, and a ride that stops qualifying actually disappears from the summary."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** These are bounded MERGE statements on the attached cluster; no serverless or Lakeflow compute is used.
 
@@ -442,7 +440,7 @@ print({"delta_merges": merge_report})
 # MAGIC
 # MAGIC **Expected result:** Status `PASS` and a report path under the Volume.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "The report says what we proved and, just as importantly, what we did not."
+# MAGIC **How to explain it:** "The report says what we proved and, just as importantly, what we did not."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** The report is small; each Job run or interactive attempt gets a distinct evidence filename under the same business execution directory.
 

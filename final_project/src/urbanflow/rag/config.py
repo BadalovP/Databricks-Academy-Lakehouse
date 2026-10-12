@@ -89,4 +89,3 @@ def _validate(cfg: ProjectConfig) -> None:
     retrieval = cfg.retrieval
     if retrieval.top_k <= 0 or retrieval.max_context_chars <= 0:
         raise ValueError("Retrieval limits must be positive.")
-

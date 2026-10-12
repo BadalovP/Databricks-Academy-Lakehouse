@@ -132,7 +132,9 @@ def merge_chunks(
         row = asdict(chunk)
         row["metadata_json"] = _json(row.pop("metadata"))
         rows.append(row)
-    return _merge_rows(spark, table_name, rows, "chunk_id", allow_write, CHUNK_SCHEMA, prune_missing)
+    return _merge_rows(
+        spark, table_name, rows, "chunk_id", allow_write, CHUNK_SCHEMA, prune_missing
+    )
 
 
 def _merge_rows(
@@ -218,7 +220,9 @@ def latest_version(spark: SparkLike, table_name: str) -> int | None:
     return int(version) if version is not None else None
 
 
-def history_metrics(spark: SparkLike, table_name: str, version_before: int | None) -> dict[str, Any]:
+def history_metrics(
+    spark: SparkLike, table_name: str, version_before: int | None
+) -> dict[str, Any]:
     """Operation metrics of the commit the MERGE produced.
 
     Delta may not write a new version when nothing changes; then there is no commit to read and
@@ -270,7 +274,13 @@ def table_snapshot(spark: SparkLike, table_name: str, key: str) -> dict[str, Any
         raise RuntimeError(f"No snapshot returned for {table_name}.")
     return {
         name: _field(row, name)
-        for name in ("row_count", "distinct_keys", "fingerprint", "max_ingested_at", "null_ingested_at")
+        for name in (
+            "row_count",
+            "distinct_keys",
+            "fingerprint",
+            "max_ingested_at",
+            "null_ingested_at",
+        )
     }
 
 
@@ -359,4 +369,3 @@ def _json(value: Any) -> str:
     import json
 
     return json.dumps(value, sort_keys=True, separators=(",", ":"))
-

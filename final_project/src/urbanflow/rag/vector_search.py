@@ -68,7 +68,9 @@ class VectorSearchManager:
             try:
                 from databricks.ai_search.client import AISearchClient
             except ImportError as exc:
-                raise RuntimeError("Install the 'databricks' extra for live AI Search access.") from exc
+                raise RuntimeError(
+                    "Install the 'databricks' extra for live AI Search access."
+                ) from exc
             self._client = AISearchClient()
         return self._client
 
@@ -112,7 +114,9 @@ class VectorSearchManager:
 
     def sync(self, spec: DeltaSyncIndexSpec, *, allow_sync: bool = False) -> Any:
         if not allow_sync:
-            raise PermissionError("AI Search synchronization is disabled without explicit approval.")
+            raise PermissionError(
+                "AI Search synchronization is disabled without explicit approval."
+            )
         index = self.client.get_index(endpoint_name=spec.endpoint_name, index_name=spec.index_name)
         return index.sync()
 
@@ -311,4 +315,3 @@ def _looks_missing(error: Exception) -> bool:
         marker in text
         for marker in ("not found", "notfound", "does not exist", "resource_does_not_exist", "404")
     ) or isinstance(error, LookupError | KeyError)
-

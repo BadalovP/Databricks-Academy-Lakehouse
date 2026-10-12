@@ -53,4 +53,3 @@ def test_invalid_overlap_rejected() -> None:
         assert "overlap" in str(exc)
     else:
         raise AssertionError("Expected ValueError")
-

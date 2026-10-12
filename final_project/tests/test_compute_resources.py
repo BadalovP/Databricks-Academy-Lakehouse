@@ -251,7 +251,7 @@ def test_config_declares_no_shared_cluster_and_serverless_lakeflow(config_file: 
     assert config.compute.clusters == {}
     assert config.compute.preferred is None and config.compute.fallback is None
     with pytest.raises(ValueError, match="serverless"):
-        config.compute.preferred_cluster
+        _ = config.compute.preferred_cluster
 
 
 @pytest.mark.parametrize("config_file", CONFIG_FILES)

@@ -4,7 +4,7 @@
 # MAGIC
 # MAGIC **Business context:** The verified 2,520-row Bronze snapshot must become durable, quality-controlled Silver data without republishing Event Hubs messages.
 # MAGIC
-# MAGIC **Prerequisites:** The existing Bronze table and managed Volume exist, the Phase 2 Job has explicit approval, and GP1 or GP2 is already `RUNNING`.
+# MAGIC **Prerequisites:** The existing Bronze table and managed Volume exist, the Phase 2 Job has explicit approval, and the task runs on serverless compute.
 # MAGIC
 # MAGIC **Learning objectives:** Apply an explicit contract, preserve quarantine reasons and duplicates, use deterministic arrival order, MERGE idempotently, and prove Bronze reconciliation.
 # MAGIC
@@ -29,7 +29,7 @@
 # MAGIC
 # MAGIC **Expected result:** Imports complete without reading Bronze.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "The notebook is a visible orchestration layer over unit-tested business rules."
+# MAGIC **How to explain it:** "The notebook is a visible orchestration layer over unit-tested business rules."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Imports are repeatable and cause no data or resource changes.
 
@@ -48,7 +48,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from pyspark.sql import functions as F
 
-from urbanflow.automation import APPROVED_RUN_CLUSTER_IDS
+from urbanflow.automation import assert_serverless_compute
 from urbanflow.reporting import (
     evidence_report_path,
     resolve_attempt_id,
@@ -76,16 +76,16 @@ from urbanflow.silver import (
 # MAGIC
 # MAGIC **Key concepts:** Fail-closed defaults, existing-cluster allowlist, target isolation.
 # MAGIC
-# MAGIC **Expected result:** The committed default exits with `DRY_RUN`; an approved run continues only on GP1 or GP2.
+# MAGIC **Expected result:** The committed default exits with `DRY_RUN`; an approved run continues only on serverless compute.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "No table action happens until one visible parameter and the cluster allowlist both pass."
+# MAGIC **How to explain it:** "No table action happens until one visible parameter and the cluster allowlist both pass."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Exiting before a Spark action minimizes accidental compute work; this notebook never starts or stops a cluster.
 
 # COMMAND ----------
 
 dbutils.widgets.dropdown("run_transform", "false", ["false", "true"])
-dbutils.widgets.text("source_execution_id", "urbanflow-20260929T195132Z-r3")
+dbutils.widgets.text("source_execution_id", "")
 dbutils.widgets.text("catalog", "")
 dbutils.widgets.text("schema", "")
 dbutils.widgets.text("volume", "")
@@ -97,9 +97,7 @@ target_schema = dbutils.widgets.get("schema").strip()
 target_volume = dbutils.widgets.get("volume").strip()
 if not run_transform:
     dbutils.notebook.exit("DRY_RUN: no Bronze read and no Delta write occurred.")
-cluster_id = spark.conf.get("spark.databricks.clusterUsageTags.clusterId", "")
-if cluster_id not in APPROVED_RUN_CLUSTER_IDS:
-    raise RuntimeError(f"Cluster {cluster_id!r} is not approved for UrbanFlow.")
+assert_serverless_compute(spark.conf.get)
 if not source_execution_id or source_execution_id == "NOT_APPROVED":
     raise ValueError("source_execution_id must identify the verified Bronze snapshot.")
 
@@ -118,9 +116,9 @@ if not source_execution_id or source_execution_id == "NOT_APPROVED":
 # MAGIC
 # MAGIC **Key concepts:** Unity Catalog three-level names, managed tables, Volume isolation.
 # MAGIC
-# MAGIC **Expected result:** The Azure target resolves under `dbr_dev.parvinbadalov_urbanflow`.
+# MAGIC **Expected result:** The target resolves to its own schema: `workspace.urbanflow_final_dev` (DEV) or `dbr_dev.parvinbadalov_urbanflow_final_prod` (PROD).
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "Every Phase 2 object is confined to the same personal UrbanFlow schema as Bronze."
+# MAGIC **How to explain it:** "Every Phase 2 object is confined to the same personal UrbanFlow schema as Bronze."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Name construction is free; identifier validation prevents arbitrary SQL or path injection.
 
@@ -157,7 +155,7 @@ print({"bronze": bronze_table, "silver": silver_table, "report": report_path})
 # MAGIC
 # MAGIC **Why:** Phase 2 must reuse the completed snapshot and must not mix future executions into this evidence.
 # MAGIC
-# MAGIC **Input:** Managed Bronze Delta table and `urbanflow-20260929T195132Z-r3` by default.
+# MAGIC **Input:** Managed Bronze Delta table and the `source_execution_id` passed by the platform Job.
 # MAGIC
 # MAGIC **Output:** A bounded 2,520-row DataFrame when the live table still matches its committed evidence.
 # MAGIC
@@ -165,7 +163,7 @@ print({"bronze": bronze_table, "silver": silver_table, "report": report_path})
 # MAGIC
 # MAGIC **Expected result:** Exactly 2,520 input rows for the completed milestone.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "We transform the proven Bronze slice instead of publishing or consuming another snapshot."
+# MAGIC **How to explain it:** "We transform the proven Bronze slice instead of publishing or consuming another snapshot."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** This is a bounded Delta read; it does not contact Event Hubs or start a stream.
 
@@ -194,7 +192,7 @@ print({"source_execution_id": source_execution_id, "bronze_rows": bronze_rows})
 # MAGIC
 # MAGIC **Expected result:** `Bronze = Silver + Quarantine + Duplicates` and unique Silver event IDs.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "A row is accepted, quarantined, or counted as a duplicate; none disappear."
+# MAGIC **How to explain it:** "A row is accepted, quarantined, or counted as a duplicate; none disappear."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Transformations are bounded to one snapshot; the later MERGE makes approved reruns idempotent.
 
@@ -224,7 +222,7 @@ if silver_report["status"] != "PASS":
 # MAGIC
 # MAGIC **Expected result:** A second identical run reports zero inserted rows for all three outputs.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "Business events use event IDs; rejected and duplicate broker records use topic, partition, and offset."
+# MAGIC **How to explain it:** "Business events use event IDs; rejected and duplicate broker records use topic, partition, and offset."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** This is the first Azure write in Phase 2 and requires consolidated approval; no table is dropped or replaced.
 
@@ -256,7 +254,7 @@ print({"delta_merges": write_report})
 # MAGIC
 # MAGIC **Expected result:** The JSON status is `PASS` and all table counts are visible.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** "The report records proof, while sensitive data and raw messages stay out of logs."
+# MAGIC **How to explain it:** "The report records proof, while sensitive data and raw messages stay out of logs."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Each Job run or interactive attempt gets a distinct evidence filename under the same business execution directory.
 
@@ -280,7 +278,7 @@ print({"status": evidence["status"], "report_path": report_path})
 # MAGIC
 # MAGIC Silver has a physical Delta workflow: a bounded Bronze slice is validated, deterministically deduplicated, routed into three accountable outcomes, reconciled, and merged by stable keys.
 # MAGIC
-# MAGIC **Actual validation:** This notebook ran on GP1 on 2026-10-02 for execution `urbanflow-20260929T195132Z-r3`: 2,520 Bronze rows reconciled to 2,520 Silver, 0 quarantine and 0 duplicates, with a successful idempotent repeat.
+# MAGIC **Actual validation:** In the Final Project this notebook has not been run yet; offline tests cover its logic. Its Demo 3 predecessor ran live on 2026-10-02 - that is Demo 3 evidence, not Final Project evidence.
 # MAGIC
 # MAGIC **Common errors:** Wrong execution ID, a non-approved cluster, missing schema privileges, an altered Bronze row count, duplicate MERGE keys, or a target identifier from the wrong bundle environment.
 # MAGIC

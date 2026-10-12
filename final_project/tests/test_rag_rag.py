@@ -27,7 +27,9 @@ class BrokenModel(Model):
 
 
 def _result() -> SearchResult:
-    return SearchResult("c1", "d1", "guide.md", "Replay", "guide.md#replay", "Use an isolated checkpoint.", 0.9)
+    return SearchResult(
+        "c1", "d1", "guide.md", "Replay", "guide.md#replay", "Use an isolated checkpoint.", 0.9
+    )
 
 
 def test_zero_results_returns_insufficient() -> None:
@@ -52,4 +54,3 @@ def test_context_limit() -> None:
     context, sources = build_context([_result()], 85)
     assert len(context) <= 85
     assert len(sources) == 1
-

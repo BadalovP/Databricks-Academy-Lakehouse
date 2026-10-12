@@ -31,7 +31,7 @@
 # MAGIC
 # MAGIC **Expected result:** The cell prints the environment and the two demonstration thresholds.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** “The notebook contains the teaching flow, while reusable and tested logic lives in a normal Python package.”
+# MAGIC **How to explain it:** “The notebook contains the teaching flow, while reusable and tested logic lives in a normal Python package.”
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Local file reads only. Safe to repeat and does not start additional compute beyond the already attached notebook compute.
 
@@ -77,7 +77,7 @@ print(
 # MAGIC
 # MAGIC **Expected result:** `write_enabled` is `false` unless the operator deliberately changes it.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** “The educational analysis runs read-only by default; persistent writes are visible and opt-in.”
+# MAGIC **How to explain it:** “The educational analysis runs read-only by default; persistent writes are visible and opt-in.”
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Widget creation is safe to repeat. Keep writes disabled until the UrbanFlow schema is approved.
 
@@ -109,7 +109,7 @@ print(f"Target={catalog}.{schema}; write_enabled={write_enabled}")
 # MAGIC
 # MAGIC **Expected result:** Both feeds contain the same 40 selected station UUIDs and report a 60-second TTL.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** “The live producer discovers these feeds dynamically, while this notebook uses a saved sample so the lesson is repeatable.”
+# MAGIC **How to explain it:** “The live producer discovers these feeds dynamically, while this notebook uses a saved sample so the lesson is repeatable.”
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Local file reads only. The data is historical evidence, not a claim about current bike availability.
 
@@ -149,7 +149,7 @@ print(
 # MAGIC
 # MAGIC **Expected result:** Spark shows string IDs, numeric availability counts, and timestamp metadata with stable types.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** “The REST API is flexible JSON; the lakehouse starts by converting it into a strict contract.”
+# MAGIC **How to explain it:** “The REST API is flexible JSON; the lakehouse starts by converting it into a strict contract.”
 # MAGIC
 # MAGIC **Rerun and cost considerations:** In-memory transformation over 40 rows. Safe and inexpensive to repeat.
 
@@ -203,7 +203,7 @@ station_status_df.printSchema()
 # MAGIC
 # MAGIC **Expected result:** Only operational stations remain, with bike and dock counts ready for analysis.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** “We separate service availability from inventory availability before applying business thresholds.”
+# MAGIC **How to explain it:** “We separate service availability from inventory availability before applying business thresholds.”
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Read-only lazy transformations. `display` executes a small Spark job over 40 rows.
 
@@ -238,7 +238,7 @@ display(operational_status_df.orderBy("num_bikes_available"))
 # MAGIC
 # MAGIC **Expected result:** Every sample status row has its station name. Historical trip IDs use GBFS `short_name`, documented separately.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** “Current feeds join on UUID; historical trip station IDs map to `short_name`, so we preserve both identifiers.”
+# MAGIC **How to explain it:** “Current feeds join on UUID; historical trip station IDs map to `short_name`, so we preserve both identifiers.”
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Read-only join over a tiny sample. Safe to repeat.
 
@@ -286,7 +286,7 @@ display(station_snapshot_df)
 # MAGIC
 # MAGIC **Expected result:** Stations at or below the threshold appear in the appropriate view.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** “These flags are simple demonstration indicators; repeated observations and capacity ratios will support stronger prioritization later.”
+# MAGIC **How to explain it:** “These flags are simple demonstration indicators; repeated observations and capacity ratios will support stronger prioritization later.”
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Read-only and deterministic for the same sample and configuration.
 
@@ -318,7 +318,7 @@ display(classified_snapshot_df.orderBy("availability_status", "num_bikes_availab
 # MAGIC
 # MAGIC **Expected result:** One row per availability status with station counts and mean bike/dock availability.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** “The detailed fact supports maps and tables; this aggregate supports headline KPIs.”
+# MAGIC **How to explain it:** “The detailed fact supports maps and tables; this aggregate supports headline KPIs.”
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Small read-only aggregation. Safe to repeat.
 
@@ -354,7 +354,7 @@ display(availability_summary_df)
 # MAGIC
 # MAGIC **Expected result:** With writes disabled, no persistent object changes. With approved writes enabled, only unseen observations are inserted.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** “Retries are safe because the event grain is station plus source report time, and MERGE inserts only missing keys.”
+# MAGIC **How to explain it:** “Retries are safe because the event grain is station plus source report time, and MERGE inserts only missing keys.”
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Default is read-only. Enabling writes changes Unity Catalog and consumes the attached compute; use only after approval.
 
@@ -400,7 +400,7 @@ else:
 # MAGIC
 # MAGIC **Expected result:** Low-bike and low-dock stations appear first with their counts and coordinates.
 # MAGIC
-# MAGIC **How to explain it to my supervisor:** “The transformation is defined once, then exposed to SQL for operational reporting.”
+# MAGIC **How to explain it:** “The transformation is defined once, then exposed to SQL for operational reporting.”
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Read-only query over the temporary sample view. Safe to repeat.
 

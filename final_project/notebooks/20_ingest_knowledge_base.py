@@ -68,7 +68,11 @@ tables = {name: str(cfg.raw["tables"][name]) for name in cfg.raw["tables"]}
 if allow_write:
     create_lab_tables(spark, catalog=catalog, schema=schema, tables=tables, allow_create=True)
     targets = {
-        "documents": (qualified_name(catalog, schema, tables["documents"]), "document_id", documents),
+        "documents": (
+            qualified_name(catalog, schema, tables["documents"]),
+            "document_id",
+            documents,
+        ),
         "chunks": (qualified_name(catalog, schema, tables["chunks"]), "chunk_id", chunks),
     }
     merges = {
@@ -86,7 +90,9 @@ if allow_write:
             "fingerprint_matches": snapshot["fingerprint"] == expected,
         }
         if snapshot["row_count"] != len(items) or snapshot["distinct_keys"] != len(items):
-            problems.append(f"{name}: {snapshot['row_count']} rows / {snapshot['distinct_keys']} keys")
+            problems.append(
+                f"{name}: {snapshot['row_count']} rows / {snapshot['distinct_keys']} keys"
+            )
         if snapshot["fingerprint"] != expected:
             problems.append(f"{name}: (key, content_hash) fingerprint differs from the corpus")
         if snapshot["null_ingested_at"]:

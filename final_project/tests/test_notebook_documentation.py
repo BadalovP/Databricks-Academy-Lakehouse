@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-import yaml
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 NOTEBOOK_DIR = PROJECT_ROOT / "notebooks"
@@ -17,35 +16,16 @@ REQUIRED_GUIDANCE = (
     "**Output:**",
     "**Key concepts:**",
     "**Expected result:**",
-    "**How to explain it to my supervisor:**",
+    "**How to explain it:**",
     "**Rerun and cost considerations:**",
 )
 # Teaching cells must stay reviewable. 30 non-blank lines is the enforced ceiling; the target
 # while writing a new cell is 5-25 lines.
 MAX_CODE_CELL_LINES = 30
 NOT_EXECUTED_PHRASES = ("has not been run", "has not been executed", "No live messages")
-VALIDATED_LIVE_CLAIMS = {
-    Path("notebooks/03_eventhubs_to_bronze.py"): ("2026-09-29", "2,520", "PASS"),
-    Path("notebooks/04_bronze_to_silver.py"): ("2026-10-02", "2,520", "repeat"),
-    Path("notebooks/05_silver_to_gold.py"): ("2026-10-02", "657", "89"),
-    Path("notebooks/06_historical_trips.py"): (
-        "2026-10-02",
-        "40-ROW DEVELOPMENT SAMPLE",
-        "40 landed",
-    ),
-    Path("notebooks/07_weather_enrichment.py"): (
-        "2026-10-02",
-        "48-HOUR WEATHER SAMPLE",
-        "40 trips",
-    ),
-    Path("notebooks/08_unified_preflight.py"): ("2026-10-03", "4222809815373", "96337578882467"),
-    Path("notebooks/09_station_source_check.py"): ("2026-10-03", "2,520", "96337578882467"),
-    Path("notebooks/10_unified_final_validation.py"): (
-        "2026-10-03",
-        "284335864579341",
-        "96337578882467",
-    ),
-}
+# Final Project notebooks may claim a live result only with Final Project evidence. Demo 3's
+# live runs belong to Demo 3. Entries are added here when a Final Project run is recorded.
+VALIDATED_LIVE_CLAIMS: dict[Path, tuple[str, ...]] = {}
 
 
 def _cells(path: Path) -> list[str]:
@@ -162,12 +142,24 @@ def test_bronze_consumer_always_stops_only_its_active_query() -> None:
     assert "query_inactive_after_cleanup = not query.isActive" in text
 
 
-def test_bronze_consumer_gates_on_the_approved_cluster_allowlist() -> None:
-    """The never-terminate denylist must not be reused as an approved-compute allowlist."""
-    text = BRONZE_CONSUMER.read_text(encoding="utf-8")
-    assert "from urbanflow.automation import APPROVED_RUN_CLUSTER_IDS" in text
-    assert "if cluster_id not in APPROVED_RUN_CLUSTER_IDS:" in text
-    assert "not in PROTECTED_SHARED_CLUSTER_IDS" not in text
+@pytest.mark.parametrize(
+    "notebook",
+    [
+        "03_eventhubs_to_bronze.py",
+        "04_bronze_to_silver.py",
+        "05_silver_to_gold.py",
+        "06_historical_trips.py",
+        "07_weather_enrichment.py",
+        "08_unified_preflight.py",
+    ],
+)
+def test_every_data_task_refuses_classic_clusters(notebook: str) -> None:
+    """UrbanFlow 2.0 is serverless-only: no notebook may attach to a classic or shared cluster."""
+    text = (NOTEBOOK_DIR / notebook).read_text(encoding="utf-8")
+    assert "from urbanflow.automation import assert_serverless_compute" in text
+    assert "assert_serverless_compute(spark.conf.get)" in text
+    for forbidden in ("APPROVED_RUN_CLUSTER_IDS", "0702-132442-toro5spu", "0702-171207-xo9bbc0y"):
+        assert forbidden not in text, (notebook, forbidden)
 
 
 def test_bronze_consumer_filters_execution_id_without_sql_interpolation() -> None:
@@ -189,46 +181,6 @@ def test_bronze_consumer_takes_its_storage_target_from_parameters() -> None:
     assert "volume_root=volume_root" in text
 
 
-def test_job_passes_bundle_target_variables_to_the_notebook() -> None:
-    job = yaml.safe_load(
-        (PROJECT_ROOT / "resources" / "retired" / "component_jobs.yml").read_text(encoding="utf-8")
-    )
-    definition = job["resources"]["jobs"]["urbanflow_bounded_stream_test"]
-    defaults = {parameter["name"]: parameter["default"] for parameter in definition["parameters"]}
-    assert defaults["catalog"] == "${var.catalog}"
-    assert defaults["schema"] == "${var.schema}"
-    assert defaults["volume"] == "${var.volume}"
-    task = definition["tasks"][0]["notebook_task"]
-    assert task["notebook_path"] == "../notebooks/03_eventhubs_to_bronze.py"
-    for name in ("catalog", "schema", "volume", "stream_timeout_seconds"):
-        assert task["base_parameters"][name] == "{{job.parameters." + name + "}}"
-    # The notebook's own wait bound must finish inside the task timeout so evidence is written.
-    assert float(defaults["stream_timeout_seconds"]) < definition["timeout_seconds"]
-
-
-def test_phase2_job_is_one_unscheduled_dry_run_dag_on_existing_compute() -> None:
-    resource = yaml.safe_load(
-        (PROJECT_ROOT / "resources" / "retired" / "component_jobs.yml").read_text(encoding="utf-8")
-    )
-    job = resource["resources"]["jobs"]["urbanflow_silver_gold_test"]
-    defaults = {parameter["name"]: parameter["default"] for parameter in job["parameters"]}
-
-    assert defaults["run_transform"] == "false"
-    assert defaults["source_execution_id"] == "urbanflow-20260929T195132Z-r3"
-    assert "schedule" not in job
-    assert [task["task_key"] for task in job["tasks"]] == [
-        "bronze_to_silver",
-        "silver_to_gold",
-    ]
-    assert job["tasks"][1]["depends_on"] == [{"task_key": "bronze_to_silver"}]
-    for task in job["tasks"]:
-        assert task["existing_cluster_id"] == "${var.compute_cluster_id}"
-        assert "new_cluster" not in task
-        parameters = task["notebook_task"]["base_parameters"]
-        for name in ("run_transform", "source_execution_id", "catalog", "schema", "volume"):
-            assert parameters[name] == "{{job.parameters." + name + "}}"
-
-
 def test_superseded_notebook_is_fail_closed_and_labelled() -> None:
     """03_streaming.py shares the Bronze table and checkpoint, so it must refuse to run."""
     text = SUPERSEDED_CONSUMER.read_text(encoding="utf-8")
@@ -241,56 +193,7 @@ def test_superseded_notebook_is_fail_closed_and_labelled() -> None:
     assert "raise RuntimeError(" in first_code_cell
 
 
-@pytest.mark.parametrize(
-    "job_name, gate, notebook",
-    [
-        (
-            "urbanflow_historical_trips_test",
-            "run_ingest",
-            "../notebooks/06_historical_trips.py",
-        ),
-        (
-            "urbanflow_weather_enrichment_test",
-            "run_enrichment",
-            "../notebooks/07_weather_enrichment.py",
-        ),
-    ],
-)
-def test_phase3_jobs_are_unscheduled_and_fail_closed(
-    job_name: str, gate: str, notebook: str
-) -> None:
-    """A deployed Job must not be able to run itself, and must do nothing by default."""
-    retired = PROJECT_ROOT / "resources" / "retired" / "component_jobs.yml"
-    resource = yaml.safe_load(retired.read_text(encoding="utf-8"))
-    job = resource["resources"]["jobs"][job_name]
-    defaults = {parameter["name"]: parameter["default"] for parameter in job["parameters"]}
-
-    assert defaults[gate] == "false"
-    assert defaults["execution_id"] == "NOT_APPROVED"
-    assert "schedule" not in job
-    assert "continuous" not in job
-    assert job["max_concurrent_runs"] == 1
-    task = job["tasks"][0]
-    # Existing approved compute only: a new_cluster would create billable infrastructure.
-    assert task["existing_cluster_id"] == "${var.compute_cluster_id}"
-    assert "new_cluster" not in task
-    assert task["notebook_task"]["notebook_path"] == notebook
-    # Target isolation: a dev run must write dev objects.
-    for name in ("catalog", "schema", "volume"):
-        assert defaults[name] == "${var." + name + "}"
-        assert task["notebook_task"]["base_parameters"][name] == "{{job.parameters." + name + "}}"
-
-
-def test_the_historical_notebook_wait_bound_fits_inside_its_task_timeout() -> None:
-    """A wait that outlives its task is killed before the evidence report is written."""
-    resource = yaml.safe_load(
-        (PROJECT_ROOT / "resources" / "retired" / "component_jobs.yml").read_text(encoding="utf-8")
-    )
-    job = resource["resources"]["jobs"]["urbanflow_historical_trips_test"]
-    defaults = {parameter["name"]: parameter["default"] for parameter in job["parameters"]}
-
-    assert float(defaults["stream_timeout_seconds"]) < job["tasks"][0]["timeout_seconds"]
-    assert job["tasks"][0]["timeout_seconds"] <= job["timeout_seconds"]
+# Job structure, defaults, parameter wiring and timeouts are covered by tests/test_final_release.py.
 
 
 def test_the_weather_notebook_never_downloads_an_archive_or_starts_compute() -> None:
@@ -299,8 +202,8 @@ def test_the_weather_notebook_never_downloads_an_archive_or_starts_compute() -> 
         code = "\n".join(cell for _, cell in _code_cells(NOTEBOOK_DIR / name))
         for forbidden in ("clusters.create", "clusters.start", "clusters.restart", "pip install"):
             assert forbidden not in code, f"{name} contains {forbidden}"
-        # Both must gate on the approved-cluster allowlist before any action.
-        assert "APPROVED_RUN_CLUSTER_IDS" in code
+        # Both must refuse classic clusters before any action.
+        assert "assert_serverless_compute(spark.conf.get)" in code
 
 
 def test_the_historical_notebook_reads_the_persisted_dimension_not_a_landed_feed() -> None:

@@ -19,7 +19,10 @@ def _chunk(chunk_id: str, text: str, source: str = "guide.md") -> Chunk:
 
 def test_offline_retrieval_top_k_and_filter() -> None:
     retriever = OfflineLexicalRetriever(
-        [_chunk("a", "streaming checkpoint recovery"), _chunk("b", "incident recovery", "incident.md")]
+        [
+            _chunk("a", "streaming checkpoint recovery"),
+            _chunk("b", "incident recovery", "incident.md"),
+        ]
     )
     result = retriever.search("streaming recovery", top_k=1)
     assert [item.chunk_id for item in result] == ["a"]
@@ -50,4 +53,3 @@ def test_ai_search_response_parsing() -> None:
     parsed = DatabricksAISearchRetriever._parse(response)
     assert parsed[0].chunk_id == "c1"
     assert parsed[0].score == 0.9
-

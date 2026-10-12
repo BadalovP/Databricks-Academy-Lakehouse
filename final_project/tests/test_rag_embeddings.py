@@ -16,4 +16,3 @@ def test_hash_embedding_is_deterministic_and_normalized() -> None:
     first, second = provider.embed(["alpha beta", "alpha beta"])
     assert first == second
     assert pytest.approx(sum(value * value for value in first), rel=1e-6) == 1.0
-
