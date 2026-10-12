@@ -57,6 +57,10 @@ resources:
           default: ${var.federation_catalog}
         - name: federation_table
           default: ${var.federation_table}
+        - name: cdc_source
+          default: fixture_snapshot
+        - name: cdc_snapshot
+          default: batch_001
       environments:
         - environment_key: urbanflow_serverless
           spec:
@@ -233,6 +237,8 @@ resources:
             base_parameters:
               expected_host: "{{job.parameters.expected_host}}"
               run_federation_cdc: "{{job.parameters.run_federation_cdc}}"
+              cdc_source: "{{job.parameters.cdc_source}}"
+              cdc_snapshot: "{{job.parameters.cdc_snapshot}}"
               federation_catalog: "{{job.parameters.federation_catalog}}"
               federation_table: "{{job.parameters.federation_table}}"
               catalog: "{{job.parameters.catalog}}"

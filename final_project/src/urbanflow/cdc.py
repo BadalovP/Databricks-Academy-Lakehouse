@@ -145,3 +145,59 @@ def _change_order(change_type: ChangeType) -> int:
         ChangeType.INSERT: 2,
         ChangeType.UPDATE_POSTIMAGE: 3,
     }[change_type]
+
+
+SNAPSHOT_FIELDS = ("station_id", "status", "severity", "updated_at")
+
+
+def load_snapshot_csv(path: Any) -> dict[str, dict[str, Any]]:
+    """A maintenance snapshot keyed by maintenance_id; duplicate keys are refused."""
+    import csv
+    from pathlib import Path
+
+    rows: dict[str, dict[str, Any]] = {}
+    with Path(path).open(encoding="utf-8", newline="") as handle:
+        for row in csv.DictReader(handle):
+            key = (row.get("maintenance_id") or "").strip()
+            if not key:
+                raise ValueError(f"{path}: a row has no maintenance_id.")
+            if key in rows:
+                raise ValueError(f"{path}: duplicate maintenance_id {key}.")
+            rows[key] = {field: row[field] for field in SNAPSHOT_FIELDS}
+    return rows
+
+
+def snapshot_change_events(
+    previous: Mapping[str, Mapping[str, Any]],
+    current: Mapping[str, Mapping[str, Any]],
+    *,
+    commit_version: int,
+    commit_timestamp: str,
+) -> list[ChangeEvent]:
+    """The Change Data Feed rows one snapshot MERGE produces (insert/update/delete).
+
+    This models the notebook's MERGE: changed rows emit an update pre- and post-image, new keys
+    an insert, vanished keys a delete, and unchanged rows nothing at all.
+    """
+
+    def event(key: str, values: Mapping[str, Any], change_type: ChangeType) -> ChangeEvent:
+        return ChangeEvent(
+            station_id=str(values["station_id"]),
+            maintenance_id=key,
+            change_type=change_type,
+            commit_version=commit_version,
+            commit_timestamp=commit_timestamp,
+            values={field: values[field] for field in SNAPSHOT_FIELDS if field != "station_id"},
+        )
+
+    events: list[ChangeEvent] = []
+    for key in sorted(set(previous) | set(current)):
+        before, after = previous.get(key), current.get(key)
+        if before is None and after is not None:
+            events.append(event(key, after, ChangeType.INSERT))
+        elif after is None and before is not None:
+            events.append(event(key, before, ChangeType.DELETE))
+        elif before is not None and after is not None and dict(before) != dict(after):
+            events.append(event(key, before, ChangeType.UPDATE_PREIMAGE))
+            events.append(event(key, after, ChangeType.UPDATE_POSTIMAGE))
+    return events

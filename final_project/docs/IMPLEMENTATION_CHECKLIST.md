@@ -30,13 +30,13 @@ Working log for finishing the Final Project from the Codex handoff. Worktree:
 
 ## Stages
 
-- [ ] A. Coherent standalone project: paths, names, bundle, tests green, Demo 3 assumptions removed
-- [ ] B. Federation / CDC complete with tests (replay, deletes, idempotency, reconciliation)
+- [x] A. Coherent standalone project: paths, names, bundle, Demo 3 assumptions removed (dashboard: stage E)
+- [x] B. Federation / CDC complete with tests (replay, deletes, idempotency, reconciliation) - offline
 - [ ] C. Mobility RAG assistant complete (original docs, chunking, retrieval, citations, evaluation)
 - [ ] D. Optional Zerobus station-health ingestion (isolated, idempotent)
 - [ ] E. Medallion, Gold KPIs, quality, governance, dashboard
 - [ ] F. Lakeflow pipeline + Job orchestration
-- [ ] G. DEV/PROD bundle targets, `final_project_ci.yml`, `final_project_cd.yml`
+- [x] G. DEV/PROD bundle targets, `final_project_ci.yml`, `final_project_cd.yml` (CD live run needs identities)
 - [ ] H. README, architecture, Labs 1-12 coverage, cost/performance, Demo Day presentation
 - [ ] I. Live validation (only after explicit approval), evidence
 - [ ] J. PR, CI green, review
@@ -55,3 +55,6 @@ Working log for finishing the Final Project from the Codex handoff. Worktree:
 ## Progress log
 
 - 2026-10-12: handoff inspected, checkpoint commit `e2af127`, `.gitignore` added, venv created, baseline test run recorded.
+- 2026-10-12: `2cf6bf1` serverless gate, Job parameter wiring, land_sources + Auto Loader, release validators, CI/CD.
+- 2026-10-12: stage B - `cdc_sql.py` builders, fictional maintenance snapshots, notebook 11 rebuilt
+  (reconcile before a forward-only checkpoint), Python replay tests; bundle syncs the snapshots.

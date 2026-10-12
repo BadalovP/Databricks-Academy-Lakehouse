@@ -38,6 +38,7 @@ sync:
   include:
     - config/**
     - fixtures/samples/**
+    - fixtures/maintenance/**
     - knowledge_base/**
     - notebooks/**
     - pipeline/**
