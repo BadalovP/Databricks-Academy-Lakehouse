@@ -2,7 +2,7 @@
 
 [← Main README](../README.md) · [Coverage matrix](LABS_1_TO_12_COVERAGE.md) · [Cost and performance](COST_AND_PERFORMANCE.md)
 
-**Status:** CI runs on every pull request. **Steps 1 and 2 have passed in Personal DEV.** Step 1 is the deployment. Step 2, the platform sample run with station, historical, weather, validation and CDC, passed on 2026-10-12 in run `896549012431425`, after two failed attempts whose defects were fixed. Steps 3–9 have not run. There has been no Lakeflow update, AI Search endpoint, RAG inference or CD release.
+**Status:** CI runs on every pull request. **Steps 1 and 2 passed in Personal DEV.** **Step 3 (strict idempotency) FAILED on one criterion** (run `605056708110586`). Logical and audit idempotency passed, and no data file was rewritten. The CDC checkpoint advanced from 1 to 2 over an empty source commit, which the step forbids; a fix is proposed, not applied. Steps 4–9 have not run. There has been no Lakeflow update, AI Search endpoint, RAG inference or CD release.
 
 ## Continuous integration (`final_project_ci.yml`)
 
@@ -137,6 +137,8 @@ The optional Zerobus path and the governance demo each need their own approval. 
 | 2026-10-12 | `personal_dev` | 2 (retry). Platform sample run | Run `896235701785511`; same station execution `urbanflow-final-304828008837365` | **FAILED at `weather_enrichment`** (sample file never landed). Six tasks passed and were verified independently: station Bronze 40 = Silver 40 + 0 + 0, fact 40, shortages = priorities = 13 matching the sample profile; historical 40 valid. **Bronze and checkpoints unchanged, no duplication.** Validation and CDC did not run. [Evidence](../evidence/2026-10-12_personal_dev_step2_retry.md) |
 | 2026-10-12 | `personal_dev` | Redeploy of `2a3c88d` | Platform Job `158911626270744` updated | PASS: 1 update (3 weather parameters on `land_sources`), post-plan all `skip` |
 | 2026-10-12 | `personal_dev` | **2. Platform sample run: PASS** | Run `896549012431425`; station execution `urbanflow-final-304828008837365` | **PASS.** All tasks succeeded and were verified independently. Station 40/40/40, shortages = priorities = 13. Historical 40. Weather 48 hours, 4 of 40 trips with weather (coverage 0.10). `validate_medallion` PASS. CDC `batch_001`: 5 inserts, checkpoint 1, zero mismatches in keys and values. Bronze and checkpoints unchanged; reruns changed no business value. [Evidence](../evidence/2026-10-12_personal_dev_step2_pass.md) |
-| — | — | 3–9 | — | No live run yet (each step needs its own approval) |
+| 2026-10-12 | `personal_dev` | Code-only deploy of `aab6836` (change-aware MERGE) | Platform Job unchanged | PASS: plan and post-plan all `skip` (file sync only) |
+| 2026-10-12 | `personal_dev` | **3. Idempotency rerun: FAIL (1 of 19 criteria)** | Run `605056708110586`; same execution IDs as step 2 | Logical PASS (no business value changed anywhere). Audit PASS (all `ingested_at` / `retrieved_at` kept). Every data MERGE 0 inserted, updated or copied, and 0 files. No new CDF events, CDC reconciliation 0. **FAIL: CDC checkpoint 1 → 2**, because the unchanged snapshot MERGE left an empty source commit. Every MERGE still writes a metadata-only commit. [Evidence](../evidence/2026-10-12_personal_dev_step3_idempotency.md) |
+| — | — | 4–9 | — | No live run yet (each step needs its own approval) |
 
 When a step passes, record it here. Add the notebook to `VALIDATED_LIVE_CLAIMS` in `tests/test_notebook_documentation.py` and update its **Actual validation** line with the run ID. Update the coverage matrix status to **Validated live**.
