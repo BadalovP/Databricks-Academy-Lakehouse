@@ -261,3 +261,16 @@ def test_the_weather_sample_is_landed_exactly_where_notebook_07_reads_it(project
     assert weather_sample_landing({**sample, "run_full_month": "true"}, volume) is None
     with pytest.raises(ValueError):
         weather_sample_landing({**sample, "weather_sample_file": "../x.json"}, volume)
+
+
+def test_a_cdc_only_run_is_a_valid_processing_branch(project_root) -> None:
+    """Step 4 processes maintenance batches without re-running the medallion."""
+    from urbanflow.landing import has_processing_branch
+
+    assert has_processing_branch({"run_federation_cdc": True})
+    assert has_processing_branch({"run_station_pipeline": True})
+    assert not has_processing_branch({"run_full_month": True})
+    assert not has_processing_branch({})
+    preflight = (project_root / "notebooks" / "08_unified_preflight.py").read_text(encoding="utf-8")
+    assert "landing.has_processing_branch(flags)" in preflight
+    assert 'boolean_names = (*landing.PROCESSING_BRANCHES, "run_full_month")' in preflight

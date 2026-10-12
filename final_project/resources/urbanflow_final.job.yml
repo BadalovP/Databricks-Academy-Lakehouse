@@ -81,6 +81,7 @@ resources:
               run_historical: "{{job.parameters.run_historical}}"
               run_weather: "{{job.parameters.run_weather}}"
               run_full_month: "{{job.parameters.run_full_month}}"
+              run_federation_cdc: "{{job.parameters.run_federation_cdc}}"
               station_source: "{{job.parameters.station_source}}"
               source_execution_id: "{{job.parameters.source_execution_id}}"
               historical_execution_id: "{{job.parameters.historical_execution_id}}"

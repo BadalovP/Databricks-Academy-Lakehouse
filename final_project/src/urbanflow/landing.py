@@ -215,6 +215,20 @@ STATION_LAYER_TABLES = {
 }
 
 
+# Branches that make a platform run do real work. CDC is a branch of its own: a maintenance
+# batch (for example `batch_002`) must be processable without re-running the medallion.
+PROCESSING_BRANCHES = (
+    "run_station_pipeline",
+    "run_historical",
+    "run_weather",
+    "run_federation_cdc",
+)
+
+
+def has_processing_branch(flags: dict[str, bool]) -> bool:
+    return any(flags.get(name, False) for name in PROCESSING_BRANCHES)
+
+
 # --- run-time contracts (replace the Demo 3 fixed counts found in the first DEV run) -----------
 STATION_DIMENSION_TABLE = "dim_station_development_sample"
 

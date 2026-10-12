@@ -51,7 +51,7 @@ from urbanflow import landing
 from urbanflow.automation import assert_serverless_compute
 from urbanflow.landing import SAMPLE_HISTORICAL_ID, SAMPLE_WEATHER_ID, validate_station_source
 
-boolean_names = ("run_station_pipeline", "run_historical", "run_weather", "run_full_month")
+boolean_names = (*landing.PROCESSING_BRANCHES, "run_full_month")
 text_names = (
     "station_source",
     "source_execution_id",
@@ -95,8 +95,8 @@ values = {name: dbutils.widgets.get(name).strip() for name in text_names}
 # COMMAND ----------
 
 assert_serverless_compute(spark.conf.get)
-if not any(flags[name] for name in ("run_station_pipeline", "run_historical", "run_weather")):
-    raise ValueError("At least one UrbanFlow processing branch must be enabled.")
+if not landing.has_processing_branch(flags):
+    raise ValueError("At least one UrbanFlow processing branch (incl. CDC) must be enabled.")
 if flags["run_weather"] and not flags["run_historical"]:
     raise ValueError("Weather enrichment requires the selected historical execution.")
 for name in ("catalog", "schema", "volume"):
