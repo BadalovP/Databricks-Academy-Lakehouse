@@ -164,7 +164,7 @@ print({"checkpoint": checkpoint, "latest_source_version": latest_version,
 # MAGIC
 # MAGIC **How to explain it:** "Both writes are MERGEs, so replaying the same range after a failure changes nothing. A version without data changes is scanned, not applied."
 # MAGIC
-# MAGIC **Rerun and cost considerations:** With no new versions this step does nothing; with only non-data versions it runs one small CDF read. Versions from a run that merged but failed before its checkpoint are still processed, even when the new snapshot matches. If the versions after the checkpoint have left the Delta log, or VACUUM removed their change files (7 days by default), the step stops with a recovery instruction and writes nothing.
+# MAGIC **Rerun and cost considerations:** With no new versions this step does nothing; with only non-data versions it runs one small CDF read. Versions from a run that merged but failed before its checkpoint are still processed, even when the new snapshot matches. If the versions after the checkpoint have left the Delta log, or VACUUM removed their change files (7 days by default), the step stops with a recovery instruction; the history, Silver and the checkpoint stay unchanged.
 
 # COMMAND ----------
 

@@ -54,7 +54,7 @@ This is a fair question, because the project is not short of quality checks:
 | Layer | What it does | What it does not do |
 |---|---|---|
 | `quality.py` | Routes every row to valid or quarantine with named failed rules | Produces no portable report |
-| `pipeline/*.py` | Declarative Lakeflow expectations on every Gold dataset | Report only inside the pipeline event log |
+| `pipeline/*.py` | Declarative Lakeflow expectations on Silver, quarantine, duplicates and every Gold dataset. Live in step 5: 22 expectations, 0 failed records ([evidence](../evidence/2026-10-12_personal_dev_step5_lakeflow.md)) | Report only inside the pipeline event log |
 | `reconcile_*` functions | Prove counts tie out between layers | Check totals, not per-column rules |
 | **Great Expectations** | **A portable, per-expectation validation report** | Does not route or persist anything |
 

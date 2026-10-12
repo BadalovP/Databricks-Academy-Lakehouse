@@ -19,7 +19,7 @@ This closes the anomaly recorded in [`batch_002`](2026-10-12_personal_dev_step4_
 | `processed_version` (checkpoint) | The newest source version that was scanned, applied where needed and reconciled. It passes versions without data changes, so it never falls behind the Delta log. |
 | `last_data_change_version` | The newest version with CDF events, read from the audit history (reporting only). |
 | `plan_scan` | Selects `checkpoint + 1 … latest`. It refuses a range the log no longer holds (`CdcRetentionGapError`), and refuses a source whose version is below the checkpoint (`CdcStateError`). |
-| Retention errors while reading | `DELTA_CHANGE_DATA_FILE_NOT_FOUND`, `DELTA_MISSING_CHANGE_DATA` and missing versions or files become `CdcRetentionGapError` with a re-baseline instruction. Nothing is written. |
+| Retention errors while reading | `DELTA_CHANGE_DATA_FILE_NOT_FOUND`, `DELTA_MISSING_CHANGE_DATA` and missing versions or files become `CdcRetentionGapError` with a re-baseline instruction; the history, Silver and the checkpoint stay unchanged. |
 
 The source table has no retention overrides, so the defaults apply: `delta.logRetentionDuration` 30 days and `delta.deletedFileRetentionDuration` 7 days. Predictive optimization is inherited from the metastore.
 

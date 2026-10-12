@@ -178,8 +178,8 @@ def plan_scan(
     if latest_version < checkpoint:
         raise CdcStateError(
             f"Source version {latest_version} is below the checkpoint {checkpoint}: the source "
-            "table was recreated or restored. Nothing was written and the checkpoint was not "
-            "moved. Investigate before any change; never move the checkpoint back by hand."
+            "table was recreated or restored. The history, Silver and the checkpoint were not "
+            "changed. Investigate before any change; never move the checkpoint back by hand."
         )
     if latest_version == checkpoint:
         return None
@@ -221,8 +221,8 @@ def is_retention_error(message: str) -> bool:
 def retention_gap_message(start_version: int, end_version: int, detail: str) -> str:
     return (
         f"CDC retention gap: source versions {start_version}..{end_version} can no longer be read "
-        f"from the Change Data Feed ({detail}). Nothing was written and the checkpoint was not "
-        "moved. Do not edit the checkpoint by hand. Recovery, with approval: (1) record the gap "
+        f"from the Change Data Feed ({detail}). The history, Silver and the checkpoint were not "
+        "changed (the checkpoint was not moved). Do not edit the checkpoint by hand. Recovery, with approval: (1) record the gap "
         f"and the audit range {start_version}..{end_version} that cannot be rebuilt; (2) re-baseline "
         f"silver_station_maintenance from the source at VERSION AS OF {end_version} and reconcile "
         f"it; (3) only then set the checkpoint to {end_version}. Prevention: run CDC more often "

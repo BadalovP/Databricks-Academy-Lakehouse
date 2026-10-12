@@ -2,7 +2,14 @@
 
 Databricks Academy **Final Project**: one integrated solution that covers Labs 1–12.
 
-> **Status: implemented and tested offline. In Personal DEV the platform sample run (step 2) and the strict idempotency rerun (step 3, 19/19 criteria after a CDC no-op fix) passed on 2026-10-12. A replay changes no data, keeps audit timestamps and writes no CDC commit. The shared Silver/Gold MERGEs still record metadata-only commits. Step 4 passed. CDC `batch_002` (1 insert, 2 updates, 1 delete) ran live. An automatic `OPTIMIZE` then added a source version without data; the checkpoint semantics were corrected, and the `batch_003` replay moved the checkpoint over that version with no events. Step 5 (Lakeflow) passed, with row-for-row parity to the imperative path. The `GRID_V1` dashboard definition is deployed but not published. The assistant, dashboard data, governance and PROD have not run live yet.**
+> **Status: steps 1–5 passed live in Personal DEV on 2026-10-12.**
+> - deploy;
+> - platform sample run;
+> - strict idempotency (19/19);
+> - CDC inserts, updates, deletes and replay, including the checkpoint across an automatic `OPTIMIZE`;
+> - Lakeflow, with row-for-row parity to the imperative path.
+>
+> **Not live yet:** the dashboard on live data (the `GRID_V1` definition is deployed, not published), the assistant with AI Search, the governance demo, PROD on the Azure trial, and a run of the CD workflow. The shared Silver/Gold MERGEs still record metadata-only commits on replay. All data is a labelled development sample or fictional fixture.
 > More than 700 offline tests (unit tests, local Spark and static checks) run in CI. Every live step needs explicit approval and is planned in [docs/RELEASE_AND_VALIDATION.md](docs/RELEASE_AND_VALIDATION.md). Results of the individual labs and of Demo 3 were produced in their own folders. They are not Final Project evidence and are not presented as such.
 
 | Document | Purpose |
