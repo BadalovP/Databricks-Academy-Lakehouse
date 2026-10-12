@@ -1,0 +1,229 @@
+resources:
+  jobs:
+    urbanflow_final_platform:
+      name: "[${bundle.target}] UrbanFlow 2.0 Platform"
+      description: >-
+        Manual-only orchestration for bounded batch/streaming ingestion, medallion transforms,
+        validation, optional federation/CDC, and a triggered Lakeflow refresh.
+      max_concurrent_runs: 1
+      queue:
+        enabled: true
+      timeout_seconds: 7200
+      parameters:
+        - name: expected_host
+          default: ${workspace.host}
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema
+          default: ${var.schema}
+        - name: volume
+          default: ${var.volume}
+        - name: run_station_pipeline
+          default: "false"
+        - name: run_historical
+          default: "false"
+        - name: run_weather
+          default: "false"
+        - name: run_full_month
+          default: "false"
+        - name: run_federation_cdc
+          default: "false"
+        - name: run_lakeflow
+          default: "false"
+        - name: source_execution_id
+          default: "urbanflow-final-{{job.run_id}}"
+        - name: run_attempt_id
+          default: "{{job.run_id}}"
+        - name: historical_execution_id
+          default: "urbanflow-final-historical-{{job.run_id}}"
+        - name: historical_landing_subdir
+          default: ""
+        - name: weather_execution_id
+          default: "urbanflow-final-weather-{{job.run_id}}"
+        - name: weather_source
+          default: sample_json
+        - name: weather_sample_file
+          default: open_meteo_archive_202401.sample.json
+        - name: weather_start_date
+          default: "2024-01-24"
+        - name: weather_end_date
+          default: "2024-01-25"
+        - name: stream_timeout_seconds
+          default: "900"
+        - name: federation_catalog
+          default: ${var.federation_catalog}
+        - name: federation_table
+          default: ${var.federation_table}
+      environments:
+        - environment_key: urbanflow_serverless
+          spec:
+            client: "4"
+            dependencies:
+              - PyYAML==6.0.3
+              - requests==2.32.5
+      tasks:
+        - task_key: preflight
+          environment_key: urbanflow_serverless
+          disable_auto_optimization: true
+          timeout_seconds: 300
+          notebook_task:
+            notebook_path: ../notebooks/08_unified_preflight.py
+            source: WORKSPACE
+        - task_key: station_source_check
+          depends_on:
+            - task_key: preflight
+          environment_key: urbanflow_serverless
+          disable_auto_optimization: true
+          timeout_seconds: 600
+          notebook_task:
+            notebook_path: ../notebooks/09_station_source_check.py
+            source: WORKSPACE
+        - task_key: station_silver
+          depends_on:
+            - task_key: station_source_check
+          environment_key: urbanflow_serverless
+          disable_auto_optimization: true
+          timeout_seconds: 900
+          notebook_task:
+            notebook_path: ../notebooks/04_bronze_to_silver.py
+            source: WORKSPACE
+        - task_key: station_gold
+          depends_on:
+            - task_key: station_silver
+          environment_key: urbanflow_serverless
+          disable_auto_optimization: true
+          timeout_seconds: 900
+          notebook_task:
+            notebook_path: ../notebooks/05_silver_to_gold.py
+            source: WORKSPACE
+        - task_key: historical_trips
+          depends_on:
+            - task_key: preflight
+          environment_key: urbanflow_serverless
+          disable_auto_optimization: true
+          timeout_seconds: 3600
+          notebook_task:
+            notebook_path: ../notebooks/06_historical_trips.py
+            source: WORKSPACE
+        - task_key: weather_enrichment
+          depends_on:
+            - task_key: historical_trips
+          environment_key: urbanflow_serverless
+          disable_auto_optimization: true
+          timeout_seconds: 900
+          notebook_task:
+            notebook_path: ../notebooks/07_weather_enrichment.py
+            source: WORKSPACE
+        - task_key: validate_medallion
+          depends_on:
+            - task_key: station_gold
+            - task_key: historical_trips
+            - task_key: weather_enrichment
+          environment_key: urbanflow_serverless
+          disable_auto_optimization: true
+          timeout_seconds: 900
+          notebook_task:
+            notebook_path: ../notebooks/10_unified_final_validation.py
+            source: WORKSPACE
+        - task_key: federation_cdc
+          depends_on:
+            - task_key: validate_medallion
+          environment_key: urbanflow_serverless
+          disable_auto_optimization: true
+          timeout_seconds: 1200
+          notebook_task:
+            notebook_path: ../notebooks/11_federation_cdc.py
+            source: WORKSPACE
+        - task_key: should_refresh_lakeflow
+          depends_on:
+            - task_key: validate_medallion
+          condition_task:
+            op: EQUAL_TO
+            left: "{{job.parameters.run_lakeflow}}"
+            right: "true"
+        - task_key: refresh_lakeflow
+          depends_on:
+            - task_key: should_refresh_lakeflow
+              outcome: "true"
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.urbanflow_final_pipeline.id}
+            full_refresh: false
+      tags:
+        project: urbanflow_final_project
+        release: protected_manual_only
+        compute: serverless_bounded
+
+    urbanflow_final_rag:
+      name: "[${bundle.target}] UrbanFlow 2.0 Mobility RAG"
+      description: >-
+        Manual-only knowledge ingestion, triggered Vector Search synchronization, and
+        baseline-versus-RAG evaluation. Writes, index mutation, and inference are off by default.
+      max_concurrent_runs: 1
+      queue:
+        enabled: true
+      timeout_seconds: 5400
+      parameters:
+        - name: expected_host
+          default: ${workspace.host}
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema
+          default: ${var.schema}
+        - name: ai_search_endpoint
+          default: ${var.ai_search_endpoint}
+        - name: ai_search_index
+          default: ${var.ai_search_index}
+        - name: embedding_endpoint
+          default: ${var.embedding_endpoint}
+        - name: chat_endpoint
+          default: ${var.chat_endpoint}
+        - name: eval_question_limit
+          default: "18"
+        - name: eval_question_ids
+          default: ""
+        - name: eval_include_baseline
+          default: "true"
+        - name: allow_table_writes
+          default: "false"
+        - name: allow_ai_search_mutation
+          default: "false"
+        - name: run_live_inference
+          default: "false"
+      environments:
+        - environment_key: urbanflow_rag_serverless
+          spec:
+            client: "4"
+            dependencies:
+              - databricks-ai-search==0.78
+              - databricks-openai==0.17.1
+      tasks:
+        - task_key: ingest_knowledge_base
+          environment_key: urbanflow_rag_serverless
+          disable_auto_optimization: true
+          timeout_seconds: 1200
+          notebook_task:
+            notebook_path: ../notebooks/20_ingest_knowledge_base.py
+            source: WORKSPACE
+        - task_key: prepare_vector_search
+          depends_on:
+            - task_key: ingest_knowledge_base
+          environment_key: urbanflow_rag_serverless
+          disable_auto_optimization: true
+          timeout_seconds: 3600
+          notebook_task:
+            notebook_path: ../notebooks/21_prepare_vector_search.py
+            source: WORKSPACE
+        - task_key: evaluate_rag
+          depends_on:
+            - task_key: prepare_vector_search
+          environment_key: urbanflow_rag_serverless
+          disable_auto_optimization: true
+          timeout_seconds: 1800
+          notebook_task:
+            notebook_path: ../notebooks/23_evaluate_rag.py
+            source: WORKSPACE
+      tags:
+        project: urbanflow_final_project
+        release: protected_manual_only
+        ai: mobility_operations_rag
+

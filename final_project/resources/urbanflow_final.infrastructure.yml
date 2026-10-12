@@ -1,0 +1,18 @@
+resources:
+  schemas:
+    urbanflow_final_schema:
+      name: ${var.schema}
+      catalog_name: ${var.catalog}
+      comment: UrbanFlow 2.0 Final Project data, quality, CDC, and RAG assets.
+    urbanflow_final_lakeflow_schema:
+      name: ${var.lakeflow_schema}
+      catalog_name: ${var.catalog}
+      comment: Pipeline-managed UrbanFlow 2.0 datasets; isolated from notebook-owned tables.
+  volumes:
+    urbanflow_final_landing:
+      name: ${var.volume}
+      catalog_name: ${var.catalog}
+      schema_name: ${resources.schemas.urbanflow_final_schema.name}
+      volume_type: MANAGED
+      comment: UrbanFlow 2.0 landing files, schemas, checkpoints, and secret-safe reports.
+

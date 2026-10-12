@@ -1,0 +1,92 @@
+questions:
+  - id: q01
+    category: rebalancing
+    question: How is a station selected for bike delivery?
+    expected_sources: [01_station_rebalancing.md]
+    expected_keywords: [low bikes, deliver bikes, priority]
+  - id: q02
+    category: rebalancing
+    question: What should an operator do when both bikes and docks are critically low?
+    expected_sources: [01_station_rebalancing.md]
+    expected_keywords: [inspect station, conflicting, telemetry]
+  - id: q03
+    category: maintenance
+    question: Which checks are required before closing a station maintenance ticket?
+    expected_sources: [02_station_maintenance.md]
+    expected_keywords: [functional check, photo, timestamp]
+  - id: q04
+    category: maintenance
+    question: When should a station be marked out of service?
+    expected_sources: [02_station_maintenance.md]
+    expected_keywords: [safety, renting, returning]
+  - id: q05
+    category: incident
+    question: What is the first response to stale station telemetry?
+    expected_sources: [03_incident_response.md]
+    expected_keywords: [freshness, source feed, escalate]
+  - id: q06
+    category: incident
+    question: How are severity-one mobility incidents escalated?
+    expected_sources: [03_incident_response.md]
+    expected_keywords: [incident commander, acknowledge, fifteen minutes]
+  - id: q07
+    category: quality
+    question: What happens to a station event with a missing station identifier?
+    expected_sources: [04_data_quality.md]
+    expected_keywords: [quarantine, failed rule, reconciliation]
+  - id: q08
+    category: quality
+    question: How are duplicate station events handled?
+    expected_sources: [04_data_quality.md]
+    expected_keywords: [event_id, first arrival, duplicate]
+  - id: q09
+    category: recovery
+    question: How should an operator replay an Auto Loader batch safely?
+    expected_sources: [05_pipeline_recovery.md]
+    expected_keywords: [checkpoint, new execution id, reconcile]
+  - id: q10
+    category: recovery
+    question: Is a full Lakeflow refresh the normal recovery action?
+    expected_sources: [05_pipeline_recovery.md]
+    expected_keywords: [no, approval, data loss]
+  - id: q11
+    category: definitions
+    question: What is the difference between GBFS station_id and historical station identifiers?
+    expected_sources: [06_source_definitions.md]
+    expected_keywords: [uuid, short_name, do not join]
+  - id: q12
+    category: definitions
+    question: Does Open-Meteo provide weather for every individual station?
+    expected_sources: [06_source_definitions.md]
+    expected_keywords: [city-level, context, not station]
+  - id: q13
+    category: kpi
+    question: How is the rebalancing priority score calculated?
+    expected_sources: [07_kpi_definitions.md]
+    expected_keywords: [severity, deficit, size]
+  - id: q14
+    category: kpi
+    question: What does freshness lag measure?
+    expected_sources: [07_kpi_definitions.md]
+    expected_keywords: [current time, latest event, minutes]
+  - id: q15
+    category: security
+    question: Where are Event Hubs secrets stored?
+    expected_sources: [08_security_and_access.md]
+    expected_keywords: [key vault, secret scope, never]
+  - id: q16
+    category: security
+    question: Why are production workflows manual and approval gated?
+    expected_sources: [08_security_and_access.md]
+    expected_keywords: [cost, mutation, least privilege]
+  - id: q17
+    category: unanswerable
+    question: What is the mayor's private mobile phone number?
+    expected_sources: []
+    expected_keywords: []
+  - id: q18
+    category: unanswerable
+    question: Predict the exact number of trips next New Year's Eve.
+    expected_sources: []
+    expected_keywords: []
+

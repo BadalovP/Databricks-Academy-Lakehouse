@@ -1,0 +1,49 @@
+# Offline defaults. Bundle job parameters override host, catalog, schema, and endpoints.
+workspace:
+  host: https://dbc-1750318a-76a9.cloud.databricks.com
+  catalog: workspace
+  schema: urbanflow_final_dev
+
+tables:
+  documents: rag_documents
+  chunks: rag_document_chunks
+  evaluation_results: rag_evaluation_results
+  monitoring: rag_query_monitoring
+
+chunking:
+  max_chars: 900
+  overlap_chars: 120
+  min_chunk_chars: 40
+
+ai_search:
+  endpoint_type: STANDARD
+  pipeline_type: TRIGGERED
+  embedding_endpoint: databricks-gte-large-en
+  primary_key: chunk_id
+  embedding_source_column: content
+  columns_to_sync:
+    - chunk_id
+    - document_id
+    - source_name
+    - section_heading
+    - section_ref
+    - content
+    - content_hash
+
+retrieval:
+  query_type: HYBRID
+  top_k: 4
+  max_supplemental_queries: 2
+  score_threshold: 0.05
+  max_context_chars: 6000
+
+generation:
+  chat_endpoint: databricks-gpt-oss-20b
+  temperature: 0.0
+  max_tokens: 1800
+
+monitoring:
+  retention_days: 30
+  log_raw_questions: false
+  log_raw_answers: false
+

@@ -1,0 +1,76 @@
+bundle:
+  name: urbanflow_final_project
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    description: Unity Catalog catalog owned or approved for this target.
+  schema:
+    description: Final Project schema; DEV and PROD must use different values.
+  lakeflow_schema:
+    description: Pipeline-owned schema isolated from the imperative workflow.
+  volume:
+    description: Final Project managed Volume for landing, checkpoints, schemas, and reports.
+    default: urbanflow_final_landing
+  warehouse_id:
+    description: Existing SQL warehouse used by the dashboard and SQL validation.
+  ai_search_endpoint:
+    description: Target-specific Vector Search endpoint name.
+  ai_search_index:
+    description: Optional fully-qualified index name; empty derives it from catalog and schema.
+    default: ""
+  embedding_endpoint:
+    description: Authorized managed embedding endpoint.
+    default: databricks-gte-large-en
+  chat_endpoint:
+    description: Authorized Foundation Model chat endpoint.
+    default: databricks-gpt-oss-20b
+  federation_catalog:
+    description: Approved read-only foreign catalog; empty keeps federation execution disabled.
+    default: ""
+  federation_table:
+    description: Maintenance table inside the approved foreign catalog.
+    default: public.station_maintenance
+
+sync:
+  include:
+    - config/**
+    - fixtures/samples/**
+    - knowledge_base/**
+    - notebooks/**
+    - pipeline/**
+    - sql/**
+    - src/**
+  exclude:
+    - .venv/**
+    - "**/__pycache__/**"
+    - evidence/**
+
+# No default target: every command must name DEV or PROD explicitly.
+targets:
+  personal_dev:
+    mode: development
+    workspace:
+      host: https://dbc-1750318a-76a9.cloud.databricks.com
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: workspace
+      schema: urbanflow_final_dev
+      lakeflow_schema: urbanflow_final_lakeflow_dev
+      warehouse_id: ${env.DATABRICKS_WAREHOUSE_ID}
+      ai_search_endpoint: urbanflow-final-dev
+
+  azure_prod:
+    mode: production
+    workspace:
+      host: https://adb-7405618361895520.0.azuredatabricks.net
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: dbr_dev
+      schema: parvinbadalov_urbanflow_final_prod
+      lakeflow_schema: parvinbadalov_urbanflow_final_lakeflow_prod
+      warehouse_id: ${env.DATABRICKS_WAREHOUSE_ID}
+      ai_search_endpoint: parvinbadalov-urbanflow-final-prod
+
