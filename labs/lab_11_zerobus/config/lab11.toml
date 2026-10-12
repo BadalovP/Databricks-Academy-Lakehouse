@@ -1,0 +1,45 @@
+# Lab 11 configuration. No credentials here: the service principal is read from
+# ZEROBUS_CLIENT_ID / ZEROBUS_CLIENT_SECRET at run time.
+
+[producer]
+producer_id = "lab11-producer-01"
+devices = 4
+readings_per_device = 6
+# Events re-sent with the same event_id after they were acknowledged, to reproduce
+# the duplicate a producer creates when it retries after losing an acknowledgment.
+replay_count = 6
+batch_size = 10
+base_timestamp = "2026-10-12T08:00:00Z"
+interval_seconds = 60
+seed = 11
+
+[transport]
+max_attempts = 3
+backoff_initial_seconds = 1.0
+backoff_max_seconds = 8.0
+flush_timeout_seconds = 60
+server_ack_timeout_seconds = 60
+
+[tables]
+bronze = "bronze_iot_events"
+silver = "silver_iot_events"
+
+[targets.personal_dev]
+description = "Personal Databricks workspace (AWS us-east-2)"
+workspace_url = "https://dbc-1750318a-76a9.cloud.databricks.com"
+workspace_id = 7474653929863069
+cloud = "aws"
+region = "us-east-2"
+catalog = "workspace"
+schema = "lab_11_zerobus"
+cli_profile = "personal_lab10"
+
+[targets.azure_dev]
+description = "Academy Azure Databricks workspace dbr_dev (East US)"
+workspace_url = "https://adb-7405604503619901.1.azuredatabricks.net"
+workspace_id = 7405604503619901
+cloud = "azure"
+region = "eastus"
+catalog = "dbr_dev"
+schema = "parvinbadalov_lab11_zerobus"
+auth_type = "azure-cli"
