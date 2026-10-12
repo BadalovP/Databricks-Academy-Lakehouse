@@ -118,8 +118,8 @@ class DatabricksAISearchRetriever:
             self._index = self._client.get_index(
                 endpoint_name=self._endpoint_name, index_name=self._index_name
             )
-        # HYBRID combines vector similarity with BM25 keywords, which suits runbooks full of
-        # exact service names such as "Orion" or "Atlas" (Databricks recommends it for RAG).
+        # HYBRID combines vector similarity with BM25 keywords, which suits procedures full of
+        # exact terms such as "DELIVER BIKES" or "quarantine" (Databricks recommends it for RAG).
         response = self._index.similarity_search(
             query_text=question,
             columns=self.COLUMNS,

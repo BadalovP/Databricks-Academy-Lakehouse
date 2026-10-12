@@ -43,9 +43,9 @@ class DeltaSyncIndexSpec:
 
     def as_create_kwargs(self) -> dict[str, Any]:
         if self.pipeline_type != "TRIGGERED":
-            raise ValueError("Lab 12 permits only TRIGGERED synchronization.")
+            raise ValueError("UrbanFlow 2.0 permits only TRIGGERED synchronization.")
         if self.endpoint_type != "STANDARD":
-            raise ValueError("Lab 12 defaults to a STANDARD AI Search endpoint.")
+            raise ValueError("UrbanFlow 2.0 uses a STANDARD AI Search endpoint.")
         return {
             "endpoint_name": self.endpoint_name,
             "source_table_name": self.source_table_name,

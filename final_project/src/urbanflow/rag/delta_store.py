@@ -33,7 +33,7 @@ def create_lab_tables(
     tables: dict[str, str],
     allow_create: bool = False,
 ) -> None:
-    """Create only Lab 12-owned schema/tables; never drop or replace anything."""
+    """Create only Final-Project-owned tables; never drop or replace anything."""
     if not allow_create:
         raise PermissionError("Table creation is disabled; pass allow_create=True after approval.")
     schema_name = qualified_name(catalog, schema, "placeholder").rsplit(".", 1)[0]
