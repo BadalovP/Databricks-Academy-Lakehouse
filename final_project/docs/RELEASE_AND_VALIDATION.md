@@ -2,16 +2,25 @@
 
 [← Main README](../README.md) · [Coverage matrix](LABS_1_TO_12_COVERAGE.md) · [Cost and performance](COST_AND_PERFORMANCE.md)
 
-**Status:** CI runs on every pull request. **Steps 1, 2 and 3 have passed in Personal DEV.** Step 3 (strict idempotency) failed one criterion in run `605056708110586`. After the CDC no-op fix, it passed all 19 criteria in run `412521206243476`: logical, audit and physical-data idempotency, with no CDC commit and the checkpoint unchanged. The shared Silver/Gold MERGEs still write one metadata-only commit per table on a replay. Steps 4–9 have not run. There has been no Lakeflow update, AI Search endpoint, RAG inference or CD release.
+**Status:** CI runs on every pull request. **Steps 1–5 have passed in Personal DEV**:
+- deploy;
+- platform sample run;
+- strict idempotency;
+- CDC inserts, updates, deletes and replay, including the checkpoint across an automatic `OPTIMIZE`;
+- Lakeflow.
+
+Earlier failed attempts are kept in the evidence table below. The shared Silver/Gold MERGEs still write one metadata-only commit per table on a replay. Steps 6–9 have not run: no AI Search endpoint, RAG inference or PROD deployment, and no CD workflow release. The CI/CD design and its comparison with Lab 08 are in [CI_CD.md](CI_CD.md).
 
 ## Continuous integration (`final_project_ci.yml`)
 
 CI runs on pull requests and on pushes to `main` that touch `final_project/` or the two Final Project workflows. It never authenticates to a workspace.
 
-1. `ruff check .` and `black --check .`
-2. `pytest`: unit tests, local Spark tests (Java 17), SQL safety, notebook documentation contract, release validators.
-3. `python scripts/build_dashboard.py --check`: the committed per-target dashboards equal what the SQL generates.
-4. Install the Databricks CLI (schema only), then `python scripts/validate_bundle.py`. This validates `databricks.yml` and every included resource file against the CLI's bundle schema.
+1. `python scripts/scan_secrets.py`: no credential-shaped value in any tracked Final Project file.
+2. `ruff check .` and `black --check .`
+3. `pytest`: unit tests, local Spark tests (Java 17), SQL safety, notebook documentation contract, release validators, workflow structure.
+4. `python scripts/build_dashboard.py --check`: the committed per-target dashboards equal what the SQL generates.
+5. Install the Databricks CLI (schema only), then `python scripts/validate_bundle.py`. This validates `databricks.yml` and every included resource file against the CLI's bundle schema.
+6. On pull requests, `scripts/check_change_scope.py`. It fails when the change touches anything outside `final_project/**` and the two Final Project workflows (Demo 3, labs, shared Terraform). It also reports whether the change is deployable: docs, evidence and tests alone are not.
 
 ## Continuous delivery (`final_project_cd.yml`)
 
@@ -20,20 +29,27 @@ CD is started manually from **Actions → Final Project · UrbanFlow 2.0 release
 | Input | Meaning |
 |---|---|
 | `target` | `personal_dev` or `azure_prod` |
+| `mode` | `plan_only` (default: read-only), `deploy`, or `deploy_and_sample_run` (deploy, then one bounded platform run on the samples) |
 | `confirm_release` | Must equal `RELEASE_URBANFLOW_FINAL_<TARGET>`, for example `RELEASE_URBANFLOW_FINAL_PERSONAL_DEV` |
-| `run_platform` | `false` by default. When `true`, after the deploy CD runs the platform Job once on the samples (station, historical, weather and CDC in fixture mode). |
 
-The workflow runs in three stages:
+The workflow runs in four jobs, each starting only if the previous one succeeded:
 
-1. **Static validation:** the CI checks again.
-2. **Approval:** the `final-project-approval` environment, with a required reviewer.
-3. **Release:** in the `final-project-<target>` environment:
+1. **Static validation** (no cloud access): the typed confirmation, a cost and scope warning for the chosen mode, the secret scan, and the CI checks again.
+2. **Plan** (read-only, environment `final-project-<target>`):
    1. Pin the workspace host and refuse the shared Academy workspaces.
-   2. Print the deploying identity.
-   3. Run `bundle validate`, then `bundle plan` checked by `validate_release_plan.py --phase pre`. Only the seven Final Project resources may appear, with create, update or skip actions only (never delete), and names must carry the target prefix. No cluster, schedule or trigger is allowed.
-   4. `bundle deploy --auto-approve --fail-on-active-runs`.
-   5. Run `bundle plan` again and require every action to be `skip` (`--phase post`). This proves the deploy converged.
-   6. If `run_platform=true`, start the run with an idempotency token, poll for up to 40 minutes, then run `validate_job_run.py`. It requires every task to succeed (`refresh_lakeflow` may be excluded) and the final validation to report PASS.
+   2. Print the acting identity.
+   3. Run `bundle validate`.
+   4. Run `bundle plan`, checked by `validate_release_plan.py --phase pre`. Only the seven Final Project resources may appear, with create, update or skip actions (never delete), and names must carry the target prefix. No cluster, schedule or trigger is allowed. Job names must not collide.
+
+   The plan and its verdict are uploaded as an artifact and written to the run summary. `plan_only` stops here.
+3. **Approval:** the `final-project-approval` environment, with a required reviewer who can read the plan first.
+4. **Release** (environment `final-project-<target>`):
+   1. Plan again right before deploying.
+   2. `bundle deploy --auto-approve --fail-on-active-runs`.
+   3. Require a post-deploy plan where every action is `skip` (`--phase post`).
+   4. With `deploy_and_sample_run`, start one run with an idempotency token and poll for up to 40 minutes. If the run overruns, cancel it. If the release itself is cancelled, also cancel the run. Then run `validate_job_run.py`.
+
+   The plans, results, run JSON and validation are uploaded as release evidence even when a step fails.
 
 ### Identities the CD needs (not created yet)
 
@@ -104,9 +120,10 @@ Each item lists its exact action, bound, verification and cleanup. Approve items
 
 **Status (2026-10-12):**
 - A: done (PASS).
-- B: `batch_002` done. CDC passed, but an automatic `OPTIMIZE` added source version 4, so the run stopped before `batch_003`.
-- C: not run.
-- D–G: not approved.
+- B: done.
+  - `batch_002` passed. An automatic `OPTIMIZE` then added source version 4. The run stopped, the checkpoint semantics were corrected, the fix was redeployed, and `batch_003` passed with checkpoint 3 → 4.
+- C: done (PASS, Lakeflow update `a26b4385`).
+- D–G: not approved. See the consolidated proposal in `IMPLEMENTATION_PROGRESS.md`.
 
 **Revised B2 (needs approval):**
 1. Redeploy the corrected checkpoint semantics. This is code sync only, so the plan should be all `skip`, with `11_federation_cdc.py` and `cdc_sql.py` synced.
@@ -221,6 +238,9 @@ The optional Zerobus path and the governance demo each need their own approval. 
 | 2026-10-12 | `personal_dev` | **3 (retry). Idempotency rerun: PASS (19/19)** | Run `412521206243476` | All tasks succeeded. CDC `source_merged: false`, source version 2 unchanged, no new CDF events, history 5, Silver 5, checkpoint 2 unchanged, reconciliation 0. Every table: 0 rows changed, 0 files; audit stamps kept. Remaining: 16 shared tables wrote one metadata-only commit each. [Evidence](../evidence/2026-10-12_personal_dev_step3_retry_pass.md) |
 | 2026-10-12 | `personal_dev` | 4A. Redeploy of `273a301` (preflight branches, dashboard `GRID_V1`) | Platform Job and dashboard updated | PASS: exactly 2 updates, 0 creates, 0 deletes; post-plan all `skip`; dashboard not published, no dataset SQL run. [Evidence](../evidence/2026-10-12_personal_dev_step4_redeploy.md) |
 | 2026-10-12 | `personal_dev` | **4B. CDC `batch_002`: CDC PASS, stopped** | Run `343513312512955` (CDC only, 294 s) | 1 insert, 2 updates, 1 delete (6 CDF events at v3); history 5 → 11; Silver = `batch_002`, `MT-1003` deleted with its delete event kept; checkpoint 2 → 3 after reconciliation 0; the 16 other tables unchanged. **Unexpected:** an automatic `OPTIMIZE` made source version 4 (no data change). The deployed code would have moved the checkpoint to 4 on `batch_003`, so `batch_003` and Lakeflow were not started. Fixed locally (decide from CDF rows). [Evidence](../evidence/2026-10-12_personal_dev_step4_batch002.md) |
-| — | — | 4 (`batch_003`) – 9 | — | No live run yet (each step needs its own approval) |
+| 2026-10-12 | `personal_dev` | 4C. Code-only redeploy of `8220aaa` (CDC checkpoint = newest scanned and reconciled version) | Platform Job unchanged | PASS: plan and post-plan all `skip`; deployed notebook verified |
+| 2026-10-12 | `personal_dev` | **4C. CDC `batch_003`: PASS** | Run `500336374896739` (CDC only, 220 s) | `source_merged: false`; scanned range [4, 4] (the `OPTIMIZE`) with no CDF rows, so no history or Silver MERGE; history 11; Silver 5 = `batch_003`; reconciliation 0; checkpoint **3 → 4**; `last_data_change_version` 3. Only the checkpoint table committed. [Evidence](../evidence/2026-10-12_personal_dev_step4_batch003.md) |
+| 2026-10-12 | `personal_dev` | **5. Lakeflow: PASS** | Run `441981394008476`; update `a26b4385-f0b8-454a-9aad-d9a3424151c7` | Update COMPLETED in 129 s. Bronze 40, Silver 40, quarantine 0, duplicates 0, dimension 40, fact 40, summary 40, shortages 13, priorities 13. 22 expectations, 0 failed records; no event-log errors or warnings. Row-for-row parity with the imperative tables. Main schema unchanged; pipeline idle. [Evidence](../evidence/2026-10-12_personal_dev_step5_lakeflow.md) |
+| — | — | 6–9 | — | No live run yet (each step needs its own approval) |
 
 When a step passes, record it here. Add the notebook to `VALIDATED_LIVE_CLAIMS` in `tests/test_notebook_documentation.py` and update its **Actual validation** line with the run ID. Update the coverage matrix status to **Validated live**.

@@ -41,6 +41,7 @@ REQUIRED_DOCS = (
     "DEMO_DAY_PRESENTATION.md",
     "OPERATIONS_RUNBOOK.md",
     "IMPLEMENTATION_PROGRESS.md",
+    "CI_CD.md",
 )
 # Demo 3 live identifiers and figures. Final Project docs must not present them as its own.
 DEMO3_EVIDENCE = (
@@ -106,7 +107,7 @@ def test_final_project_cd_is_manual_confirmed_approved_and_pinned() -> None:
     assert 'expected="RELEASE_URBANFLOW_FINAL_${TARGET^^}"' in workflow
     assert "environment: final-project-approval" in workflow
     assert "environment: final-project-${{ inputs.target }}" in workflow
-    assert "needs: approve-release" in workflow
+    assert "needs: [plan, approve-release]" in workflow
     assert "--fail-on-active-runs" in workflow
     assert "--phase pre" in workflow and "--phase post" in workflow
     assert 'host="https://dbc-1750318a-76a9.cloud.databricks.com"' in workflow

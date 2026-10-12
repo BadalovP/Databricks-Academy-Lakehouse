@@ -91,11 +91,11 @@ This is Delta Change Data Feed on a Final-Project-owned table. It is not databas
 | Bronze | `bronze_historical_trips` | One raw trip row of the Job's default sample namespace | Yes: 40 rows |
 | Silver | `silver_station_status`, `quarantine_station_status`, `duplicate_station_status` | One event ID; one rejected or repeated record | Yes: 40 / 0 / 0 |
 | Silver | `silver_historical_trips` (+ quarantine, duplicate) | One valid ride per execution | Yes: 40 / 0 / 0 |
-| Silver | `station_maintenance_source` (CDF), `silver_station_maintenance` | One ticket | Yes: 5 / 5 (`batch_001` only) |
-| Audit | `maintenance_cdc_history`, `maintenance_cdc_checkpoint` | One change event; one pipeline key | Yes: 5 events; checkpoint 2 |
+| Silver | `station_maintenance_source` (CDF), `silver_station_maintenance` | One ticket | Yes: 5 / 5 after `batch_001`, `batch_002` (insert, updates, delete) and `batch_003` (replay) |
+| Audit | `maintenance_cdc_history`, `maintenance_cdc_checkpoint` | One change event; one pipeline key | Yes: 11 events; checkpoint 4 (source v4, last data change v3) |
 | Gold | `fact_station_availability`, `gold_station_shortage`, `gold_rebalancing_priority`, `dim_station_development_sample`, `gold_daily_station_summary` | One Silver event; one shortage; one station observation; one station; station-day | Yes: 40 / 13 / 13 / 40 / 40 |
 | Gold | `gold_daily_trip_demand`, `gold_weather_demand`, `dim_weather_hourly` | Station-day; day and band; weather hour | Yes: 40 / 17 / 48 |
-| Lakeflow | Pipeline datasets in `urbanflow_final_lakeflow_dev` | as the station path | **No**: no pipeline update has run |
+| Lakeflow | Pipeline datasets in `urbanflow_final_lakeflow_dev` | as the station path | Yes: update `a26b4385`; 40 / 40 / 0 / 0 / 40 / 40 / 40 / 13 / 13, parity with the imperative tables |
 | Assistant | `rag_documents`, `rag_document_chunks`, `rag_evaluation_results`, `rag_query_monitoring` | Document; chunk; question × variant; query | **No**: the assistant Job has not run |
 | Optional | `zerobus_station_health_bronze`, `silver_station_health` | Delivery; event | **No**: optional path not run |
 

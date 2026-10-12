@@ -350,10 +350,24 @@ def test_ci_runs_every_offline_gate_without_secrets_or_cloud_access() -> None:
     workflow = _workflow(CI)
     assert set(workflow["on"]) == {"pull_request", "push", "workflow_dispatch"}
     assert workflow["permissions"] == {"contents": "read"}
-    for gate in ("ruff check .", "black --check .", "pytest", "python scripts/validate_bundle.py"):
+    for gate in (
+        "python scripts/scan_secrets.py",
+        "ruff check .",
+        "black --check .",
+        "pytest",
+        "python scripts/build_dashboard.py --check",
+        "python scripts/validate_bundle.py",
+    ):
         assert gate in text
-    for forbidden in ("secrets.", "databricks bundle deploy", "jobs run-now", "id-token"):
+    # A `secrets.` context reference (not the scan_secrets.py file name) would mean CI authenticates.
+    assert not re.search(r"(?<![\w])secrets\.", text)
+    for forbidden in ("databricks bundle deploy", "jobs run-now", "id-token"):
         assert forbidden not in text
+    jobs = workflow["jobs"]
+    assert all("timeout-minutes" in job for job in jobs.values())
+    scope = jobs["change-scope"]
+    assert scope["if"] == "github.event_name == 'pull_request'"
+    assert "check_change_scope.py --base" in scope["steps"][-1]["run"]
 
 
 def test_cd_is_manual_confirmed_approved_and_pinned_per_target() -> None:
@@ -362,17 +376,59 @@ def test_cd_is_manual_confirmed_approved_and_pinned_per_target() -> None:
     assert set(workflow["on"]) == {"workflow_dispatch"}
     inputs = workflow["on"]["workflow_dispatch"]["inputs"]
     assert inputs["target"]["options"] == ["personal_dev", "azure_prod"]
-    assert inputs["run_platform"]["default"] is False
+    assert inputs["mode"]["options"] == ["plan_only", "deploy", "deploy_and_sample_run"]
+    assert inputs["mode"]["default"] == "plan_only"  # the safe default writes nothing
     jobs = workflow["jobs"]
+    assert jobs["plan"]["needs"] == "static-validation"
     assert jobs["approve-release"]["environment"] == "final-project-approval"
+    assert jobs["approve-release"]["needs"] == "plan"
     assert jobs["release"]["environment"] == "final-project-${{ inputs.target }}"
-    assert jobs["release"]["needs"] == "approve-release"
+    assert jobs["release"]["needs"] == ["plan", "approve-release"]
+    for name in ("approve-release", "release"):
+        assert jobs[name]["if"] == "inputs.mode != 'plan_only'"
+    assert all("timeout-minutes" in job for job in jobs.values())
     assert 'expected="RELEASE_URBANFLOW_FINAL_${TARGET^^}"' in text
     assert 'host="https://dbc-1750318a-76a9.cloud.databricks.com"' in text
     assert 'host="https://adb-7405618361895520.0.azuredatabricks.net"' in text
     assert "FORBIDDEN_HOST_DBR_DEV: https://adb-7405604503619901.1.azuredatabricks.net" in text
     assert 'auth="github-oidc"' in text and jobs["release"]["permissions"]["id-token"] == "write"
+    assert jobs["plan"]["permissions"]["id-token"] == "write"
     assert "DATABRICKS_TOKEN" not in text and "azure/login" not in text
+    assert jobs["plan"]["env"] == jobs["release"]["env"]
+
+
+def test_cd_never_bypasses_a_failed_or_skipped_predecessor() -> None:
+    """Lab 08 lesson: an always() or an OR-branch lets a job run after its guard was skipped."""
+    text = CD.read_text(encoding="utf-8")
+    jobs = _workflow(CD)["jobs"]
+    for name, job in jobs.items():
+        condition = str(job.get("if", ""))
+        for bypass in ("always()", "failure()", "||"):
+            assert bypass not in condition, (name, condition)
+    assert "&databricks" not in text and "*databricks" not in text  # no YAML anchors
+
+
+def test_cd_plan_is_reviewable_and_the_release_leaves_evidence_and_cancels_its_run() -> None:
+    text = CD.read_text(encoding="utf-8")
+    jobs = _workflow(CD)["jobs"]
+    plan_steps = {step.get("name"): step for step in jobs["plan"]["steps"]}
+    assert plan_steps["Upload the plan for review"]["if"] == "always()"
+    assert "deploy" not in plan_steps["Validate bundle and the pre-deploy plan"]["run"].replace(
+        "pre-deploy", ""
+    )
+    release_steps = {step.get("name"): step for step in jobs["release"]["steps"]}
+    assert release_steps["Upload release evidence"]["if"] == "always()"
+    cancel = release_steps["Cancel the platform run if this release was cancelled"]
+    assert cancel["if"] == "cancelled() && env.PLATFORM_RUN_ID != ''"
+    assert 'databricks jobs cancel-run "$PLATFORM_RUN_ID"' in cancel["run"]
+    run = release_steps["Run the platform Job once in development-sample mode"]
+    assert run["if"] == "inputs.mode == 'deploy_and_sample_run'"
+    assert 'databricks jobs cancel-run "$run_id"' in run["run"]  # a 40-minute overrun is stopped
+    assert "GITHUB_STEP_SUMMARY" in text
+    assert "python scripts/scan_secrets.py" in text
+    assert text.index("Re-plan immediately before deploying") < text.index(
+        "databricks bundle deploy"
+    )
 
 
 def test_cd_validates_the_plan_before_and_after_deploy_and_the_run_at_the_end() -> None:
@@ -384,6 +440,7 @@ def test_cd_validates_the_plan_before_and_after_deploy_and_the_run_at_the_end() 
     assert "--fail-on-active-runs" in text
     assert "scripts/validate_job_run.py" in text
     assert 't["task_key"]=="validate_medallion"' in text
+    assert text.count("--phase pre") == 2  # in the plan job and again right before deploying
     # The Job id and idempotency token travel in the request body; no positional id.
     assert 'databricks jobs run-now --json @"$RUNNER_TEMP/run-request.json"' in text
     assert 'run-now "$JOB_ID"' not in text
@@ -436,7 +493,7 @@ def test_ci_installs_the_cli_before_offline_bundle_validation() -> None:
     )
     assert workflow.index("databricks/setup-cli") < workflow.index("scripts/validate_bundle.py")
     assert "scripts/build_dashboard.py --check" in workflow
-    assert "secrets." not in workflow  # CI never authenticates to a workspace
+    assert not re.search(r"(?<![\w])secrets\.", workflow)  # CI never authenticates
     cd = (PROJECT_ROOT.parent / ".github" / "workflows" / "final_project_cd.yml").read_text(
         encoding="utf-8"
     )

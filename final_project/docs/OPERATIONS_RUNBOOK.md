@@ -42,6 +42,15 @@ The preflight refuses an empty run, a mix of sample and full-month parameters, a
 
 Never delete Bronze rows, checkpoints or landed files to "repair" a run. Every rerun path is idempotent (step 3 proved it).
 
+### Roll back a release
+
+A release changes code and resource definitions, never data, so a rollback is a redeploy of the previous good commit through the same gates:
+1. Check out the last released commit (recorded in `RELEASE_AND_VALIDATION.md`).
+2. Run `bundle plan` and `validate_release_plan.py --phase pre`. The plan should show `update` actions back to the old definitions and no delete.
+3. Deploy, then require a post-deploy plan that is all `skip`.
+
+With CD, dispatch the same workflow from that commit: `plan_only` first, then `deploy`. Never run `bundle destroy`: the schemas and the Volume are `prevent_destroy`, and destroying the Jobs would lose their run history. Data written by a faulty run is repaired by rerunning the same execution scope (MERGEs absorb it), not by deleting rows.
+
 ## 4. CDC checkpoint and replay rules
 
 1. The snapshot (fixture or Federation) is compared with the current source in both directions. **Identical → no source MERGE → no source commit.**

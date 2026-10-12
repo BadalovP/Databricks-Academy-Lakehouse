@@ -1,0 +1,447 @@
+{
+ "code_commit": "8220aaa",
+ "end_time_ms": 1791845787103,
+ "errors_warnings": [],
+ "expectations": [
+  {
+   "dataset": "workspace.urbanflow_final_lakeflow_dev.dim_station_development_sample",
+   "expectation": "short_name_present",
+   "failed": "0",
+   "flow": "workspace.urbanflow_final_lakeflow_dev.dim_station_development_sample",
+   "passed": "40"
+  },
+  {
+   "dataset": "workspace.urbanflow_final_lakeflow_dev.dim_station_development_sample",
+   "expectation": "station_id_present",
+   "failed": "0",
+   "flow": "workspace.urbanflow_final_lakeflow_dev.dim_station_development_sample",
+   "passed": "40"
+  },
+  {
+   "dataset": "workspace.urbanflow_final_lakeflow_dev.duplicate_station_status",
+   "expectation": "duplicate_has_event_id",
+   "failed": "0",
+   "flow": "workspace.urbanflow_final_lakeflow_dev.duplicate_station_status",
+   "passed": "0"
+  },
+  {
+   "dataset": "workspace.urbanflow_final_lakeflow_dev.fact_station_availability",
+   "expectation": "event_id_present",
+   "failed": "0",
+   "flow": "workspace.urbanflow_final_lakeflow_dev.fact_station_availability",
+   "passed": "40"
+  },
+  {
+   "dataset": "workspace.urbanflow_final_lakeflow_dev.fact_station_availability",
+   "expectation": "observation_date_present",
+   "failed": "0",
+   "flow": "workspace.urbanflow_final_lakeflow_dev.fact_station_availability",
+   "passed": "40"
+  },
+  {
+   "dataset": "workspace.urbanflow_final_lakeflow_dev.gold_daily_station_summary",
+   "expectation": "counts_are_positive",
+   "failed": "0",
+   "flow": "workspace.urbanflow_final_lakeflow_dev.gold_daily_station_summary",
+   "passed": "40"
+  },
+  {
+   "dataset": "workspace.urbanflow_final_lakeflow_dev.gold_daily_station_summary",
+   "expectation": "trend_claim_matches_observations",
+   "failed": "0",
+   "flow": "workspace.urbanflow_final_lakeflow_dev.gold_daily_station_summary",
+   "passed": "40"
+  },
+  {
+   "dataset": "workspace.urbanflow_final_lakeflow_dev.gold_rebalancing_priority",
+   "expectation": "action_is_known",
+   "failed": "0",
+   "flow": "workspace.urbanflow_final_lakeflow_dev.gold_rebalancing_priority",
+   "passed": "13"
+  },
+  {
+   "dataset": "workspace.urbanflow_final_lakeflow_dev.gold_rebalancing_priority",
+   "expectation": "execution_is_attributed",
+   "failed": "0",
+   "flow": "workspace.urbanflow_final_lakeflow_dev.gold_rebalancing_priority",
+   "passed": "13"
+  },
+  {
+   "dataset": "workspace.urbanflow_final_lakeflow_dev.gold_rebalancing_priority",
+   "expectation": "priority_is_actionable",
+   "failed": "0",
+   "flow": "workspace.urbanflow_final_lakeflow_dev.gold_rebalancing_priority",
+   "passed": "13"
+  },
+  {
+   "dataset": "workspace.urbanflow_final_lakeflow_dev.gold_rebalancing_priority",
+   "expectation": "score_is_explainable",
+   "failed": "0",
+   "flow": "workspace.urbanflow_final_lakeflow_dev.gold_rebalancing_priority",
+   "passed": "13"
+  },
+  {
+   "dataset": "workspace.urbanflow_final_lakeflow_dev.gold_station_shortage",
+   "expectation": "execution_is_attributed",
+   "failed": "0",
+   "flow": "workspace.urbanflow_final_lakeflow_dev.gold_station_shortage",
+   "passed": "13"
+  },
+  {
+   "dataset": "workspace.urbanflow_final_lakeflow_dev.gold_station_shortage",
+   "expectation": "shortage_is_actionable",
+   "failed": "0",
+   "flow": "workspace.urbanflow_final_lakeflow_dev.gold_station_shortage",
+   "passed": "13"
+  },
+  {
+   "dataset": "workspace.urbanflow_final_lakeflow_dev.gold_station_shortage",
+   "expectation": "shortage_status_is_known",
+   "failed": "0",
+   "flow": "workspace.urbanflow_final_lakeflow_dev.gold_station_shortage",
+   "passed": "13"
+  },
+  {
+   "dataset": "workspace.urbanflow_final_lakeflow_dev.quarantine_station_status",
+   "expectation": "has_failure_reason",
+   "failed": "0",
+   "flow": "workspace.urbanflow_final_lakeflow_dev.quarantine_station_status",
+   "passed": "0"
+  },
+  {
+   "dataset": "workspace.urbanflow_final_lakeflow_dev.silver_station_status",
+   "expectation": "bikes_not_negative",
+   "failed": "0",
+   "flow": "workspace.urbanflow_final_lakeflow_dev.silver_station_status",
+   "passed": "40"
+  },
+  {
+   "dataset": "workspace.urbanflow_final_lakeflow_dev.silver_station_status",
+   "expectation": "docks_not_negative",
+   "failed": "0",
+   "flow": "workspace.urbanflow_final_lakeflow_dev.silver_station_status",
+   "passed": "40"
+  },
+  {
+   "dataset": "workspace.urbanflow_final_lakeflow_dev.silver_station_status",
+   "expectation": "event_id_present",
+   "failed": "0",
+   "flow": "workspace.urbanflow_final_lakeflow_dev.silver_station_status",
+   "passed": "40"
+  },
+  {
+   "dataset": "workspace.urbanflow_final_lakeflow_dev.silver_station_status",
+   "expectation": "observed_at_present",
+   "failed": "0",
+   "flow": "workspace.urbanflow_final_lakeflow_dev.silver_station_status",
+   "passed": "40"
+  },
+  {
+   "dataset": "workspace.urbanflow_final_lakeflow_dev.silver_station_status",
+   "expectation": "out_of_service_is_not_actionable",
+   "failed": "0",
+   "flow": "workspace.urbanflow_final_lakeflow_dev.silver_station_status",
+   "passed": "40"
+  },
+  {
+   "dataset": "workspace.urbanflow_final_lakeflow_dev.silver_station_status",
+   "expectation": "station_id_present",
+   "failed": "0",
+   "flow": "workspace.urbanflow_final_lakeflow_dev.silver_station_status",
+   "passed": "40"
+  },
+  {
+   "dataset": "workspace.urbanflow_final_lakeflow_dev.silver_station_status",
+   "expectation": "status_is_known",
+   "failed": "0",
+   "flow": "workspace.urbanflow_final_lakeflow_dev.silver_station_status",
+   "passed": "40"
+  }
+ ],
+ "flow_status": [
+  {
+   "flow": "workspace.urbanflow_final_lakeflow_dev.bronze_station_status",
+   "output_rows": null,
+   "status": "COMPLETED"
+  },
+  {
+   "flow": "workspace.urbanflow_final_lakeflow_dev.dim_station_development_sample",
+   "output_rows": "40",
+   "status": "COMPLETED"
+  },
+  {
+   "flow": "workspace.urbanflow_final_lakeflow_dev.duplicate_station_status",
+   "output_rows": "0",
+   "status": "COMPLETED"
+  },
+  {
+   "flow": "workspace.urbanflow_final_lakeflow_dev.fact_station_availability",
+   "output_rows": "40",
+   "status": "COMPLETED"
+  },
+  {
+   "flow": "workspace.urbanflow_final_lakeflow_dev.gold_daily_station_summary",
+   "output_rows": "40",
+   "status": "COMPLETED"
+  },
+  {
+   "flow": "workspace.urbanflow_final_lakeflow_dev.gold_rebalancing_priority",
+   "output_rows": "13",
+   "status": "COMPLETED"
+  },
+  {
+   "flow": "workspace.urbanflow_final_lakeflow_dev.gold_station_shortage",
+   "output_rows": "13",
+   "status": "COMPLETED"
+  },
+  {
+   "flow": "workspace.urbanflow_final_lakeflow_dev.quarantine_station_status",
+   "output_rows": "0",
+   "status": "COMPLETED"
+  },
+  {
+   "flow": "workspace.urbanflow_final_lakeflow_dev.silver_station_status",
+   "output_rows": "40",
+   "status": "COMPLETED"
+  },
+  {
+   "flow": "workspace.urbanflow_final_lakeflow_dev.station_information_raw",
+   "output_rows": "40",
+   "status": "COMPLETED"
+  }
+ ],
+ "idempotency_token": "urbanflow-final-step5-lakeflow-20261013-001",
+ "imperative_counts": {
+  "bronze_station_status": {
+   "n": "40"
+  },
+  "dim_station_development_sample": {
+   "n": "40"
+  },
+  "duplicate_station_status": {
+   "n": "0"
+  },
+  "fact_station_availability": {
+   "n": "40"
+  },
+  "gold_daily_station_summary": {
+   "n": "40"
+  },
+  "gold_rebalancing_priority": {
+   "n": "13"
+  },
+  "gold_station_shortage": {
+   "n": "13"
+  },
+  "quarantine_station_status": {
+   "n": "0"
+  },
+  "silver_station_status": {
+   "n": "40"
+  }
+ },
+ "job_id": 158911626270744,
+ "job_parameters": {
+  "run_federation_cdc": "false",
+  "run_full_month": "false",
+  "run_historical": "false",
+  "run_lakeflow": "true",
+  "run_station_pipeline": "false",
+  "run_weather": "false"
+ },
+ "lakeflow_counts": {
+  "bronze_station_status": {
+   "n": "40"
+  },
+  "dim_station_development_sample": {
+   "n": "40"
+  },
+  "duplicate_station_status": {
+   "n": "0"
+  },
+  "fact_station_availability": {
+   "n": "40"
+  },
+  "gold_daily_station_summary": {
+   "n": "40"
+  },
+  "gold_rebalancing_priority": {
+   "n": "13"
+  },
+  "gold_station_shortage": {
+   "n": "13"
+  },
+  "quarantine_station_status": {
+   "n": "0"
+  },
+  "silver_station_status": {
+   "n": "40"
+  },
+  "station_information_raw": {
+   "n": "40"
+  }
+ },
+ "main_schema_tables_compared": 20,
+ "main_schema_tables_with_new_commits": {},
+ "outcome": "PASS",
+ "parity_except_all_both_ways": {
+  "dim_station_development_sample": [
+   {
+    "imperative_only": "0",
+    "lakeflow_only": "0"
+   }
+  ],
+  "fact_station_availability": [
+   {
+    "imperative_only": "0",
+    "lakeflow_only": "0"
+   }
+  ],
+  "gold_rebalancing_priority": [
+   {
+    "imperative_only": "0",
+    "lakeflow_only": "0"
+   }
+  ],
+  "gold_station_shortage": [
+   {
+    "imperative_only": "0",
+    "lakeflow_only": "0"
+   }
+  ],
+  "silver_station_status": [
+   {
+    "imperative_only": "0",
+    "lakeflow_only": "0"
+   }
+  ]
+ },
+ "pipeline": {
+  "pipeline_state": "PipelineState.IDLE",
+  "spec": {
+   "catalog": "workspace",
+   "clusters": 0,
+   "continuous": false,
+   "development": true,
+   "schema": "urbanflow_final_lakeflow_dev",
+   "serverless": true
+  },
+  "update_detail": {
+   "creation_time": 1791845645824,
+   "full_refresh": false,
+   "state": "UpdateInfoState.COMPLETED",
+   "validate_only": false
+  },
+  "update_id": "a26b4385-f0b8-454a-9aad-d9a3424151c7",
+  "update_progress": [
+   {
+    "state": "WAITING_FOR_RESOURCES",
+    "timestamp": "2026-10-12T22:54:06.899Z"
+   },
+   {
+    "state": "INITIALIZING",
+    "timestamp": "2026-10-12T22:54:40.975Z"
+   },
+   {
+    "state": "SETTING_UP_TABLES",
+    "timestamp": "2026-10-12T22:55:22.986Z"
+   },
+   {
+    "state": "RUNNING",
+    "timestamp": "2026-10-12T22:55:35.686Z"
+   },
+   {
+    "state": "COMPLETED",
+    "timestamp": "2026-10-12T22:56:15.533Z"
+   }
+  ],
+  "updates": [
+   {
+    "cause": "UpdateInfoCause.JOB_TASK",
+    "creation_time": 1791845645824,
+    "full_refresh": false,
+    "state": "UpdateInfoState.COMPLETED",
+    "update_id": "a26b4385-f0b8-454a-9aad-d9a3424151c7"
+   }
+  ]
+ },
+ "pipeline_id": "d5e0e599-c195-4c08-8217-d554ebf2b301",
+ "run_id": 441981394008476,
+ "run_state": {
+  "life_cycle_state": "TERMINATED",
+  "result_state": "SUCCESS",
+  "state_message": "",
+  "user_cancelled_or_timedout": false
+ },
+ "start_time_ms": 1791845501360,
+ "step": "5 Lakeflow Declarative Pipeline: one triggered update through the platform Job",
+ "task_results": {
+  "federation_cdc": {
+   "reason": "run_federation_cdc=false",
+   "status": "SKIPPED"
+  },
+  "historical_trips": "DRY_RUN: no archive was read and no Delta table was written.",
+  "land_sources": {
+   "status": "NOTHING_TO_LAND"
+  },
+  "preflight": {
+   "branches": {
+    "run_federation_cdc": false,
+    "run_full_month": false,
+    "run_historical": false,
+    "run_lakeflow": true,
+    "run_station_pipeline": false,
+    "run_weather": false
+   },
+   "compute": "serverless",
+   "event_hubs_producer": "excluded",
+   "historical_execution_id": "urbanflow-final-hist-devsample40",
+   "mode": "development_sample",
+   "source_execution_id": "urbanflow-final-441981394008476",
+   "status": "PASS",
+   "target": "workspace.urbanflow_final_dev",
+   "weather_execution_id": "urbanflow-final-weather-devsample48h"
+  },
+  "station_gold": "DRY_RUN: no Silver read and no Gold write occurred.",
+  "station_silver": "DRY_RUN: no Bronze read and no Delta write occurred.",
+  "station_source_check": {
+   "reason": "station branch disabled",
+   "status": "SKIPPED"
+  },
+  "validate_medallion": {
+   "checks": {},
+   "historical_execution_id": "urbanflow-final-hist-devsample40",
+   "mode": "development_sample",
+   "source_execution_id": "urbanflow-final-441981394008476",
+   "status": "PASS",
+   "weather_execution_id": "urbanflow-final-weather-devsample48h"
+  },
+  "weather_enrichment": "DRY_RUN: no weather was requested and no Delta table was written."
+ },
+ "task_seconds": {
+  "federation_cdc": 17,
+  "historical_trips": 17,
+  "land_sources": 16,
+  "preflight": 26,
+  "refresh_lakeflow": 142,
+  "should_refresh_lakeflow": 1,
+  "station_gold": 16,
+  "station_silver": 17,
+  "station_source_check": 17,
+  "validate_medallion": 17,
+  "weather_enrichment": 14
+ },
+ "tasks": {
+  "federation_cdc": "SUCCESS",
+  "historical_trips": "SUCCESS",
+  "land_sources": "SUCCESS",
+  "preflight": "SUCCESS",
+  "refresh_lakeflow": "SUCCESS",
+  "should_refresh_lakeflow": "SUCCESS",
+  "station_gold": "SUCCESS",
+  "station_silver": "SUCCESS",
+  "station_source_check": "SUCCESS",
+  "validate_medallion": "SUCCESS",
+  "weather_enrichment": "SUCCESS"
+ }
+}

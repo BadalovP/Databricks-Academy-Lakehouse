@@ -2,7 +2,7 @@
 
 Databricks Academy **Final Project**: one integrated solution that covers Labs 1–12.
 
-> **Status: implemented and tested offline. In Personal DEV the platform sample run (step 2) and the strict idempotency rerun (step 3, 19/19 criteria after a CDC no-op fix) passed on 2026-10-12. A replay changes no data, keeps audit timestamps and writes no CDC commit. The shared Silver/Gold MERGEs still record metadata-only commits. Step 4 deployed the `GRID_V1` dashboard definition (not published). CDC `batch_002` (1 insert, 2 updates, 1 delete) passed live. An automatic `OPTIMIZE` then added a source version with no data, so `batch_003` waits for a fix, prepared locally, that decides from CDF rows. Lakeflow, the assistant, dashboard data and PROD have not run live yet.**
+> **Status: implemented and tested offline. In Personal DEV the platform sample run (step 2) and the strict idempotency rerun (step 3, 19/19 criteria after a CDC no-op fix) passed on 2026-10-12. A replay changes no data, keeps audit timestamps and writes no CDC commit. The shared Silver/Gold MERGEs still record metadata-only commits. Step 4 passed. CDC `batch_002` (1 insert, 2 updates, 1 delete) ran live. An automatic `OPTIMIZE` then added a source version without data; the checkpoint semantics were corrected, and the `batch_003` replay moved the checkpoint over that version with no events. Step 5 (Lakeflow) passed, with row-for-row parity to the imperative path. The `GRID_V1` dashboard definition is deployed but not published. The assistant, dashboard data, governance and PROD have not run live yet.**
 > More than 700 offline tests (unit tests, local Spark and static checks) run in CI. Every live step needs explicit approval and is planned in [docs/RELEASE_AND_VALIDATION.md](docs/RELEASE_AND_VALIDATION.md). Results of the individual labs and of Demo 3 were produced in their own folders. They are not Final Project evidence and are not presented as such.
 
 | Document | Purpose |
@@ -14,6 +14,7 @@ Databricks Academy **Final Project**: one integrated solution that covers Labs 1
 | [Dashboard](docs/DASHBOARD.md) | Five pages generated per target from read-only SQL |
 | [Quality framework](docs/QUALITY_FRAMEWORK.md) | Why Great Expectations, and what it checks |
 | [Demo Day presentation](docs/DEMO_DAY_PRESENTATION.md) | 25-minute run of show, slides, demo checklist, expected questions, five-minute interview demo |
+| [CI/CD](docs/CI_CD.md) | Pipeline diagram, comparison with Lab 08, required GitHub environments and identities, post-merge demonstration checklist |
 | [Operations runbook](docs/OPERATIONS_RUNBOOK.md) | Deploy DEV/PROD, run, recover from failures, CDC checkpoint and replay rules, security and governance, RAG report template |
 | [Implementation progress](docs/IMPLEMENTATION_PROGRESS.md) | Handoff record: commits, resource IDs, live run IDs, known limitations, pending approvals |
 
@@ -197,7 +198,7 @@ Dry runs that connect to nothing:
 
 ## Known limitations
 
-- **Live validation is partial.** Steps 1–3 (DEV deploy, platform sample run, strict idempotency), the step 4 redeploy and CDC `batch_002` passed in Personal DEV. The `batch_003` no-op replay, Lakeflow, the assistant, the dashboard data, governance and PROD have not run live yet. Each step and its approval is listed in [docs/RELEASE_AND_VALIDATION.md](docs/RELEASE_AND_VALIDATION.md).
+- **Live validation is partial.** Steps 1–5 passed in Personal DEV: deploy, platform sample run, strict idempotency, CDC with inserts, updates, deletes and replay, and Lakeflow. The assistant, the dashboard data, governance and PROD have not run live yet. Each step and its approval is listed in [docs/RELEASE_AND_VALIDATION.md](docs/RELEASE_AND_VALIDATION.md).
 - **The `azure_prod` CD identity needs Academy account administration.** An operator can deploy with their own login instead.
 - **Small samples.** The data is a 40-station snapshot and a 40-trip sample. The full-month path exists (`run_full_month`), but it is a separate, approved run.
 - **Federation and CDC.** Federation needs an approved foreign catalog. Without one, CDC runs on the committed fictional snapshots.
