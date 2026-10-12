@@ -1,0 +1,813 @@
+{
+  "step": "2 retry - Personal DEV platform sample run after redeploying commit 98cf63e",
+  "outcome": "FAILED at weather_enrichment (sample weather file never landed); station and historical paths succeeded and were independently verified; validate_medallion and federation_cdc did not run",
+  "phase_a_redeploy": {
+    "commit": "98cf63e9e82c2193f7fa3349415874e21e4f47d6",
+    "pre_plan": {
+      "resources.dashboards.urbanflow_final_dashboard": "skip",
+      "resources.jobs.urbanflow_final_platform": "update",
+      "resources.jobs.urbanflow_final_rag": "skip",
+      "resources.pipelines.urbanflow_final_pipeline": "skip",
+      "resources.schemas.urbanflow_final_lakeflow_schema": "skip",
+      "resources.schemas.urbanflow_final_schema": "skip",
+      "resources.volumes.urbanflow_final_landing": "skip"
+    },
+    "real_field_updates": [
+      "tasks[historical_trips].depends_on += station_gold",
+      "tasks[station_source_check].base_parameters.station_source"
+    ],
+    "pre_validator": "PASS",
+    "post_plan": {
+      "resources.dashboards.urbanflow_final_dashboard": "skip",
+      "resources.jobs.urbanflow_final_platform": "skip",
+      "resources.jobs.urbanflow_final_rag": "skip",
+      "resources.pipelines.urbanflow_final_pipeline": "skip",
+      "resources.schemas.urbanflow_final_lakeflow_schema": "skip",
+      "resources.schemas.urbanflow_final_schema": "skip",
+      "resources.volumes.urbanflow_final_landing": "skip"
+    },
+    "post_validator": "PASS",
+    "deployed_historical_trips_depends_on": [
+      "land_sources",
+      "station_gold"
+    ]
+  },
+  "job_id": 158911626270744,
+  "run_id": 896235701785511,
+  "idempotency_token": "urbanflow-final-step2-retry-20261012-001",
+  "job_parameters": {
+    "run_station_pipeline": "true",
+    "station_source": "sample_autoloader",
+    "source_execution_id": "urbanflow-final-304828008837365",
+    "run_historical": "true",
+    "historical_execution_id": "urbanflow-final-hist-devsample40",
+    "run_weather": "true",
+    "weather_execution_id": "urbanflow-final-weather-devsample48h",
+    "run_federation_cdc": "true",
+    "cdc_source": "fixture_snapshot",
+    "cdc_snapshot": "batch_001",
+    "run_full_month": "false",
+    "run_lakeflow": "false"
+  },
+  "run_state": {
+    "life_cycle_state": "INTERNAL_ERROR",
+    "result_state": "FAILED",
+    "state_message": "Task weather_enrichment failed with message: Workload failed, see run output for details. This caused all downstream tasks to get skipped.",
+    "start": "2026-10-12T16:16:24+00:00",
+    "end": "2026-10-12T16:22:28+00:00",
+    "seconds": 363
+  },
+  "tasks": [
+    {
+      "task_key": "preflight",
+      "task_run_id": 50856350143823,
+      "life_cycle_state": "TERMINATED",
+      "result_state": "SUCCESS",
+      "start": "2026-10-12T16:16:25+00:00",
+      "end": "2026-10-12T16:17:06+00:00",
+      "seconds": 41
+    },
+    {
+      "task_key": "land_sources",
+      "task_run_id": 626962509210069,
+      "life_cycle_state": "TERMINATED",
+      "result_state": "SUCCESS",
+      "start": "2026-10-12T16:17:06+00:00",
+      "end": "2026-10-12T16:17:48+00:00",
+      "seconds": 42
+    },
+    {
+      "task_key": "station_source_check",
+      "task_run_id": 1022514883802773,
+      "life_cycle_state": "TERMINATED",
+      "result_state": "SUCCESS",
+      "start": "2026-10-12T16:17:49+00:00",
+      "end": "2026-10-12T16:18:06+00:00",
+      "seconds": 18
+    },
+    {
+      "task_key": "station_silver",
+      "task_run_id": 1102133570137791,
+      "life_cycle_state": "TERMINATED",
+      "result_state": "SUCCESS",
+      "start": "2026-10-12T16:18:07+00:00",
+      "end": "2026-10-12T16:19:13+00:00",
+      "seconds": 66
+    },
+    {
+      "task_key": "station_gold",
+      "task_run_id": 145069725123013,
+      "life_cycle_state": "TERMINATED",
+      "result_state": "SUCCESS",
+      "start": "2026-10-12T16:19:14+00:00",
+      "end": "2026-10-12T16:20:52+00:00",
+      "seconds": 99
+    },
+    {
+      "task_key": "historical_trips",
+      "task_run_id": 551728716970138,
+      "life_cycle_state": "TERMINATED",
+      "result_state": "SUCCESS",
+      "start": "2026-10-12T16:20:53+00:00",
+      "end": "2026-10-12T16:22:11+00:00",
+      "seconds": 78
+    },
+    {
+      "task_key": "weather_enrichment",
+      "task_run_id": 57605585964297,
+      "life_cycle_state": "TERMINATED",
+      "result_state": "FAILED",
+      "start": "2026-10-12T16:22:11+00:00",
+      "end": "2026-10-12T16:22:27+00:00",
+      "seconds": 16
+    },
+    {
+      "task_key": "validate_medallion",
+      "task_run_id": 386649802472875,
+      "life_cycle_state": "SKIPPED",
+      "result_state": "UPSTREAM_FAILED",
+      "start": "2026-10-12T16:22:28+00:00",
+      "end": "2026-10-12T16:22:28+00:00",
+      "seconds": 0
+    },
+    {
+      "task_key": "federation_cdc",
+      "task_run_id": 4486558357927,
+      "life_cycle_state": "SKIPPED",
+      "result_state": "UPSTREAM_FAILED",
+      "start": "2026-10-12T16:22:28+00:00",
+      "end": "2026-10-12T16:22:28+00:00",
+      "seconds": 0
+    },
+    {
+      "task_key": "should_refresh_lakeflow",
+      "task_run_id": 234686154619835,
+      "life_cycle_state": "SKIPPED",
+      "result_state": "UPSTREAM_FAILED",
+      "start": "2026-10-12T16:22:28+00:00",
+      "end": "2026-10-12T16:22:28+00:00",
+      "seconds": 0
+    },
+    {
+      "task_key": "refresh_lakeflow",
+      "task_run_id": 630735808086405,
+      "life_cycle_state": "SKIPPED",
+      "result_state": "UPSTREAM_FAILED",
+      "start": "2026-10-12T16:22:28+00:00",
+      "end": "2026-10-12T16:22:28+00:00",
+      "seconds": 0
+    }
+  ],
+  "task_results": {
+    "preflight": {
+      "branches": {
+        "run_full_month": false,
+        "run_historical": true,
+        "run_station_pipeline": true,
+        "run_weather": true
+      },
+      "compute": "serverless",
+      "event_hubs_producer": "excluded",
+      "historical_execution_id": "urbanflow-final-hist-devsample40",
+      "mode": "development_sample",
+      "source_execution_id": "urbanflow-final-304828008837365",
+      "status": "PASS",
+      "target": "workspace.urbanflow_final_dev",
+      "weather_execution_id": "urbanflow-final-weather-devsample48h"
+    },
+    "land_sources": {
+      "bronze_rows_for_execution": 40,
+      "historical_landing": "already_landed",
+      "historical_landing_dir": "/Volumes/workspace/urbanflow_final_dev/urbanflow_final_landing/landing/historical_trips",
+      "source_execution_id": "urbanflow-final-304828008837365",
+      "station_events_landed": 40,
+      "station_landing": "already_landed",
+      "status": "PASS"
+    },
+    "station_source_check": {
+      "distinct_event_ids": 40,
+      "execution_id": "urbanflow-final-304828008837365",
+      "null_event_ids": 0,
+      "null_execution_ids": 0,
+      "null_station_ids": 0,
+      "rows": 40,
+      "station_source": "sample_autoloader",
+      "status": "PASS",
+      "table": "workspace.urbanflow_final_dev.bronze_station_status"
+    }
+  },
+  "task_errors": {
+    "weather_enrichment": "FileNotFoundError: [Errno 2] No such file or directory: '/Volumes/workspace/urbanflow_final_dev/urbanflow_final_landing/landing/weather/open_meteo_archive_202401.sample.json'"
+  },
+  "independent_validation": {
+    "expected_sample_profile": {
+      "events": 40,
+      "composition": {
+        "AVAILABLE": 25,
+        "LOW_BIKES": 4,
+        "LOW_DOCKS": 9,
+        "OUT_OF_SERVICE": 2
+      },
+      "actionable": 13
+    },
+    "availability_breakdown": [
+      {
+        "availability_status": "AVAILABLE",
+        "n": "25"
+      },
+      {
+        "availability_status": "LOW_BIKES",
+        "n": "4"
+      },
+      {
+        "availability_status": "LOW_DOCKS",
+        "n": "9"
+      },
+      {
+        "availability_status": "OUT_OF_SERVICE",
+        "n": "2"
+      }
+    ],
+    "station_identity": [
+      {
+        "bronze": "40",
+        "silver": "40",
+        "quarantine": "0",
+        "duplicates": "0",
+        "fact": "40",
+        "shortage": "13",
+        "priority": "13"
+      }
+    ],
+    "historical_identity": [
+      {
+        "bronze": "40",
+        "valid": "40",
+        "quarantine": "0",
+        "duplicates": "0",
+        "gold_trips": "40"
+      }
+    ],
+    "tables": [
+      "bronze_historical_trips",
+      "bronze_station_status",
+      "dim_station_development_sample",
+      "duplicate_historical_trips",
+      "duplicate_station_status",
+      "fact_station_availability",
+      "gold_daily_station_summary",
+      "gold_daily_trip_demand",
+      "gold_rebalancing_priority",
+      "gold_station_shortage",
+      "quarantine_historical_trips",
+      "quarantine_station_status",
+      "silver_historical_trips",
+      "silver_station_status"
+    ],
+    "delta_history": {
+      "bronze_historical_trips": [
+        {
+          "version": "0",
+          "operation": "CREATE TABLE",
+          "metrics": {}
+        },
+        {
+          "version": "1",
+          "operation": "STREAMING UPDATE",
+          "metrics": {
+            "numRemovedFiles": "0",
+            "numOutputRows": "40",
+            "numOutputBytes": "6922",
+            "numAddedFiles": "1"
+          }
+        }
+      ],
+      "bronze_station_status": [
+        {
+          "version": "0",
+          "operation": "CREATE TABLE",
+          "metrics": {}
+        },
+        {
+          "version": "1",
+          "operation": "STREAMING UPDATE",
+          "metrics": {
+            "numRemovedFiles": "0",
+            "numOutputRows": "40",
+            "numOutputBytes": "15711",
+            "numAddedFiles": "1"
+          }
+        }
+      ],
+      "dim_station_development_sample": [
+        {
+          "version": "0",
+          "operation": "CREATE TABLE AS SELECT",
+          "metrics": {
+            "numFiles": "0",
+            "numOutputRows": "0",
+            "numOutputBytes": "0"
+          }
+        },
+        {
+          "version": "1",
+          "operation": "MERGE",
+          "metrics": {
+            "numTargetRowsCopied": "0",
+            "numTargetRowsDeleted": "0",
+            "numTargetFilesAdded": "1",
+            "numTargetBytesAdded": "4470",
+            "numTargetBytesRemoved": "0",
+            "numTargetDeletionVectorsAdded": "0",
+            "numTargetRowsMatchedUpdated": "0",
+            "executionTimeMs": "2398",
+            "materializeSourceTimeMs": "443",
+            "numTargetRowsInserted": "40",
+            "numTargetRowsMatchedDeleted": "0",
+            "numTargetDeletionVectorsUpdated": "0",
+            "scanTimeMs": "798",
+            "numTargetRowsUpdated": "0",
+            "numOutputRows": "40",
+            "numTargetDeletionVectorsRemoved": "0",
+            "numTargetRowsNotMatchedBySourceUpdated": "0",
+            "numTargetChangeFilesAdded": "0",
+            "numSourceRows": "40",
+            "numTargetFilesRemoved": "0",
+            "numTargetRowsNotMatchedBySourceDeleted": "0",
+            "rewriteTimeMs": "1119"
+          }
+        }
+      ],
+      "duplicate_historical_trips": [
+        {
+          "version": "0",
+          "operation": "CREATE TABLE AS SELECT",
+          "metrics": {
+            "numFiles": "0",
+            "numOutputRows": "0",
+            "numOutputBytes": "0"
+          }
+        },
+        {
+          "version": "1",
+          "operation": "MERGE",
+          "metrics": {
+            "numTargetRowsCopied": "0",
+            "numTargetRowsDeleted": "0",
+            "numTargetFilesAdded": "0",
+            "numTargetBytesAdded": "0",
+            "numTargetBytesRemoved": "0",
+            "numTargetDeletionVectorsAdded": "0",
+            "numTargetRowsMatchedUpdated": "0",
+            "executionTimeMs": "1955",
+            "materializeSourceTimeMs": "517",
+            "numTargetRowsInserted": "0",
+            "numTargetRowsMatchedDeleted": "0",
+            "numTargetDeletionVectorsUpdated": "0",
+            "scanTimeMs": "777",
+            "numTargetRowsUpdated": "0",
+            "numOutputRows": "0",
+            "numTargetDeletionVectorsRemoved": "0",
+            "numTargetRowsNotMatchedBySourceUpdated": "0",
+            "numTargetChangeFilesAdded": "0",
+            "numSourceRows": "0",
+            "numTargetFilesRemoved": "0",
+            "numTargetRowsNotMatchedBySourceDeleted": "0",
+            "rewriteTimeMs": "619"
+          }
+        }
+      ],
+      "duplicate_station_status": [
+        {
+          "version": "0",
+          "operation": "CREATE TABLE AS SELECT",
+          "metrics": {
+            "numFiles": "0",
+            "numOutputRows": "0",
+            "numOutputBytes": "0"
+          }
+        },
+        {
+          "version": "1",
+          "operation": "MERGE",
+          "metrics": {
+            "numTargetRowsCopied": "0",
+            "numTargetRowsDeleted": "0",
+            "numTargetFilesAdded": "0",
+            "numTargetBytesAdded": "0",
+            "numTargetBytesRemoved": "0",
+            "numTargetDeletionVectorsAdded": "0",
+            "numTargetRowsMatchedUpdated": "0",
+            "executionTimeMs": "2354",
+            "materializeSourceTimeMs": "561",
+            "numTargetRowsInserted": "0",
+            "numTargetRowsMatchedDeleted": "0",
+            "numTargetDeletionVectorsUpdated": "0",
+            "scanTimeMs": "962",
+            "numTargetRowsUpdated": "0",
+            "numOutputRows": "0",
+            "numTargetDeletionVectorsRemoved": "0",
+            "numTargetRowsNotMatchedBySourceUpdated": "0",
+            "numTargetChangeFilesAdded": "0",
+            "numSourceRows": "0",
+            "numTargetFilesRemoved": "0",
+            "numTargetRowsNotMatchedBySourceDeleted": "0",
+            "rewriteTimeMs": "769"
+          }
+        }
+      ],
+      "fact_station_availability": [
+        {
+          "version": "0",
+          "operation": "CREATE TABLE AS SELECT",
+          "metrics": {
+            "numFiles": "0",
+            "numOutputRows": "0",
+            "numOutputBytes": "0"
+          }
+        },
+        {
+          "version": "1",
+          "operation": "MERGE",
+          "metrics": {
+            "numTargetRowsCopied": "0",
+            "numTargetRowsDeleted": "0",
+            "numTargetFilesAdded": "1",
+            "numTargetBytesAdded": "7983",
+            "numTargetBytesRemoved": "0",
+            "numTargetDeletionVectorsAdded": "0",
+            "numTargetRowsMatchedUpdated": "0",
+            "executionTimeMs": "2977",
+            "materializeSourceTimeMs": "736",
+            "numTargetRowsInserted": "40",
+            "numTargetRowsMatchedDeleted": "0",
+            "numTargetDeletionVectorsUpdated": "0",
+            "scanTimeMs": "1049",
+            "numTargetRowsUpdated": "0",
+            "numOutputRows": "40",
+            "numTargetDeletionVectorsRemoved": "0",
+            "numTargetRowsNotMatchedBySourceUpdated": "0",
+            "numTargetChangeFilesAdded": "0",
+            "numSourceRows": "40",
+            "numTargetFilesRemoved": "0",
+            "numTargetRowsNotMatchedBySourceDeleted": "0",
+            "rewriteTimeMs": "1143"
+          }
+        }
+      ],
+      "gold_daily_station_summary": [
+        {
+          "version": "0",
+          "operation": "CREATE TABLE AS SELECT",
+          "metrics": {
+            "numFiles": "0",
+            "numOutputRows": "0",
+            "numOutputBytes": "0"
+          }
+        },
+        {
+          "version": "1",
+          "operation": "MERGE",
+          "metrics": {
+            "numTargetRowsCopied": "0",
+            "numTargetRowsDeleted": "0",
+            "numTargetFilesAdded": "1",
+            "numTargetBytesAdded": "5239",
+            "numTargetBytesRemoved": "0",
+            "numTargetDeletionVectorsAdded": "0",
+            "numTargetRowsMatchedUpdated": "0",
+            "executionTimeMs": "3854",
+            "materializeSourceTimeMs": "1044",
+            "numTargetRowsInserted": "40",
+            "numTargetRowsMatchedDeleted": "0",
+            "numTargetDeletionVectorsUpdated": "0",
+            "scanTimeMs": "789",
+            "numTargetRowsUpdated": "0",
+            "numOutputRows": "40",
+            "numTargetDeletionVectorsRemoved": "0",
+            "numTargetRowsNotMatchedBySourceUpdated": "0",
+            "numTargetChangeFilesAdded": "0",
+            "numSourceRows": "40",
+            "numTargetFilesRemoved": "0",
+            "numTargetRowsNotMatchedBySourceDeleted": "0",
+            "rewriteTimeMs": "1983"
+          }
+        }
+      ],
+      "gold_daily_trip_demand": [
+        {
+          "version": "0",
+          "operation": "CREATE TABLE AS SELECT",
+          "metrics": {
+            "numFiles": "0",
+            "numOutputRows": "0",
+            "numOutputBytes": "0"
+          }
+        },
+        {
+          "version": "1",
+          "operation": "MERGE",
+          "metrics": {
+            "numTargetRowsCopied": "0",
+            "numTargetRowsDeleted": "0",
+            "numTargetFilesAdded": "1",
+            "numTargetBytesAdded": "4004",
+            "numTargetBytesRemoved": "0",
+            "numTargetDeletionVectorsAdded": "0",
+            "numTargetRowsMatchedUpdated": "0",
+            "executionTimeMs": "3698",
+            "materializeSourceTimeMs": "805",
+            "numTargetRowsInserted": "40",
+            "numTargetRowsMatchedDeleted": "0",
+            "numTargetDeletionVectorsUpdated": "0",
+            "scanTimeMs": "742",
+            "numTargetRowsUpdated": "0",
+            "numOutputRows": "40",
+            "numTargetDeletionVectorsRemoved": "0",
+            "numTargetRowsNotMatchedBySourceUpdated": "0",
+            "numTargetChangeFilesAdded": "0",
+            "numSourceRows": "40",
+            "numTargetFilesRemoved": "0",
+            "numTargetRowsNotMatchedBySourceDeleted": "0",
+            "rewriteTimeMs": "2117"
+          }
+        }
+      ],
+      "gold_rebalancing_priority": [
+        {
+          "version": "0",
+          "operation": "CREATE TABLE AS SELECT",
+          "metrics": {
+            "numFiles": "0",
+            "numOutputRows": "0",
+            "numOutputBytes": "0"
+          }
+        },
+        {
+          "version": "1",
+          "operation": "MERGE",
+          "metrics": {
+            "numTargetRowsCopied": "0",
+            "numTargetRowsDeleted": "0",
+            "numTargetFilesAdded": "1",
+            "numTargetBytesAdded": "4927",
+            "numTargetBytesRemoved": "0",
+            "numTargetDeletionVectorsAdded": "0",
+            "numTargetRowsMatchedUpdated": "0",
+            "executionTimeMs": "4281",
+            "materializeSourceTimeMs": "857",
+            "numTargetRowsInserted": "13",
+            "numTargetRowsMatchedDeleted": "0",
+            "numTargetDeletionVectorsUpdated": "0",
+            "scanTimeMs": "1135",
+            "numTargetRowsUpdated": "0",
+            "numOutputRows": "13",
+            "numTargetDeletionVectorsRemoved": "0",
+            "numTargetRowsNotMatchedBySourceUpdated": "0",
+            "numTargetChangeFilesAdded": "0",
+            "numSourceRows": "13",
+            "numTargetFilesRemoved": "0",
+            "numTargetRowsNotMatchedBySourceDeleted": "0",
+            "rewriteTimeMs": "2258"
+          }
+        }
+      ],
+      "gold_station_shortage": [
+        {
+          "version": "0",
+          "operation": "CREATE TABLE AS SELECT",
+          "metrics": {
+            "numFiles": "0",
+            "numOutputRows": "0",
+            "numOutputBytes": "0"
+          }
+        },
+        {
+          "version": "1",
+          "operation": "MERGE",
+          "metrics": {
+            "numTargetRowsCopied": "0",
+            "numTargetRowsDeleted": "0",
+            "numTargetFilesAdded": "1",
+            "numTargetBytesAdded": "4850",
+            "numTargetBytesRemoved": "0",
+            "numTargetDeletionVectorsAdded": "0",
+            "numTargetRowsMatchedUpdated": "0",
+            "executionTimeMs": "5196",
+            "materializeSourceTimeMs": "1132",
+            "numTargetRowsInserted": "13",
+            "numTargetRowsMatchedDeleted": "0",
+            "numTargetDeletionVectorsUpdated": "0",
+            "scanTimeMs": "742",
+            "numTargetRowsUpdated": "0",
+            "numOutputRows": "13",
+            "numTargetDeletionVectorsRemoved": "0",
+            "numTargetRowsNotMatchedBySourceUpdated": "0",
+            "numTargetChangeFilesAdded": "0",
+            "numSourceRows": "13",
+            "numTargetFilesRemoved": "0",
+            "numTargetRowsNotMatchedBySourceDeleted": "0",
+            "rewriteTimeMs": "3261"
+          }
+        }
+      ],
+      "quarantine_historical_trips": [
+        {
+          "version": "0",
+          "operation": "CREATE TABLE AS SELECT",
+          "metrics": {
+            "numFiles": "0",
+            "numOutputRows": "0",
+            "numOutputBytes": "0"
+          }
+        },
+        {
+          "version": "1",
+          "operation": "MERGE",
+          "metrics": {
+            "numTargetRowsCopied": "0",
+            "numTargetRowsDeleted": "0",
+            "numTargetFilesAdded": "0",
+            "numTargetBytesAdded": "0",
+            "numTargetBytesRemoved": "0",
+            "numTargetDeletionVectorsAdded": "0",
+            "numTargetRowsMatchedUpdated": "0",
+            "executionTimeMs": "2417",
+            "materializeSourceTimeMs": "1033",
+            "numTargetRowsInserted": "0",
+            "numTargetRowsMatchedDeleted": "0",
+            "numTargetDeletionVectorsUpdated": "0",
+            "scanTimeMs": "702",
+            "numTargetRowsUpdated": "0",
+            "numOutputRows": "0",
+            "numTargetDeletionVectorsRemoved": "0",
+            "numTargetRowsNotMatchedBySourceUpdated": "0",
+            "numTargetChangeFilesAdded": "0",
+            "numSourceRows": "0",
+            "numTargetFilesRemoved": "0",
+            "numTargetRowsNotMatchedBySourceDeleted": "0",
+            "rewriteTimeMs": "652"
+          }
+        }
+      ],
+      "quarantine_station_status": [
+        {
+          "version": "0",
+          "operation": "CREATE TABLE AS SELECT",
+          "metrics": {
+            "numFiles": "0",
+            "numOutputRows": "0",
+            "numOutputBytes": "0"
+          }
+        },
+        {
+          "version": "1",
+          "operation": "MERGE",
+          "metrics": {
+            "numTargetRowsCopied": "0",
+            "numTargetRowsDeleted": "0",
+            "numTargetFilesAdded": "0",
+            "numTargetBytesAdded": "0",
+            "numTargetBytesRemoved": "0",
+            "numTargetDeletionVectorsAdded": "0",
+            "numTargetRowsMatchedUpdated": "0",
+            "executionTimeMs": "2368",
+            "materializeSourceTimeMs": "507",
+            "numTargetRowsInserted": "0",
+            "numTargetRowsMatchedDeleted": "0",
+            "numTargetDeletionVectorsUpdated": "0",
+            "scanTimeMs": "999",
+            "numTargetRowsUpdated": "0",
+            "numOutputRows": "0",
+            "numTargetDeletionVectorsRemoved": "0",
+            "numTargetRowsNotMatchedBySourceUpdated": "0",
+            "numTargetChangeFilesAdded": "0",
+            "numSourceRows": "0",
+            "numTargetFilesRemoved": "0",
+            "numTargetRowsNotMatchedBySourceDeleted": "0",
+            "rewriteTimeMs": "815"
+          }
+        }
+      ],
+      "silver_historical_trips": [
+        {
+          "version": "0",
+          "operation": "CREATE TABLE AS SELECT",
+          "metrics": {
+            "numFiles": "0",
+            "numOutputRows": "0",
+            "numOutputBytes": "0"
+          }
+        },
+        {
+          "version": "1",
+          "operation": "MERGE",
+          "metrics": {
+            "numTargetRowsCopied": "0",
+            "numTargetRowsDeleted": "0",
+            "numTargetFilesAdded": "1",
+            "numTargetBytesAdded": "9684",
+            "numTargetBytesRemoved": "0",
+            "numTargetDeletionVectorsAdded": "0",
+            "numTargetRowsMatchedUpdated": "0",
+            "executionTimeMs": "2627",
+            "materializeSourceTimeMs": "581",
+            "numTargetRowsInserted": "40",
+            "numTargetRowsMatchedDeleted": "0",
+            "numTargetDeletionVectorsUpdated": "0",
+            "scanTimeMs": "838",
+            "numTargetRowsUpdated": "0",
+            "numOutputRows": "40",
+            "numTargetDeletionVectorsRemoved": "0",
+            "numTargetRowsNotMatchedBySourceUpdated": "0",
+            "numTargetChangeFilesAdded": "0",
+            "numSourceRows": "40",
+            "numTargetFilesRemoved": "0",
+            "numTargetRowsNotMatchedBySourceDeleted": "0",
+            "rewriteTimeMs": "1169"
+          }
+        }
+      ],
+      "silver_station_status": [
+        {
+          "version": "0",
+          "operation": "CREATE TABLE AS SELECT",
+          "metrics": {
+            "numFiles": "0",
+            "numOutputRows": "0",
+            "numOutputBytes": "0"
+          }
+        },
+        {
+          "version": "1",
+          "operation": "MERGE",
+          "metrics": {
+            "numTargetRowsCopied": "0",
+            "numTargetRowsDeleted": "0",
+            "numTargetFilesAdded": "1",
+            "numTargetBytesAdded": "10840",
+            "numTargetBytesRemoved": "0",
+            "numTargetDeletionVectorsAdded": "0",
+            "numTargetRowsMatchedUpdated": "0",
+            "executionTimeMs": "6659",
+            "materializeSourceTimeMs": "1100",
+            "numTargetRowsInserted": "40",
+            "numTargetRowsMatchedDeleted": "0",
+            "numTargetDeletionVectorsUpdated": "0",
+            "scanTimeMs": "2485",
+            "numTargetRowsUpdated": "0",
+            "numOutputRows": "40",
+            "numTargetDeletionVectorsRemoved": "0",
+            "numTargetRowsNotMatchedBySourceUpdated": "0",
+            "numTargetChangeFilesAdded": "0",
+            "numSourceRows": "40",
+            "numTargetFilesRemoved": "0",
+            "numTargetRowsNotMatchedBySourceDeleted": "0",
+            "rewriteTimeMs": "2937"
+          }
+        }
+      ]
+    },
+    "weather_tables": "not created (task failed before writing)",
+    "cdc_tables": "not created (federation_cdc skipped)"
+  },
+  "bronze_preservation": {
+    "station_before": [
+      {
+        "execution_id": "urbanflow-final-304828008837365",
+        "n": "40",
+        "ids": "40"
+      }
+    ],
+    "station_after": [
+      {
+        "execution_id": "urbanflow-final-304828008837365",
+        "n": "40",
+        "ids": "40"
+      }
+    ],
+    "historical_before": [
+      {
+        "n": "40",
+        "rides": "40"
+      }
+    ],
+    "historical_after": [
+      {
+        "n": "40",
+        "rides": "40"
+      }
+    ],
+    "station_history_unchanged": true,
+    "historical_history_unchanged": true,
+    "checkpoint_landing_schema_files_unchanged": true
+  },
+  "unrelated_tables": {
+    "tracked": 173,
+    "changed": []
+  },
+  "after_run": {
+    "active_runs": [],
+    "ai_search_endpoints": []
+  }
+}

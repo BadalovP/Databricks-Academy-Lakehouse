@@ -2,7 +2,7 @@
 
 Databricks Academy **Final Project**: one integrated solution that covers Labs 1–12.
 
-> **Status: implemented and tested offline; deployed to Personal DEV on 2026-10-12. The first DEV platform run failed on two defects that are now fixed in code but not yet redeployed; no successful live run yet.**
+> **Status: implemented and tested offline; deployed to Personal DEV on 2026-10-12. In DEV, the station and historical paths have run successfully. Weather enrichment failed on a third defect, which is fixed in code but not yet redeployed. Step 2 has not passed yet.**
 > More than 700 offline tests (unit tests, local Spark and static checks) run in CI. Every live step needs explicit approval and is planned in [docs/RELEASE_AND_VALIDATION.md](docs/RELEASE_AND_VALIDATION.md). Results of the individual labs and of Demo 3 were produced in their own folders. They are not Final Project evidence and are not presented as such.
 
 | Document | Purpose |

@@ -2,7 +2,7 @@
 
 [← Main README](../README.md) · [Coverage matrix](LABS_1_TO_12_COVERAGE.md) · [Cost and performance](COST_AND_PERFORMANCE.md)
 
-**Status:** CI runs on every pull request. **Step 1 is done (DEV deployed, definitions only). Step 2 ran once on 2026-10-12 and FAILED on two defects (a fixed Demo 3 row count and a missing task dependency). Both are fixed in code but not yet deployed. No Lakeflow update or AI Search endpoint has run, and there has been no CD release.** This page describes how to release and how to validate, and it is where the evidence of each approved run will be recorded.
+**Status:** CI runs on every pull request. **Step 1 is done (DEV deployed). Step 2 has not passed yet.** The first attempt failed on two defects, which were fixed and redeployed. The retry then ran the station and historical paths successfully, verified independently, but failed at weather enrichment because the weather sample was never landed. That third fix is in code, not deployed. Validation and CDC have not run live. No Lakeflow update or AI Search endpoint has run, and there has been no CD release. This page describes how to release and how to validate, and it is where the evidence of each approved run will be recorded.
 
 ## Continuous integration (`final_project_ci.yml`)
 
@@ -105,7 +105,7 @@ The first test uses the 40-row development sample. That is enough to exercise ev
 
 ## Live validation plan
 
-**After the failed step 2:**
+**After the first failed step 2 (done: redeployed and retried once):**
 1. Redeploy the fixed code (the read-only plan shows 1 update, to the platform Job, plus synced files).
 2. Repeat step 2 with `source_execution_id=urbanflow-final-304828008837365`. Landing then reports the files as already present, Auto Loader finds no new files for that execution's checkpoint, and the run continues from the existing Bronze.
 3. Step 3 then reuses the same ID.
@@ -133,6 +133,8 @@ The optional Zerobus path and the governance demo each need their own approval. 
 |---|---|---|---|---|
 | 2026-10-12 | `personal_dev` | 1. Deploy DEV (operator release, commit `4adb9b5`) | Jobs `158911626270744` (platform), `887464717518046` (assistant); pipeline `d5e0e599-c195-4c08-8217-d554ebf2b301`; dashboard `01f1c647728e1ceeb2b5bd10a8700793`; schemas `workspace.urbanflow_final_dev`, `workspace.urbanflow_final_lakeflow_dev`; Volume `urbanflow_final_landing` | PASS: pre-plan 7 creates, post-plan all `skip`, both validators PASS, nothing started. [Evidence](../evidence/2026-10-12_personal_dev_step1_deploy.md) |
 | 2026-10-12 | `personal_dev` | 2. Platform sample run | Run `304828008837365`; station execution `urbanflow-final-304828008837365` | **FAILED** after 141 s: `station_source_check` expected a fixed Demo 3 row count (40 landed correctly); `historical_trips` ran before `station_gold` built the station dimension. Only the two Bronze tables were written (40 rows each). CDC never ran. Fixed in code, not redeployed. [Evidence](../evidence/2026-10-12_personal_dev_step2_sample_run.md) |
+| 2026-10-12 | `personal_dev` | Redeploy of `98cf63e` | Platform Job `158911626270744` updated | PASS: 1 update (dependency + parameter), post-plan all `skip` |
+| 2026-10-12 | `personal_dev` | 2 (retry). Platform sample run | Run `896235701785511`; same station execution `urbanflow-final-304828008837365` | **FAILED at `weather_enrichment`** (sample file never landed). Six tasks passed and were verified independently: station Bronze 40 = Silver 40 + 0 + 0, fact 40, shortages = priorities = 13 matching the sample profile; historical 40 valid. **Bronze and checkpoints unchanged, no duplication.** Validation and CDC did not run. [Evidence](../evidence/2026-10-12_personal_dev_step2_retry.md) |
 | — | — | 3–9 | — | No live run yet (each step needs its own approval) |
 
 When a step passes, record it here. Add the notebook to `VALIDATED_LIVE_CLAIMS` in `tests/test_notebook_documentation.py` and update its **Actual validation** line with the run ID. Update the coverage matrix status to **Validated live**.
