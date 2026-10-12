@@ -78,7 +78,7 @@ databricks-academy-lakehouse/
 | 7 | Lab 07 | Data Quality & Unit Testing | ⬜ Not started |
 | 8 | Lab 08 | CI/CD — DEV to PROD | ⬜ Not started |
 | 9 | Lab 09 | Databricks REST API & Automation | ⬜ Not started |
-| 10 | Lab 10 | Lakehouse Federation & CDC | ⬜ Not started |
+| 10 | [Lab 10](labs/lab_10_federation_cdc/) | Lakehouse Federation & CDC | ✅ Complete |
 | 11 | Lab 11 | Zero-bus Streaming | ⬜ Not started |
 | 12 | Lab 12 | AI Capstone — RAG & Vector Search | ⬜ Not started |
 | ★ | Final | End-to-end Platform + Demo Day | ⬜ Not started |

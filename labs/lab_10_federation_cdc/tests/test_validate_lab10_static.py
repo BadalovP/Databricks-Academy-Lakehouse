@@ -27,7 +27,7 @@ def _read(path: Path) -> str:
 def _notebooks() -> dict[str, str]:
     return {
         path.name: validator.notebook_source(path.name, _read(path))
-        for path in sorted(LAB.glob("*.ipynb"))
+        for path in sorted(validator.NOTEBOOKS.glob("*.ipynb"))
     }
 
 
@@ -42,11 +42,17 @@ def _terraform() -> tuple[str, str]:
     return _read(root / "versions.tf"), _read(root / "main.tf")
 
 
+def _existing_notebooks() -> set[str]:
+    return {path.relative_to(REPO).as_posix() for path in validator.NOTEBOOKS.glob("*.ipynb")}
+
+
 class RealRepositoryPasses(unittest.TestCase):
     def test_every_check_passes(self) -> None:
         validator.check_notebooks(_notebooks())
         validator.check_terraform(*_terraform())
         validator.check_workflows(*_workflows())
+        for root in ("terraform", "terraform_azure_prod"):
+            validator.check_job_notebook_paths(root, _read(LAB / root / "main.tf"), _existing_notebooks())
         self.assertEqual(validator.find_secret_material(validator._repository_texts()), [])
 
 
@@ -83,7 +89,7 @@ class CdcContract(unittest.TestCase):
         self._reject("03_final_validation.ipynb", "VERSION AS OF {checkpoint}", "")
 
     def test_notebook_with_outputs_is_rejected(self) -> None:
-        path = LAB / "01_federation_validation.ipynb"
+        path = validator.NOTEBOOKS / "01_federation_validation.ipynb"
         notebook = json.loads(_read(path))
         code_cell = next(cell for cell in notebook["cells"] if cell["cell_type"] == "code")
         code_cell["outputs"] = [{"output_type": "stream", "name": "stdout", "text": ["x"]}]
@@ -114,6 +120,12 @@ class TerraformContract(unittest.TestCase):
 
     def test_serverless_auto_retry_left_on_is_rejected(self) -> None:
         self._reject_main("    disable_auto_optimization = true\n", "")
+
+    def test_stale_notebook_path_is_rejected(self) -> None:
+        for root in ("terraform", "terraform_azure_prod"):
+            stale = _read(LAB / root / "main.tf").replace("lab_10_federation_cdc/notebooks", "lab_10_federation_cdc")
+            with self.subTest(root=root), self.assertRaises(AssertionError):
+                validator.check_job_notebook_paths(root, stale, _existing_notebooks())
 
     def test_schedule_is_rejected(self) -> None:
         self._reject_main("  task {", "  schedule {\n    quartz_cron_expression = \"0 0 * * * ?\"\n  }\n  task {")

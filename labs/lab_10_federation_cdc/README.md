@@ -63,11 +63,11 @@ flowchart LR
 
 | Task | Notebook | Writes |
 |---|---|---|
-| 1 | [`01_federation_validation`](01_federation_validation.ipynb) - federated counts, PostgreSQL-to-Delta `LEFT JOIN`, `EXPLAIN EXTENDED` | Nothing |
-| 2 | [`02_incremental_cdc_sync`](02_incremental_cdc_sync.ipynb) - CDF range read, target and history `MERGE`, reconciliation, checkpoint | Own schema only |
-| 3 | [`03_final_validation`](03_final_validation.ipynb) - reconciliation at the checkpoint, uniqueness, audit completeness; returns a JSON summary | Nothing |
+| 1 | [`01_federation_validation`](notebooks/01_federation_validation.ipynb) - federated counts, PostgreSQL-to-Delta `LEFT JOIN`, `EXPLAIN EXTENDED` | Nothing |
+| 2 | [`02_incremental_cdc_sync`](notebooks/02_incremental_cdc_sync.ipynb) - CDF range read, target and history `MERGE`, reconciliation, checkpoint | Own schema only |
+| 3 | [`03_final_validation`](notebooks/03_final_validation.ipynb) - reconciliation at the checkpoint, uniqueness, audit completeness; returns a JSON summary | Nothing |
 
-[`00_setup`](00_setup.ipynb) is not a Job task. It runs once per new environment: it creates the schema and four tables, enables CDF on the source, seeds the source from Neon through the foreign catalog and sets the checkpoint to version 0. It never drops, truncates or reseeds, and it stops on an inconsistent state instead of guessing.
+[`00_setup`](notebooks/00_setup.ipynb) is not a Job task. It runs once per new environment: it creates the schema and four tables, enables CDF on the source, seeds the source from Neon through the foreign catalog and sets the checkpoint to version 0. It never drops, truncates or reseeds, and it stops on an inconsistent state instead of guessing.
 
 ## Lakehouse Federation with Neon PostgreSQL
 
@@ -130,18 +130,45 @@ All notebooks take `catalog` and `schema` parameters (00 and 01 also take `forei
 
 **CI** - [`lab10_terraform_ci.yml`](../../.github/workflows/lab10_terraform_ci.yml) runs on every Lab 10 pull request and push to `main`. It contacts no workspace and checks:
 
-- [`scripts/validate_lab10_static.py`](scripts/validate_lab10_static.py) compiles every notebook cell, enforces the CDC contract (delete handling, two-way reconciliation, checkpoint last), non-destructive setup, serverless-only Jobs with auto-retry off, pinned workspace hosts, workflow safety and secret patterns;
-- [23 tests](tests/test_validate_lab10_static.py) prove the validator rejects each unsafe change;
+- [`scripts/validate_lab10_static.py`](scripts/validate_lab10_static.py) compiles every notebook cell, checks that every Job `notebook_path` exists, enforces the CDC contract (delete handling, two-way reconciliation, checkpoint last), non-destructive setup, serverless-only Jobs with auto-retry off, pinned workspace hosts, workflow safety and secret patterns;
+- [24 tests](tests/test_validate_lab10_static.py) prove the validator rejects each unsafe change, including a Job that points at a notebook path that no longer exists;
 - `terraform fmt -check`, `init -backend=false` and `validate` on both roots.
 
 ### CD
 
 - **Personal DEV:** [`lab10_terraform_cd.yml`](../../.github/workflows/lab10_terraform_cd.yml) is manual. An empty confirmation runs a plan; `APPLY-453391098761164` applies.
-- **Azure (optional automation):**
-  - [`lab10_azure_prod_cd.yml`](../../.github/workflows/lab10_azure_prod_cd.yml) and [`lab10_azure_prod_run.yml`](../../.github/workflows/lab10_azure_prod_run.yml) use native Databricks GitHub OIDC (no PAT or cloud secret).
-  - They require `main` and a confirmation phrase, use saved-plan apply, refuse the other Academy workspace hosts, cluster compute or duplicate Jobs, and pin action SHAs.
-  - They target the same HCP state as the manual deployment.
-  - They need a dedicated service principal that only an account administrator can create ([ADMIN_REQUEST.md](ADMIN_REQUEST.md)), so they have not run yet.
+- **Azure:** deployed with Terraform from the owner's Azure CLI identity. GitHub automation for Azure is optional and not yet configured; see [Optional GitHub OIDC automation](#optional-github-oidc-automation).
+
+## Optional GitHub OIDC automation
+
+> [!NOTE]
+> **Optional and not configured.** The Azure Job is deployed and verified without it. This path only moves future Azure deployments from a workstation into GitHub Actions.
+
+[`lab10_azure_prod_cd.yml`](../../.github/workflows/lab10_azure_prod_cd.yml) (Terraform plan or apply) and [`lab10_azure_prod_run.yml`](../../.github/workflows/lab10_azure_prod_run.yml) (one Job run) authenticate with native Databricks workload identity federation (`DATABRICKS_AUTH_TYPE=github-oidc`). They use no PAT, no Azure client secret and no Azure role.
+
+- **Controls:** each workflow requires `main` and a confirmation phrase, applies only a saved plan, refuses the other Academy workspace hosts, cluster compute and duplicate Jobs, and pins action SHAs.
+- **State:** both use the same HCP state as the manual deployment, so they update Job `582983448494007` instead of creating a new one.
+- **Status:** neither has run yet, because the identity below does not exist.
+
+**Setup** (an account administrator does step 1, because federation policies are account-level):
+
+1. Create the service principal `github-databricks-academy-deployer`. Assign it only to workspace `7405618361895520` (`workspace-access`), with this federation policy:
+
+   | Field | Value |
+   |---|---|
+   | Issuer | `https://token.actions.githubusercontent.com` |
+   | Audience | Databricks account ID `4b6644a4-eaf3-438d-bba3-6bd00ce5137e` |
+   | Subject claim / subject | `sub` / `repo:BadalovP/Databricks-Academy-Lakehouse:environment:lab10-azure` |
+
+   The repository predates GitHub's immutable-subject change (2026-07-15), so the name-based subject is correct.
+2. As catalog and Job owner, give the service principal:
+   - `USE CATALOG`, `USE SCHEMA` and `SELECT` on `parvinbadalov_lab10_neon_catalog`;
+   - `CAN_MANAGE` on Job `582983448494007`.
+3. In GitHub, set:
+   - variable `DATABRICKS_CLIENT_ID` on environment `lab10-azure`;
+   - repository variable `LAB10_AZURE_PROD_JOB_ID=582983448494007`;
+   - secret `HCP_TERRAFORM_TOKEN`.
+4. Run the CD workflow with an empty confirmation (plan only) to prove the token exchange before any apply.
 
 ## Testing and verified results
 
@@ -191,7 +218,7 @@ terraform -chdir=terraform_azure_prod validate
 **New environment:**
 
 1. Create a `read_only` PostgreSQL connection to Neon and a foreign catalog on it containing `public.lab10_customers` and `public.lab10_orders`. Creating a catalog needs metastore privileges.
-2. Run `00_setup` once with `catalog`, `schema` and `foreign_catalog`. Expect four tables, 12 seeded customers and checkpoint 0.
+2. Run `notebooks/00_setup` once with `catalog`, `schema` and `foreign_catalog`. Expect four tables, 12 seeded customers and checkpoint 0.
 3. Deploy the Job with Terraform (Azure example; authentication uses `az login`, no PAT):
 
    ```powershell
@@ -222,16 +249,16 @@ EXCEPT ALL SELECT * FROM dbr_dev.parvinbadalov_lab10_prod.customers_target;
 
 ```text
 lab_10_federation_cdc/
-|-- 00_setup.ipynb                   # one-time, idempotent environment setup
-|-- 01_federation_validation.ipynb   # Job task 1
-|-- 02_incremental_cdc_sync.ipynb    # Job task 2
-|-- 03_final_validation.ipynb        # Job task 3
+|-- notebooks/
+|   |-- 00_setup.ipynb                 # one-time, idempotent environment setup
+|   |-- 01_federation_validation.ipynb # Job task 1
+|   |-- 02_incremental_cdc_sync.ipynb  # Job task 2
+|   `-- 03_final_validation.ipynb      # Job task 3
 |-- terraform/                       # Personal DEV Job (HCP lab10-personal-dev)
 |-- terraform_azure_prod/            # Azure Job (HCP lab10-azure-prod)
 |-- scripts/validate_lab10_static.py # offline contract, safety and secret checks
 |-- tests/                           # tests proving the validator rejects unsafe changes
-|-- evidence/                        # sanitized records of live verification
-`-- ADMIN_REQUEST.md                 # setup for the optional GitHub OIDC deployment identity
+`-- evidence/                        # sanitized records of live verification
 ```
 
 ## Limitations and future improvements
@@ -246,7 +273,7 @@ lab_10_federation_cdc/
 
 ### Optional future improvements
 
-- Enable the automated Azure deployment: an account administrator creates the GitHub OIDC service principal and federation policy ([ADMIN_REQUEST.md](ADMIN_REQUEST.md)).
+- Enable the automated Azure deployment ([Optional GitHub OIDC automation](#optional-github-oidc-automation)).
 - Capture changes from PostgreSQL itself, for example with logical replication into a Delta bronze table, instead of simulating CDC on Delta.
 - Add a CDF retention check, so a checkpoint older than the retained history fails clearly instead of reading an incomplete range.
 - Redeploy the Azure Job to a permanent workspace before the trial expires, if it should stay live.
