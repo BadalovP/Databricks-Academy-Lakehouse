@@ -148,7 +148,7 @@ if not live:
 # MAGIC
 # MAGIC **How to explain it:** "Same model, same questions; the only difference is retrieval."
 # MAGIC
-# MAGIC **Rerun and cost considerations:** The printed call plan is the ceiling: one search and up to three model calls per question, plus one baseline call when enabled.
+# MAGIC **Rerun and cost considerations:** The printed call plan is the ceiling: up to three AI Search queries and one RAG chat call per question, plus one baseline chat call when enabled.
 
 # COMMAND ----------
 
