@@ -1,4 +1,6 @@
 -- UrbanFlow AI/BI dashboard - WEATHER section.
+-- ${catalog}, ${schema} and ${lakeflow_schema} are the bundle target's values from databricks.yml;
+-- scripts/build_dashboard.py substitutes them per target. Substitute them by hand in a SQL editor.
 -- Prepared only; read-only SELECTs against persisted tables.
 --
 -- TWO LIMITATIONS THAT MUST BE READ BEFORE ANY OF THESE CHARTS ARE SHOWN:
@@ -18,7 +20,7 @@
 -- 1. Trip volume against temperature, by day. The dashboard's main weather comparison.
 SELECT
   execution_id,
-  CASE WHEN execution_id LIKE 'urbanflow-weather-devsample48h-%'
+  CASE WHEN execution_id LIKE 'urbanflow-final-weather-devsample48h%'
        THEN '48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE'
        ELSE 'FULL ARCHIVE WEATHER EXECUTION' END                    AS data_scope,
   trip_date,
@@ -29,7 +31,7 @@ SELECT
   -- Coverage is shown beside the figures because a chart built on half-covered hours looks
   -- exactly as convincing as one built on full coverage.
   ROUND(AVG(weather_coverage), 4)                                   AS weather_coverage
-FROM dbr_dev.parvinbadalov_urbanflow.gold_weather_demand
+FROM ${catalog}.${schema}.gold_weather_demand
 WHERE execution_id = :weather_execution_id
 GROUP BY execution_id, trip_date
 ORDER BY execution_id, trip_date;
@@ -37,7 +39,7 @@ ORDER BY execution_id, trip_date;
 -- 2. Trips by temperature bucket. Coarse, labelled buckets rather than a fitted curve.
 SELECT
   execution_id,
-  CASE WHEN execution_id LIKE 'urbanflow-weather-devsample48h-%'
+  CASE WHEN execution_id LIKE 'urbanflow-final-weather-devsample48h%'
        THEN '48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE'
        ELSE 'FULL ARCHIVE WEATHER EXECUTION' END                    AS data_scope,
   temperature_bucket,
@@ -45,7 +47,7 @@ SELECT
   COUNT(DISTINCT trip_date)                                         AS days_in_bucket,
   ROUND(SUM(trips) / NULLIF(COUNT(DISTINCT trip_date), 0), 1)       AS avg_trips_per_day,
   ROUND(AVG(avg_temperature_celsius), 2)                            AS avg_temperature_celsius
-FROM dbr_dev.parvinbadalov_urbanflow.gold_weather_demand
+FROM ${catalog}.${schema}.gold_weather_demand
 WHERE execution_id = :weather_execution_id
 GROUP BY execution_id, temperature_bucket
 ORDER BY execution_id, temperature_bucket;
@@ -53,7 +55,7 @@ ORDER BY execution_id, temperature_bucket;
 -- 3. Precipitation against demand. Wet days are bucketed, not regressed.
 SELECT
   execution_id,
-  CASE WHEN execution_id LIKE 'urbanflow-weather-devsample48h-%'
+  CASE WHEN execution_id LIKE 'urbanflow-final-weather-devsample48h%'
        THEN '48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE'
        ELSE 'FULL ARCHIVE WEATHER EXECUTION' END                    AS data_scope,
   CASE
@@ -69,7 +71,7 @@ SELECT
 FROM (
   SELECT execution_id, trip_date, SUM(trips) AS trips,
          SUM(total_precipitation_mm) AS total_precipitation_mm
-  FROM dbr_dev.parvinbadalov_urbanflow.gold_weather_demand
+  FROM ${catalog}.${schema}.gold_weather_demand
   WHERE execution_id = :weather_execution_id
   GROUP BY execution_id, trip_date
 )
@@ -79,7 +81,7 @@ ORDER BY execution_id, precipitation_band;
 -- 4. The weather series itself, restricted to the selected demand execution's date window.
 WITH selected_window AS (
   SELECT MIN(trip_date) AS starts_on, MAX(trip_date) AS ends_on
-  FROM dbr_dev.parvinbadalov_urbanflow.gold_weather_demand
+  FROM ${catalog}.${schema}.gold_weather_demand
   WHERE execution_id = :weather_execution_id
 )
 SELECT
@@ -96,7 +98,7 @@ SELECT
   SUM(CASE WHEN NOT has_temperature THEN 1 ELSE 0 END)              AS missing_temperature_hours,
   MAX(source)                                                       AS source,
   MAX(retrieved_at)                                                 AS retrieved_at
-FROM dbr_dev.parvinbadalov_urbanflow.dim_weather_hourly
+FROM ${catalog}.${schema}.dim_weather_hourly
 CROSS JOIN selected_window
 WHERE TO_DATE(weather_hour) BETWEEN starts_on AND ends_on
 GROUP BY weather_grid_label;
@@ -110,7 +112,7 @@ GROUP BY weather_grid_label;
 --    weather columns, and the per-day coverage needed here is already recorded in the summary.
 SELECT
   execution_id,
-  CASE WHEN execution_id LIKE 'urbanflow-weather-devsample48h-%'
+  CASE WHEN execution_id LIKE 'urbanflow-final-weather-devsample48h%'
        THEN '48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE'
        ELSE 'FULL ARCHIVE WEATHER EXECUTION' END                    AS data_scope,
   SUM(trips)                                                        AS trips,
@@ -118,7 +120,7 @@ SELECT
   SUM(trips) - SUM(trips_with_weather)                              AS trips_without_weather,
   ROUND(100.0 * SUM(trips_with_weather) / NULLIF(SUM(trips), 0), 2) AS weather_coverage_percent,
   COUNT(DISTINCT trip_date)                                         AS days_covered
-FROM dbr_dev.parvinbadalov_urbanflow.gold_weather_demand
+FROM ${catalog}.${schema}.gold_weather_demand
 WHERE execution_id = :weather_execution_id
 GROUP BY execution_id
 ORDER BY execution_id;

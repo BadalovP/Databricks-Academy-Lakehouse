@@ -2,8 +2,7 @@ resources:
   dashboards:
     urbanflow_final_dashboard:
       display_name: "[${bundle.target}] UrbanFlow 2.0 Operations"
-      file_path: ../dashboards/urbanflow_final.lvdash.json
+      # One generated file per target with that target's fully qualified table names
+      # (scripts/build_dashboard.py), so a dashboard can only ever read its own target's data.
+      file_path: ../dashboards/urbanflow_final.${bundle.target}.lvdash.json
       warehouse_id: ${var.warehouse_id}
-      dataset_catalog: ${var.catalog}
-      dataset_schema: ${var.schema}
-

@@ -1,4 +1,6 @@
 -- UrbanFlow AI/BI dashboard - CURRENT OPERATIONS section.
+-- ${catalog}, ${schema} and ${lakeflow_schema} are the bundle target's values from databricks.yml;
+-- scripts/build_dashboard.py substitutes them per target. Substitute them by hand in a SQL editor.
 -- Prepared only. These are SELECT statements against already-persisted tables; none of them
 -- writes, and none creates the dashboard object itself. See docs/DASHBOARD.md for the exact
 -- creation steps and for which figures are real today.
@@ -28,14 +30,14 @@ SELECT
   -- No semicolon inside this literal: these files are meant to be copy-pasted, and any
   -- tool that splits statements on ';' would break the query in half mid-string.
   'one GBFS snapshot - a point-in-time count, not a trend'           AS reading_note
-FROM dbr_dev.parvinbadalov_urbanflow.silver_station_status;
+FROM ${catalog}.${schema}.silver_station_status;
 
 -- 2. Availability breakdown for a pie or bar chart, with the share stated explicitly.
 SELECT
   availability_status,
   COUNT(*)                                                          AS stations,
   ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER (), 2)                AS percent_of_stations
-FROM dbr_dev.parvinbadalov_urbanflow.silver_station_status
+FROM ${catalog}.${schema}.silver_station_status
 GROUP BY availability_status
 ORDER BY stations DESC;
 
@@ -55,7 +57,7 @@ SELECT
   deficit_points,
   size_points,
   observed_at
-FROM dbr_dev.parvinbadalov_urbanflow.gold_rebalancing_priority
+FROM ${catalog}.${schema}.gold_rebalancing_priority
 ORDER BY priority_score DESC, num_bikes_available ASC
 LIMIT 25;
 
@@ -76,8 +78,8 @@ SELECT
   s.capacity_estimate,
   d.capacity                                                        AS reference_capacity,
   s.observed_at
-FROM dbr_dev.parvinbadalov_urbanflow.silver_station_status AS s
-LEFT JOIN dbr_dev.parvinbadalov_urbanflow.dim_station_development_sample AS d
+FROM ${catalog}.${schema}.silver_station_status AS s
+LEFT JOIN ${catalog}.${schema}.dim_station_development_sample AS d
   ON s.station_id = d.station_id
 ORDER BY s.availability_status, s.num_bikes_available;
 
@@ -87,6 +89,6 @@ SELECT
   COUNT(*)                                                          AS stations,
   ROUND(AVG(priority_score), 2)                                     AS avg_priority_score,
   MAX(priority_score)                                               AS worst_priority_score
-FROM dbr_dev.parvinbadalov_urbanflow.gold_rebalancing_priority
+FROM ${catalog}.${schema}.gold_rebalancing_priority
 GROUP BY action
 ORDER BY stations DESC;

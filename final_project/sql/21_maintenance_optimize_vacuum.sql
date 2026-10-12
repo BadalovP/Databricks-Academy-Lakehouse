@@ -1,4 +1,6 @@
 -- UrbanFlow Delta maintenance: OPTIMIZE, liquid clustering, deletion vectors, VACUUM, CDF.
+-- ${catalog}, ${schema} and ${lakeflow_schema} are the bundle target's values from databricks.yml;
+-- scripts/build_dashboard.py substitutes them per target. Substitute them by hand in a SQL editor.
 -- PREPARED ONLY. Nothing here has been executed.
 --
 -- ============================================================================
@@ -20,29 +22,29 @@
 -- 1. Inspect before changing anything.
 -- ---------------------------------------------------------------------------
 -- File count and sizes are the reason to run OPTIMIZE; running it without looking first is
--- cargo-culting. A table written by one bounded run of 2,520 rows does NOT need compaction, and
+-- cargo-culting. A table written by one bounded sample run does NOT need compaction, and
 -- saying so is more useful than demonstrating the command for its own sake.
-DESCRIBE DETAIL dbr_dev.parvinbadalov_urbanflow.silver_station_status;
-DESCRIBE DETAIL dbr_dev.parvinbadalov_urbanflow.fact_station_availability;
-DESCRIBE DETAIL dbr_dev.parvinbadalov_urbanflow.silver_historical_trips;
+DESCRIBE DETAIL ${catalog}.${schema}.silver_station_status;
+DESCRIBE DETAIL ${catalog}.${schema}.fact_station_availability;
+DESCRIBE DETAIL ${catalog}.${schema}.silver_historical_trips;
 
--- History shows which operations produced which versions, and is the audit trail a supervisor
--- can read. It is also how the Phase 2 correction was proven: the priority table's history
--- showed it was created by one execution and written by nothing else since.
-DESCRIBE HISTORY dbr_dev.parvinbadalov_urbanflow.gold_rebalancing_priority;
+-- History shows which operations produced which versions, and is the audit trail a reviewer
+-- can read. It proves which execution created the priority table and that nothing else
+-- has written to it since.
+DESCRIBE HISTORY ${catalog}.${schema}.gold_rebalancing_priority;
 
 -- ---------------------------------------------------------------------------
 -- 2. OPTIMIZE and Z-ORDER, the classic approach.
 -- ---------------------------------------------------------------------------
 -- OPTIMIZE compacts many small files into fewer large ones. The small-file problem is real for
 -- a streaming table written every few minutes; it is NOT a problem for a single bounded write.
--- OPTIMIZE dbr_dev.parvinbadalov_urbanflow.silver_historical_trips;
+-- OPTIMIZE ${catalog}.${schema}.silver_historical_trips;
 
 -- Z-ORDER co-locates rows by the columns you filter on, so the engine skips more files. It must
 -- be chosen from actual query patterns: the dashboard filters trips by date and station, so
 -- those are the candidates. Z-ordering on a high-cardinality column nobody filters on costs
 -- rewrite time and buys nothing.
--- OPTIMIZE dbr_dev.parvinbadalov_urbanflow.silver_historical_trips
+-- OPTIMIZE ${catalog}.${schema}.silver_historical_trips
 --   ZORDER BY (started_at, start_station_id);
 
 -- ---------------------------------------------------------------------------
@@ -62,32 +64,32 @@ DESCRIBE HISTORY dbr_dev.parvinbadalov_urbanflow.gold_rebalancing_priority;
 -- default; for an existing partitioned one the migration has a real cost.
 --
 -- On a new table:
--- CREATE TABLE dbr_dev.parvinbadalov_urbanflow.silver_historical_trips_clustered
+-- CREATE TABLE ${catalog}.${schema}.silver_historical_trips_clustered
 -- CLUSTER BY (started_at, start_station_id)
--- AS SELECT * FROM dbr_dev.parvinbadalov_urbanflow.silver_historical_trips;
+-- AS SELECT * FROM ${catalog}.${schema}.silver_historical_trips;
 --
 -- Changing the clustering columns later, with no rewrite:
--- ALTER TABLE dbr_dev.parvinbadalov_urbanflow.silver_historical_trips_clustered
+-- ALTER TABLE ${catalog}.${schema}.silver_historical_trips_clustered
 --   CLUSTER BY (trip_date);
 --
 -- Automatic clustering, where Databricks chooses the columns from observed query history:
--- ALTER TABLE dbr_dev.parvinbadalov_urbanflow.silver_historical_trips_clustered
+-- ALTER TABLE ${catalog}.${schema}.silver_historical_trips_clustered
 --   CLUSTER BY AUTO;
 
 -- ---------------------------------------------------------------------------
 -- 4. Deletion vectors.
 -- ---------------------------------------------------------------------------
 -- With deletion vectors on, a DELETE or UPDATE records which ROWS are logically removed instead
--- of rewriting whole Parquet files. That makes the Phase 2 stale-row correction much cheaper:
--- deleting 89 rows from a 746-row table touches a vector rather than rewriting the files.
+-- of rewriting whole Parquet files. That makes an execution-scoped stale-row correction cheaper:
+-- deleting a few rows from a small table touches a vector rather than rewriting the files.
 --
 -- The cost is on the read side: readers must apply the vectors, and files accumulate logically
 -- deleted rows until an OPTIMIZE purges them. Worth knowing rather than assuming it is free.
--- ALTER TABLE dbr_dev.parvinbadalov_urbanflow.gold_rebalancing_priority
+-- ALTER TABLE ${catalog}.${schema}.gold_rebalancing_priority
 --   SET TBLPROPERTIES ('delta.enableDeletionVectors' = 'true');
 --
 -- Purging them physically, which is what actually reclaims the space:
--- REORG TABLE dbr_dev.parvinbadalov_urbanflow.gold_rebalancing_priority APPLY (PURGE);
+-- REORG TABLE ${catalog}.${schema}.gold_rebalancing_priority APPLY (PURGE);
 
 -- ---------------------------------------------------------------------------
 -- 5. Change Data Feed.
@@ -98,12 +100,12 @@ DESCRIBE HISTORY dbr_dev.parvinbadalov_urbanflow.gold_rebalancing_priority;
 --
 -- Enabling it is NOT retroactive: changes are only captured from the version where the property
 -- is set, so turning it on after the fact does not recover history.
--- ALTER TABLE dbr_dev.parvinbadalov_urbanflow.dim_station_development_sample
+-- ALTER TABLE ${catalog}.${schema}.dim_station_development_sample
 --   SET TBLPROPERTIES ('delta.enableChangeDataFeed' = 'true');
 --
 -- Reading the changes, once enabled and once a later version exists:
 -- SELECT _change_type, _commit_version, _commit_timestamp, station_id, station_name, capacity
--- FROM table_changes('dbr_dev.parvinbadalov_urbanflow.dim_station_development_sample', 1)
+-- FROM table_changes('${catalog}.${schema}.dim_station_development_sample', 1)
 -- ORDER BY _commit_version, station_id;
 
 -- ---------------------------------------------------------------------------
@@ -113,12 +115,12 @@ DESCRIBE HISTORY dbr_dev.parvinbadalov_urbanflow.gold_rebalancing_priority;
 -- physical names. With it, Delta keeps a logical-to-physical mapping and a rename is metadata
 -- only. Enabling it requires a reader/writer version upgrade, and that upgrade is ONE-WAY: the
 -- table can no longer be read by older clients. That is the cost to weigh.
--- ALTER TABLE dbr_dev.parvinbadalov_urbanflow.silver_historical_trips SET TBLPROPERTIES (
+-- ALTER TABLE ${catalog}.${schema}.silver_historical_trips SET TBLPROPERTIES (
 --   'delta.minReaderVersion' = '2',
 --   'delta.minWriterVersion' = '5',
 --   'delta.columnMapping.mode' = 'name'
 -- );
--- ALTER TABLE dbr_dev.parvinbadalov_urbanflow.silver_historical_trips
+-- ALTER TABLE ${catalog}.${schema}.silver_historical_trips
 --   RENAME COLUMN member_casual TO rider_type;
 
 -- ---------------------------------------------------------------------------
@@ -126,10 +128,10 @@ DESCRIBE HISTORY dbr_dev.parvinbadalov_urbanflow.gold_rebalancing_priority;
 -- ---------------------------------------------------------------------------
 -- DRY RUN lists the files that WOULD be deleted and deletes nothing. This is the only form that
 -- should ever be run without a specific approval.
--- VACUUM dbr_dev.parvinbadalov_urbanflow.silver_historical_trips DRY RUN;
+-- VACUUM ${catalog}.${schema}.silver_historical_trips DRY RUN;
 
 -- The real thing, keeping the 7-day default that protects time travel and concurrent readers:
--- VACUUM dbr_dev.parvinbadalov_urbanflow.silver_historical_trips RETAIN 168 HOURS;
+-- VACUUM ${catalog}.${schema}.silver_historical_trips RETAIN 168 HOURS;
 
 -- NOT RUN, and deliberately left as a warning rather than an example: a short retention
 -- requires disabling a safety check and permanently destroys the ability to time travel to the
@@ -141,8 +143,8 @@ DESCRIBE HISTORY dbr_dev.parvinbadalov_urbanflow.gold_rebalancing_priority;
 -- 8. Time travel, which is what VACUUM takes away.
 -- ---------------------------------------------------------------------------
 -- Worth running BEFORE any VACUUM, to see what would be lost.
--- SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow.gold_rebalancing_priority VERSION AS OF 0;
--- SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow.gold_rebalancing_priority VERSION AS OF 1;
+-- SELECT COUNT(*) FROM ${catalog}.${schema}.gold_rebalancing_priority VERSION AS OF 0;
+-- SELECT COUNT(*) FROM ${catalog}.${schema}.gold_rebalancing_priority VERSION AS OF 1;
 --
 -- And the recovery path that depends on those files still existing:
--- RESTORE TABLE dbr_dev.parvinbadalov_urbanflow.gold_rebalancing_priority TO VERSION AS OF 1;
+-- RESTORE TABLE ${catalog}.${schema}.gold_rebalancing_priority TO VERSION AS OF 1;

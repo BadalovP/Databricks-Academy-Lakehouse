@@ -1,13 +1,17 @@
-"""Build the UrbanFlow AI/BI (Lakeview) dashboard definition from the committed SQL files.
+"""Build the UrbanFlow 2.0 AI/BI (Lakeview) dashboards, one per bundle target, from committed SQL.
 
-The datasets are the numbered, read-only statements in `sql/10`-`sql/13`, so the dashboard and
-the SQL that the tests guard can never drift apart. Every historical and weather statement is
-bound to ONE explicit execution: the IDs below are the full January 2024 executions recorded in
-`evidence/2026-10-03_unified_release.json` for unified run 96337578882467, substituted as
-literals so no viewer can silently widen the scope.
+The datasets are the numbered, read-only statements in `sql/10`-`sql/14`, so the dashboards and
+the SQL the tests guard cannot drift apart. Each target gets its own file with fully qualified
+names for that target's catalog and schemas (from `databricks.yml`), so a DEV dashboard can never
+read PROD tables, and neither can read Demo 3's or another project's.
 
-    python scripts/build_dashboard.py            # writes dashboards/urbanflow.lvdash.json
-    python scripts/build_dashboard.py --check    # fails if the committed file is stale
+Historical and weather statements are bound to ONE explicit execution each: the executions the
+platform Job produces with its default parameters (the committed development samples), read from
+`resources/urbanflow_final.job.yml`. Binding a full-archive execution is a reviewed change to the
+Job defaults, committed together with its evidence.
+
+    python scripts/build_dashboard.py            # writes dashboards/urbanflow_final.<target>.lvdash.json
+    python scripts/build_dashboard.py --check    # fails if a committed file is stale
 """
 
 from __future__ import annotations
@@ -18,26 +22,39 @@ import re
 import sys
 from pathlib import Path
 
+import yaml
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SQL_DIR = PROJECT_ROOT / "sql"
-OUTPUT = PROJECT_ROOT / "dashboards" / "urbanflow.lvdash.json"
-EVIDENCE = PROJECT_ROOT / "evidence" / "2026-10-03_unified_release.json"
+DASHBOARD_DIR = PROJECT_ROOT / "dashboards"
+BUNDLE = PROJECT_ROOT / "databricks.yml"
+JOB = PROJECT_ROOT / "resources" / "urbanflow_final.job.yml"
+# The Job's default historical landing namespace is empty, which names this Bronze table.
+HISTORICAL_BRONZE_TABLE = "bronze_historical_trips"
+PLACEHOLDERS = ("catalog", "schema", "lakeflow_schema")
+PLATFORM_JOB = "urbanflow_final_platform"
 
-DISPLAY_NAME = "UrbanFlow — NYC Mobility Operations & Demand"
-FULL_MONTH_RUN_ID = 96337578882467
-LAKEFLOW_PIPELINE_ID = "fb8a0b8a-cdf8-45c4-bff6-2d117a516fb9"
-LAKEFLOW_UPDATE_ID = "ba6710ed-bd97-46e0-a0c0-616050e3c9b9"
+
+def output_path(target: str) -> Path:
+    return DASHBOARD_DIR / f"urbanflow_final.{target}.lvdash.json"
+
+
+def targets() -> dict[str, dict[str, str]]:
+    """Catalog and schemas of every bundle target, exactly as databricks.yml declares them."""
+    bundle = yaml.safe_load(BUNDLE.read_text(encoding="utf-8"))
+    return {
+        name: {key: str(target["variables"][key]) for key in PLACEHOLDERS}
+        for name, target in bundle["targets"].items()
+    }
 
 
 def execution_ids() -> dict[str, str]:
-    """Resolve the two execution IDs from evidence rather than typing them by hand."""
-    evidence = json.loads(EVIDENCE.read_text(encoding="utf-8"))
-    run = evidence["job_runs"]["full_month"]
-    if run["run_id"] != FULL_MONTH_RUN_ID or run["result_state"] != "SUCCESS":
-        raise ValueError("The evidence does not record a successful full-month run.")
+    """The executions the platform Job writes with its default parameters."""
+    jobs = yaml.safe_load(JOB.read_text(encoding="utf-8"))["resources"]["jobs"]
+    parameters = {p["name"]: p["default"] for p in jobs[PLATFORM_JOB]["parameters"]}
     return {
-        "historical_execution_id": run["parameters"]["historical_execution_id"],
-        "weather_execution_id": run["parameters"]["weather_execution_id"],
+        "historical_execution_id": str(parameters["historical_execution_id"]),
+        "weather_execution_id": str(parameters["weather_execution_id"]),
     }
 
 
@@ -61,7 +78,14 @@ def numbered_statements(path: Path) -> dict[int, str]:
     return statements
 
 
-def bind(sql: str, ids: dict[str, str]) -> str:
+def bind(sql: str, ids: dict[str, str], names: dict[str, str]) -> str:
+    """Substitute the target's names and the execution IDs as validated literals."""
+    for name, value in {**names, "historical_bronze_table": HISTORICAL_BRONZE_TABLE}.items():
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", value):
+            raise ValueError(f"{name} {value!r} is not a plain identifier.")
+        sql = sql.replace("${" + name + "}", value)
+    if "${" in sql:
+        raise ValueError("A target placeholder was left unbound.")
     for name, value in ids.items():
         if not re.fullmatch(r"[A-Za-z0-9._+-]+", value):
             raise ValueError(f"{name} {value!r} is not a safe literal.")
@@ -71,6 +95,7 @@ def bind(sql: str, ids: dict[str, str]) -> str:
     return sql
 
 
+MAINTENANCE_SQL = "14_dashboard_maintenance_and_assistant.sql"
 DATASETS = {
     # name: (file, statement number, display name)
     "ops_headline": ("10_dashboard_current_operations.sql", 1, "Snapshot headline"),
@@ -92,16 +117,21 @@ DATASETS = {
     "quality_station": ("13_dashboard_data_quality.sql", 1, "Station reconciliation"),
     "quality_trip_rules": ("13_dashboard_data_quality.sql", 7, "Trip quarantine reasons"),
     "quality_lakeflow": ("13_dashboard_data_quality.sql", 8, "Lakeflow expectations"),
-    "quality_monthly": ("13_dashboard_data_quality.sql", 9, "Monthly reconciliation"),
+    "quality_monthly": ("13_dashboard_data_quality.sql", 9, "Historical reconciliation"),
+    "maintenance_status": (MAINTENANCE_SQL, 1, "Maintenance tickets"),
+    "maintenance_conflicts": (MAINTENANCE_SQL, 2, "Priorities at stations under maintenance"),
+    "maintenance_cdc": (MAINTENANCE_SQL, 3, "CDC audit trail"),
+    "maintenance_checkpoint": (MAINTENANCE_SQL, 4, "CDC checkpoint"),
+    "assistant_evaluation": (MAINTENANCE_SQL, 5, "Assistant evaluation"),
 }
 
 
-def datasets(ids: dict[str, str]) -> list[dict]:
+def datasets(ids: dict[str, str], names: dict[str, str]) -> list[dict]:
     cache: dict[str, dict[int, str]] = {}
     out = []
     for name, (file, number, display) in DATASETS.items():
         statements = cache.setdefault(file, numbered_statements(SQL_DIR / file))
-        sql = bind(statements[number], ids)
+        sql = bind(statements[number], ids, names)
         out.append({"name": name, "displayName": display, "queryLines": sql.splitlines(True)})
     return out
 
@@ -220,9 +250,9 @@ def pages(ids: dict[str, str]) -> list[dict]:
             "ops_title",
             [
                 "## Current Operations",
-                "**POINT-IN-TIME GBFS SNAPSHOT — NOT A HISTORICAL AVAILABILITY TREND.** One real "
-                "Citi Bike station-status snapshot (station execution "
-                "`urbanflow-20260929T195132Z-r3`). Nothing on this page is charted over time.",
+                "**POINT-IN-TIME GBFS SNAPSHOT — NOT A HISTORICAL AVAILABILITY TREND.** The "
+                "station executions loaded into this target (by default the committed, dated "
+                "Citi Bike sample snapshot). Nothing on this page is charted over time.",
             ],
             0,
             0,
@@ -247,7 +277,7 @@ def pages(ids: dict[str, str]) -> list[dict]:
         text(
             "ops_rule",
             [
-                "**Actionable = LOW_BIKES + LOW_DOCKS + LOW_BIKES_AND_DOCKS = 657.** An "
+                "**Actionable = LOW_BIKES + LOW_DOCKS + LOW_BIKES_AND_DOCKS.** An "
                 "OUT_OF_SERVICE station is excluded: no rebalancing fixes it."
             ],
             2,
@@ -295,11 +325,11 @@ def pages(ids: dict[str, str]) -> list[dict]:
         text(
             "demand_title",
             [
-                "## January 2024 Historical Demand",
-                "**REAL JANUARY 2024 CITI BIKE MONTHLY ARCHIVE** — every valid trip of execution "
-                f"`{hist}` (unified run `{FULL_MONTH_RUN_ID}`). The 40-row development sample is "
-                "not on this page. The archive is defined by ride END time, so 374 rides started "
-                "on 31 December.",
+                "## Historical Demand",
+                "**REAL JANUARY 2024 CITI BIKE TRIPS** — every valid trip of execution "
+                f"`{hist}` only. With the Job defaults this is the **40-ROW DEVELOPMENT SAMPLE**, "
+                "so the counts illustrate the pipeline, not the month; each dataset carries its "
+                "`data_scope` label. The archive is defined by ride END time.",
             ],
             0,
             0,
@@ -375,8 +405,8 @@ def pages(ids: dict[str, str]) -> list[dict]:
                 "Hourly Open-Meteo archive for **one NYC reference coordinate** "
                 "(40.7128, -74.0060) — **not station-level weather**. Charts show "
                 "**association, not causation**: nothing controls for weekday, holidays or "
-                f"closures. Weather execution `{weather}`. The 374 trips without weather "
-                "started on 31 December, outside the January weather window.",
+                f"closures. Weather execution `{weather}`; trips outside its window have no "
+                "weather and are counted, not hidden.",
             ],
             0,
             0,
@@ -482,10 +512,9 @@ def pages(ids: dict[str, str]) -> list[dict]:
             "quality_title",
             [
                 "## Data Quality & Reliability",
-                f"Latest successful unified Job run: **`{FULL_MONTH_RUN_ID}`** "
-                "(`[azure] UrbanFlow End-to-End`, 7/7 tasks, final validation PASS). Lakeflow "
-                f"update **`{LAKEFLOW_UPDATE_ID}`** on pipeline `{LAKEFLOW_PIPELINE_ID}`: "
-                "COMPLETED, isolated schema, business results identical to the imperative path.",
+                "Reconciliation identities for this target's executions and the Lakeflow "
+                "expectations of the latest COMPLETED update of its isolated pipeline. Run IDs "
+                "and results are recorded as evidence only after a live run.",
             ],
             0,
             0,
@@ -508,11 +537,10 @@ def pages(ids: dict[str, str]) -> list[dict]:
         text(
             "quality_reference_note",
             [
-                "**Reference coverage 3.43% is NOT a data-quality failure.** It is the share of "
+                "**A low reference coverage is NOT a data-quality failure.** It is the share of "
                 "rides starting at one of the 40 stations in the committed **DEVELOPMENT "
-                "REFERENCE DIMENSION**. 39 of those 40 stations appear in January 2024, out of "
-                "2,223 stations in the real month. Landed = valid + quarantine + duplicates "
-                "holds exactly."
+                "REFERENCE DIMENSION**, while the real network has thousands of stations. "
+                "Landed = valid + quarantine + duplicates must hold exactly."
             ],
             0,
             4,
@@ -554,37 +582,116 @@ def pages(ids: dict[str, str]) -> list[dict]:
             (0, 11, 6, 8),
         ),
     ]
+    maintenance = [
+        text(
+            "maintenance_title",
+            [
+                "## Maintenance & Assistant",
+                "Station maintenance arrives through **Delta Change Data Feed**; the tickets are "
+                "**FICTIONAL, SYNTHETIC DATA** on real sample station IDs. Assistant scores come "
+                "only from approved **live** evaluations; offline fixture scores are never "
+                "stored, so empty tables mean no live evaluation has run.",
+            ],
+            0,
+            0,
+            6,
+            2,
+        ),
+        chart(
+            "maintenance_status_bar",
+            "bar",
+            "maintenance_status",
+            "status",
+            "tickets",
+            "Maintenance tickets by status",
+            (0, 2, 3, 4),
+            y_aggregate="SUM",
+        ),
+        table(
+            "maintenance_checkpoint_table",
+            "maintenance_checkpoint",
+            ["pipeline_key", "processed_version", "processed_at"],
+            "CDC checkpoint (advances only after reconciliation)",
+            (3, 2, 3, 2),
+        ),
+        table(
+            "maintenance_cdc_table",
+            "maintenance_cdc",
+            ["commit_version", "change_type", "events", "committed_at"],
+            "CDC audit trail by source version",
+            (3, 4, 3, 4),
+        ),
+        table(
+            "maintenance_conflicts_table",
+            "maintenance_conflicts",
+            [
+                "priority_score",
+                "action",
+                "station_name",
+                "availability_status",
+                "maintenance_id",
+                "maintenance_status",
+                "maintenance_severity",
+            ],
+            "Rebalancing priorities at stations with an open maintenance ticket",
+            (0, 8, 6, 5),
+        ),
+        table(
+            "assistant_evaluation_table",
+            "assistant_evaluation",
+            [
+                "variant",
+                "questions",
+                "answer_correctness",
+                "retrieval_recall",
+                "source_coverage",
+                "errors",
+                "evaluated_at",
+            ],
+            "Assistant: baseline vs RAG, latest live evaluation",
+            (0, 13, 6, 4),
+        ),
+    ]
     return [
         {"name": "operations", "displayName": "Current Operations", "layout": operations},
-        {"name": "demand", "displayName": "January 2024 Historical Demand", "layout": demand},
+        {"name": "demand", "displayName": "Historical Demand", "layout": demand},
         {"name": "weather", "displayName": "Weather & Demand", "layout": weather_page},
         {"name": "quality", "displayName": "Data Quality & Reliability", "layout": quality},
+        {"name": "maintenance", "displayName": "Maintenance & Assistant", "layout": maintenance},
     ]
 
 
-def build() -> dict:
+def build(target: str) -> dict:
     ids = execution_ids()
-    definition = {"datasets": datasets(ids), "pages": pages(ids)}
+    definition = {"datasets": datasets(ids, targets()[target]), "pages": pages(ids)}
     for page in definition["pages"]:
         page["pageType"] = "PAGE_TYPE_CANVAS"
     return definition
+
+
+def render(target: str) -> str:
+    return json.dumps(build(target), indent=2, ensure_ascii=False) + "\n"
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    rendered = json.dumps(build(), indent=2, ensure_ascii=False) + "\n"
+    stale = []
+    for target in targets():
+        path, rendered = output_path(target), render(target)
+        if args.check:
+            if not path.exists() or path.read_text(encoding="utf-8") != rendered:
+                stale.append(str(path))
+            continue
+        DASHBOARD_DIR.mkdir(exist_ok=True)
+        path.write_text(rendered, encoding="utf-8", newline="\n")
+        print(f"wrote {path}")
+    if stale:
+        print(f"stale: {stale}; run scripts/build_dashboard.py", file=sys.stderr)
+        return 1
     if args.check:
-        current = OUTPUT.read_text(encoding="utf-8") if OUTPUT.exists() else ""
-        if current != rendered:
-            print(f"{OUTPUT} is stale; run scripts/build_dashboard.py", file=sys.stderr)
-            return 1
-        print("dashboard definition is current")
-        return 0
-    OUTPUT.parent.mkdir(exist_ok=True)
-    OUTPUT.write_text(rendered, encoding="utf-8", newline="\n")
-    print(f"wrote {OUTPUT}")
+        print("dashboard definitions are current")
     return 0
 
 

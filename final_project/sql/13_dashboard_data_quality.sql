@@ -1,7 +1,9 @@
 -- UrbanFlow AI/BI dashboard - DATA QUALITY section.
+-- ${catalog}, ${schema} and ${lakeflow_schema} are the bundle target's values from databricks.yml;
+-- scripts/build_dashboard.py substitutes them per target. Substitute them by hand in a SQL editor.
 -- Prepared only; read-only SELECTs against persisted tables.
 --
--- This section exists so a supervisor can tell a healthy pipeline from a quiet failure. The
+-- This section exists so a reviewer can tell a healthy pipeline from a quiet failure. The
 -- most important property is that every layer's counts RECONCILE: a row that vanished between
 -- Bronze and Silver is a bug, and a row that was rejected is a finding. Those are different,
 -- and only an explicit identity can tell them apart.
@@ -10,13 +12,13 @@
 --    Bronze must equal Silver + Quarantine + duplicates. Anything else means a lost row.
 WITH counts AS (
   SELECT
-    (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow.bronze_station_status)     AS bronze_rows,
-    (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow.silver_station_status)     AS silver_rows,
-    (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow.quarantine_station_status) AS quarantine_rows,
-    (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow.duplicate_station_status)  AS duplicate_rows,
-    (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow.fact_station_availability) AS fact_rows,
-    (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow.gold_station_shortage)     AS shortage_rows,
-    (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow.gold_rebalancing_priority) AS priority_rows
+    (SELECT COUNT(*) FROM ${catalog}.${schema}.bronze_station_status)     AS bronze_rows,
+    (SELECT COUNT(*) FROM ${catalog}.${schema}.silver_station_status)     AS silver_rows,
+    (SELECT COUNT(*) FROM ${catalog}.${schema}.quarantine_station_status) AS quarantine_rows,
+    (SELECT COUNT(*) FROM ${catalog}.${schema}.duplicate_station_status)  AS duplicate_rows,
+    (SELECT COUNT(*) FROM ${catalog}.${schema}.fact_station_availability) AS fact_rows,
+    (SELECT COUNT(*) FROM ${catalog}.${schema}.gold_station_shortage)     AS shortage_rows,
+    (SELECT COUNT(*) FROM ${catalog}.${schema}.gold_rebalancing_priority) AS priority_rows
 )
 SELECT
   *,
@@ -33,7 +35,7 @@ FROM counts;
 SELECT
   rule                                                              AS failed_rule,
   COUNT(*)                                                          AS rows_failing
-FROM dbr_dev.parvinbadalov_urbanflow.quarantine_station_status
+FROM ${catalog}.${schema}.quarantine_station_status
 LATERAL VIEW EXPLODE(failed_rules) exploded AS rule
 GROUP BY rule
 ORDER BY rows_failing DESC;
@@ -49,7 +51,7 @@ SELECT
   -- One hour is the configured ceiling; the stored snapshot is deliberately older than that
   -- and reports is_fresh = false, which is the honest answer rather than a moved goalpost.
   (UNIX_TIMESTAMP(CURRENT_TIMESTAMP()) - UNIX_TIMESTAMP(MAX(observed_at))) <= 3600 AS is_fresh
-FROM dbr_dev.parvinbadalov_urbanflow.silver_station_status;
+FROM ${catalog}.${schema}.silver_station_status;
 
 -- 4. Reference match rate: how many observations the 40-station development sample can name.
 --    A low rate here is EXPECTED and is not a defect. The dimension is a committed sample, and
@@ -63,7 +65,7 @@ SELECT
   )                                                                 AS reference_match_percent,
   'the dimension is a committed 40-station sample, so a low rate is expected'
                                                                     AS reading_note
-FROM dbr_dev.parvinbadalov_urbanflow.fact_station_availability;
+FROM ${catalog}.${schema}.fact_station_availability;
 
 -- 5. Uniqueness and completeness of the Silver key. event_id must be unique and non-null, or
 --    the idempotent MERGE that writes this table could not be trusted.
@@ -74,22 +76,22 @@ SELECT
   COUNT(*) = COUNT(DISTINCT event_id)                               AS event_ids_unique,
   -- Execution attribution must be complete: a row belonging to no execution cannot be
   -- corrected or deleted by an execution-scoped operation. This is exactly the condition that
-  -- let 89 stale priority rows survive a correction once.
+  -- let 89 stale priority rows survive a correction once in the Demo 3 predecessor.
   SUM(CASE WHEN execution_id IS NULL THEN 1 ELSE 0 END)             AS unassigned_rows
-FROM dbr_dev.parvinbadalov_urbanflow.silver_station_status;
+FROM ${catalog}.${schema}.silver_station_status;
 
 -- 6. Historical trip quality, by outcome. Same reconciliation discipline as station status.
 SELECT
   :historical_execution_id                                          AS execution_id,
-  (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow.silver_historical_trips
+  (SELECT COUNT(*) FROM ${catalog}.${schema}.silver_historical_trips
    WHERE execution_id = :historical_execution_id)                   AS valid_trips,
-  (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow.quarantine_historical_trips
+  (SELECT COUNT(*) FROM ${catalog}.${schema}.quarantine_historical_trips
    WHERE execution_id = :historical_execution_id)                   AS quarantined_trips,
-  (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow.duplicate_historical_trips
+  (SELECT COUNT(*) FROM ${catalog}.${schema}.duplicate_historical_trips
    WHERE execution_id = :historical_execution_id)                   AS duplicate_trips,
-  (SELECT COUNT(DISTINCT ride_id) FROM dbr_dev.parvinbadalov_urbanflow.silver_historical_trips
+  (SELECT COUNT(DISTINCT ride_id) FROM ${catalog}.${schema}.silver_historical_trips
    WHERE execution_id = :historical_execution_id)                   AS distinct_ride_ids,
-  (SELECT COUNT(*) = COUNT(DISTINCT ride_id) FROM dbr_dev.parvinbadalov_urbanflow.silver_historical_trips
+  (SELECT COUNT(*) = COUNT(DISTINCT ride_id) FROM ${catalog}.${schema}.silver_historical_trips
    WHERE execution_id = :historical_execution_id)                   AS ride_ids_unique;
 
 -- 7. Historical quarantine reasons for ONE execution. Every quarantined trip carries at least
@@ -98,7 +100,7 @@ SELECT
   execution_id,
   rule                                                              AS failed_rule,
   COUNT(*)                                                          AS trips_failing
-FROM dbr_dev.parvinbadalov_urbanflow.quarantine_historical_trips
+FROM ${catalog}.${schema}.quarantine_historical_trips
 LATERAL VIEW EXPLODE(failed_rules) exploded AS rule
 WHERE execution_id = :historical_execution_id
 GROUP BY execution_id, rule
@@ -118,12 +120,12 @@ FROM (
            details:flow_progress.data_quality.expectations,
            'ARRAY<STRUCT<name: STRING, dataset: STRING, passed_records: BIGINT, failed_records: BIGINT>>'
          )) AS expectation
-  FROM EVENT_LOG(TABLE(dbr_dev.parvinbadalov_urbanflow_lakeflow.silver_station_status))
+  FROM EVENT_LOG(TABLE(${catalog}.${lakeflow_schema}.silver_station_status))
   WHERE event_type = 'flow_progress'
     AND details:flow_progress.data_quality.expectations IS NOT NULL
     AND origin.update_id = (
       SELECT origin.update_id
-      FROM EVENT_LOG(TABLE(dbr_dev.parvinbadalov_urbanflow_lakeflow.silver_station_status))
+      FROM EVENT_LOG(TABLE(${catalog}.${lakeflow_schema}.silver_station_status))
       WHERE event_type = 'update_progress' AND details:update_progress.state = 'COMPLETED'
       ORDER BY timestamp DESC LIMIT 1
     )
@@ -133,8 +135,9 @@ ORDER BY dataset, expectation;
 
 -- 9. Monthly historical reconciliation and the trip-weighted reference match, for ONE execution.
 --    Bronze carries no execution column, so each source namespace lands in its own Bronze table
---    with one owning execution (notebook 06 enforces that before streaming). This statement reads
---    the January 2024 namespace's table, so it must only be paired with that namespace's execution.
+--    with one owning execution (notebook 06 enforces that before streaming). ${historical_bronze_table}
+--    is that namespace's table (`bronze_historical_trips` for the Job's default sample namespace),
+--    so it must only be paired with the same namespace's execution.
 --    The match rate is weighted by trips, not by station-day rows: it is the share of rides that
 --    start at one of the 40 stations in the DEVELOPMENT REFERENCE DIMENSION, i.e. coverage of
 --    that dimension, not a data-quality measure.
@@ -150,15 +153,15 @@ SELECT
   'coverage of the 40-station development reference dimension, not data quality' AS reading_note
 FROM (
   SELECT
-    (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow.bronze_historical_trips_202401_full)
+    (SELECT COUNT(*) FROM ${catalog}.${schema}.${historical_bronze_table})
                                                                     AS landed_rows,
-    (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow.silver_historical_trips
+    (SELECT COUNT(*) FROM ${catalog}.${schema}.silver_historical_trips
      WHERE execution_id = :historical_execution_id)                 AS valid_trips,
-    (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow.quarantine_historical_trips
+    (SELECT COUNT(*) FROM ${catalog}.${schema}.quarantine_historical_trips
      WHERE execution_id = :historical_execution_id)                 AS quarantined_trips,
-    (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow.duplicate_historical_trips
+    (SELECT COUNT(*) FROM ${catalog}.${schema}.duplicate_historical_trips
      WHERE execution_id = :historical_execution_id)                 AS duplicate_trips,
-    (SELECT SUM(trips_started) FROM dbr_dev.parvinbadalov_urbanflow.gold_daily_trip_demand
+    (SELECT SUM(trips_started) FROM ${catalog}.${schema}.gold_daily_trip_demand
      WHERE execution_id = :historical_execution_id AND start_station_uuid IS NOT NULL)
                                                                     AS matched_trips
 );

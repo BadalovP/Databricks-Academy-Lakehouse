@@ -25,7 +25,9 @@ DASHBOARD_FILES = sorted(SQL_DIR.glob("1*_dashboard_*.sql"))
 GOVERNANCE = SQL_DIR / "20_governance_rls_cls.sql"
 MAINTENANCE = SQL_DIR / "21_maintenance_optimize_vacuum.sql"
 
-OUR_SCHEMA = "parvinbadalov_urbanflow"
+# Target-neutral: databricks.yml supplies each target's catalog and schemas.
+OUR_SCHEMA = "${catalog}.${schema}."
+DEMO3_SCHEMAS = ("parvinbadalov_urbanflow.", "parvinbadalov_urbanflow_lakeflow.", "dbr_dev.")
 # Other students' and other projects' schemas must never be referenced.
 FOREIGN_SCHEMAS = ("demo1", "demo2", "demo2_olist", "lab07", "lab08", "lab09", "default")
 
@@ -43,11 +45,24 @@ def _active_sql(path: Path) -> str:
 def test_there_are_sql_assets_to_check() -> None:
     """A glob that silently matches nothing would make every test below vacuous."""
     assert SQL_FILES
-    assert len(DASHBOARD_FILES) == 4
+    assert len(DASHBOARD_FILES) == 5
     assert GOVERNANCE.exists() and MAINTENANCE.exists()
 
 
 # --- the dashboard queries are pure reads ---------------------------------------
+
+
+@pytest.mark.parametrize("path", SQL_FILES, ids=lambda p: p.name)
+def test_no_sql_file_names_demo3_schemas(path: Path) -> None:
+    """The Final Project owns its schemas; Demo 3's validated data is never read or changed."""
+    text = path.read_text(encoding="utf-8")
+    for schema in (
+        "dbr_dev.parvinbadalov_urbanflow.",
+        "parvinbadalov_urbanflow_lakeflow",
+        "'parvinbadalov_urbanflow'",
+        "_202401_full",
+    ):
+        assert schema not in text, f"{path.name} names {schema}"
 
 
 @pytest.mark.parametrize("path", DASHBOARD_FILES, ids=lambda p: p.name)
@@ -76,6 +91,8 @@ def test_dashboard_queries_stay_inside_the_urbanflow_schema(path: Path) -> None:
     active = _active_sql(path).lower()
 
     assert OUR_SCHEMA in active
+    for schema in DEMO3_SCHEMAS:
+        assert schema not in active, f"{path.name} reads Demo 3's {schema}"
     for schema in FOREIGN_SCHEMAS:
         assert f".{schema}." not in active, f"{path.name} references {schema}"
 
@@ -84,7 +101,7 @@ def test_dashboard_queries_stay_inside_the_urbanflow_schema(path: Path) -> None:
 def test_every_table_reference_is_fully_qualified(path: Path) -> None:
     """An unqualified name resolves against whatever the session default happens to be."""
     active = _active_sql(path)
-    references = re.findall(r"\b(?:FROM|JOIN|INTO|TABLE)\s+([A-Za-z_][\w.`]*)", active)
+    references = re.findall(r"\b(?:FROM|JOIN|INTO|TABLE)\s+([$A-Za-z_][\w.`${}]*)", active)
 
     for reference in references:
         bare = reference.strip("`")
@@ -95,8 +112,8 @@ def test_every_table_reference_is_fully_qualified(path: Path) -> None:
         assert bare.count(".") >= 2, f"{path.name} references {bare!r} without a full name"
     for argument in re.findall(r"EVENT_LOG\(TABLE\(([^)]+)\)\)", active, flags=re.IGNORECASE):
         assert argument.strip().count(".") == 2, f"{path.name} event_log({argument}) is unqualified"
-        assert (
-            ".parvinbadalov_urbanflow_lakeflow." in argument
+        assert argument.strip().startswith(
+            "${catalog}.${lakeflow_schema}."
         ), "event_log must read the isolated pipeline"
 
 
