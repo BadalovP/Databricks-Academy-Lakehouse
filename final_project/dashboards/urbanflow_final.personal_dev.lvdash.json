@@ -530,7 +530,7 @@
           "position": {
             "x": 0,
             "y": 0,
-            "width": 6,
+            "width": 12,
             "height": 2
           }
         },
@@ -570,8 +570,8 @@
           "position": {
             "x": 0,
             "y": 2,
-            "width": 1,
-            "height": 2
+            "width": 2,
+            "height": 3
           }
         },
         {
@@ -608,10 +608,10 @@
             }
           },
           "position": {
-            "x": 1,
+            "x": 2,
             "y": 2,
-            "width": 1,
-            "height": 2
+            "width": 2,
+            "height": 3
           }
         },
         {
@@ -648,10 +648,10 @@
             }
           },
           "position": {
-            "x": 2,
+            "x": 4,
             "y": 2,
-            "width": 1,
-            "height": 2
+            "width": 2,
+            "height": 3
           }
         },
         {
@@ -688,10 +688,10 @@
             }
           },
           "position": {
-            "x": 3,
+            "x": 6,
             "y": 2,
-            "width": 1,
-            "height": 2
+            "width": 2,
+            "height": 3
           }
         },
         {
@@ -728,10 +728,10 @@
             }
           },
           "position": {
-            "x": 4,
+            "x": 8,
             "y": 2,
-            "width": 1,
-            "height": 2
+            "width": 2,
+            "height": 3
           }
         },
         {
@@ -768,10 +768,10 @@
             }
           },
           "position": {
-            "x": 5,
+            "x": 10,
             "y": 2,
-            "width": 1,
-            "height": 2
+            "width": 2,
+            "height": 3
           }
         },
         {
@@ -809,9 +809,9 @@
           },
           "position": {
             "x": 0,
-            "y": 4,
-            "width": 2,
-            "height": 2
+            "y": 5,
+            "width": 4,
+            "height": 3
           }
         },
         {
@@ -824,9 +824,9 @@
             }
           },
           "position": {
-            "x": 2,
-            "y": 4,
-            "width": 4,
+            "x": 4,
+            "y": 5,
+            "width": 8,
             "height": 2
           }
         },
@@ -879,8 +879,8 @@
           },
           "position": {
             "x": 0,
-            "y": 6,
-            "width": 3,
+            "y": 8,
+            "width": 6,
             "height": 5
           }
         },
@@ -932,9 +932,9 @@
             }
           },
           "position": {
-            "x": 3,
-            "y": 6,
-            "width": 3,
+            "x": 6,
+            "y": 8,
+            "width": 6,
             "height": 5
           }
         },
@@ -989,90 +989,45 @@
               }
             ],
             "spec": {
-              "version": 1,
+              "version": 2,
               "widgetType": "table",
               "encodings": {
                 "columns": [
                   {
                     "fieldName": "priority_score",
-                    "displayName": "priority_score",
-                    "title": "priority_score",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 0
+                    "displayName": "priority_score"
                   },
                   {
                     "fieldName": "action",
-                    "displayName": "action",
-                    "title": "action",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 1
+                    "displayName": "action"
                   },
                   {
                     "fieldName": "station_name",
-                    "displayName": "station_name",
-                    "title": "station_name",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 2
+                    "displayName": "station_name"
                   },
                   {
                     "fieldName": "availability_status",
-                    "displayName": "availability_status",
-                    "title": "availability_status",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 3
+                    "displayName": "availability_status"
                   },
                   {
                     "fieldName": "num_bikes_available",
-                    "displayName": "num_bikes_available",
-                    "title": "num_bikes_available",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 4
+                    "displayName": "num_bikes_available"
                   },
                   {
                     "fieldName": "num_docks_available",
-                    "displayName": "num_docks_available",
-                    "title": "num_docks_available",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 5
+                    "displayName": "num_docks_available"
                   },
                   {
                     "fieldName": "severity_points",
-                    "displayName": "severity_points",
-                    "title": "severity_points",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 6
+                    "displayName": "severity_points"
                   },
                   {
                     "fieldName": "deficit_points",
-                    "displayName": "deficit_points",
-                    "title": "deficit_points",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 7
+                    "displayName": "deficit_points"
                   },
                   {
                     "fieldName": "size_points",
-                    "displayName": "size_points",
-                    "title": "size_points",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 8
+                    "displayName": "size_points"
                   }
                 ]
               },
@@ -1084,13 +1039,14 @@
           },
           "position": {
             "x": 0,
-            "y": 11,
-            "width": 6,
+            "y": 13,
+            "width": 12,
             "height": 7
           }
         }
       ],
-      "pageType": "PAGE_TYPE_CANVAS"
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
     },
     {
       "name": "demand",
@@ -1109,7 +1065,7 @@
           "position": {
             "x": 0,
             "y": 0,
-            "width": 6,
+            "width": 12,
             "height": 2
           }
         },
@@ -1149,8 +1105,8 @@
           "position": {
             "x": 0,
             "y": 2,
-            "width": 1,
-            "height": 2
+            "width": 2,
+            "height": 3
           }
         },
         {
@@ -1187,10 +1143,10 @@
             }
           },
           "position": {
-            "x": 1,
+            "x": 2,
             "y": 2,
-            "width": 1,
-            "height": 2
+            "width": 2,
+            "height": 3
           }
         },
         {
@@ -1227,10 +1183,10 @@
             }
           },
           "position": {
-            "x": 2,
+            "x": 4,
             "y": 2,
-            "width": 1,
-            "height": 2
+            "width": 2,
+            "height": 3
           }
         },
         {
@@ -1267,10 +1223,10 @@
             }
           },
           "position": {
-            "x": 3,
+            "x": 6,
             "y": 2,
-            "width": 1,
-            "height": 2
+            "width": 2,
+            "height": 3
           }
         },
         {
@@ -1321,9 +1277,9 @@
             }
           },
           "position": {
-            "x": 4,
+            "x": 8,
             "y": 2,
-            "width": 2,
+            "width": 4,
             "height": 4
           }
         },
@@ -1376,8 +1332,8 @@
           },
           "position": {
             "x": 0,
-            "y": 4,
-            "width": 4,
+            "y": 5,
+            "width": 8,
             "height": 5
           }
         },
@@ -1429,9 +1385,9 @@
             }
           },
           "position": {
-            "x": 4,
+            "x": 8,
             "y": 6,
-            "width": 2,
+            "width": 4,
             "height": 3
           }
         },
@@ -1484,8 +1440,8 @@
           },
           "position": {
             "x": 0,
-            "y": 9,
-            "width": 3,
+            "y": 10,
+            "width": 6,
             "height": 5
           }
         },
@@ -1537,9 +1493,9 @@
             }
           },
           "position": {
-            "x": 3,
-            "y": 9,
-            "width": 3,
+            "x": 6,
+            "y": 10,
+            "width": 6,
             "height": 5
           }
         },
@@ -1574,45 +1530,25 @@
               }
             ],
             "spec": {
-              "version": 1,
+              "version": 2,
               "widgetType": "table",
               "encodings": {
                 "columns": [
                   {
                     "fieldName": "direction",
-                    "displayName": "direction",
-                    "title": "direction",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 0
+                    "displayName": "direction"
                   },
                   {
                     "fieldName": "station_name",
-                    "displayName": "station_name",
-                    "title": "station_name",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 1
+                    "displayName": "station_name"
                   },
                   {
                     "fieldName": "station_short_name",
-                    "displayName": "station_short_name",
-                    "title": "station_short_name",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 2
+                    "displayName": "station_short_name"
                   },
                   {
                     "fieldName": "trips",
-                    "displayName": "trips",
-                    "title": "trips",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 3
+                    "displayName": "trips"
                   }
                 ]
               },
@@ -1624,13 +1560,14 @@
           },
           "position": {
             "x": 0,
-            "y": 14,
-            "width": 6,
+            "y": 15,
+            "width": 12,
             "height": 8
           }
         }
       ],
-      "pageType": "PAGE_TYPE_CANVAS"
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
     },
     {
       "name": "weather",
@@ -1649,7 +1586,7 @@
           "position": {
             "x": 0,
             "y": 0,
-            "width": 6,
+            "width": 12,
             "height": 3
           }
         },
@@ -1689,8 +1626,8 @@
           "position": {
             "x": 0,
             "y": 3,
-            "width": 1,
-            "height": 2
+            "width": 2,
+            "height": 3
           }
         },
         {
@@ -1727,10 +1664,10 @@
             }
           },
           "position": {
-            "x": 1,
+            "x": 2,
             "y": 3,
-            "width": 1,
-            "height": 2
+            "width": 2,
+            "height": 3
           }
         },
         {
@@ -1767,10 +1704,10 @@
             }
           },
           "position": {
-            "x": 2,
+            "x": 4,
             "y": 3,
-            "width": 1,
-            "height": 2
+            "width": 2,
+            "height": 3
           }
         },
         {
@@ -1807,10 +1744,10 @@
             }
           },
           "position": {
-            "x": 3,
+            "x": 6,
             "y": 3,
-            "width": 1,
-            "height": 2
+            "width": 2,
+            "height": 3
           }
         },
         {
@@ -1862,8 +1799,8 @@
           },
           "position": {
             "x": 0,
-            "y": 5,
-            "width": 3,
+            "y": 6,
+            "width": 6,
             "height": 4
           }
         },
@@ -1915,9 +1852,9 @@
             }
           },
           "position": {
-            "x": 3,
-            "y": 5,
-            "width": 3,
+            "x": 6,
+            "y": 6,
+            "width": 6,
             "height": 4
           }
         },
@@ -1970,8 +1907,8 @@
           },
           "position": {
             "x": 0,
-            "y": 9,
-            "width": 2,
+            "y": 10,
+            "width": 4,
             "height": 5
           }
         },
@@ -2023,9 +1960,9 @@
             }
           },
           "position": {
-            "x": 2,
-            "y": 9,
-            "width": 2,
+            "x": 4,
+            "y": 10,
+            "width": 4,
             "height": 5
           }
         },
@@ -2077,9 +2014,9 @@
             }
           },
           "position": {
-            "x": 4,
-            "y": 9,
-            "width": 2,
+            "x": 8,
+            "y": 10,
+            "width": 4,
             "height": 5
           }
         },
@@ -2132,8 +2069,8 @@
           },
           "position": {
             "x": 0,
-            "y": 14,
-            "width": 3,
+            "y": 15,
+            "width": 6,
             "height": 4
           }
         },
@@ -2185,14 +2122,15 @@
             }
           },
           "position": {
-            "x": 3,
-            "y": 14,
-            "width": 3,
+            "x": 6,
+            "y": 15,
+            "width": 6,
             "height": 4
           }
         }
       ],
-      "pageType": "PAGE_TYPE_CANVAS"
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
     },
     {
       "name": "quality",
@@ -2211,7 +2149,7 @@
           "position": {
             "x": 0,
             "y": 0,
-            "width": 6,
+            "width": 12,
             "height": 2
           }
         },
@@ -2251,8 +2189,8 @@
           "position": {
             "x": 0,
             "y": 2,
-            "width": 1,
-            "height": 2
+            "width": 2,
+            "height": 3
           }
         },
         {
@@ -2289,10 +2227,10 @@
             }
           },
           "position": {
-            "x": 1,
+            "x": 2,
             "y": 2,
-            "width": 1,
-            "height": 2
+            "width": 2,
+            "height": 3
           }
         },
         {
@@ -2329,10 +2267,10 @@
             }
           },
           "position": {
-            "x": 2,
+            "x": 4,
             "y": 2,
-            "width": 1,
-            "height": 2
+            "width": 2,
+            "height": 3
           }
         },
         {
@@ -2369,10 +2307,10 @@
             }
           },
           "position": {
-            "x": 3,
+            "x": 6,
             "y": 2,
-            "width": 1,
-            "height": 2
+            "width": 2,
+            "height": 3
           }
         },
         {
@@ -2409,10 +2347,10 @@
             }
           },
           "position": {
-            "x": 4,
+            "x": 8,
             "y": 2,
-            "width": 1,
-            "height": 2
+            "width": 2,
+            "height": 3
           }
         },
         {
@@ -2449,10 +2387,10 @@
             }
           },
           "position": {
-            "x": 5,
+            "x": 10,
             "y": 2,
-            "width": 1,
-            "height": 2
+            "width": 2,
+            "height": 3
           }
         },
         {
@@ -2466,8 +2404,8 @@
           },
           "position": {
             "x": 0,
-            "y": 4,
-            "width": 6,
+            "y": 5,
+            "width": 12,
             "height": 2
           }
         },
@@ -2520,8 +2458,8 @@
           },
           "position": {
             "x": 0,
-            "y": 6,
-            "width": 3,
+            "y": 7,
+            "width": 6,
             "height": 5
           }
         },
@@ -2580,99 +2518,49 @@
               }
             ],
             "spec": {
-              "version": 1,
+              "version": 2,
               "widgetType": "table",
               "encodings": {
                 "columns": [
                   {
                     "fieldName": "bronze_rows",
-                    "displayName": "bronze_rows",
-                    "title": "bronze_rows",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 0
+                    "displayName": "bronze_rows"
                   },
                   {
                     "fieldName": "silver_rows",
-                    "displayName": "silver_rows",
-                    "title": "silver_rows",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 1
+                    "displayName": "silver_rows"
                   },
                   {
                     "fieldName": "quarantine_rows",
-                    "displayName": "quarantine_rows",
-                    "title": "quarantine_rows",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 2
+                    "displayName": "quarantine_rows"
                   },
                   {
                     "fieldName": "duplicate_rows",
-                    "displayName": "duplicate_rows",
-                    "title": "duplicate_rows",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 3
+                    "displayName": "duplicate_rows"
                   },
                   {
                     "fieldName": "fact_rows",
-                    "displayName": "fact_rows",
-                    "title": "fact_rows",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 4
+                    "displayName": "fact_rows"
                   },
                   {
                     "fieldName": "shortage_rows",
-                    "displayName": "shortage_rows",
-                    "title": "shortage_rows",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 5
+                    "displayName": "shortage_rows"
                   },
                   {
                     "fieldName": "priority_rows",
-                    "displayName": "priority_rows",
-                    "title": "priority_rows",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 6
+                    "displayName": "priority_rows"
                   },
                   {
                     "fieldName": "bronze_reconciles",
-                    "displayName": "bronze_reconciles",
-                    "title": "bronze_reconciles",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 7
+                    "displayName": "bronze_reconciles"
                   },
                   {
                     "fieldName": "fact_matches_silver",
-                    "displayName": "fact_matches_silver",
-                    "title": "fact_matches_silver",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 8
+                    "displayName": "fact_matches_silver"
                   },
                   {
                     "fieldName": "derived_tables_agree",
-                    "displayName": "derived_tables_agree",
-                    "title": "derived_tables_agree",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 9
+                    "displayName": "derived_tables_agree"
                   }
                 ]
               },
@@ -2683,9 +2571,9 @@
             }
           },
           "position": {
-            "x": 3,
-            "y": 6,
-            "width": 3,
+            "x": 6,
+            "y": 7,
+            "width": 6,
             "height": 5
           }
         },
@@ -2720,45 +2608,25 @@
               }
             ],
             "spec": {
-              "version": 1,
+              "version": 2,
               "widgetType": "table",
               "encodings": {
                 "columns": [
                   {
                     "fieldName": "dataset",
-                    "displayName": "dataset",
-                    "title": "dataset",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 0
+                    "displayName": "dataset"
                   },
                   {
                     "fieldName": "expectation",
-                    "displayName": "expectation",
-                    "title": "expectation",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 1
+                    "displayName": "expectation"
                   },
                   {
                     "fieldName": "passed_records",
-                    "displayName": "passed_records",
-                    "title": "passed_records",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 2
+                    "displayName": "passed_records"
                   },
                   {
                     "fieldName": "failed_records",
-                    "displayName": "failed_records",
-                    "title": "failed_records",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 3
+                    "displayName": "failed_records"
                   }
                 ]
               },
@@ -2770,13 +2638,14 @@
           },
           "position": {
             "x": 0,
-            "y": 11,
-            "width": 6,
+            "y": 12,
+            "width": 12,
             "height": 8
           }
         }
       ],
-      "pageType": "PAGE_TYPE_CANVAS"
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
     },
     {
       "name": "maintenance",
@@ -2795,7 +2664,7 @@
           "position": {
             "x": 0,
             "y": 0,
-            "width": 6,
+            "width": 12,
             "height": 2
           }
         },
@@ -2849,7 +2718,7 @@
           "position": {
             "x": 0,
             "y": 2,
-            "width": 3,
+            "width": 6,
             "height": 4
           }
         },
@@ -2880,36 +2749,21 @@
               }
             ],
             "spec": {
-              "version": 1,
+              "version": 2,
               "widgetType": "table",
               "encodings": {
                 "columns": [
                   {
                     "fieldName": "pipeline_key",
-                    "displayName": "pipeline_key",
-                    "title": "pipeline_key",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 0
+                    "displayName": "pipeline_key"
                   },
                   {
                     "fieldName": "processed_version",
-                    "displayName": "processed_version",
-                    "title": "processed_version",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 1
+                    "displayName": "processed_version"
                   },
                   {
                     "fieldName": "processed_at",
-                    "displayName": "processed_at",
-                    "title": "processed_at",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 2
+                    "displayName": "processed_at"
                   }
                 ]
               },
@@ -2920,9 +2774,9 @@
             }
           },
           "position": {
-            "x": 3,
+            "x": 6,
             "y": 2,
-            "width": 3,
+            "width": 6,
             "height": 2
           }
         },
@@ -2957,45 +2811,25 @@
               }
             ],
             "spec": {
-              "version": 1,
+              "version": 2,
               "widgetType": "table",
               "encodings": {
                 "columns": [
                   {
                     "fieldName": "commit_version",
-                    "displayName": "commit_version",
-                    "title": "commit_version",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 0
+                    "displayName": "commit_version"
                   },
                   {
                     "fieldName": "change_type",
-                    "displayName": "change_type",
-                    "title": "change_type",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 1
+                    "displayName": "change_type"
                   },
                   {
                     "fieldName": "events",
-                    "displayName": "events",
-                    "title": "events",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 2
+                    "displayName": "events"
                   },
                   {
                     "fieldName": "committed_at",
-                    "displayName": "committed_at",
-                    "title": "committed_at",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 3
+                    "displayName": "committed_at"
                   }
                 ]
               },
@@ -3006,9 +2840,9 @@
             }
           },
           "position": {
-            "x": 3,
+            "x": 6,
             "y": 4,
-            "width": 3,
+            "width": 6,
             "height": 4
           }
         },
@@ -3055,72 +2889,37 @@
               }
             ],
             "spec": {
-              "version": 1,
+              "version": 2,
               "widgetType": "table",
               "encodings": {
                 "columns": [
                   {
                     "fieldName": "priority_score",
-                    "displayName": "priority_score",
-                    "title": "priority_score",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 0
+                    "displayName": "priority_score"
                   },
                   {
                     "fieldName": "action",
-                    "displayName": "action",
-                    "title": "action",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 1
+                    "displayName": "action"
                   },
                   {
                     "fieldName": "station_name",
-                    "displayName": "station_name",
-                    "title": "station_name",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 2
+                    "displayName": "station_name"
                   },
                   {
                     "fieldName": "availability_status",
-                    "displayName": "availability_status",
-                    "title": "availability_status",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 3
+                    "displayName": "availability_status"
                   },
                   {
                     "fieldName": "maintenance_id",
-                    "displayName": "maintenance_id",
-                    "title": "maintenance_id",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 4
+                    "displayName": "maintenance_id"
                   },
                   {
                     "fieldName": "maintenance_status",
-                    "displayName": "maintenance_status",
-                    "title": "maintenance_status",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 5
+                    "displayName": "maintenance_status"
                   },
                   {
                     "fieldName": "maintenance_severity",
-                    "displayName": "maintenance_severity",
-                    "title": "maintenance_severity",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 6
+                    "displayName": "maintenance_severity"
                   }
                 ]
               },
@@ -3133,7 +2932,7 @@
           "position": {
             "x": 0,
             "y": 8,
-            "width": 6,
+            "width": 12,
             "height": 5
           }
         },
@@ -3180,72 +2979,37 @@
               }
             ],
             "spec": {
-              "version": 1,
+              "version": 2,
               "widgetType": "table",
               "encodings": {
                 "columns": [
                   {
                     "fieldName": "variant",
-                    "displayName": "variant",
-                    "title": "variant",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 0
+                    "displayName": "variant"
                   },
                   {
                     "fieldName": "questions",
-                    "displayName": "questions",
-                    "title": "questions",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 1
+                    "displayName": "questions"
                   },
                   {
                     "fieldName": "answer_correctness",
-                    "displayName": "answer_correctness",
-                    "title": "answer_correctness",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 2
+                    "displayName": "answer_correctness"
                   },
                   {
                     "fieldName": "retrieval_recall",
-                    "displayName": "retrieval_recall",
-                    "title": "retrieval_recall",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 3
+                    "displayName": "retrieval_recall"
                   },
                   {
                     "fieldName": "source_coverage",
-                    "displayName": "source_coverage",
-                    "title": "source_coverage",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 4
+                    "displayName": "source_coverage"
                   },
                   {
                     "fieldName": "errors",
-                    "displayName": "errors",
-                    "title": "errors",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 5
+                    "displayName": "errors"
                   },
                   {
                     "fieldName": "evaluated_at",
-                    "displayName": "evaluated_at",
-                    "title": "evaluated_at",
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 6
+                    "displayName": "evaluated_at"
                   }
                 ]
               },
@@ -3258,12 +3022,48 @@
           "position": {
             "x": 0,
             "y": 13,
-            "width": 6,
+            "width": 12,
             "height": 4
           }
         }
       ],
-      "pageType": "PAGE_TYPE_CANVAS"
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
     }
-  ]
+  ],
+  "uiSettings": {
+    "theme": {
+      "canvasBackgroundColor": {
+        "light": "#F7FAFC",
+        "dark": "#111827"
+      },
+      "widgetBackgroundColor": {
+        "light": "#FFFFFF",
+        "dark": "#1F2937"
+      },
+      "widgetBorderColor": {
+        "light": "#FFFFFF",
+        "dark": "#1F2937"
+      },
+      "fontColor": {
+        "light": "#172554",
+        "dark": "#E5E7EB"
+      },
+      "selectionColor": {
+        "light": "#0072B2",
+        "dark": "#5ADBFF"
+      },
+      "visualizationColors": [
+        "#0072B2",
+        "#E69F00",
+        "#009E73",
+        "#CC79A7",
+        "#D55E00",
+        "#56B4E9",
+        "#F0E442"
+      ],
+      "widgetHeaderAlignment": "LEFT",
+      "widgetCornerRadius": 8
+    }
+  }
 }

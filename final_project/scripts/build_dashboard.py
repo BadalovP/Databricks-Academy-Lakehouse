@@ -168,7 +168,9 @@ def counter(name: str, dataset: str, field: str, title: str, x: int, y: int, w: 
                 "frame": {"showTitle": True, "title": title},
             },
         },
-        "position": {"x": x, "y": y, "width": w, "height": 2},
+        # Lakeview counters need enough vertical room for the value and title. Height 2 renders
+        # cramped in the current dashboard runtime; 3 is the supported compact KPI size.
+        "position": {"x": x, "y": y, "width": w, "height": 3},
     }
 
 
@@ -220,20 +222,15 @@ def table(name: str, dataset: str, columns: list[str], title: str, pos: tuple) -
             "name": name,
             "queries": _query(dataset, [_field(c) for c in columns]),
             "spec": {
-                "version": 1,
+                "version": 2,
                 "widgetType": "table",
                 "encodings": {
                     "columns": [
                         {
                             "fieldName": c,
                             "displayName": c,
-                            "title": c,
-                            "type": "string",
-                            "displayAs": "string",
-                            "visible": True,
-                            "order": i,
                         }
-                        for i, c in enumerate(columns)
+                        for c in columns
                     ]
                 },
                 "frame": {"showTitle": True, "title": title},
@@ -271,7 +268,7 @@ def pages(ids: dict[str, str]) -> list[dict]:
             "actionable_shortages",
             "Actionable shortages",
             0,
-            4,
+            5,
             2,
         ),
         text(
@@ -281,7 +278,7 @@ def pages(ids: dict[str, str]) -> list[dict]:
                 "OUT_OF_SERVICE station is excluded: no rebalancing fixes it."
             ],
             2,
-            4,
+            5,
             4,
             2,
         ),
@@ -292,7 +289,7 @@ def pages(ids: dict[str, str]) -> list[dict]:
             "availability_status",
             "stations",
             "Stations by availability status",
-            (0, 6, 3, 5),
+            (0, 8, 3, 5),
         ),
         chart(
             "ops_actions_bar",
@@ -301,7 +298,7 @@ def pages(ids: dict[str, str]) -> list[dict]:
             "action",
             "stations",
             "Recommended action",
-            (3, 6, 3, 5),
+            (3, 8, 3, 5),
         ),
         table(
             "ops_priorities_table",
@@ -318,7 +315,7 @@ def pages(ids: dict[str, str]) -> list[dict]:
                 "size_points",
             ],
             "Top 25 rebalancing priorities (score = severity + deficit + size)",
-            (0, 11, 6, 7),
+            (0, 13, 6, 7),
         ),
     ]
     demand = [
@@ -358,7 +355,7 @@ def pages(ids: dict[str, str]) -> list[dict]:
             "trip_date",
             "trips",
             "Trips per day",
-            (0, 4, 4, 5),
+            (0, 5, 4, 5),
             x_scale="temporal",
         ),
         chart(
@@ -377,7 +374,7 @@ def pages(ids: dict[str, str]) -> list[dict]:
             "hour_of_day",
             "trips",
             "Trips by hour of day (UTC timestamps as stored)",
-            (0, 9, 3, 5),
+            (0, 10, 3, 5),
             y_aggregate="SUM",
         ),
         chart(
@@ -387,14 +384,14 @@ def pages(ids: dict[str, str]) -> list[dict]:
             "duration_bucket",
             "trips",
             "Trip duration distribution",
-            (3, 9, 3, 5),
+            (3, 10, 3, 5),
         ),
         table(
             "demand_top_table",
             "demand_top_stations",
             ["direction", "station_name", "station_short_name", "trips"],
             "Top 15 origin and destination stations",
-            (0, 14, 6, 8),
+            (0, 15, 6, 8),
         ),
     ]
     weather_page = [
@@ -445,7 +442,7 @@ def pages(ids: dict[str, str]) -> list[dict]:
             "trip_date",
             "trips",
             "Trips per day",
-            (0, 5, 3, 4),
+            (0, 6, 3, 4),
             x_scale="temporal",
         ),
         chart(
@@ -455,7 +452,7 @@ def pages(ids: dict[str, str]) -> list[dict]:
             "trip_date",
             "avg_temperature_celsius",
             "Average temperature per day (°C)",
-            (3, 5, 3, 4),
+            (3, 6, 3, 4),
             x_scale="temporal",
         ),
         chart(
@@ -465,7 +462,7 @@ def pages(ids: dict[str, str]) -> list[dict]:
             "avg_temperature_celsius",
             "trips",
             "Daily trips vs temperature",
-            (0, 9, 2, 5),
+            (0, 10, 2, 5),
             x_scale="quantitative",
         ),
         chart(
@@ -475,7 +472,7 @@ def pages(ids: dict[str, str]) -> list[dict]:
             "total_precipitation_mm",
             "trips",
             "Daily trips vs precipitation (mm)",
-            (2, 9, 2, 5),
+            (2, 10, 2, 5),
             x_scale="quantitative",
         ),
         chart(
@@ -485,7 +482,7 @@ def pages(ids: dict[str, str]) -> list[dict]:
             "avg_wind_speed_kmh",
             "trips",
             "Daily trips vs wind (km/h)",
-            (4, 9, 2, 5),
+            (4, 10, 2, 5),
             x_scale="quantitative",
         ),
         chart(
@@ -495,7 +492,7 @@ def pages(ids: dict[str, str]) -> list[dict]:
             "temperature_bucket",
             "avg_trips_per_day",
             "Average trips per day by temperature band",
-            (0, 14, 3, 4),
+            (0, 15, 3, 4),
         ),
         chart(
             "weather_precip_bar",
@@ -504,7 +501,7 @@ def pages(ids: dict[str, str]) -> list[dict]:
             "precipitation_band",
             "avg_trips_per_day",
             "Average trips per day by rainfall band",
-            (3, 14, 3, 4),
+            (3, 15, 3, 4),
         ),
     ]
     quality = [
@@ -543,7 +540,7 @@ def pages(ids: dict[str, str]) -> list[dict]:
                 "Landed = valid + quarantine + duplicates must hold exactly."
             ],
             0,
-            4,
+            5,
             6,
             2,
         ),
@@ -554,7 +551,7 @@ def pages(ids: dict[str, str]) -> list[dict]:
             "failed_rule",
             "trips_failing",
             "Why trips were quarantined (every row has a named reason)",
-            (0, 6, 3, 5),
+            (0, 7, 3, 5),
         ),
         table(
             "quality_station_table",
@@ -572,14 +569,14 @@ def pages(ids: dict[str, str]) -> list[dict]:
                 "derived_tables_agree",
             ],
             "Station snapshot reconciliation (Bronze = Silver + Quarantine + Duplicates)",
-            (3, 6, 3, 5),
+            (3, 7, 3, 5),
         ),
         table(
             "quality_lakeflow_table",
             "quality_lakeflow",
             ["dataset", "expectation", "passed_records", "failed_records"],
             "Lakeflow expectations from the pipeline event log (latest completed update)",
-            (0, 11, 6, 8),
+            (0, 12, 6, 8),
         ),
     ]
     maintenance = [
@@ -663,9 +660,41 @@ def pages(ids: dict[str, str]) -> list[dict]:
 
 def build(target: str) -> dict:
     ids = execution_ids()
-    definition = {"datasets": datasets(ids, targets()[target]), "pages": pages(ids)}
+    definition = {
+        "datasets": datasets(ids, targets()[target]),
+        "pages": pages(ids),
+        "uiSettings": {
+            "theme": {
+                "canvasBackgroundColor": {"light": "#F7FAFC", "dark": "#111827"},
+                "widgetBackgroundColor": {"light": "#FFFFFF", "dark": "#1F2937"},
+                "widgetBorderColor": {"light": "#FFFFFF", "dark": "#1F2937"},
+                "fontColor": {"light": "#172554", "dark": "#E5E7EB"},
+                "selectionColor": {"light": "#0072B2", "dark": "#5ADBFF"},
+                # Okabe-Ito inspired: readable categories without relying on red/green alone.
+                "visualizationColors": [
+                    "#0072B2",
+                    "#E69F00",
+                    "#009E73",
+                    "#CC79A7",
+                    "#D55E00",
+                    "#56B4E9",
+                    "#F0E442",
+                ],
+                "widgetHeaderAlignment": "LEFT",
+                "widgetCornerRadius": 8,
+            }
+        },
+    }
     for page in definition["pages"]:
         page["pageType"] = "PAGE_TYPE_CANVAS"
+        page["layoutVersion"] = "GRID_V1"
+        # The original generator used a six-column design vocabulary. Lakeview's documented
+        # canvas is twelve columns, so scale horizontal positions once at serialization time.
+        # Keeping the page definitions in six logical columns makes the dense operations layout
+        # readable while the emitted dashboard fills the supported grid exactly.
+        for item in page["layout"]:
+            item["position"]["x"] *= 2
+            item["position"]["width"] *= 2
     return definition
 
 

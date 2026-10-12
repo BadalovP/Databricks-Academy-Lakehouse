@@ -138,6 +138,73 @@ def test_every_widget_reads_a_defined_dataset(target: str) -> None:
     assert used == names
 
 
+@pytest.mark.parametrize("target", TARGETS)
+def test_dashboard_uses_current_lakeview_layout_and_widget_contracts(target: str) -> None:
+    definition = _definition(target)
+    theme = definition["uiSettings"]["theme"]
+    assert len(theme["visualizationColors"]) >= 5
+    assert theme["widgetHeaderAlignment"] == "LEFT"
+
+    for page in definition["pages"]:
+        assert page["pageType"] == "PAGE_TYPE_CANVAS"
+        assert page["layoutVersion"] == "GRID_V1"
+        assert (
+            max(item["position"]["x"] + item["position"]["width"] for item in page["layout"]) == 12
+        )
+        assert all(
+            item["position"]["x"] + item["position"]["width"] <= 12 for item in page["layout"]
+        )
+
+        for item in page["layout"]:
+            widget = item["widget"]
+            assert re.fullmatch(r"[A-Za-z0-9_-]+", widget["name"])
+            spec = widget.get("spec")
+            if spec is None:
+                continue
+            if spec["widgetType"] == "table":
+                assert spec["version"] == 2
+            if spec["widgetType"] == "counter":
+                assert spec["version"] == 2
+                assert item["position"]["height"] >= 3
+            if spec["widgetType"] in {"bar", "line", "scatter"}:
+                assert spec["version"] == 3
+
+
+@pytest.mark.parametrize("target", TARGETS)
+def test_every_widget_encoding_is_bound_to_a_query_field(target: str) -> None:
+    for page in _definition(target)["pages"]:
+        for item in page["layout"]:
+            widget = item["widget"]
+            if not widget.get("queries"):
+                continue
+            fields = {
+                field["name"]
+                for query in widget["queries"]
+                for field in query["query"].get("fields", [])
+            }
+            encodings = widget["spec"]["encodings"]
+            bound = []
+            for encoding in encodings.values():
+                if isinstance(encoding, dict) and "fieldName" in encoding:
+                    bound.append(encoding["fieldName"])
+                elif isinstance(encoding, dict) and "columns" in encoding:
+                    bound.extend(column["fieldName"] for column in encoding["columns"])
+            assert set(bound) <= fields, (widget["name"], fields, bound)
+
+
+@pytest.mark.parametrize("target", TARGETS)
+def test_no_two_widgets_overlap_on_any_page(target: str) -> None:
+    for page in _definition(target)["pages"]:
+        occupied: dict[tuple[int, int], str] = {}
+        for item in page["layout"]:
+            pos, name = item["position"], item["widget"]["name"]
+            assert pos["width"] > 0 and pos["height"] > 0 and pos["x"] >= 0 and pos["y"] >= 0
+            for x in range(pos["x"], pos["x"] + pos["width"]):
+                for y in range(pos["y"], pos["y"] + pos["height"]):
+                    assert (x, y) not in occupied, (page["name"], occupied[(x, y)], name)
+                    occupied[(x, y)] = name
+
+
 def test_the_bundle_deploys_each_targets_own_dashboard_file() -> None:
     resource = yaml.safe_load(
         (PROJECT_ROOT / "resources" / "urbanflow_final.dashboard.yml").read_text(encoding="utf-8")
