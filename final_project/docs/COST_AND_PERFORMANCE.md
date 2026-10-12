@@ -21,6 +21,22 @@ This analysis is **design-time**. No Final Project run has happened yet, so ther
 
 **The single biggest cost risk is an AI Search endpoint left running.** It bills by the hour whether or not anyone queries it. The Lab 12 lesson is applied: create it only for an approved evaluation window, and delete it afterwards (with approval). The Delta tables remain and are cheap to keep.
 
+## AI Search endpoint: the one continuously billed resource
+
+A STANDARD AI Search endpoint is billed **for every hour it exists**, whether or not anyone queries it. The billing does not depend on the run. The exposure is therefore *hours × the endpoint's hourly DBU rate × the workspace's DBU price*. The rate and price are not hard-coded here; read them from `system.billing.list_prices` (SKU names containing `VECTOR_SEARCH`) when a warehouse is next running.
+
+| Window | Exposure |
+|---|---|
+| Planned evaluation window (steps 6–8) | About 1–2 endpoint-hours. Provisioning plus index sync took about 25–30 minutes in Lab 12; the evaluation takes minutes. |
+| Endpoint forgotten for a day | 24 endpoint-hours: roughly 12–24 times the planned exposure |
+| Endpoint forgotten for a week | 168 endpoint-hours |
+
+Control: create it only in step 6, delete it in step 8 (approval required), and verify with `vector_search_endpoints.list_endpoints()` that none remains. The Delta tables stay and cost only storage.
+
+## First DEV deployment
+
+`bundle deploy` alone starts no compute. It uploads files and creates 2 schemas, 1 Volume, 2 Jobs, 1 pipeline definition and 1 dashboard definition. It runs no Job or pipeline update, and it does not start the warehouse. Opening the dashboard would start the Starter warehouse (2X-Small, auto-stop 10 minutes); with empty tables there is nothing to see yet, so leave it closed until after step 2.
+
 ## Cost of one approved validation, in units
 
 | Step | Work | Expected order of magnitude |

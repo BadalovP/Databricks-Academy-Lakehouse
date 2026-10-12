@@ -201,3 +201,15 @@ def test_every_classic_cluster_is_refused_and_shared_ones_are_named() -> None:
         WorkspaceSafetyError, match="refusing classic cluster '1234-567890-abcdefgh'"
     ):
         assert_serverless_compute(lambda _key: "1234-567890-abcdefgh")
+
+
+def test_a_serverless_runtime_is_accepted_even_if_a_cluster_tag_is_readable() -> None:
+    from urbanflow.automation import assert_serverless_compute, is_serverless_runtime
+
+    assert is_serverless_runtime("client.4.9")
+    assert not is_serverless_runtime("16.4.x-scala2.12")
+    assert not is_serverless_runtime("")
+    # Serverless wins over an internal tag; a classic runtime with a cluster tag is refused.
+    assert_serverless_compute(lambda key: "0101-serverless-internal", runtime_version="client.4.9")
+    with pytest.raises(WorkspaceSafetyError):
+        assert_serverless_compute(lambda key: "0702-132442-toro5spu", runtime_version="16.4")

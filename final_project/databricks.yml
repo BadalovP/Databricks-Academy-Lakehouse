@@ -52,7 +52,15 @@ sync:
 # No default target: every command must name DEV or PROD explicitly.
 targets:
   personal_dev:
-    mode: development
+    # No `mode: development`: that mode renames Unity Catalog schemas to
+    # dev_<user>_<name>, while the Job parameters, pipeline configuration and generated
+    # dashboards address `${var.schema}` - every task would hit a missing schema. The DEV
+    # behaviours this target does want are set explicitly instead.
+    presets:
+      pipelines_development: true
+      trigger_pause_status: PAUSED
+      tags:
+        environment: dev
     workspace:
       host: https://dbc-1750318a-76a9.cloud.databricks.com
       root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
@@ -60,7 +68,10 @@ targets:
       catalog: workspace
       schema: urbanflow_final_dev
       lakeflow_schema: urbanflow_final_lakeflow_dev
-      warehouse_id: ${env.DATABRICKS_WAREHOUSE_ID}
+      # The existing serverless warehouse, resolved by name at deploy time (read-only lookup).
+      warehouse_id:
+        lookup:
+          warehouse: Serverless Starter Warehouse
       ai_search_endpoint: urbanflow-final-dev
 
   azure_prod:
@@ -72,6 +83,8 @@ targets:
       catalog: dbr_dev
       schema: parvinbadalov_urbanflow_final_prod
       lakeflow_schema: parvinbadalov_urbanflow_final_lakeflow_prod
-      warehouse_id: ${env.DATABRICKS_WAREHOUSE_ID}
+      # warehouse_id has no value here on purpose: supply the approved warehouse through
+      # BUNDLE_VAR_warehouse_id (the CD maps it from the environment variable
+      # DATABRICKS_WAREHOUSE_ID). Bundles cannot interpolate environment variables directly.
       ai_search_endpoint: parvinbadalov-urbanflow-final-prod
 

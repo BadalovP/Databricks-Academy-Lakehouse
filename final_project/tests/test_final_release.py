@@ -444,3 +444,41 @@ def test_ci_installs_the_cli_before_offline_bundle_validation() -> None:
     # The bounded release run exercises the core CDC capability (fixture snapshot, no external
     # system) next to the medallion path.
     assert '"run_federation_cdc": "true"' in cd
+
+
+def _bundle_targets() -> dict:
+    return yaml.safe_load((PROJECT_ROOT / "databricks.yml").read_text(encoding="utf-8"))["targets"]
+
+
+def test_bundle_uses_no_env_interpolation() -> None:
+    """Bundles have no ${env.*} interpolation; `bundle plan` fails on it (found in preflight)."""
+    for path in [PROJECT_ROOT / "databricks.yml", *(PROJECT_ROOT / "resources").glob("*.yml")]:
+        assert "${env." not in path.read_text(encoding="utf-8"), path.name
+
+
+def test_dev_target_keeps_the_schema_names_the_jobs_and_dashboards_address() -> None:
+    """`mode: development` renames UC schemas to dev_<user>_<name> (found in the live plan)."""
+    dev = _bundle_targets()["personal_dev"]
+    assert "mode" not in dev
+    assert "name_prefix" not in dev.get("presets", {})
+    assert dev["presets"]["pipelines_development"] is True
+    assert dev["variables"]["warehouse_id"] == {
+        "lookup": {"warehouse": "Serverless Starter Warehouse"}
+    }
+    prod = _bundle_targets()["azure_prod"]
+    assert prod["mode"] == "production"
+    assert "warehouse_id" not in prod["variables"]  # supplied as BUNDLE_VAR_warehouse_id
+
+
+def test_governed_storage_cannot_be_dropped_by_bundle_destroy() -> None:
+    resources = load_bundle()["resources"]
+    for kind in ("schemas", "volumes"):
+        for key, resource in resources[kind].items():
+            assert resource.get("lifecycle", {}).get("prevent_destroy") is True, key
+
+
+def test_cd_supplies_the_warehouse_as_a_bundle_variable() -> None:
+    cd = (PROJECT_ROOT.parent / ".github" / "workflows" / "final_project_cd.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "BUNDLE_VAR_warehouse_id: ${{ vars.DATABRICKS_WAREHOUSE_ID }}" in cd

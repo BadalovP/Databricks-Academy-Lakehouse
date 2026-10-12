@@ -36,4 +36,4 @@ The **Maintenance & Assistant** page is where the capabilities meet. The "priori
 
 - Every statement is a `SELECT`. `tests/test_sql_assets.py` fails on any write, DDL or `GRANT`.
 - No dataset may name Demo 3's schemas or another target's schemas (`tests/test_dashboard_and_governance_demo.py`).
-- The dashboard uses an existing SQL warehouse (`DATABRICKS_WAREHOUSE_ID`). The project creates none.
+- The dashboard uses an existing SQL warehouse. In `personal_dev` it is looked up by name (`Serverless Starter Warehouse`); `azure_prod` takes `BUNDLE_VAR_warehouse_id`. The project creates none.

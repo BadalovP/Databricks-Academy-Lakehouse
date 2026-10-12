@@ -38,12 +38,14 @@ Six principles shape every component:
 
 | Target | Workspace | Data | Role |
 |---|---|---|---|
-| `personal_dev` (development mode) | Personal Databricks on AWS (`dbc-1750318a-76a9`) | `workspace.urbanflow_final_dev`, Lakeflow `workspace.urbanflow_final_lakeflow_dev` | Development and the first live validation |
+| `personal_dev` (DEV presets, no renaming mode) | Personal Databricks on AWS (`dbc-1750318a-76a9`) | `workspace.urbanflow_final_dev`, Lakeflow `workspace.urbanflow_final_lakeflow_dev` | Development and the first live validation |
 | `azure_prod` (production mode) | Academy Azure `dbr_dev_trial_2` (`adb-7405618361895520`) | `dbr_dev.parvinbadalov_urbanflow_final_prod`, Lakeflow `..._final_lakeflow_prod` | PROD-style release target |
 
 The two targets are in **different clouds and different metastores**, so a DEV mistake cannot reach PROD data. Two limits apply, stated plainly:
 
 - `azure_prod` is an Academy **trial** workspace. It may expire, and it is not a production SLA.
+- Both targets protect governed storage: the schemas and the Volume carry `lifecycle.prevent_destroy`, so `bundle destroy` cannot drop them.
+- `personal_dev` does not use `mode: development`, because that mode renames Unity Catalog schemas to `dev_<user>_<name>` while the Jobs and dashboards address the configured names.
 - Its catalog `dbr_dev` is shared with other Academy workspaces and students. Inside that catalog, isolation is at schema level. The Final Project uses only its own `parvinbadalov_urbanflow_final_*` schemas. Demo 3's `parvinbadalov_urbanflow` schema sits in the same catalog and is never referenced, and tests reject its name in SQL, dashboards and governance code.
 
 ## Confirmed source contracts

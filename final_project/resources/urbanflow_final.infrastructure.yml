@@ -4,10 +4,15 @@ resources:
       name: ${var.schema}
       catalog_name: ${var.catalog}
       comment: UrbanFlow 2.0 Final Project data, quality, CDC, and RAG assets.
+      # `bundle destroy` must never drop governed data; removal is a separate, approved step.
+      lifecycle:
+        prevent_destroy: true
     urbanflow_final_lakeflow_schema:
       name: ${var.lakeflow_schema}
       catalog_name: ${var.catalog}
       comment: Pipeline-managed UrbanFlow 2.0 datasets; isolated from notebook-owned tables.
+      lifecycle:
+        prevent_destroy: true
   volumes:
     urbanflow_final_landing:
       name: ${var.volume}
@@ -15,4 +20,6 @@ resources:
       schema_name: ${resources.schemas.urbanflow_final_schema.name}
       volume_type: MANAGED
       comment: UrbanFlow 2.0 landing files, schemas, checkpoints, and secret-safe reports.
+      lifecycle:
+        prevent_destroy: true
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
@@ -177,12 +178,29 @@ def assess_existing_cluster(
     )
 
 
-def classic_cluster_id(conf_get: Callable[[str], Any]) -> str:
+def is_serverless_runtime(runtime_version: str | None = None) -> bool:
+    """True on serverless compute, whose runtime reports ``client.<environment>.<n>``.
+
+    Classic clusters report a Databricks Runtime version such as ``16.4``. This is a positive
+    signal, so the gate does not rely only on a configuration read failing.
+    """
+    version = (
+        os.environ.get("DATABRICKS_RUNTIME_VERSION", "")
+        if runtime_version is None
+        else runtime_version
+    )
+    return version.strip().startswith("client.")
+
+
+def classic_cluster_id(conf_get: Callable[[str], Any], runtime_version: str | None = None) -> str:
     """Return the classic cluster ID, or "" on serverless compute.
 
-    Serverless compute does not expose the cluster-usage tag (reading it raises or returns
-    nothing), while every classic cluster - including the Academy's shared GP1/GP2 - does.
+    Serverless compute reports a ``client.*`` runtime and does not expose the cluster-usage tag
+    (reading it raises or returns nothing), while every classic cluster - including the
+    Academy's shared GP1/GP2 - exposes it.
     """
+    if is_serverless_runtime(runtime_version):
+        return ""
     try:
         value = conf_get("spark.databricks.clusterUsageTags.clusterId")
     except Exception:  # serverless: the configuration is not available
@@ -190,9 +208,11 @@ def classic_cluster_id(conf_get: Callable[[str], Any]) -> str:
     return str(value or "").strip()
 
 
-def assert_serverless_compute(conf_get: Callable[[str], Any]) -> None:
+def assert_serverless_compute(
+    conf_get: Callable[[str], Any], runtime_version: str | None = None
+) -> None:
     """UrbanFlow 2.0 runs only on serverless compute and never attaches to a classic cluster."""
-    cluster_id = classic_cluster_id(conf_get)
+    cluster_id = classic_cluster_id(conf_get, runtime_version)
     if cluster_id:
         shared = (
             " (an Academy shared cluster)" if cluster_id in PROTECTED_SHARED_CLUSTER_IDS else ""

@@ -94,6 +94,8 @@ jobs:
       DATABRICKS_CLIENT_ID: ${{ vars.DATABRICKS_CLIENT_ID }}
       DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
       DATABRICKS_WAREHOUSE_ID: ${{ vars.DATABRICKS_WAREHOUSE_ID }}
+      # Bundles read variables from BUNDLE_VAR_<name>; they cannot interpolate env vars directly.
+      BUNDLE_VAR_warehouse_id: ${{ vars.DATABRICKS_WAREHOUSE_ID }}
       FORBIDDEN_HOST_DBR_DEV: https://adb-7405604503619901.1.azuredatabricks.net
       FORBIDDEN_HOST_DBR_DEV_TRIAL: https://adb-7405615123305702.2.azuredatabricks.net
     defaults:
