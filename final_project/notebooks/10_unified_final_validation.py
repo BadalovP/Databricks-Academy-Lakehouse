@@ -149,9 +149,9 @@ def scoped(name, execution_id):
 # MAGIC
 # MAGIC **Key concepts:** Medallion reconciliation, idempotency, execution-scoped derived data.
 # MAGIC
-# MAGIC **Expected result:** 2,520 Bronze/Silver/fact rows and 657 shortage/priority rows, with unique business keys.
+# MAGIC **Expected result:** Bronze, Silver and fact rows equal the expected sample profile (one event per sample station), and shortage and priority rows equal its actionable count, with unique business keys.
 # MAGIC
-# MAGIC **How to explain it:** "The same 2,520 events survive to the fact table, while exactly 657 actionable stations enter both operational lists."
+# MAGIC **How to explain it:** "Every sample event survives to the fact table, and exactly the actionable stations enter both operational lists."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Aggregates are bounded to one station execution and do not write evidence files.
 
@@ -200,9 +200,9 @@ if flags["run_station_pipeline"]:
 # MAGIC
 # MAGIC **Key concepts:** Business-rule composition, null safety, legacy-lineage cleanup.
 # MAGIC
-# MAGIC **Expected result:** 1,774 available, 278 low bikes, 374 low docks, 5 low both and 89 out of service; Gold contains zero out-of-service actions.
+# MAGIC **Expected result:** The availability composition equals the one computed independently from the committed sample (`expected_sample_profile`); Gold contains zero out-of-service actions.
 # MAGIC
-# MAGIC **How to explain it:** "We validate the meaning of the 657 rows, not only the number."
+# MAGIC **How to explain it:** "We validate the meaning of the actionable rows, not only their number."
 # MAGIC
 # MAGIC **Rerun and cost considerations:** Grouped counts and null filters are read-only and execution bounded where possible.
 

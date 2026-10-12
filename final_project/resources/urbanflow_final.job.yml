@@ -122,6 +122,7 @@ resources:
             source: WORKSPACE
             base_parameters:
               run_station_pipeline: "{{job.parameters.run_station_pipeline}}"
+              station_source: "{{job.parameters.station_source}}"
               source_execution_id: "{{job.parameters.source_execution_id}}"
               catalog: "{{job.parameters.catalog}}"
               schema: "{{job.parameters.schema}}"
@@ -158,8 +159,11 @@ resources:
               schema: "{{job.parameters.schema}}"
               volume: "{{job.parameters.volume}}"
         - task_key: historical_trips
+          # Trips join the station dimension that station_gold writes; on a fresh schema it does
+          # not exist until station_gold has run (the first DEV run failed on exactly this).
           depends_on:
             - task_key: land_sources
+            - task_key: station_gold
           environment_key: urbanflow_serverless
           disable_auto_optimization: true
           timeout_seconds: 3600

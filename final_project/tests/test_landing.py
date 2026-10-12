@@ -183,3 +183,60 @@ def test_landing_plan_lands_only_the_development_sample(values, expected) -> Non
     from urbanflow.landing import landing_plan
 
     assert landing_plan(values) == expected
+
+
+# --- contracts added after the first DEV run (run 304828008837365) -----------------------------
+
+from urbanflow.landing import (  # noqa: E402
+    historical_dimension_problem,
+    station_bronze_failures,
+)
+
+_GOOD = {"rows": 40, "distinct_event_ids": 40, "null_event_ids": 0, "null_station_ids": 0,
+         "null_execution_ids": 0}  # fmt: skip
+
+
+def test_sample_bronze_contract_uses_the_sample_size_not_a_remembered_count() -> None:
+    profile = {"events": 40}
+    assert station_bronze_failures("sample_autoloader", _GOOD, profile) == {}
+    failures = station_bronze_failures("sample_autoloader", {**_GOOD, "rows": 39}, profile)
+    assert failures["rows"] == {"expected": 40, "actual": 39}
+    with pytest.raises(ValueError):
+        station_bronze_failures("sample_autoloader", _GOOD, None)
+
+
+def test_event_hubs_bronze_contract_needs_rows_unique_ids_and_no_null_keys() -> None:
+    big = {**_GOOD, "rows": 2520, "distinct_event_ids": 2520}
+    assert station_bronze_failures("existing_bronze", big) == {}
+    assert "rows" in station_bronze_failures("existing_bronze", {**_GOOD, "rows": 0,
+                                                                  "distinct_event_ids": 0})  # fmt: skip
+    assert "distinct_event_ids" in station_bronze_failures(
+        "existing_bronze", {**big, "distinct_event_ids": 2519}
+    )
+    assert "null_station_ids" in station_bronze_failures(
+        "existing_bronze", {**big, "null_station_ids": 1}
+    )
+
+
+def test_historical_needs_the_station_dimension_built_or_present() -> None:
+    assert historical_dimension_problem(run_historical=True, run_station_pipeline=True,
+                                        dimension_exists=False) is None  # fmt: skip
+    assert historical_dimension_problem(run_historical=True, run_station_pipeline=False,
+                                        dimension_exists=True) is None  # fmt: skip
+    assert "dim_station_development_sample" in historical_dimension_problem(
+        run_historical=True, run_station_pipeline=False, dimension_exists=False
+    )
+
+
+def test_no_platform_notebook_asserts_a_fixed_demo3_row_count(project_root) -> None:
+    """Fixed counts copied from Demo 3 (2,520 events, 657 actionable) failed the first DEV run."""
+    import re
+
+    for path in sorted((project_root / "notebooks").glob("*.py")):
+        code = "\n".join(
+            cell
+            for cell in path.read_text(encoding="utf-8").split("# COMMAND ----------")
+            if "# MAGIC %md" not in cell
+        )
+        code = "\n".join(line for line in code.splitlines() if not line.strip().startswith("#"))
+        assert not re.search(r"\b(2520|657|746|1888085|1886318)\b", code), path.name

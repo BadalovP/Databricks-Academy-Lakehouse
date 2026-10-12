@@ -47,7 +47,8 @@ def test_platform_job_is_the_reviewed_dag() -> None:
     assert deps["station_source_check"] == ["land_sources"]
     assert deps["station_silver"] == ["station_source_check"]
     assert deps["station_gold"] == ["station_silver"]
-    assert deps["historical_trips"] == ["land_sources"]
+    # Trips join the dimension station_gold writes (first DEV run failed without this edge).
+    assert deps["historical_trips"] == ["land_sources", "station_gold"]
     assert deps["weather_enrichment"] == ["historical_trips"]
     assert deps["validate_medallion"] == ["station_gold", "historical_trips", "weather_enrichment"]
     assert deps["federation_cdc"] == ["validate_medallion"]

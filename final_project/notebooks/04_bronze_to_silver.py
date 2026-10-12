@@ -2,7 +2,7 @@
 # MAGIC %md
 # MAGIC # UrbanFlow - Bounded Bronze to Silver Persistence
 # MAGIC
-# MAGIC **Business context:** The verified 2,520-row Bronze snapshot must become durable, quality-controlled Silver data without republishing Event Hubs messages.
+# MAGIC **Business context:** The selected Bronze execution must become durable, quality-controlled Silver data without republishing Event Hubs messages.
 # MAGIC
 # MAGIC **Prerequisites:** The existing Bronze table and managed Volume exist, the Phase 2 Job has explicit approval, and the task runs on serverless compute.
 # MAGIC
@@ -157,11 +157,11 @@ print({"bronze": bronze_table, "silver": silver_table, "report": report_path})
 # MAGIC
 # MAGIC **Input:** Managed Bronze Delta table and the `source_execution_id` passed by the platform Job.
 # MAGIC
-# MAGIC **Output:** A bounded 2,520-row DataFrame when the live table still matches its committed evidence.
+# MAGIC **Output:** A bounded DataFrame holding exactly the selected execution.
 # MAGIC
 # MAGIC **Key concepts:** Predicate pushdown, execution correlation, immutable Bronze evidence.
 # MAGIC
-# MAGIC **Expected result:** Exactly 2,520 input rows for the completed milestone.
+# MAGIC **Expected result:** A non-empty execution; its exact size was already proven by `station_source_check` (40 rows for the sample).
 # MAGIC
 # MAGIC **How to explain it:** "We transform the proven Bronze slice instead of publishing or consuming another snapshot."
 # MAGIC
@@ -171,8 +171,9 @@ print({"bronze": bronze_table, "silver": silver_table, "report": report_path})
 
 bronze = spark.table(bronze_table).where(F.col("execution_id") == source_execution_id)
 bronze_rows = bronze.count()
-if bronze_rows != 2520:
-    raise RuntimeError(f"Expected the verified 2,520-row Bronze slice, found {bronze_rows}.")
+# The exact size is enforced upstream by station_source_check; Demo 3's fixed 2,520 is gone.
+if bronze_rows == 0:
+    raise RuntimeError(f"No Bronze rows for execution {source_execution_id}.")
 print({"source_execution_id": source_execution_id, "bronze_rows": bronze_rows})
 
 # COMMAND ----------
@@ -282,7 +283,7 @@ print({"status": evidence["status"], "report_path": report_path})
 # MAGIC
 # MAGIC **Common errors:** Wrong execution ID, a non-approved cluster, missing schema privileges, an altered Bronze row count, duplicate MERGE keys, or a target identifier from the wrong bundle environment.
 # MAGIC
-# MAGIC **Troubleshooting:** Stop before writes when the 2,520-row assertion or reconciliation fails; inspect the committed Bronze evidence and never republish Event Hubs data as a repair.
+# MAGIC **Troubleshooting:** Stop before writes when the execution is empty or reconciliation fails; inspect the Bronze execution read-only and never republish Event Hubs data as a repair.
 # MAGIC
 # MAGIC **Review questions:** Why are Kafka coordinates the Quarantine key? Why is broker timestamp considered before partition offset? Why does a MERGE still reject duplicate source keys?
 # MAGIC

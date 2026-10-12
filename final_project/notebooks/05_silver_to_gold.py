@@ -166,7 +166,7 @@ report_path = evidence_report_path(
 # MAGIC
 # MAGIC **Key concepts:** Dimension keys, UUID versus short name, explicit schema, sample limitations.
 # MAGIC
-# MAGIC **Expected result:** Exactly 40 reference rows; most of the 2,520 availability facts remain unenriched.
+# MAGIC **Expected result:** Exactly 40 reference rows; observations of stations outside the sample stay unenriched.
 # MAGIC
 # MAGIC **How to explain it:** "The sample proves the join design while the left join preserves every real observation."
 # MAGIC
@@ -221,8 +221,8 @@ if dimension.count() != 40:
 
 silver = spark.table(silver_table)
 source_silver_rows = silver.where(F.col("execution_id") == source_execution_id).count()
-if source_silver_rows != 2520:
-    raise RuntimeError(f"Expected 2,520 source-execution Silver rows, found {source_silver_rows}.")
+if source_silver_rows == 0:  # the final validation reconciles every layer exactly
+    raise RuntimeError(f"No Silver rows for execution {source_execution_id}.")
 fact = station_availability_fact(silver, dimension)
 daily = daily_station_summary(fact)
 shortages = shortage_indicators(fact)
@@ -307,7 +307,7 @@ print({"delta_merges": merge_report})
 # MAGIC
 # MAGIC **What:** Assert that each derived table now contains exactly the rows its corrected source produces, that no row is left without an `execution_id`, and that any other execution's rows still have the same count as before the write.
 # MAGIC
-# MAGIC **Why:** The scoped comparison alone can report success while wrong rows remain. `gold_rebalancing_priority` is the proof: it was created before `execution_id` existed, so adding the column left all 746 legacy rows NULL, and `NULL = '<execution>'` is NULL rather than true. A scoped delete can therefore never match those rows, while the scoped count still compares 657 against 657 and looks correct. The 89 stations that are actually out of service would have stayed on an operator's action list.
+# MAGIC **Why:** The scoped comparison alone can report success while wrong rows remain. In the Demo 3 predecessor, `gold_rebalancing_priority` was created before `execution_id` existed, so adding the column left every legacy row NULL, and `NULL = '<execution>'` is NULL rather than true. A scoped delete could never match those rows, while the scoped count still looked correct, and out-of-service stations would have stayed on an operator's action list. The check keeps that lesson.
 # MAGIC
 # MAGIC **Input:** The per-table reports returned by `persist_gold_outputs`, each already carrying a whole-table `verification` block and the legacy attribution report.
 # MAGIC
@@ -315,7 +315,7 @@ print({"delta_merges": merge_report})
 # MAGIC
 # MAGIC **Key concepts:** NULL comparison semantics, execution-scoped deletion, verified-lineage backfill, two-way membership checks, failing closed.
 # MAGIC
-# MAGIC **Expected result:** `legacy_backfill` reports 746 rows attributed on the first corrected run and 0 on any later run; shortages and priorities each report 657 rows with 89 stale rows removed, 0 unassigned rows and status `PASS`.
+# MAGIC **Expected result:** In a fresh Final Project schema `legacy_backfill` reports 0 rows; shortages and priorities each equal the execution's actionable count, with 0 unassigned rows and status `PASS`.
 # MAGIC
 # MAGIC **How to explain it:** "We checked the whole table, not just the part we wrote. A row that belonged to no run would have slipped past a narrower check, and that is exactly the row that would have kept a broken station on the repair list."
 # MAGIC
@@ -362,7 +362,7 @@ if verification_failures:
 # MAGIC
 # MAGIC **Key concepts:** Evidence, limitations, data provenance, secret minimization.
 # MAGIC
-# MAGIC **Expected result:** Status `PASS`, 2,520 fact observations, and an explicit 40-row reference-sample label.
+# MAGIC **Expected result:** Status `PASS`, fact observations equal to the execution's Silver rows, and an explicit 40-row reference-sample label.
 # MAGIC
 # MAGIC **How to explain it:** "The report records what is complete, what is sampled, and why one snapshot cannot prove a trend."
 # MAGIC

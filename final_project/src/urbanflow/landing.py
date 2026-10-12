@@ -210,3 +210,55 @@ STATION_LAYER_TABLES = {
     "shortage": "gold_station_shortage",
     "priority": "gold_rebalancing_priority",
 }
+
+
+# --- run-time contracts (replace the Demo 3 fixed counts found in the first DEV run) -----------
+STATION_DIMENSION_TABLE = "dim_station_development_sample"
+
+
+def station_bronze_failures(
+    station_source: str,
+    metrics: dict[str, Any],
+    sample_profile: dict[str, Any] | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Bronze contract for one station execution; empty when it holds.
+
+    The sample path knows its exact size (one event per sample station). Event Hubs Bronze
+    (`existing_bronze`) has no fixed size, so it must be non-empty with unique event IDs. Keys
+    and the execution column must never be null in either mode.
+    """
+    validate_station_source(station_source, "contract")
+    expected: dict[str, Any] = {"null_event_ids": 0, "null_station_ids": 0, "null_execution_ids": 0}
+    if station_source == "sample_autoloader":
+        if not sample_profile:
+            raise ValueError("The sample path needs the expected sample profile.")
+        expected["rows"] = expected["distinct_event_ids"] = int(sample_profile["events"])
+    failures = {
+        name: {"expected": value, "actual": metrics.get(name)}
+        for name, value in expected.items()
+        if metrics.get(name) != value
+    }
+    rows = metrics.get("rows") or 0
+    if rows <= 0:
+        failures["rows"] = {"expected": "> 0", "actual": rows}
+    if metrics.get("distinct_event_ids") != rows:
+        failures.setdefault(
+            "distinct_event_ids", {"expected": rows, "actual": metrics.get("distinct_event_ids")}
+        )
+    return failures
+
+
+def historical_dimension_problem(
+    *, run_historical: bool, run_station_pipeline: bool, dimension_exists: bool
+) -> str | None:
+    """Why a historical run cannot start, or None.
+
+    The historical path joins trips to the station dimension that the station Gold task writes.
+    With the station branch on, the Job runs Gold first; with it off, the dimension must exist.
+    """
+    if run_historical and not run_station_pipeline and not dimension_exists:
+        return (
+            f"run_historical needs {STATION_DIMENSION_TABLE}: enable run_station_pipeline in the "
+            "same run (the Job builds the dimension before the historical task) or run it first."
+        )
+    return None

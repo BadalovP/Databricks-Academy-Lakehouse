@@ -47,6 +47,7 @@ except NameError:
     NOTEBOOK_DIR = Path.cwd()
 sys.path.insert(0, str(NOTEBOOK_DIR.parent / "src"))
 
+from urbanflow import landing
 from urbanflow.automation import assert_serverless_compute
 from urbanflow.landing import SAMPLE_HISTORICAL_ID, SAMPLE_WEATHER_ID, validate_station_source
 
@@ -120,6 +121,38 @@ elif flags["run_weather"] and (
     values["weather_execution_id"] != SAMPLE_WEATHER_ID or values["weather_source"] != "sample_json"
 ):
     raise ValueError("Sample mode must use the committed 48-hour weather sample.")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Step 2b - Check the station dimension the historical path needs
+# MAGIC
+# MAGIC **What:** When historical ingestion is requested without the station branch, require `dim_station_development_sample` to exist already.
+# MAGIC
+# MAGIC **Why:** Trips are joined to the station dimension that the station Gold task writes. With the station branch on, the Job runs Gold before the historical task; with it off, a fresh schema has no dimension and the historical task would fail late.
+# MAGIC
+# MAGIC **Input:** The validated switches and target.
+# MAGIC
+# MAGIC **Output:** Nothing, or a clear error before any task writes.
+# MAGIC
+# MAGIC **Key concepts:** Task dependencies, fail-early preconditions.
+# MAGIC
+# MAGIC **Expected result:** No error for the default sample run, which enables both branches.
+# MAGIC
+# MAGIC **How to explain it:** "A missing prerequisite is reported by the first task, not discovered by the fifth."
+# MAGIC
+# MAGIC **Rerun and cost considerations:** One metadata lookup.
+
+# COMMAND ----------
+
+dimension = f"{values['catalog']}.{values['schema']}.{landing.STATION_DIMENSION_TABLE}"
+problem = landing.historical_dimension_problem(
+    run_historical=flags["run_historical"],
+    run_station_pipeline=flags["run_station_pipeline"],
+    dimension_exists=spark.catalog.tableExists(dimension),
+)
+if problem:
+    raise ValueError(problem)
 
 # COMMAND ----------
 
