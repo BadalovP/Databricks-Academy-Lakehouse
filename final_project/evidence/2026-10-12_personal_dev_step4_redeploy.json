@@ -1,0 +1,46 @@
+{
+ "code_commit": "273a301",
+ "compute_permission_schedule_trigger_changes": 0,
+ "creates": 0,
+ "dashboard": "definition updated to layoutVersion GRID_V1; not published; no dataset SQL run",
+ "deletes": 0,
+ "outcome": "PASS",
+ "post_plan": {
+  "actions": {
+   "resources.dashboards.urbanflow_final_dashboard": "skip",
+   "resources.jobs.urbanflow_final_platform": "skip",
+   "resources.jobs.urbanflow_final_rag": "skip",
+   "resources.pipelines.urbanflow_final_pipeline": "skip",
+   "resources.schemas.urbanflow_final_lakeflow_schema": "skip",
+   "resources.schemas.urbanflow_final_schema": "skip",
+   "resources.volumes.urbanflow_final_landing": "skip"
+  },
+  "job_ids": {
+   "urbanflow_final_platform": 158911626270744,
+   "urbanflow_final_rag": 887464717518046
+  },
+  "phase": "post",
+  "status": "PASS",
+  "target": "personal_dev"
+ },
+ "pre_plan_actions": {
+  "resources.dashboards.urbanflow_final_dashboard": "update",
+  "resources.jobs.urbanflow_final_platform": "update",
+  "resources.jobs.urbanflow_final_rag": "skip",
+  "resources.pipelines.urbanflow_final_pipeline": "skip",
+  "resources.schemas.urbanflow_final_lakeflow_schema": "skip",
+  "resources.schemas.urbanflow_final_schema": "skip",
+  "resources.volumes.urbanflow_final_landing": "skip"
+ },
+ "pre_plan_field_updates": {
+  "urbanflow_final_dashboard": {
+   "serialized_dashboard": "GRID_V1 layout (Lakeview JSON)"
+  },
+  "urbanflow_final_platform": {
+   "tasks[task_key='preflight'].notebook_task.base_parameters['run_federation_cdc']": "{{job.parameters.run_federation_cdc}}",
+   "tasks[task_key='preflight'].notebook_task.base_parameters['run_lakeflow']": "{{job.parameters.run_lakeflow}}"
+  }
+ },
+ "step": "4A personal_dev redeploy of reviewed fixes",
+ "target": "personal_dev"
+}

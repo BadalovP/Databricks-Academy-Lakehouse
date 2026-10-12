@@ -1,0 +1,630 @@
+{
+ "anomaly": {
+  "action": "stopped before batch_003 and Lakeflow; notebook fixed locally to decide from CDF rows (cdc_sql.range_has_changes); needs redeploy approval",
+  "data_change": "none: table_changes for v4 returns no rows",
+  "impact": "batch_003 would see latest 4 > checkpoint 3 and advance the checkpoint over a version without data changes, contradicting 'checkpoint stays 3'",
+  "what": "station_maintenance_source and silver_station_maintenance have version 4: OPTIMIZE with operationParameters auto=true, 5 s after the v3 MERGE"
+ },
+ "code_commit": "273a301",
+ "delta_history": {
+  "checkpoint": [
+   {
+    "metrics": {},
+    "operation": "CREATE TABLE",
+    "version": 0
+   },
+   {
+    "metrics": {
+     "numOutputRows": "1",
+     "numSourceRows": "1",
+     "numTargetFilesAdded": "1",
+     "numTargetFilesRemoved": "0",
+     "numTargetRowsCopied": "0",
+     "numTargetRowsDeleted": "0",
+     "numTargetRowsInserted": "1",
+     "numTargetRowsUpdated": "0"
+    },
+    "operation": "MERGE",
+    "version": 1
+   },
+   {
+    "metrics": {
+     "numOutputRows": "1",
+     "numSourceRows": "1",
+     "numTargetFilesAdded": "1",
+     "numTargetFilesRemoved": "1",
+     "numTargetRowsCopied": "0",
+     "numTargetRowsDeleted": "0",
+     "numTargetRowsInserted": "0",
+     "numTargetRowsUpdated": "1"
+    },
+    "operation": "MERGE",
+    "version": 2
+   },
+   {
+    "metrics": {
+     "numOutputRows": "1",
+     "numSourceRows": "1",
+     "numTargetFilesAdded": "1",
+     "numTargetFilesRemoved": "1",
+     "numTargetRowsCopied": "0",
+     "numTargetRowsDeleted": "0",
+     "numTargetRowsInserted": "0",
+     "numTargetRowsUpdated": "1"
+    },
+    "operation": "MERGE",
+    "version": 3
+   }
+  ],
+  "history": [
+   {
+    "metrics": {},
+    "operation": "CREATE TABLE",
+    "version": 0
+   },
+   {
+    "metrics": {
+     "numOutputRows": "5",
+     "numSourceRows": "10",
+     "numTargetFilesAdded": "1",
+     "numTargetFilesRemoved": "0",
+     "numTargetRowsCopied": "0",
+     "numTargetRowsDeleted": "0",
+     "numTargetRowsInserted": "5",
+     "numTargetRowsUpdated": "0"
+    },
+    "operation": "MERGE",
+    "version": 1
+   },
+   {
+    "metrics": {
+     "numOutputRows": "0",
+     "numSourceRows": "0",
+     "numTargetFilesAdded": "0",
+     "numTargetFilesRemoved": "0",
+     "numTargetRowsCopied": "0",
+     "numTargetRowsDeleted": "0",
+     "numTargetRowsInserted": "0",
+     "numTargetRowsUpdated": "0"
+    },
+    "operation": "MERGE",
+    "version": 2
+   },
+   {
+    "metrics": {
+     "numOutputRows": "6",
+     "numSourceRows": "12",
+     "numTargetFilesAdded": "2",
+     "numTargetFilesRemoved": "0",
+     "numTargetRowsCopied": "0",
+     "numTargetRowsDeleted": "0",
+     "numTargetRowsInserted": "6",
+     "numTargetRowsUpdated": "0"
+    },
+    "operation": "MERGE",
+    "version": 3
+   }
+  ],
+  "silver": [
+   {
+    "metrics": {},
+    "operation": "CREATE TABLE",
+    "version": 0
+   },
+   {
+    "metrics": {
+     "numOutputRows": "5",
+     "numSourceRows": "5",
+     "numTargetFilesAdded": "1",
+     "numTargetFilesRemoved": "0",
+     "numTargetRowsCopied": "0",
+     "numTargetRowsDeleted": "0",
+     "numTargetRowsInserted": "5",
+     "numTargetRowsUpdated": "0"
+    },
+    "operation": "MERGE",
+    "version": 1
+   },
+   {
+    "metrics": {
+     "numOutputRows": "0",
+     "numSourceRows": "0",
+     "numTargetFilesAdded": "0",
+     "numTargetFilesRemoved": "0",
+     "numTargetRowsCopied": "0",
+     "numTargetRowsDeleted": "0",
+     "numTargetRowsInserted": "0",
+     "numTargetRowsUpdated": "0"
+    },
+    "operation": "MERGE",
+    "version": 2
+   },
+   {
+    "metrics": {
+     "numOutputRows": "3",
+     "numSourceRows": "4",
+     "numTargetFilesAdded": "1",
+     "numTargetFilesRemoved": "0",
+     "numTargetRowsCopied": "0",
+     "numTargetRowsDeleted": "1",
+     "numTargetRowsInserted": "1",
+     "numTargetRowsUpdated": "2"
+    },
+    "operation": "MERGE",
+    "version": 3
+   },
+   {
+    "metrics": {},
+    "operation": "OPTIMIZE",
+    "version": 4
+   }
+  ],
+  "source": [
+   {
+    "metrics": {},
+    "operation": "CREATE TABLE",
+    "version": 0
+   },
+   {
+    "metrics": {
+     "numOutputRows": "5",
+     "numSourceRows": "5",
+     "numTargetFilesAdded": "1",
+     "numTargetFilesRemoved": "0",
+     "numTargetRowsCopied": "0",
+     "numTargetRowsDeleted": "0",
+     "numTargetRowsInserted": "5",
+     "numTargetRowsUpdated": "0"
+    },
+    "operation": "MERGE",
+    "version": 1
+   },
+   {
+    "metrics": {
+     "numOutputRows": "0",
+     "numSourceRows": "5",
+     "numTargetFilesAdded": "0",
+     "numTargetFilesRemoved": "0",
+     "numTargetRowsCopied": "0",
+     "numTargetRowsDeleted": "0",
+     "numTargetRowsInserted": "0",
+     "numTargetRowsUpdated": "0"
+    },
+    "operation": "MERGE",
+    "version": 2
+   },
+   {
+    "metrics": {
+     "numOutputRows": "3",
+     "numSourceRows": "5",
+     "numTargetFilesAdded": "1",
+     "numTargetFilesRemoved": "0",
+     "numTargetRowsCopied": "0",
+     "numTargetRowsDeleted": "1",
+     "numTargetRowsInserted": "1",
+     "numTargetRowsUpdated": "2"
+    },
+    "operation": "MERGE",
+    "version": 3
+   },
+   {
+    "metrics": {},
+    "operation": "OPTIMIZE",
+    "version": 4
+   }
+  ]
+ },
+ "end_time_ms": 1791842887693,
+ "idempotency_token": "urbanflow-final-step4-batch002-20261013-001",
+ "independent_verification": {
+  "cdf_by_version": [
+   {
+    "_change_type": "insert",
+    "_commit_version": "1",
+    "n": "5"
+   },
+   {
+    "_change_type": "delete",
+    "_commit_version": "3",
+    "n": "1"
+   },
+   {
+    "_change_type": "insert",
+    "_commit_version": "3",
+    "n": "1"
+   },
+   {
+    "_change_type": "update_postimage",
+    "_commit_version": "3",
+    "n": "2"
+   },
+   {
+    "_change_type": "update_preimage",
+    "_commit_version": "3",
+    "n": "2"
+   }
+  ],
+  "cdf_events_missing_from_history": [
+   {
+    "n": "0"
+   }
+  ],
+  "cdf_latest_rows": [],
+  "checkpoint": [
+   {
+    "pipeline_key": "station_maintenance",
+    "processed_at": "2026-10-12 22:07:59.699529",
+    "processed_version": "3"
+   }
+  ],
+  "history_by_version": [
+   {
+    "change_type": "insert",
+    "commit_version": "1",
+    "ids": "5",
+    "n": "5"
+   },
+   {
+    "change_type": "delete",
+    "commit_version": "3",
+    "ids": "1",
+    "n": "1"
+   },
+   {
+    "change_type": "insert",
+    "commit_version": "3",
+    "ids": "1",
+    "n": "1"
+   },
+   {
+    "change_type": "update_postimage",
+    "commit_version": "3",
+    "ids": "2",
+    "n": "2"
+   },
+   {
+    "change_type": "update_preimage",
+    "commit_version": "3",
+    "ids": "2",
+    "n": "2"
+   }
+  ],
+  "history_total": [
+   {
+    "ids": "11",
+    "n": "11"
+   }
+  ],
+  "mt1003_history": [
+   {
+    "change_type": "insert",
+    "commit_version": "1"
+   },
+   {
+    "change_type": "delete",
+    "commit_version": "3"
+   }
+  ],
+  "mt1003_in_silver": [
+   {
+    "n": "0"
+   }
+  ],
+  "reconciliation_independent": [
+   {
+    "duplicate_target_keys": "0",
+    "events_missing_from_history": "0",
+    "missing_or_different_in_target": "0",
+    "source_count": "5",
+    "target_count": "5",
+    "unexpected_or_different_in_target": "0"
+   }
+  ],
+  "silver_equals_fixture": true,
+  "silver_rows": [
+   {
+    "maintenance_id": "MT-1001",
+    "severity": "HIGH",
+    "source_commit_version": "3",
+    "station_id": "66dd9fa6-0aca-11e7-82f6-3863bb44ef7c",
+    "status": "CLOSED",
+    "updated_at": "2026-10-12 09:00:00"
+   },
+   {
+    "maintenance_id": "MT-1002",
+    "severity": "MEDIUM",
+    "source_commit_version": "3",
+    "station_id": "0138452a-b9f4-4aee-80b0-7fae9a122ffe",
+    "status": "IN_PROGRESS",
+    "updated_at": "2026-10-12 09:05:00"
+   },
+   {
+    "maintenance_id": "MT-1004",
+    "severity": "HIGH",
+    "source_commit_version": "1",
+    "station_id": "180b83a0-329c-4069-87be-df862cb1baed",
+    "status": "OPEN",
+    "updated_at": "2026-10-12 07:15:00"
+   },
+   {
+    "maintenance_id": "MT-1005",
+    "severity": "LOW",
+    "source_commit_version": "1",
+    "station_id": "00967b8f-1a4d-4131-a65a-17fa8ca89e28",
+    "status": "OPEN",
+    "updated_at": "2026-10-12 07:20:00"
+   },
+   {
+    "maintenance_id": "MT-1006",
+    "severity": "MEDIUM",
+    "source_commit_version": "3",
+    "station_id": "0b613329-b8c8-4b8c-ad40-79952aa41157",
+    "status": "OPEN",
+    "updated_at": "2026-10-12 09:10:00"
+   }
+  ],
+  "source_latest_version": 4
+ },
+ "job_id": 158911626270744,
+ "job_parameters": {
+  "cdc_snapshot": "batch_002",
+  "cdc_source": "fixture_snapshot",
+  "run_federation_cdc": "true",
+  "run_full_month": "false",
+  "run_historical": "false",
+  "run_lakeflow": "false",
+  "run_station_pipeline": "false",
+  "run_weather": "false"
+ },
+ "outcome": "CDC PASS; unexpected extra source version (automatic OPTIMIZE); batch_003 not started",
+ "run_id": 343513312512955,
+ "run_state": {
+  "life_cycle_state": "TERMINATED",
+  "result_state": "SUCCESS",
+  "state_message": "",
+  "user_cancelled_or_timedout": false
+ },
+ "start_time_ms": 1791842594099,
+ "step": "4B CDC batch_002",
+ "tables_compared": 20,
+ "tables_with_new_commits": {
+  "maintenance_cdc_checkpoint": {
+   "columns_differing": {
+    "processed_at": 1,
+    "processed_version": 1
+   },
+   "new_commits": [
+    {
+     "metrics": {
+      "numOutputRows": "1",
+      "numSourceRows": "1",
+      "numTargetRowsCopied": "0",
+      "numTargetRowsDeleted": "0",
+      "numTargetRowsInserted": "0",
+      "numTargetRowsMatchedUpdated": "1",
+      "numTargetRowsNotMatchedBySourceDeleted": "0",
+      "numTargetRowsUpdated": "1"
+     },
+     "operation": "MERGE",
+     "version": 3
+    }
+   ],
+   "rows": {
+    "after": "1",
+    "before": "1"
+   },
+   "version_after": 3,
+   "version_before": 2
+  },
+  "maintenance_cdc_history": {
+   "columns_differing": {
+    "change_id": 6,
+    "change_type": 6,
+    "commit_timestamp": 6,
+    "commit_version": 6,
+    "maintenance_id": 6,
+    "recorded_at": 6,
+    "severity": 6,
+    "station_id": 6,
+    "status": 6,
+    "updated_at": 6
+   },
+   "new_commits": [
+    {
+     "metrics": {
+      "numOutputRows": "6",
+      "numSourceRows": "12",
+      "numTargetRowsCopied": "0",
+      "numTargetRowsDeleted": "0",
+      "numTargetRowsInserted": "6",
+      "numTargetRowsMatchedUpdated": "0",
+      "numTargetRowsNotMatchedBySourceDeleted": "0",
+      "numTargetRowsUpdated": "0"
+     },
+     "operation": "MERGE",
+     "version": 3
+    }
+   ],
+   "rows": {
+    "after": "11",
+    "before": "5"
+   },
+   "version_after": 3,
+   "version_before": 2
+  },
+  "silver_station_maintenance": {
+   "columns_differing": {
+    "maintenance_id": 1,
+    "severity": 1,
+    "source_commit_timestamp": 3,
+    "source_commit_version": 3,
+    "station_id": 1,
+    "status": 1,
+    "updated_at": 3
+   },
+   "new_commits": [
+    {
+     "metrics": {
+      "numOutputRows": "3",
+      "numSourceRows": "4",
+      "numTargetRowsCopied": "0",
+      "numTargetRowsDeleted": "1",
+      "numTargetRowsInserted": "1",
+      "numTargetRowsMatchedUpdated": "2",
+      "numTargetRowsNotMatchedBySourceDeleted": "0",
+      "numTargetRowsUpdated": "2"
+     },
+     "operation": "MERGE",
+     "version": 3
+    },
+    {
+     "metrics": {
+      "numAddedFiles": "1",
+      "numRemovedFiles": "2"
+     },
+     "operation": "OPTIMIZE",
+     "version": 4
+    }
+   ],
+   "rows": {
+    "after": "5",
+    "before": "5"
+   },
+   "version_after": 4,
+   "version_before": 2
+  },
+  "station_maintenance_source": {
+   "columns_differing": {
+    "maintenance_id": 1,
+    "severity": 1,
+    "station_id": 1,
+    "status": 1,
+    "updated_at": 3
+   },
+   "new_commits": [
+    {
+     "metrics": {
+      "numOutputRows": "3",
+      "numSourceRows": "5",
+      "numTargetRowsCopied": "0",
+      "numTargetRowsDeleted": "1",
+      "numTargetRowsInserted": "1",
+      "numTargetRowsMatchedUpdated": "2",
+      "numTargetRowsNotMatchedBySourceDeleted": "1",
+      "numTargetRowsUpdated": "2"
+     },
+     "operation": "MERGE",
+     "version": 3
+    },
+    {
+     "metrics": {
+      "numAddedFiles": "1",
+      "numRemovedFiles": "2"
+     },
+     "operation": "OPTIMIZE",
+     "version": 4
+    }
+   ],
+   "rows": {
+    "after": "5",
+    "before": "5"
+   },
+   "version_after": 4,
+   "version_before": 2
+  }
+ },
+ "tables_without_new_commits": [
+  "bronze_historical_trips",
+  "bronze_station_status",
+  "dim_station_development_sample",
+  "dim_weather_hourly",
+  "duplicate_historical_trips",
+  "duplicate_station_status",
+  "fact_station_availability",
+  "gold_daily_station_summary",
+  "gold_daily_trip_demand",
+  "gold_rebalancing_priority",
+  "gold_station_shortage",
+  "gold_weather_demand",
+  "quarantine_historical_trips",
+  "quarantine_station_status",
+  "silver_historical_trips",
+  "silver_station_status"
+ ],
+ "task_results": {
+  "federation_cdc": {
+   "cdc_source": "fixture_snapshot",
+   "checkpoint_after": 3,
+   "checkpoint_before": 2,
+   "duplicate_target_keys": 0,
+   "events": {
+    "delete": 1,
+    "insert": 1,
+    "update_postimage": 2,
+    "update_preimage": 2
+   },
+   "events_missing_from_history": 0,
+   "missing_or_different_in_target": 0,
+   "snapshot": "batch_002",
+   "snapshot_differences": {
+    "snapshot_rows_not_in_source": 3,
+    "source_rows_not_in_snapshot": 3
+   },
+   "source_count": 5,
+   "source_merged": true,
+   "status": "PASS",
+   "target_count": 5,
+   "unexpected_or_different_in_target": 0
+  },
+  "historical_trips": "DRY_RUN: no archive was read and no Delta table was written.",
+  "land_sources": {
+   "status": "NOTHING_TO_LAND"
+  },
+  "preflight": {
+   "branches": {
+    "run_federation_cdc": true,
+    "run_full_month": false,
+    "run_historical": false,
+    "run_lakeflow": false,
+    "run_station_pipeline": false,
+    "run_weather": false
+   },
+   "compute": "serverless",
+   "event_hubs_producer": "excluded",
+   "historical_execution_id": "urbanflow-final-hist-devsample40",
+   "mode": "development_sample",
+   "source_execution_id": "urbanflow-final-343513312512955",
+   "status": "PASS",
+   "target": "workspace.urbanflow_final_dev",
+   "weather_execution_id": "urbanflow-final-weather-devsample48h"
+  },
+  "station_gold": "DRY_RUN: no Silver read and no Gold write occurred.",
+  "station_silver": "DRY_RUN: no Bronze read and no Delta write occurred.",
+  "station_source_check": {
+   "reason": "station branch disabled",
+   "status": "SKIPPED"
+  },
+  "validate_medallion": {
+   "checks": {},
+   "historical_execution_id": "urbanflow-final-hist-devsample40",
+   "mode": "development_sample",
+   "source_execution_id": "urbanflow-final-343513312512955",
+   "status": "PASS",
+   "weather_execution_id": "urbanflow-final-weather-devsample48h"
+  },
+  "weather_enrichment": "DRY_RUN: no weather was requested and no Delta table was written."
+ },
+ "tasks": {
+  "federation_cdc": "SUCCESS",
+  "historical_trips": "SUCCESS",
+  "land_sources": "SUCCESS",
+  "preflight": "SUCCESS",
+  "refresh_lakeflow": "EXCLUDED",
+  "should_refresh_lakeflow": "SUCCESS",
+  "station_gold": "SUCCESS",
+  "station_silver": "SUCCESS",
+  "station_source_check": "SUCCESS",
+  "validate_medallion": "SUCCESS",
+  "weather_enrichment": "SUCCESS"
+ }
+}

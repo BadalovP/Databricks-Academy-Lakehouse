@@ -100,7 +100,18 @@ Deploying would create two schemas in the **shared** `dbr_dev` catalog, so it ne
 
 ## Next approval request (consolidated, bounded, DEV first)
 
-Nothing below has run. Each item lists its exact action, bound, verification and cleanup. Approve items individually.
+Each item lists its exact action, bound, verification and cleanup. Approve items individually.
+
+**Status (2026-10-12):**
+- A: done (PASS).
+- B: `batch_002` done. CDC passed, but an automatic `OPTIMIZE` added source version 4, so the run stopped before `batch_003`.
+- C: not run.
+- D–G: not approved.
+
+**Revised B2 (needs approval):**
+1. Redeploy the CDF-row decision fix. Code sync only: the plan should be all `skip`, with `11_federation_cdc.py` and `cdc_sql.py` synced.
+2. Run `batch_003`. Expected: `source_merged: false`, no new source commit (the source stays at 4 unless Databricks optimizes again), no CDF rows in the scanned range, history 11, checkpoint stays 3 with its earlier `processed_at`, reconciliation 0.
+3. Then run C.
 
 **A. Redeploy DEV (code only).**
 - The read-only plan shows 2 updates, no create or delete:
@@ -204,6 +215,8 @@ The optional Zerobus path and the governance demo each need their own approval. 
 | 2026-10-12 | `personal_dev` | **3. Idempotency rerun: FAIL (1 of 19 criteria)** | Run `605056708110586`; same execution IDs as step 2 | Logical PASS (no business value changed anywhere). Audit PASS (all `ingested_at` / `retrieved_at` kept). Every data MERGE 0 inserted, updated or copied, and 0 files. No new CDF events, CDC reconciliation 0. **FAIL: CDC checkpoint 1 → 2**, because the unchanged snapshot MERGE left an empty source commit. Every MERGE still writes a metadata-only commit. [Evidence](../evidence/2026-10-12_personal_dev_step3_idempotency.md) |
 | 2026-10-12 | `personal_dev` | Code-only deploy of `f869bbb` (CDC no-op guard) | Platform Job unchanged | PASS: plan and post-plan all `skip` |
 | 2026-10-12 | `personal_dev` | **3 (retry). Idempotency rerun: PASS (19/19)** | Run `412521206243476` | All tasks succeeded. CDC `source_merged: false`, source version 2 unchanged, no new CDF events, history 5, Silver 5, checkpoint 2 unchanged, reconciliation 0. Every table: 0 rows changed, 0 files; audit stamps kept. Remaining: 16 shared tables wrote one metadata-only commit each. [Evidence](../evidence/2026-10-12_personal_dev_step3_retry_pass.md) |
-| — | — | 4–9 | — | No live run yet (each step needs its own approval) |
+| 2026-10-12 | `personal_dev` | 4A. Redeploy of `273a301` (preflight branches, dashboard `GRID_V1`) | Platform Job and dashboard updated | PASS: exactly 2 updates, 0 creates, 0 deletes; post-plan all `skip`; dashboard not published, no dataset SQL run. [Evidence](../evidence/2026-10-12_personal_dev_step4_redeploy.md) |
+| 2026-10-12 | `personal_dev` | **4B. CDC `batch_002`: CDC PASS, stopped** | Run `343513312512955` (CDC only, 294 s) | 1 insert, 2 updates, 1 delete (6 CDF events at v3); history 5 → 11; Silver = `batch_002`, `MT-1003` deleted with its delete event kept; checkpoint 2 → 3 after reconciliation 0; the 16 other tables unchanged. **Unexpected:** an automatic `OPTIMIZE` made source version 4 (no data change). The deployed code would have moved the checkpoint to 4 on `batch_003`, so `batch_003` and Lakeflow were not started. Fixed locally (decide from CDF rows). [Evidence](../evidence/2026-10-12_personal_dev_step4_batch002.md) |
+| — | — | 4 (`batch_003`) – 9 | — | No live run yet (each step needs its own approval) |
 
 When a step passes, record it here. Add the notebook to `VALIDATED_LIVE_CLAIMS` in `tests/test_notebook_documentation.py` and update its **Actual validation** line with the run ID. Update the coverage matrix status to **Validated live**.

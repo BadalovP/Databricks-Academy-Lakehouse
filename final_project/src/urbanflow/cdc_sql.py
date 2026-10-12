@@ -157,6 +157,21 @@ SELECT *, sha2(concat_ws('|', maintenance_id, CAST(_commit_version AS STRING), _
 FROM table_changes('{tables.source_plain}', {start}, {end})"""
 
 
+def change_counts() -> str:
+    """Events per change type in the scanned range; empty when it holds only non-data commits."""
+    return f"SELECT _change_type, COUNT(*) AS n FROM {CHANGES_VIEW} GROUP BY _change_type"
+
+
+def range_has_changes(event_counts: dict[str, int]) -> bool:
+    """True when the scanned versions carry at least one CDF event.
+
+    Delta versions are not all data changes: ``OPTIMIZE`` (manual, automatic after a write, or
+    predictive optimization) commits a new version with no CDF rows. Such a range is not work,
+    so the history, Silver and the checkpoint stay untouched.
+    """
+    return any(int(count) > 0 for count in event_counts.values())
+
+
 def merge_history(tables: CdcTables) -> str:
     """Every event, pre-images included, exactly once (keyed by change_id) - safe to replay."""
     return f"""MERGE INTO {tables.history} t

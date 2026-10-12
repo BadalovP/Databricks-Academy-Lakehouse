@@ -353,10 +353,24 @@ def test_the_notebook_skips_only_the_source_merge_and_keeps_version_driven_proce
     latest = code.index("latest_version = int(")
     assert compare < guard < merge < latest
     assert code.count("cdc_sql.merge_snapshot(tables)") == 1  # only inside the guard
-    # Pending versions still run: the range decision depends on versions, not the comparison.
-    assert "new_versions = latest_version > checkpoint" in code
+    # Pending versions are still scanned: the range depends on versions, not the comparison.
+    scan = code.index("if latest_version > checkpoint:")
+    decide = code.index("new_versions = cdc_sql.range_has_changes(event_counts)")
+    apply = code.index("spark.sql(cdc_sql.merge_history(tables))")
+    assert latest < scan < decide < apply
+    assert "new_versions = latest_version > checkpoint" not in code
     assert "if new_versions:" in code and "if source_merged and" not in code
     assert '"checkpoint_after": latest_version if new_versions else checkpoint' in code
+
+
+def test_a_range_without_cdf_rows_is_not_work() -> None:
+    """Regression (batch_002, 2026-10-13): an automatic OPTIMIZE made version 4 with no rows."""
+    assert not cdc_sql.range_has_changes({})
+    assert not cdc_sql.range_has_changes({"insert": 0})
+    assert cdc_sql.range_has_changes({"delete": 1})
+    assert cdc_sql.range_has_changes({"update_preimage": 2, "update_postimage": 2})
+    sql = cdc_sql.change_counts()
+    assert f"FROM {cdc_sql.CHANGES_VIEW}" in sql and "GROUP BY _change_type" in sql
 
 
 class _Source:
@@ -379,6 +393,10 @@ class _Source:
         )
         self.rows = {key: dict(row) for key, row in snapshot.items()}
 
+    def optimize(self) -> None:
+        """A commit without data changes (OPTIMIZE): a new version, no CDF rows."""
+        self.version += 1
+
 
 def _run(source, state, snapshot, *, reconcile_ok=True):
     """One notebook run: compare, maybe merge, process pending versions, reconcile, advance."""
@@ -386,13 +404,12 @@ def _run(source, state, snapshot, *, reconcile_ok=True):
     if merged:
         source.merge(snapshot)
     latest = source.version
-    new_versions = latest > state["checkpoint"]
+    scanned = [e for e in source.events if state["checkpoint"] < e.commit_version <= latest]
+    new_versions = bool(scanned)  # the notebook decides from CDF rows, not from version numbers
     if new_versions:
         result = apply_cdf(state["target"], source.events, checkpoint=state["checkpoint"])
         state["target"] = result.target
-        state["history"] |= {
-            e.change_id for e in source.events if e.commit_version > state["checkpoint"]
-        }
+        state["history"] |= {e.change_id for e in scanned}
     if not reconcile_ok or not reconcile(_comparable(source.rows), state["target"]).matches:
         raise AssertionError("CDC reconciliation failed; checkpoint not advanced")
     if new_versions:
@@ -447,3 +464,37 @@ def test_deleting_every_row_is_a_real_change() -> None:
     _run(source, state, _snapshot(1))
     step = _run(source, state, {})
     assert step["merged"] and state["target"] == {} and state["checkpoint"] == 2
+
+
+def test_an_optimize_after_batch_002_does_not_move_the_checkpoint_on_batch_003() -> None:
+    """Regression for the live batch_002 run: source v3 MERGE, then an automatic OPTIMIZE (v4)."""
+    source, state = _Source(), _fresh()
+    _run(source, state, _snapshot(1))
+    _run(source, state, _snapshot(1))  # replay: no commit
+    step = _run(source, state, _snapshot(2))
+    assert step["new_versions"] and state["checkpoint"] == 2
+    source.optimize()  # committed by Databricks after the run read the latest version
+    history = set(state["history"])
+    replay = _run(source, state, _snapshot(3))  # batch_003: same business state as batch_002
+    assert replay == {"merged": False, "latest": 3, "new_versions": False}
+    assert state["checkpoint"] == 2 and state["history"] == history
+
+
+def test_data_after_an_optimize_is_still_processed_through_the_whole_range() -> None:
+    source, state = _Source(), _fresh()
+    _run(source, state, _snapshot(1))
+    source.optimize()
+    step = _run(source, state, _snapshot(2))  # scans the OPTIMIZE version and the new MERGE
+    assert step["new_versions"] and state["checkpoint"] == source.version == 3
+    assert reconcile(_comparable(_snapshot(2)), state["target"]).matches
+
+
+def test_an_optimize_before_processing_does_not_hide_pending_changes() -> None:
+    """The OPTIMIZE lands between the MERGE and the latest-version read: data is still applied."""
+    source, state = _Source(), _fresh()
+    _run(source, state, _snapshot(1))
+    source.merge(_snapshot(2))
+    source.optimize()
+    retry = _run(source, state, _snapshot(2))
+    assert retry == {"merged": False, "latest": 3, "new_versions": True}
+    assert state["checkpoint"] == 3 and "MT-1003" not in state["target"]

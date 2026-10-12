@@ -1,6 +1,6 @@
 # UrbanFlow 2.0: implementation progress (handoff record)
 
-Keep this file current so another engineer or agent can continue without restarting. Last updated 2026-10-12.
+Keep this file current so another engineer or agent can continue without restarting. Last updated 2026-10-13.
 
 ## Repository state
 
@@ -10,7 +10,7 @@ Keep this file current so another engineer or agent can continue without restart
 | Pull request | #75, **draft**, never merged; CI = `final_project_ci.yml` |
 | Worktree | `C:\Users\User\Desktop\databricks-academy-lakehouse-final-project` (do not create another) |
 | Guarantees | `Demos/Demo3` tree `583e3ab01e37517d62216b44a1e50fa0231b90de` and `labs/` identical to `main`; only `final_project/` and the two `final_project_*` workflows change |
-| Local quality | Ruff and Black clean; **789 passed, 2 skipped**. The skips are a bash-only test on Windows and the Databricks-only Lakeflow event-log dataset. Dashboard `--check` is current; offline bundle schema valid; CI green on PR #75. |
+| Local quality | Ruff and Black clean; **793 passed, 2 skipped**. The skips are a bash-only test on Windows and the Databricks-only Lakeflow event-log dataset. Dashboard `--check` is current; offline bundle schema valid; CI green on PR #75. |
 
 ## Milestones
 
@@ -21,14 +21,16 @@ Keep this file current so another engineer or agent can continue without restart
 | **Step 1** DEV deploy | **PASS** | `evidence/2026-10-12_personal_dev_step1_deploy.md` |
 | **Step 2** platform sample run | **PASS** after 2 failed attempts (3 defects fixed) | `evidence/2026-10-12_personal_dev_step2_*.md` |
 | **Step 3** strict idempotency | **PASS 19/19** after an 18/19 attempt (CDC no-op guard added) | `evidence/2026-10-12_personal_dev_step3_*.md` |
-| Dashboard GRID_V1 layout, table v2, theme (started by Codex) | Done offline; **not redeployed, no live query** | `docs/DASHBOARD.md` |
+| Dashboard GRID_V1 layout, table v2, theme (started by Codex) | Deployed in step 4A; **not published, no live query** | `docs/DASHBOARD.md` |
 | Assistant prompt-injection hardening (started by Codex) | Done offline | `tests/test_rag_rag.py` |
-| CDC-only and Lakeflow-only platform runs allowed | Done offline; **not deployed** | commits `e63ad0a`, `e4b256d` |
+| CDC-only and Lakeflow-only platform runs allowed | Deployed in step 4A; CDC-only run proven by `343513312512955` | commits `e63ad0a`, `e4b256d` |
 | Dashboard SQL analysed against live schemas (24/25 datasets) | Done offline | `tests/test_dashboard_sql_analysis.py` |
 | Offline RAG evaluation re-run | Reproduces correctness 0.648 (baseline 0.111), recall 0.938, coverage 0.875 (fixture, not model quality) | `urbanflow-rag evaluate` |
 | Operations runbook, approval request, interview demo | Done | `OPERATIONS_RUNBOOK.md`, `RELEASE_AND_VALIDATION.md`, `DEMO_DAY_PRESENTATION.md` |
 | Azure `azure_prod` read-only preflight | **PASS** (validate, plan = 7 creates, validator, no collisions); nothing created | `RELEASE_AND_VALIDATION.md` |
-| Steps 4–9 | **Not run** (each needs approval) | — |
+| **Step 4A** redeploy (preflight branches, dashboard `GRID_V1`) | **PASS**: 2 updates, post-plan all `skip`; dashboard not published | `evidence/2026-10-12_personal_dev_step4_redeploy.md` |
+| **Step 4B** CDC `batch_002` | **CDC PASS; stopped**: automatic `OPTIMIZE` made source v4 (no data). Fix (decide from CDF rows) done locally, **not deployed** | `evidence/2026-10-12_personal_dev_step4_batch002.md` |
+| Step 4 `batch_003`, steps 5–9 | **Not run** (each needs approval) | — |
 
 ## Databricks resources
 
@@ -39,7 +41,7 @@ Keep this file current so another engineer or agent can continue without restart
 | Platform Job | `158911626270744` |
 | Mobility RAG Job | `887464717518046` (never run) |
 | Lakeflow pipeline | `d5e0e599-c195-4c08-8217-d554ebf2b301` (never updated) |
-| Dashboard | `01f1c647728e1ceeb2b5bd10a8700793` (deployed with the old layout; never queried live) |
+| Dashboard | `01f1c647728e1ceeb2b5bd10a8700793` (`GRID_V1` definition deployed in step 4A; not published; never queried live) |
 | Schemas / Volume | `workspace.urbanflow_final_dev`, `workspace.urbanflow_final_lakeflow_dev`, `workspace.urbanflow_final_dev.urbanflow_final_landing` (all `prevent_destroy`) |
 | SQL warehouse (existing) | `Serverless Starter Warehouse` `410e5f3b4784e981`, auto-stop 10 min |
 
@@ -54,17 +56,19 @@ Keep this file current so another engineer or agent can continue without restart
 | `896549012431425` | Step 2, second retry | **PASS** |
 | `605056708110586` | Step 3 | 18/19 (CDC checkpoint 1 → 2 over an empty commit) |
 | `412521206243476` | Step 3, retry | **PASS 19/19** |
+| `343513312512955` | Step 4, CDC `batch_002` (CDC only) | CDC PASS; extra automatic `OPTIMIZE` version; `batch_003` not started |
 
 Execution IDs: station `urbanflow-final-304828008837365`, historical `urbanflow-final-hist-devsample40`, weather `urbanflow-final-weather-devsample48h`.
 
-## Current DEV data state (verified after `412521206243476`)
+## Current DEV data state (verified after `343513312512955`)
 
 Bronze 40 + 40; station Silver 40, facts 40, dimension 40, shortages 13, priorities 13; historical 40; weather 48 hours with 4 matched trips; quarantine and duplicates 0.
 
-CDC: source v2 (5 rows, `batch_001`), history 5 events, Silver 5, **checkpoint 2**. Lakeflow, RAG and Zerobus tables do not exist.
+CDC: source **v4** (v3 MERGE of `batch_002`; v4 automatic `OPTIMIZE`, no data change), 5 rows; history 11 events (11 distinct); Silver 5 = `batch_002` (`MT-1003` deleted); **checkpoint 3**. The 16 other tables are unchanged since step 3. Lakeflow, RAG and Zerobus tables do not exist.
 
 ## Known limitations and defects
 
+- **Non-data Delta commits in CDC (fixed locally, not deployed).** Databricks may commit an `OPTIMIZE` (automatic or predictive optimization) on the CDF source. The deployed notebook compares the latest version number with the checkpoint, so it would advance the checkpoint over such a commit. The local fix decides from the CDF rows in the scanned range. Trade-off: if the source has no real change for longer than the Delta log retention (30 days by default), the next read fails loudly.
 - **Metadata-only commits.** The 16 shared Silver, Gold, historical and weather tables still record one metadata-only MERGE commit per replay. No data or file changes; this is a performance limitation, not a correctness issue.
 - **Federation.** The Lab 10 foreign catalog (`neon_postgres_conn_catalog`, read-only PostgreSQL connection) has no maintenance table, so CDC runs on committed fixture snapshots. A real federated source needs a Final-Project table in an external database, which is an external write needing approval.
 - **Governance.** Only one identity is available, so multi-principal row-filter and mask enforcement cannot be demonstrated. The demo shows filtered vs allowed for one principal by changing a mapping row.
@@ -79,7 +83,7 @@ None running. No AI Search endpoint exists, and the warehouses are stopped (auto
 
 See the consolidated proposal in `RELEASE_AND_VALIDATION.md` ("Next approval request"):
 
-1. **Step 4:** redeploy plus CDC `batch_002` then `batch_003`.
+1. **Step 4 (rest):** code-only redeploy of the CDF-row fix, then CDC `batch_003` (expected: checkpoint stays 3).
 2. **Step 5:** one Lakeflow update.
 3. **Dashboard:** redeploy plus read-only dataset query validation.
 4. **Steps 6–8:** assistant ingest, AI Search endpoint/index, smoke test, evaluation, then delete the endpoint.
