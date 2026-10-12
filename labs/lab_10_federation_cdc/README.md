@@ -3,9 +3,11 @@
 **Neon PostgreSQL federation · Delta Change Data Feed · checkpointed incremental MERGE · Terraform on HCP · GitHub Actions CI/CD**
 
 > [!IMPORTANT]
-> **Personal DEV is complete and verified.** **Azure PROD is prepared but NOT deployed**: no Azure Lab 10 Job, schema, table, foreign catalog, HCP state workspace, or GitHub OIDC deployment identity exists yet.
+> **Personal DEV is complete and verified. Azure PROD is deployed and its end-to-end run passed** (Job `582983448494007` in `dbr_dev_trial_2`, run `499124610685736`: 3/3 tasks SUCCESS, final validation PASS). The Azure Job was deployed with Terraform from the owner's Azure CLI identity; the automated GitHub OIDC deployment path is implemented but waits for an account administrator to create its identity ([ADMIN_REQUEST.md](ADMIN_REQUEST.md)).
 >
-> "Azure PROD" is a **PROD-style deployment into the Academy workspace `dbr_dev_trial_2`** - a shared training workspace, not a production environment. It is called PROD because it is deployed and promoted like one: separate state, approval gates, native Databricks OIDC and no manual changes. Nothing below marked *planned* has run.
+> "Azure PROD" is a **PROD-style deployment into the Academy workspace `dbr_dev_trial_2`** - a shared training workspace, not a production environment. It is called PROD because it is deployed like one: separate state, a reviewed saved plan, serverless compute, no schedule and no manual Job edits.
+
+**Supervisor review:** start with [SUPERVISOR_REVIEW.md](SUPERVISOR_REVIEW.md).
 
 > [!NOTE]
 > **Two integration patterns, deliberately.** Neon PostgreSQL is reached **through Lakehouse Federation** - live, read-only queries. **CDC is simulated on a local Delta table** with **Delta Change Data Feed**. This lab does not capture changes from PostgreSQL itself (no logical replication, WAL decoding or Debezium), so it is not PostgreSQL-native CDC.
@@ -16,30 +18,31 @@
 |---|---|---|
 | Workspace | Personal `dbc-1750318a-76a9.cloud.databricks.com` | Academy **`dbr_dev_trial_2`** `adb-7405618361895520.0.azuredatabricks.net` |
 | Unity Catalog | Personal metastore | Shared Academy metastore `metastore_azure_eastus`; data in the shared `dbr_dev` catalog |
-| Delta schema | `workspace.lab_10_federation_cdc` | `dbr_dev.parvinbadalov_lab10_prod` (*planned*) |
-| Foreign catalog | `neon_postgres_conn_catalog` | `parvinbadalov_lab10_neon_catalog` (*requested*, see [ADMIN_REQUEST.md](ADMIN_REQUEST.md)) |
-| Neon connection | `neon_postgres_conn` | `parvinbadalov_lab10_neon_conn` (**exists**) |
-| Compute | Serverless | Serverless Jobs compute (*planned*) |
-| Databricks Job | `453391098761164` ✅ | `[Azure PROD] Lab 10 Federation & CDC` (*planned*) |
+| Delta schema | `workspace.lab_10_federation_cdc` | `dbr_dev.parvinbadalov_lab10_prod` ✅ |
+| Foreign catalog | `neon_postgres_conn_catalog` | `parvinbadalov_lab10_neon_catalog` ✅ - bound read-only to `dbr_dev_trial_2` only, `ISOLATED` |
+| Neon connection | `neon_postgres_conn` | `parvinbadalov_lab10_neon_conn` ✅ (`read_only = true`) |
+| Compute | Serverless | Serverless Jobs compute ✅, auto-retry disabled on every task |
+| Databricks Job | `453391098761164` ✅ | `582983448494007` `[Azure PROD] Lab 10 Federation & CDC` ✅ |
 | Terraform root | [`terraform/`](terraform/) | [`terraform_azure_prod/`](terraform_azure_prod/) |
-| HCP Terraform workspace | `lab10-personal-dev` ✅ | `lab10-azure-prod` (*to create*) |
-| Deployment auth | PAT secret | GitHub OIDC → dedicated Databricks service principal (no PAT or Azure secret) |
-| CD workflow | [`lab10_terraform_cd.yml`](../../.github/workflows/lab10_terraform_cd.yml) ✅ | [`lab10_azure_prod_cd.yml`](../../.github/workflows/lab10_azure_prod_cd.yml) (*untested*) |
-| Run workflow | Databricks UI | [`lab10_azure_prod_run.yml`](../../.github/workflows/lab10_azure_prod_run.yml) (*untested*) |
+| HCP Terraform workspace | `lab10-personal-dev` ✅ | `lab10-azure-prod` ✅ (serial 1, one resource) |
+| Deployment auth | PAT secret | Done: owner's Azure CLI identity (local apply). Automated: GitHub OIDC → dedicated service principal (*waiting for administrator*) |
+| CD workflow | [`lab10_terraform_cd.yml`](../../.github/workflows/lab10_terraform_cd.yml) ✅ | [`lab10_azure_prod_cd.yml`](../../.github/workflows/lab10_azure_prod_cd.yml) (*needs the OIDC identity*) |
+| Run workflow | Databricks UI | [`lab10_azure_prod_run.yml`](../../.github/workflows/lab10_azure_prod_run.yml) (*needs the OIDC identity*); the run above used the Jobs API |
 
 ## Completion matrix
 
-| Component | Existing implementation | Verified status | Remaining action | Blocker |
-|---|---|---|---|---|
-| Personal Federation | Active read-only Neon connection and foreign catalog | Objects active; two successful Job runs historically validated 12 customers and 20 orders | Optional fresh post-merge acceptance query | Requires approval to start compute |
-| Personal Delta CDC | CDF range, idempotent target/history MERGEs, two-way reconciliation, late checkpoint | Source/target 12/12; history 12; checkpoint 10; four distinct CDF types across versions 3-10 | Optional fresh post-merge idempotency run | Requires billed/data-writing run approval |
-| Personal Terraform | HCP state owns `databricks_job.lab10` | Live plan: no changes; Job ID `453391098761164` | None | None |
-| Azure target | Separate root, schema name and pinned host | Workspace `dbr_dev_trial_2` and connection verified; no Lab 10 schema or Job exists | Provision prerequisites, then plan | Items below |
-| Azure foreign catalog | Admin-safe DDL request | Missing; user lacks metastore `CREATE CATALOG` | Łukasz creates catalog and transfers ownership | Metastore administrator |
-| GitHub OIDC | Native `github-oidc` workflow with exact environment subject | Dedicated service principal/policy and `lab10-azure` environment are absent | Account admin creates identity/policy; configure environment variables | Databricks account administrator and approval |
-| Azure Terraform state | Separate HCP workspace name in `cloud.tf` | `lab10-azure-prod` returns 404 | Create it in Local execution mode | Approval required |
-| Azure CD/run | Manual-only saved-plan apply and separate idempotent Job run | Static validator + 22 offline tests, YAML and Terraform validation pass; OIDC configuration matches the Databricks docs; never run | Plan after prerequisites; review before apply | OIDC and HCP prerequisites |
-| PR #69 | Existing draft branch and passing committed CI | Mergeable; branch is two commits behind `main` because Lab 12 merged | Integrate `main`, update PR, run CI | Commit/push/merge approval gates |
+| Component | Verified status (evidence) | Remaining action |
+|---|---|---|
+| Personal Federation | 12 customers, 20 orders; hybrid join keeps all 20 orders (re-verified 2026-10-12) | None |
+| Personal Delta CDC | Source/target/history 12/12/12; checkpoint 10 = latest; history = CDF versions 3-10 both ways; insert, update and delete events; no-change run `1058102967727375` wrote nothing | None |
+| Personal Terraform | HCP state holds only `databricks_job.lab10`; plan `No changes` | None |
+| Azure foreign catalog | Created by the owner; bound read-only to `dbr_dev_trial_2`, `ISOLATED`; other workspaces get "not accessible" | None |
+| Azure setup | `00_setup` run `326755590926905`: 4 tables, 12 customers seeded from Neon via Federation, checkpoint 0 | None |
+| Azure Terraform | Saved plan `1 to add` (only the Job) applied; state serial 1; re-plan `No changes` | After merge, re-point `git_branch` to `main` (in-place update) |
+| Azure end-to-end run | Run `499124610685736`: 12 CDF inserts processed, source = target = Neon, history = CDF, checkpoint 0 → 1, final validation PASS | None |
+| GitHub CI | Validator, 23 offline tests and both Terraform roots pass on every Lab 10 push | None |
+| GitHub OIDC CD | Implemented and statically validated; never run | Account administrator creates the deployer identity ([request](ADMIN_REQUEST.md)) |
+| PR #69 | Draft, CI green | Review and merge |
 
 ## Architecture
 
@@ -53,10 +56,10 @@ flowchart LR
         DJOB["Job 453391098761164<br/>serverless"]
     end
 
-    subgraph PROD["Azure PROD-style - dbr_dev_trial_2 workspace - planned"]
-        PFC["parvinbadalov_lab10_neon_catalog"]
+    subgraph PROD["Azure PROD-style - dbr_dev_trial_2 - deployed and verified"]
+        PFC["parvinbadalov_lab10_neon_catalog<br/>isolated to dbr_dev_trial_2"]
         PDELTA["dbr_dev.parvinbadalov_lab10_prod"]
-        PJOB["[Azure PROD] Lab 10 Job<br/>serverless"]
+        PJOB["Job 582983448494007<br/>serverless"]
     end
 
     NEON -- "Federation, read-only" --> DFC
@@ -65,7 +68,8 @@ flowchart LR
     PJOB --> PFC & PDELTA
 
     GH["GitHub Actions"] -- "PAT · HCP lab10-personal-dev" --> DJOB
-    GH -- "Databricks OIDC · HCP lab10-azure-prod · approval" --> PJOB
+    TF["Terraform, owner's Azure CLI identity<br/>HCP lab10-azure-prod"] --> PJOB
+    GH -. "future: Databricks OIDC · same HCP state" .-> PJOB
 ```
 
 Each Job runs the same notebooks in order:
@@ -80,61 +84,71 @@ Each Job runs the same notebooks in order:
 
 ## Lakehouse Federation
 
-A Unity Catalog **connection** stores the Neon endpoint and credentials; a **foreign catalog** exposes the PostgreSQL tables as `<catalog>.public.<table>`. Rows stay in PostgreSQL and Databricks pushes supported work down to it. Notebook 01 proves direct federated reads (12 customers, 20 orders) and a hybrid join with a local Delta table.
+A Unity Catalog **connection** stores the Neon endpoint and credentials; a **foreign catalog** exposes the PostgreSQL tables as `<catalog>.public.<table>`. Rows stay in PostgreSQL and Databricks pushes supported work down to it: the Azure plan for `lab10_orders WHERE amount > 100` is a `Scan JDBC` whose `PushedDownOperators` carry the filter. Notebook 01 proves direct federated reads (12 customers, 20 orders) and a hybrid join with a local Delta table.
 
 ## Incremental CDC
 
 1. Read `last_processed_version` from `cdc_checkpoint`; read the source's latest version.
 2. If they are equal, exit without writing.
-3. Otherwise read `table_changes` for exactly the new version range.
+3. Otherwise read `table_changes` for exactly the new version range, and refuse duplicate event keys.
 4. Keep the newest final-state event per customer and `MERGE` it into `customers_target` (SCD Type 1; deletes remove the row).
 5. `MERGE` every event, including update pre-images, into `customer_change_history`, keyed by `(customer_id, _commit_version, _change_type)`.
-6. Reconcile target and source **at the processed version** in both directions.
+6. Reconcile target and source **at the processed version** in both directions, and check that every new event is in history.
 7. Advance the checkpoint **only after** every check passes.
 
-A failure leaves the checkpoint unchanged, and both writes are `MERGE`s, so the same range can be replayed safely.
+A failure leaves the checkpoint unchanged, and both writes are `MERGE`s, so the same range can be replayed safely. On serverless, each task sets `disable_auto_optimization = true`, so a failed task is not retried automatically; a failure is inspected first.
 
 ## Environment portability
 
-All notebooks take `catalog` and `schema` parameters (01 and 00 also take `foreign_catalog`). The defaults are the Personal DEV names, so the DEV Job - which passes no parameters - behaves exactly as before; this was checked line by line against the previous notebooks. The Azure Job passes its own values.
+All notebooks take `catalog` and `schema` parameters (01 and 00 also take `foreign_catalog`). The defaults are the Personal DEV names, so the DEV Job - which passes no parameters - behaves exactly as before. The Azure Job passes its own values.
 
 [`00_setup`](00_setup.ipynb) creates the schema and four tables with the same column types as DEV, enables CDF on the source, seeds the source **from Neon through the foreign catalog**, and sets the checkpoint to version 0. The first CDC run then processes the seed as a real batch (12 inserts). It is idempotent: it never drops, truncates, overwrites or reseeds, and it stops on an inconsistent state rather than guessing.
 
 ## Why `dbr_dev_trial_2`
 
-Three Academy workspaces share one metastore, so the target workspace decides where the Job runs, not where the shared `dbr_dev` catalog lives. The current Azure PROD requirement explicitly selects `dbr_dev_trial_2`; a read-only audit on 2026-10-12 verified the exact Azure resource and workspace identity:
+Three Academy workspaces share one metastore, so the target workspace decides where the Job runs, not where the shared `dbr_dev` catalog lives.
 
 | | `dbr_dev` | `dbr_dev_trial` | **`dbr_dev_trial_2`** |
 |---|---|---|---|
 | Azure workspace ID | `7405604503619901` | `7405615123305702` | **`7405618361895520`** |
-| Dedicated deployment identity | not applicable | not applicable | **not yet assigned** |
 | My role | user | workspace admin | **workspace admin** |
 | Neon connection visible | yes | yes | **yes** |
-| `CREATE CATALOG` for me | no | no | **no** (metastore-wide privilege) |
+| Lab 10 foreign catalog | not accessible (isolated) | not accessible (isolated) | **bound read-only** |
 
-Both other hosts are explicit deny-list values in the Lab 10 deployment workflows. Labs 8 and 9 remain untouched.
+`dbr_dev` is the stable workspace, but there I am a plain user rather than a workspace administrator, and the Academy brief selects `dbr_dev_trial_2` for the PROD-style deployment. No `dbr_dev` workspace object is used; only its catalog holds the Delta schema. Both other hosts are explicit deny-list values in the Lab 10 deployment workflows and the static validator. The trial workspace may expire around 2026-10-20; the Delta tables live in the shared `dbr_dev` catalog and survive it, while the Job would need to be redeployed to another workspace by changing the pinned host.
 
 ## Terraform and state separation
 
 | | Personal DEV | Azure PROD |
 |---|---|---|
 | Root | `terraform/` | `terraform_azure_prod/` |
-| State | HCP `badalov-lakehouse-labs/lab10-personal-dev` | HCP `badalov-lakehouse-labs/lab10-azure-prod` |
-| Resource | `databricks_job.lab10` | `databricks_job.lab10_azure_prod` |
+| State | HCP `badalov-lakehouse-labs/lab10-personal-dev` | HCP `badalov-lakehouse-labs/lab10-azure-prod` (local execution) |
+| Resource | `databricks_job.lab10` (`453391098761164`) | `databricks_job.lab10_azure_prod` (`582983448494007`) |
 | Provider host | pinned to the Personal workspace | pinned to `dbr_dev_trial_2` |
 | Provider | `databricks/databricks` 1.137.0 (same lock file) | same |
 
-Separate roots and separate HCP workspaces mean a PROD change can never read, refresh or destroy DEV state, and vice versa. No Azure Storage account is used for Lab 10 state.
+Separate roots and separate HCP workspaces mean a PROD change can never read, refresh or destroy DEV state, and vice versa. No Azure Storage account is used for Lab 10 state. The Azure Job declares **no** `existing_cluster_id`, `new_cluster` or `job_cluster`, so it runs on serverless Jobs compute.
 
-The Azure Job declares **no** `existing_cluster_id`, `new_cluster` or `job_cluster`, so it is designed for serverless Jobs compute. Static validation passes. A remote Azure plan has not been run because the dedicated HCP workspace and OIDC identity do not yet exist; no false success is claimed.
+### Manual Azure deployment (as done on 2026-10-12)
+
+```powershell
+cd labs/lab_10_federation_cdc/terraform_azure_prod
+$env:DATABRICKS_AUTH_TYPE = "azure-cli"        # az login as the Job owner; no PAT
+terraform init
+terraform plan  -var git_branch=feature/lab10-azure-prod -out lab10-azure-prod.tfplan
+# Review: exactly "1 to add" (first time) or an in-place update, never a destroy.
+terraform apply lab10-azure-prod.tfplan
+```
+
+After PR #69 is merged, the same plan without `-var git_branch=...` re-points the Job to `main`.
 
 ## CI/CD
 
-**CI** ([`lab10_terraform_ci.yml`](../../.github/workflows/lab10_terraform_ci.yml)) compiles every notebook code cell, checks CDC/deployment safety contracts and secret patterns, runs 22 offline tests proving the validator rejects unsafe changes, then runs `fmt -check`, `init -backend=false` and `validate` on **both** Terraform roots. It contacts no workspace.
+**CI** ([`lab10_terraform_ci.yml`](../../.github/workflows/lab10_terraform_ci.yml)) compiles every notebook code cell, checks CDC/deployment safety contracts and secret patterns, runs 23 offline tests proving the validator rejects unsafe changes, then runs `fmt -check`, `init -backend=false` and `validate` on **both** Terraform roots. It contacts no workspace.
 
 **Personal DEV CD** - manual; the confirmation field alone decides the operation (empty = plan, `APPLY-453391098761164` = apply).
 
-**Azure PROD CD** ([`lab10_azure_prod_cd.yml`](../../.github/workflows/lab10_azure_prod_cd.yml)) - manual, `main` only:
+**Azure PROD CD** ([`lab10_azure_prod_cd.yml`](../../.github/workflows/lab10_azure_prod_cd.yml)) - manual, `main` only. Implemented and validated statically; it cannot run until the deployer identity exists. It uses the **same** HCP state as the manual deployment, so it will update Job `582983448494007`, not create a second one.
 
 | Safeguard | How |
 |---|---|
@@ -144,63 +158,58 @@ The Azure Job declares **no** `existing_cluster_id`, `new_cluster` or `job_clust
 | Exact OIDC trust | issuer `https://token.actions.githubusercontent.com`; audience Academy Databricks account ID; subject `repo:BadalovP/Databricks-Academy-Lakehouse:environment:lab10-azure` |
 | Correct workspace | the workflow and provider must both name `dbr_dev_trial_2`; the `dbr_dev` and `dbr_dev_trial` hosts are explicitly refused |
 | No duplicate Job | a first deployment is refused if a Job with the same name already exists |
-| State integrity | after the first deployment, state must hold exactly the one Job and match `LAB10_AZURE_PROD_JOB_ID` |
+| State integrity | state must hold exactly the one Job and match `LAB10_AZURE_PROD_JOB_ID` (`582983448494007`) |
 | Safe changes only | one `create` on the first deployment; afterwards only no-op or in-place update |
 | Serverless only | any task or Job referencing cluster compute fails the plan |
 | Exact plan | apply uses the saved plan; the Job is then re-read and verified |
-| No silent skip | a requested apply that does not complete fails the run |
 | Supply-chain control | third-party workflow actions are pinned to immutable commit SHAs |
 
-**Azure PROD run** ([`lab10_azure_prod_run.yml`](../../.github/workflows/lab10_azure_prod_run.yml)) - separate confirmation `RUN-LAB10-AZURE-PROD` and approval. It refuses a Job with any cluster compute, waits for completion, and writes the run ID, run URL, per-task results and the final validation JSON to the run summary.
+**Azure PROD run** ([`lab10_azure_prod_run.yml`](../../.github/workflows/lab10_azure_prod_run.yml)) - separate confirmation `RUN-LAB10-AZURE-PROD` and approval; refuses cluster compute, uses an idempotency token, and writes the run ID, per-task results and the final validation JSON to the run summary.
 
-## Azure PROD: remaining steps
+## Verified results
 
-| # | Step | Who | Status |
-|---|---|---|---|
-| 1 | Create the foreign catalog and dedicated Databricks OIDC service principal ([request](ADMIN_REQUEST.md)) | Łukasz / account + metastore admin | Waiting |
-| 2 | Bind the catalog read-only to `dbr_dev_trial_2`, isolate it, and grant the deployer read access | You (catalog owner), after approval | Blocked by 1 |
-| 3 | Create HCP workspace `lab10-azure-prod`, execution mode **Local** | You, after approval | To do |
-| 4 | Create GitHub environment `lab10-azure`; add non-secret `DATABRICKS_CLIENT_ID` and secret `HCP_TERRAFORM_TOKEN` | You, after approval | Blocked by 1 and 3 |
-| 5 | Run `00_setup` once in `dbr_dev_trial_2` with the Azure PROD parameters | You, after data-change approval | Blocked by 1 |
-| 6 | Azure PROD CD with an empty confirmation (plan); review `1 to add` | You | To do |
-| 7 | Azure PROD CD with `APPLY-LAB10-AZURE-PROD`; record the Job ID as repository variable `LAB10_AZURE_PROD_JOB_ID` | You | To do |
-| 8 | Run workflow with `RUN-LAB10-AZURE-PROD`; expect 3/3 tasks and a PASS summary | You | To do |
+| Check | Personal DEV | Azure PROD |
+|---|---|---|
+| Federated Neon customers / orders | 12 / 20 | 12 / 20 |
+| Hybrid join: orders kept / without a Delta customer | 20 / 3 (after simulated deletes) | 20 / 0 |
+| Delta source / target / history | 12 / 12 / 12 | 12 / 12 / 12 |
+| Source-target differences (both directions) | 0 / 0 | 0 / 0 |
+| History vs CDF (both directions) | 0 / 0 (versions 3-10) | 0 / 0 (version 1) |
+| Duplicate keys (target, history) | 0, 0 | 0, 0 |
+| Checkpoint = latest source version | 10 | 1 |
+| CDF event types processed | insert, update pre/post-image, delete | insert (seed batch) |
+| No-change rerun | run `1058102967727375`: 0 events, nothing written | not repeated (would add a run without new information) |
+| Job runs | `1058102967727375`, `674533552504139` SUCCESS | `499124610685736` SUCCESS (3/3 tasks, attempt 0) |
+| Terraform | plan `No changes` | apply `1 added`; re-plan `No changes` |
+| CD | plan run `38102000753`; apply run `38102681544` (0 changes) | not run (OIDC identity pending) |
+| CI | green | green (runs `38185218270`, `38186832636`) |
 
-## Verified results (Personal DEV)
+## Evidence
 
-| Check | Result |
-|---|---|
-| Federated Neon customers / orders | 12 / 20 |
-| Delta source / target customers | 12 / 12 |
-| Source-target differences | 0 |
-| CDC checkpoint = latest source version | 10 |
-| Persisted CDC history events | 12 |
-| CDC operation evidence | 4 distinct CDF types across versions 3-10: insert, update pre/post-image and delete |
-| Job runs | `674533552504139` SUCCESS, `1058102967727375` SUCCESS |
-| Terraform | HCP remote state; plan `No changes` |
-| CD plan-only run | `38102000753` - apply skipped by design |
-| CD apply run | `38102681544` - Apply, Verify Job ID and apply guard all succeeded (`0 added, 0 changed, 0 destroyed`) |
-| CI | `38101418182` success |
+- [2026-10-12 manual Azure deployment and end-to-end run](evidence/2026-10-12-manual-azure-deployment.md) - Azure setup, binding, Terraform apply, the Job run, independent SQL checks, Personal DEV re-verification
+- [2026-10-12 manual deployment readiness](evidence/2026-10-12-manual-deployment-readiness.md)
+- [2026-10-12 approved setup](evidence/2026-10-12-approved-setup.md) - HCP workspace, GitHub environment, first plan
+- [2026-10-12 validation and OIDC review](evidence/2026-10-12-validation-and-oidc-review.md)
+- [2026-10-12 read-only audit](evidence/2026-10-12-read-only-audit.md)
 
-## Evidence checklist for review
+## Cost and cleanup
 
-- [x] DEV Job `453391098761164` and its successful runs
-- [x] DEV CD plan run and no-change apply run
-- [x] CI passing
-- [x] 2026-10-12 read-only live audit ([evidence](evidence/2026-10-12-read-only-audit.md))
-- [x] 2026-10-12 validation and OIDC compatibility review ([evidence](evidence/2026-10-12-validation-and-oidc-review.md))
-- [ ] Azure foreign catalog created (administrator)
-- [ ] `00_setup` run in Azure; four tables present, checkpoint 0
-- [ ] Azure PROD CD plan run (`1 to add`)
-- [ ] Azure PROD CD apply run; Job ID recorded
-- [ ] Azure PROD Job run: 3/3 tasks SUCCESS, final validation JSON with 0 differences
+Lab 10 creates no cluster, warehouse, schedule or trigger. Each Job run is a short serverless run (about two minutes). In Azure this task created one schema with four small tables, one Job, one catalog binding and one HCP state version; it ran one setup run and one Job run.
+
+To remove the Azure deployment (only on purpose - it is the reviewed evidence):
+
+1. `terraform destroy` in `terraform_azure_prod/` (deletes only Job `582983448494007`).
+2. `DROP SCHEMA dbr_dev.parvinbadalov_lab10_prod CASCADE`.
+3. Optionally drop `parvinbadalov_lab10_neon_catalog`. Keep the connection `parvinbadalov_lab10_neon_conn`; it predates this lab's Azure deployment.
+
+Never remove Personal DEV Job `453391098761164` or its HCP state.
 
 ## Limitations
 
 - **CDC is simulated** on Delta with CDF; PostgreSQL changes are visible through Federation but not captured as CDC events.
 - **Small scale:** 12 customers prove correctness and replay safety, not throughput.
-- **Serverless Jobs compute works in `dbr_dev_trial_2`** (all 11 existing Jobs there are serverless, and the Lab 12 Azure Job ran serverless on 2026-10-11), **but this Job and its GitHub OIDC deployment are unverified.** The first approved plan and run are the acceptance tests.
+- **Azure proves the insert path only.** Updates, deletes and the no-change run were proven in Personal DEV with the same notebooks; repeating them in Azure would require artificial source changes and more runs.
 - **Shared catalog:** `account users` holds `ALL_PRIVILEGES` on `dbr_dev`, so the Lab 10 schema is isolated by naming and convention, not by grants. That is an Academy setting outside this lab's control.
-- **Neon network reachability from Azure serverless is unverified.** If the Neon project restricts client IP addresses, Azure serverless egress must be allowed.
-- **Git-backed tasks** read notebooks from GitHub `main`; whether the deployment identity can read the repository without a Git credential is confirmed on the first run.
+- **Git-backed tasks** read notebooks from GitHub with the run-as user's Git credential (GitHub OAuth linked in `dbr_dev_trial_2`). Until PR #69 is merged, the Azure Job reads branch `feature/lab10-azure-prod`.
+- **Trial workspace** `dbr_dev_trial_2` may expire around 2026-10-20.
 - **Notebooks are committed without outputs**; results come from Job runs.
