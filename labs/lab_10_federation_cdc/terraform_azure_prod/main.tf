@@ -1,5 +1,5 @@
 locals {
-  notebook_root = "labs/lab_10_federation_cdc"
+  notebook_root = "labs/lab_10_federation_cdc/notebooks"
 
   # Every task receives the Azure PROD names; the notebooks default to Personal DEV.
   parameters = {

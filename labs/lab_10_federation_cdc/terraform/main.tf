@@ -16,7 +16,7 @@ resource "databricks_job" "lab10" {
 
     notebook_task {
       source        = "GIT"
-      notebook_path = "labs/lab_10_federation_cdc/01_federation_validation.ipynb"
+      notebook_path = "labs/lab_10_federation_cdc/notebooks/01_federation_validation.ipynb"
     }
   }
 
@@ -29,7 +29,7 @@ resource "databricks_job" "lab10" {
 
     notebook_task {
       source        = "GIT"
-      notebook_path = "labs/lab_10_federation_cdc/02_incremental_cdc_sync.ipynb"
+      notebook_path = "labs/lab_10_federation_cdc/notebooks/02_incremental_cdc_sync.ipynb"
     }
   }
 
@@ -42,7 +42,7 @@ resource "databricks_job" "lab10" {
 
     notebook_task {
       source        = "GIT"
-      notebook_path = "labs/lab_10_federation_cdc/03_final_validation.ipynb"
+      notebook_path = "labs/lab_10_federation_cdc/notebooks/03_final_validation.ipynb"
     }
   }
 }

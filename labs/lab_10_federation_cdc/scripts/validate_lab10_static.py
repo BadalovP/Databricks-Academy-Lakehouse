@@ -13,6 +13,7 @@ from pathlib import Path
 
 LAB = Path(__file__).resolve().parents[1]
 REPO = LAB.parents[1]
+NOTEBOOKS = LAB / "notebooks"
 EXPECTED_HOST = "https://adb-7405618361895520.0.azuredatabricks.net"
 FORBIDDEN_HOSTS = (
     "https://adb-7405604503619901.1.azuredatabricks.net",  # dbr_dev
@@ -120,6 +121,21 @@ def check_terraform(versions: str, main_tf: str) -> None:
         require(notebook in main_tf, f"Azure Job is missing {notebook}")
 
 
+def job_notebook_paths(main_tf: str) -> list[str]:
+    """Repository-relative ``notebook_path`` values of a Job, with ``local.notebook_root`` resolved."""
+    root = re.search(r'(?m)^\s*notebook_root\s*=\s*"([^"]+)"', main_tf)
+    paths = re.findall(r'(?m)^\s*notebook_path\s*=\s*"([^"]+)"', main_tf)
+    return [path.replace("${local.notebook_root}", root.group(1) if root else "${local.notebook_root}") for path in paths]
+
+
+def check_job_notebook_paths(name: str, main_tf: str, existing: set[str]) -> None:
+    """Every Job task must point at a notebook that exists in the repository (Git-sourced tasks)."""
+    paths = job_notebook_paths(main_tf)
+    require(len(paths) == 3, f"{name}: expected three notebook paths")
+    for path in paths:
+        require(path in existing, f"{name}: notebook_path {path!r} does not exist in the repository")
+
+
 def check_workflows(cd: str, run: str, all_lab10_workflows: list[str]) -> None:
     for name, content in (("CD", cd), ("run", run)):
         require(EXPECTED_HOST in content, f"{name} workflow is not pinned to dbr_dev_trial_2")
@@ -194,7 +210,7 @@ def _repository_texts() -> dict[str, str]:
 def main() -> int:
     notebooks = {
         path.name: notebook_source(path.name, path.read_text(encoding="utf-8"))
-        for path in sorted(LAB.glob("*.ipynb"))
+        for path in sorted(NOTEBOOKS.glob("*.ipynb"))
     }
     check_notebooks(notebooks)
     azure = LAB / "terraform_azure_prod"
@@ -202,6 +218,9 @@ def main() -> int:
         (azure / "versions.tf").read_text(encoding="utf-8"),
         (azure / "main.tf").read_text(encoding="utf-8"),
     )
+    existing = {path.relative_to(REPO).as_posix() for path in NOTEBOOKS.glob("*.ipynb")}
+    for root in ("terraform", "terraform_azure_prod"):
+        check_job_notebook_paths(root, (LAB / root / "main.tf").read_text(encoding="utf-8"), existing)
     workflow_dir = REPO / ".github" / "workflows"
     check_workflows(
         (workflow_dir / "lab10_azure_prod_cd.yml").read_text(encoding="utf-8"),
@@ -210,7 +229,7 @@ def main() -> int:
     )
     findings = find_secret_material(_repository_texts())
     require(not findings, "Potential secret material found:\n" + "\n".join(findings))
-    print("PASS: Lab 10 offline syntax, CDC, Terraform, workflow, and secret contracts")
+    print("PASS: Lab 10 offline syntax, CDC, Terraform, notebook path, workflow, and secret contracts")
     return 0
 
 
