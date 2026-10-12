@@ -254,6 +254,8 @@ resources:
           depends_on:
             - task_key: should_refresh_lakeflow
               outcome: "true"
+          # A bounded triggered update; without a task timeout only the 2-hour Job limit applies.
+          timeout_seconds: 2400
           pipeline_task:
             pipeline_id: ${resources.pipelines.urbanflow_final_pipeline.id}
             full_refresh: false

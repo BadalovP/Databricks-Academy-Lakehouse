@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from scripts.validate_bundle import load_bundle
 from scripts.validate_job_run import EXPECTED_TASKS, validate_job_run
 from scripts.validate_release_plan import validate_release_plan
 
@@ -73,6 +74,10 @@ def test_platform_job_defaults_to_a_bounded_sample_run_that_does_nothing_unasked
         float(defaults["stream_timeout_seconds"]) < _tasks()["historical_trips"]["timeout_seconds"]
     )
     assert all(task.get("timeout_seconds", 0) <= job["timeout_seconds"] for task in job["tasks"])
+    # Every task that does work has its own bound; only the condition check is instantaneous.
+    unbounded = [t["task_key"] for t in job["tasks"] if "condition_task" not in t and
+                 not t.get("timeout_seconds")]  # fmt: skip
+    assert not unbounded, unbounded
 
 
 def test_platform_job_reuses_the_business_notebooks() -> None:
@@ -413,3 +418,21 @@ def test_every_final_project_workflow_run_block_is_valid_shell() -> None:
                     failures.append(f"{workflow.name}/{job_name}/{index}: {result.stderr.strip()}")
     assert checked > 0
     assert not failures, failures
+
+
+def test_offline_bundle_validation_includes_every_resource_file() -> None:
+    """Validating databricks.yml alone would leave the Job, pipeline and dashboard unchecked."""
+    resources = load_bundle()["resources"]
+    assert set(resources["jobs"]) == {"urbanflow_final_platform", "urbanflow_final_rag"}
+    assert set(resources["pipelines"]) == {"urbanflow_final_pipeline"}
+    assert set(resources["dashboards"]) == {"urbanflow_final_dashboard"}
+    assert set(resources["volumes"]) == {"urbanflow_final_landing"}
+
+
+def test_ci_installs_the_cli_before_offline_bundle_validation() -> None:
+    workflow = (PROJECT_ROOT.parent / ".github" / "workflows" / "final_project_ci.yml").read_text(
+        encoding="utf-8"
+    )
+    assert workflow.index("databricks/setup-cli") < workflow.index("scripts/validate_bundle.py")
+    assert "scripts/build_dashboard.py --check" in workflow
+    assert "secrets." not in workflow  # CI never authenticates to a workspace

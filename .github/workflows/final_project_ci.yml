@@ -47,5 +47,11 @@ jobs:
         run: black --check .
       - name: Pytest (offline, mocked and local Spark only)
         run: pytest
+      - name: Dashboards match the committed SQL
+        run: python scripts/build_dashboard.py --check
+      - name: Install Databricks CLI (schema only; no workspace authentication)
+        uses: databricks/setup-cli@main
+        with:
+          version: 1.12.1
       - name: Validate bundle structure without workspace authentication
         run: python scripts/validate_bundle.py

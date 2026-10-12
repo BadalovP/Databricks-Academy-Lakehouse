@@ -37,9 +37,32 @@ def load_cli_schema() -> dict[str, Any]:
     return _python_compatible_patterns(json.loads(result.stdout))
 
 
+def _merge(base: dict[str, Any], extra: dict[str, Any], origin: str) -> None:
+    """Deep-merge one included file; a resource key defined twice is an error, as in the CLI."""
+    for key, value in extra.items():
+        if isinstance(value, dict) and isinstance(base.get(key), dict):
+            _merge(base[key], value, origin)
+        elif key in base:
+            raise ValueError(f"{origin} redefines {key!r}")
+        else:
+            base[key] = value
+
+
+def load_bundle() -> dict[str, Any]:
+    """databricks.yml with every `include` file merged, so resource files are validated too."""
+    bundle = yaml.safe_load((PROJECT_ROOT / "databricks.yml").read_text(encoding="utf-8"))
+    for pattern in bundle.get("include", []):
+        paths = sorted(PROJECT_ROOT.glob(pattern))
+        if not paths:
+            raise ValueError(f"include pattern {pattern!r} matches no file")
+        for path in paths:
+            included = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+            _merge(bundle, included, path.name)
+    return bundle
+
+
 def main() -> int:
-    bundle_path = PROJECT_ROOT / "databricks.yml"
-    bundle = yaml.safe_load(bundle_path.read_text(encoding="utf-8"))
+    bundle = load_bundle()
     schema = load_cli_schema()
     validator_class = validators.validator_for(schema)
     errors = sorted(
@@ -52,7 +75,7 @@ def main() -> int:
             print(f"{location}: {error.message}")
         return 1
 
-    print("databricks.yml matches the Databricks CLI bundle schema (offline validation).")
+    print("databricks.yml and its resource files match the Databricks CLI bundle schema (offline).")
     return 0
 
 
