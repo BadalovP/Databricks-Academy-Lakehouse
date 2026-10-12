@@ -1,0 +1,65 @@
+{
+  "target": "azure_trial2",
+  "table": "dbr_dev.parvinbadalov_lab11_zerobus_trial2.bronze_iot_events",
+  "run_id": "t2-run-001",
+  "started_at": "2026-10-12T10:29:26Z",
+  "materialization": {
+    "rows_queryable": 30,
+    "rows_acknowledged": 30,
+    "polls": 1,
+    "seconds_from_last_ack_to_check": 26.5,
+    "note": "upper bound: includes the time between the producer finishing and this check starting"
+  },
+  "payload_problems": [],
+  "merge_runs": [
+    {
+      "num_affected_rows": 24,
+      "num_updated_rows": 0,
+      "num_deleted_rows": 0,
+      "num_inserted_rows": 24
+    },
+    {
+      "num_affected_rows": 0,
+      "num_updated_rows": 0,
+      "num_deleted_rows": 0,
+      "num_inserted_rows": 0
+    }
+  ],
+  "second_merge_wrote_nothing": true,
+  "silver_identical_after_rerun": true,
+  "silver_matches_reference": true,
+  "metrics": {
+    "bronze_rows": 30,
+    "unique_events": 24,
+    "duplicate_deliveries": 6,
+    "events_with_duplicates": 6,
+    "conflicting_events": 0,
+    "null_required_fields": 0,
+    "silver_rows": 24,
+    "silver_duplicate_keys": 0,
+    "missing_in_silver": 0,
+    "unexpected_in_silver": 0,
+    "wrong_delivery_counts": 0
+  },
+  "expected_metrics": {
+    "bronze_rows": 30,
+    "unique_events": 24,
+    "duplicate_deliveries": 6,
+    "events_with_duplicates": 6,
+    "conflicting_events": 0,
+    "null_required_fields": 0,
+    "silver_duplicate_keys": 0,
+    "missing_in_silver": 0,
+    "unexpected_in_silver": 0,
+    "wrong_delivery_counts": 0,
+    "silver_rows": 24
+  },
+  "metric_mismatches": [],
+  "tables_in_schema": [
+    "bronze_iot_events",
+    "silver_iot_events"
+  ],
+  "only_lab11_tables": true,
+  "finished_at": "2026-10-12T10:30:04Z",
+  "status": "PASS"
+}

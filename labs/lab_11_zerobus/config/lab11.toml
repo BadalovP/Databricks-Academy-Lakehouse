@@ -43,3 +43,13 @@ region = "eastus"
 catalog = "dbr_dev"
 schema = "parvinbadalov_lab11_zerobus"
 auth_type = "azure-cli"
+
+[targets.azure_trial2]
+description = "Academy Azure Databricks workspace dbr_dev_trial_2 (East US), shared dbr_dev catalog"
+workspace_url = "https://adb-7405618361895520.0.azuredatabricks.net"
+workspace_id = 7405618361895520
+cloud = "azure"
+region = "eastus"
+catalog = "dbr_dev"
+schema = "parvinbadalov_lab11_zerobus_trial2"
+auth_type = "azure-cli"

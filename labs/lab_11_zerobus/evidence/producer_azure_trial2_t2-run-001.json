@@ -1,0 +1,438 @@
+{
+  "target": "azure_trial2",
+  "workspace_url": "https://adb-7405618361895520.0.azuredatabricks.net",
+  "table": "dbr_dev.parvinbadalov_lab11_zerobus_trial2.bronze_iot_events",
+  "started_at": "2026-10-12T10:29:09Z",
+  "acknowledged_at": "2026-10-12T10:29:13Z",
+  "plan": {
+    "run_id": "t2-run-001",
+    "unique_events": 24,
+    "deliveries": 30,
+    "replayed_events": 6,
+    "batches": [
+      {
+        "batch_id": "t2-run-001-primary-01",
+        "delivery": "primary",
+        "records": 10
+      },
+      {
+        "batch_id": "t2-run-001-primary-02",
+        "delivery": "primary",
+        "records": 10
+      },
+      {
+        "batch_id": "t2-run-001-primary-03",
+        "delivery": "primary",
+        "records": 4
+      },
+      {
+        "batch_id": "t2-run-001-replay-01",
+        "delivery": "replay",
+        "records": 6
+      }
+    ]
+  },
+  "delivery": {
+    "endpoint": "https://7405618361895520.zerobus.eastus.azuredatabricks.net",
+    "table": "dbr_dev.parvinbadalov_lab11_zerobus_trial2.bronze_iot_events",
+    "records_acknowledged": 30,
+    "records_transmitted": 30,
+    "retries": 0,
+    "batches": [
+      {
+        "batch_id": "t2-run-001-primary-01",
+        "delivery": "primary",
+        "records": 10,
+        "attempts": 1,
+        "acknowledged_offset": 0,
+        "ack_seconds": 3.265
+      },
+      {
+        "batch_id": "t2-run-001-primary-02",
+        "delivery": "primary",
+        "records": 10,
+        "attempts": 1,
+        "acknowledged_offset": 1,
+        "ack_seconds": 0.203
+      },
+      {
+        "batch_id": "t2-run-001-primary-03",
+        "delivery": "primary",
+        "records": 4,
+        "attempts": 1,
+        "acknowledged_offset": 2,
+        "ack_seconds": 0.204
+      },
+      {
+        "batch_id": "t2-run-001-replay-01",
+        "delivery": "replay",
+        "records": 6,
+        "attempts": 1,
+        "acknowledged_offset": 3,
+        "ack_seconds": 0.187
+      }
+    ]
+  },
+  "records": [
+    {
+      "event_id": "0d750790-a355-527b-805a-68592fb81a29",
+      "device_id": "device-01",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 1,
+      "event_timestamp": 1791792000000000,
+      "temperature": 20.23,
+      "humidity": 64.69,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-primary-01",
+      "produced_at": 1791800949034391
+    },
+    {
+      "event_id": "32c82480-8a9d-5c96-b343-05179a08d01f",
+      "device_id": "device-01",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 2,
+      "event_timestamp": 1791792060000000,
+      "temperature": 20.19,
+      "humidity": 64.98,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-primary-01",
+      "produced_at": 1791800949034391
+    },
+    {
+      "event_id": "152458ee-5a68-53ea-8dee-26faade5ea78",
+      "device_id": "device-01",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 3,
+      "event_timestamp": 1791792120000000,
+      "temperature": 19.99,
+      "humidity": 55.55,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-primary-01",
+      "produced_at": 1791800949034391
+    },
+    {
+      "event_id": "b3e40485-1cc5-5b14-b000-da2f33e2c6ea",
+      "device_id": "device-01",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 4,
+      "event_timestamp": 1791792180000000,
+      "temperature": 27.65,
+      "humidity": 47.98,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-primary-01",
+      "produced_at": 1791800949034391
+    },
+    {
+      "event_id": "a1aa7420-4665-5d2d-b8de-0e4c95614bdf",
+      "device_id": "device-01",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 5,
+      "event_timestamp": 1791792240000000,
+      "temperature": 26.37,
+      "humidity": 35.18,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-primary-01",
+      "produced_at": 1791800949034391
+    },
+    {
+      "event_id": "e0dca7d7-875e-5302-8d41-4bfb309482e4",
+      "device_id": "device-01",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 6,
+      "event_timestamp": 1791792300000000,
+      "temperature": 19.97,
+      "humidity": 47.94,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-primary-01",
+      "produced_at": 1791800949034391
+    },
+    {
+      "event_id": "bf3abf4c-d962-5451-bb24-90adc97544ed",
+      "device_id": "device-02",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 1,
+      "event_timestamp": 1791792001000000,
+      "temperature": 21.55,
+      "humidity": 43.61,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-primary-01",
+      "produced_at": 1791800949034391
+    },
+    {
+      "event_id": "261782b5-6cb7-5f1d-b48f-3ee13e61f4f9",
+      "device_id": "device-02",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 2,
+      "event_timestamp": 1791792061000000,
+      "temperature": 23.06,
+      "humidity": 49.49,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-primary-01",
+      "produced_at": 1791800949034391
+    },
+    {
+      "event_id": "278515b6-de86-59c5-ad29-479537351720",
+      "device_id": "device-02",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 3,
+      "event_timestamp": 1791792121000000,
+      "temperature": 19.45,
+      "humidity": 51.86,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-primary-01",
+      "produced_at": 1791800949034391
+    },
+    {
+      "event_id": "2e4fae47-d327-56dd-a8f6-3db266e3e153",
+      "device_id": "device-02",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 4,
+      "event_timestamp": 1791792181000000,
+      "temperature": 20.45,
+      "humidity": 37.58,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-primary-01",
+      "produced_at": 1791800949034391
+    },
+    {
+      "event_id": "66eba9ff-c368-5812-8094-a473d26b648b",
+      "device_id": "device-02",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 5,
+      "event_timestamp": 1791792241000000,
+      "temperature": 19.88,
+      "humidity": 43.86,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-primary-02",
+      "produced_at": 1791800949034391
+    },
+    {
+      "event_id": "cc9b21a7-791a-5d23-a4bf-cf394aeb3065",
+      "device_id": "device-02",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 6,
+      "event_timestamp": 1791792301000000,
+      "temperature": 26.24,
+      "humidity": 52.53,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-primary-02",
+      "produced_at": 1791800949034391
+    },
+    {
+      "event_id": "7980bb07-d580-51ee-85f0-617c583a26e3",
+      "device_id": "device-03",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 1,
+      "event_timestamp": 1791792002000000,
+      "temperature": 21.35,
+      "humidity": 57.29,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-primary-02",
+      "produced_at": 1791800949034391
+    },
+    {
+      "event_id": "2356e784-09fa-592b-822d-ded445046dd8",
+      "device_id": "device-03",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 2,
+      "event_timestamp": 1791792062000000,
+      "temperature": 27.5,
+      "humidity": 44.29,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-primary-02",
+      "produced_at": 1791800949034391
+    },
+    {
+      "event_id": "800172ab-e3d0-5714-9bba-1dc247153913",
+      "device_id": "device-03",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 3,
+      "event_timestamp": 1791792122000000,
+      "temperature": 22.04,
+      "humidity": 53.73,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-primary-02",
+      "produced_at": 1791800949034391
+    },
+    {
+      "event_id": "82452072-469f-5515-b896-85f156699295",
+      "device_id": "device-03",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 4,
+      "event_timestamp": 1791792182000000,
+      "temperature": 21.19,
+      "humidity": 57.36,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-primary-02",
+      "produced_at": 1791800949034391
+    },
+    {
+      "event_id": "3b8f5708-cbda-58ee-84d6-a211bbb445a8",
+      "device_id": "device-03",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 5,
+      "event_timestamp": 1791792242000000,
+      "temperature": 20.8,
+      "humidity": 47.59,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-primary-02",
+      "produced_at": 1791800949034391
+    },
+    {
+      "event_id": "146afbd6-145b-5418-9de6-4e07308cbbfb",
+      "device_id": "device-03",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 6,
+      "event_timestamp": 1791792302000000,
+      "temperature": 27.15,
+      "humidity": 54.59,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-primary-02",
+      "produced_at": 1791800949034391
+    },
+    {
+      "event_id": "cfad0b6d-14dc-52ba-a8ff-df0e2e066530",
+      "device_id": "device-04",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 1,
+      "event_timestamp": 1791792003000000,
+      "temperature": 19.35,
+      "humidity": 38.57,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-primary-02",
+      "produced_at": 1791800949034391
+    },
+    {
+      "event_id": "5465f94a-7f30-50f6-ad45-adb789f651e6",
+      "device_id": "device-04",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 2,
+      "event_timestamp": 1791792063000000,
+      "temperature": 27.9,
+      "humidity": 51.14,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-primary-02",
+      "produced_at": 1791800949034391
+    },
+    {
+      "event_id": "6a6d7e50-c78f-5939-a514-872e60f63769",
+      "device_id": "device-04",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 3,
+      "event_timestamp": 1791792123000000,
+      "temperature": 24.07,
+      "humidity": 38.46,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-primary-03",
+      "produced_at": 1791800949034391
+    },
+    {
+      "event_id": "b049597b-4b3c-5e6f-a401-9b861da726d3",
+      "device_id": "device-04",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 4,
+      "event_timestamp": 1791792183000000,
+      "temperature": 26.75,
+      "humidity": 50.48,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-primary-03",
+      "produced_at": 1791800949034391
+    },
+    {
+      "event_id": "6ed757b1-934e-566f-8d95-bf26bed2dabf",
+      "device_id": "device-04",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 5,
+      "event_timestamp": 1791792243000000,
+      "temperature": 24.61,
+      "humidity": 60.34,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-primary-03",
+      "produced_at": 1791800949034391
+    },
+    {
+      "event_id": "71ec5c7a-2895-580f-86db-9c1f8252e3fb",
+      "device_id": "device-04",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 6,
+      "event_timestamp": 1791792303000000,
+      "temperature": 24.46,
+      "humidity": 59.59,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-primary-03",
+      "produced_at": 1791800949034391
+    },
+    {
+      "event_id": "0d750790-a355-527b-805a-68592fb81a29",
+      "device_id": "device-01",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 1,
+      "event_timestamp": 1791792000000000,
+      "temperature": 20.23,
+      "humidity": 64.69,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-replay-01",
+      "produced_at": 1791800949034391
+    },
+    {
+      "event_id": "a1aa7420-4665-5d2d-b8de-0e4c95614bdf",
+      "device_id": "device-01",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 5,
+      "event_timestamp": 1791792240000000,
+      "temperature": 26.37,
+      "humidity": 35.18,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-replay-01",
+      "produced_at": 1791800949034391
+    },
+    {
+      "event_id": "278515b6-de86-59c5-ad29-479537351720",
+      "device_id": "device-02",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 3,
+      "event_timestamp": 1791792121000000,
+      "temperature": 19.45,
+      "humidity": 51.86,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-replay-01",
+      "produced_at": 1791800949034391
+    },
+    {
+      "event_id": "7980bb07-d580-51ee-85f0-617c583a26e3",
+      "device_id": "device-03",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 1,
+      "event_timestamp": 1791792002000000,
+      "temperature": 21.35,
+      "humidity": 57.29,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-replay-01",
+      "produced_at": 1791800949034391
+    },
+    {
+      "event_id": "3b8f5708-cbda-58ee-84d6-a211bbb445a8",
+      "device_id": "device-03",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 5,
+      "event_timestamp": 1791792242000000,
+      "temperature": 20.8,
+      "humidity": 47.59,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-replay-01",
+      "produced_at": 1791800949034391
+    },
+    {
+      "event_id": "6a6d7e50-c78f-5939-a514-872e60f63769",
+      "device_id": "device-04",
+      "producer_id": "lab11-producer-01",
+      "sequence_number": 3,
+      "event_timestamp": 1791792123000000,
+      "temperature": 24.07,
+      "humidity": 38.46,
+      "run_id": "t2-run-001",
+      "batch_id": "t2-run-001-replay-01",
+      "produced_at": 1791800949034391
+    }
+  ]
+}
