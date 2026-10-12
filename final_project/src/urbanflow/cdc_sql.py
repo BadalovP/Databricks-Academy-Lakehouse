@@ -4,8 +4,11 @@ Flow (``notebooks/11_federation_cdc.py``):
 
 1. A full snapshot of the operational maintenance system arrives - from a read-only Lakehouse
    Federation query or a committed fixture snapshot - as a temporary view.
-2. ``merge_snapshot`` MERGEs it into ``station_maintenance_source``, a Delta table with Change Data
-   Feed. Unchanged rows are not rewritten, so only real changes become CDF events.
+2. ``snapshot_differences`` compares the snapshot with the current source in both directions.
+   Only when they differ does ``merge_snapshot`` MERGE it into ``station_maintenance_source``, a
+   Delta table with Change Data Feed. Unchanged rows are not rewritten, so only real changes become
+   CDF events, and an identical snapshot creates no source commit at all (a Delta MERGE that
+   changes nothing still records a commit, which would move the checkpoint over an empty version).
 3. The CDC step reads ``table_changes`` for exactly the versions after the checkpoint, MERGEs every
    event into the audit history and the newest final state per key into the Silver target.
 4. ``reconciliation`` compares target and source at the processed version, values included, in
@@ -106,6 +109,33 @@ WHEN MATCHED AND NOT ({unchanged}) THEN UPDATE SET
   station_id = s.station_id, status = s.status, severity = s.severity, updated_at = s.updated_at
 WHEN NOT MATCHED THEN INSERT ({", ".join(COLUMNS)}) VALUES ({", ".join(f"s.{c}" for c in COLUMNS)})
 WHEN NOT MATCHED BY SOURCE THEN DELETE"""
+
+
+def _two_way_difference(snapshot: str, source: str) -> str:
+    """Rows present on one side and not the other, counted both ways over every business column.
+
+    `EXCEPT ALL` compares whole rows, treats NULL as equal to NULL, and respects multiplicity, so
+    a changed value, an added row and a removed row all count as differences.
+    """
+    columns = ", ".join(COLUMNS)
+    return f"""SELECT
+  (SELECT COUNT(*) FROM (SELECT {columns} FROM {snapshot} EXCEPT ALL SELECT {columns} FROM {source}))
+    AS snapshot_rows_not_in_source,
+  (SELECT COUNT(*) FROM (SELECT {columns} FROM {source} EXCEPT ALL SELECT {columns} FROM {snapshot}))
+    AS source_rows_not_in_snapshot"""
+
+
+def snapshot_differences(tables: CdcTables) -> str:
+    """Differences between the incoming snapshot view and the source's current version."""
+    return _two_way_difference(SNAPSHOT_VIEW, tables.source)
+
+
+def snapshot_requires_merge(differences: dict[str, int]) -> bool:
+    """True unless the snapshot and the source are identical in both directions."""
+    return bool(
+        int(differences["snapshot_rows_not_in_source"])
+        or int(differences["source_rows_not_in_snapshot"])
+    )
 
 
 def checkpoint_version(tables: CdcTables) -> str:

@@ -10,7 +10,7 @@ def test_federation_query_is_select_only_and_fully_quoted() -> None:
     assert statement.startswith("SELECT maintenance_id")
     assert "FROM `urbanflow_ops`.`public`.`station_maintenance`" in statement
     # Word boundaries: the column updated_at must not count as an UPDATE statement.
-    assert not re.search(r"(INSERT|UPDATE|DELETE|MERGE|DROP|ALTER)", statement.upper())
+    assert not re.search(r"\b(INSERT|UPDATE|DELETE|MERGE|DROP|ALTER)\b", statement.upper())
 
 
 def test_federation_identifiers_fail_closed() -> None:

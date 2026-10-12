@@ -248,3 +248,202 @@ def test_the_bundle_syncs_the_snapshots_the_notebook_reads() -> None:
     bundle = yaml.safe_load((PROJECT_ROOT / "databricks.yml").read_text(encoding="utf-8"))
     assert "fixtures/maintenance/**" in bundle["sync"]["include"]
     assert "fixtures/samples/**" in bundle["sync"]["include"]
+
+
+# --- the no-op guard: an identical snapshot creates no source commit ------------------------
+# Step 3 run 605056708110586: re-merging the unchanged batch_001 left an empty source commit,
+# so the checkpoint advanced 1 -> 2 over a version with no events.
+
+
+@pytest.fixture(scope="module")
+def spark_session():
+    pytest.importorskip("pyspark")
+    from pyspark.sql import SparkSession
+
+    session = (
+        SparkSession.builder.master("local[1]")
+        .appName("urbanflow-cdc-noop")
+        .config("spark.ui.enabled", "false")
+        .getOrCreate()
+    )
+    session.sparkContext.setLogLevel("ERROR")
+    yield session
+    session.stop()
+
+
+_ROWS = [
+    ("MT-1", "s1", "OPEN", None, "2026-10-12 07:00:00"),
+    ("MT-2", "s2", "OPEN", "HIGH", "2026-10-12 07:05:00"),
+]
+
+
+def _lit(value):
+    return "CAST(NULL AS STRING)" if value is None else f"'{value}'"
+
+
+def _view(spark, name, rows):
+    """A temp view built with SQL VALUES (local createDataFrame is unreliable here)."""
+    if not rows:
+        spark.sql(
+            f"CREATE OR REPLACE TEMP VIEW {name} AS SELECT CAST(NULL AS STRING) AS maintenance_id, "
+            "CAST(NULL AS STRING) AS station_id, CAST(NULL AS STRING) AS status, "
+            "CAST(NULL AS STRING) AS severity, CAST(NULL AS TIMESTAMP) AS updated_at WHERE 1 = 0"
+        )
+        return
+    values = ", ".join(
+        f"({_lit(m)}, {_lit(s)}, {_lit(st)}, {_lit(sev)}, TIMESTAMP'{u}')"
+        for m, s, st, sev, u in rows
+    )
+    spark.sql(
+        f"CREATE OR REPLACE TEMP VIEW {name} AS SELECT * FROM VALUES {values} "
+        "AS v(maintenance_id, station_id, status, severity, updated_at)"
+    )
+
+
+def _differences(spark, snapshot_rows, source_rows):
+    _view(spark, "snap_v", snapshot_rows)
+    _view(spark, "src_v", source_rows)
+    row = spark.sql(cdc_sql._two_way_difference("snap_v", "src_v")).first().asDict()
+    return (row["snapshot_rows_not_in_source"], row["source_rows_not_in_snapshot"]), row
+
+
+_INSERT = _ROWS + [("MT-3", "s3", "OPEN", "LOW", "2026-10-12 07:10:00")]
+_UPDATE = [_ROWS[0], ("MT-2", "s2", "CLOSED", "HIGH", "2026-10-12 08:00:00")]
+_NULL_TO_VALUE = [("MT-1", "s1", "OPEN", "LOW", "2026-10-12 07:00:00"), _ROWS[1]]
+
+
+@pytest.mark.parametrize(
+    "snapshot, expected, merge",
+    [
+        (_ROWS, (0, 0), False),  # identical, including a NULL severity on both sides
+        (_INSERT, (1, 0), True),
+        (_UPDATE, (1, 1), True),
+        ([_ROWS[0]], (0, 1), True),  # a deleted ticket
+        (_NULL_TO_VALUE, (1, 1), True),  # NULL -> value is a change
+        ([], (0, 2), True),  # every row deleted
+    ],
+)
+def test_the_two_way_comparison_decides_the_merge(spark_session, snapshot, expected, merge):
+    counts, row = _differences(spark_session, snapshot, _ROWS)
+    assert counts == expected
+    assert cdc_sql.snapshot_requires_merge(row) is merge
+
+
+def test_two_empty_datasets_are_identical(spark_session) -> None:
+    counts, row = _differences(spark_session, [], [])
+    assert counts == (0, 0)
+    assert cdc_sql.snapshot_requires_merge(row) is False
+
+
+def test_the_comparison_reads_the_current_source_and_never_writes() -> None:
+    sql = cdc_sql.snapshot_differences(TABLES)
+    assert sql.count("EXCEPT ALL") == 2 and "VERSION AS OF" not in sql
+    assert f"FROM {cdc_sql.SNAPSHOT_VIEW}" in sql and f"FROM {TABLES.source}" in sql
+    for column in cdc_sql.COLUMNS:
+        assert sql.count(column) >= 4
+    for forbidden in ("MERGE", "INSERT", "UPDATE", "DELETE", "DROP", "CREATE"):
+        assert not re.search(rf"\b{forbidden}\b", sql.upper()), forbidden
+
+
+def test_the_notebook_skips_only_the_source_merge_and_keeps_version_driven_processing() -> None:
+    code = _code()
+    compare = code.index("cdc_sql.snapshot_differences(tables)")
+    guard = code.index("if source_merged:")
+    merge = code.index("spark.sql(cdc_sql.merge_snapshot(tables))")
+    latest = code.index("latest_version = int(")
+    assert compare < guard < merge < latest
+    assert code.count("cdc_sql.merge_snapshot(tables)") == 1  # only inside the guard
+    # Pending versions still run: the range decision depends on versions, not the comparison.
+    assert "new_versions = latest_version > checkpoint" in code
+    assert "if new_versions:" in code and "if source_merged and" not in code
+    assert '"checkpoint_after": latest_version if new_versions else checkpoint' in code
+
+
+class _Source:
+    """The CDF source as the fixed notebook drives it: a MERGE commits only real differences."""
+
+    def __init__(self) -> None:
+        self.rows: dict = {}
+        self.version = 0  # CREATE TABLE
+        self.events: list = []
+
+    def merge(self, snapshot: dict) -> None:
+        self.version += 1
+        self.events.extend(
+            snapshot_change_events(
+                self.rows,
+                snapshot,
+                commit_version=self.version,
+                commit_timestamp=f"t{self.version}",
+            )
+        )
+        self.rows = {key: dict(row) for key, row in snapshot.items()}
+
+
+def _run(source, state, snapshot, *, reconcile_ok=True):
+    """One notebook run: compare, maybe merge, process pending versions, reconcile, advance."""
+    merged = snapshot != source.rows
+    if merged:
+        source.merge(snapshot)
+    latest = source.version
+    new_versions = latest > state["checkpoint"]
+    if new_versions:
+        result = apply_cdf(state["target"], source.events, checkpoint=state["checkpoint"])
+        state["target"] = result.target
+        state["history"] |= {
+            e.change_id for e in source.events if e.commit_version > state["checkpoint"]
+        }
+    if not reconcile_ok or not reconcile(_comparable(source.rows), state["target"]).matches:
+        raise AssertionError("CDC reconciliation failed; checkpoint not advanced")
+    if new_versions:
+        state["checkpoint"] = max(state["checkpoint"], latest)  # forward only
+    return {"merged": merged, "latest": latest, "new_versions": new_versions}
+
+
+def _fresh():
+    return {"target": {}, "history": set(), "checkpoint": -1}
+
+
+def test_an_identical_replay_creates_no_version_and_leaves_the_checkpoint_alone() -> None:
+    source, state = _Source(), _fresh()
+    _run(source, state, _snapshot(1))
+    version, checkpoint, history = source.version, state["checkpoint"], set(state["history"])
+    replay = _run(source, state, _snapshot(1))
+    assert replay == {"merged": False, "latest": version, "new_versions": False}
+    assert (source.version, state["checkpoint"], state["history"]) == (version, checkpoint, history)
+    assert len(history) == 5
+
+
+def test_inserts_updates_and_deletes_still_merge_and_advance() -> None:
+    source, state = _Source(), _fresh()
+    _run(source, state, _snapshot(1))
+    step = _run(source, state, _snapshot(2))  # 2 updates, 1 delete, 1 insert
+    assert step["merged"] and step["new_versions"]
+    assert state["checkpoint"] == source.version == 2
+    assert "MT-1003" not in state["target"] and "MT-1006" in state["target"]
+
+
+def test_pending_versions_are_processed_even_when_the_snapshot_already_matches() -> None:
+    """Recovery: an earlier run merged batch 2 but failed before advancing its checkpoint."""
+    source, state = _Source(), _fresh()
+    _run(source, state, _snapshot(1))
+    source.merge(_snapshot(2))  # committed, but the run died before processing it
+    retry = _run(source, state, _snapshot(2))  # identical to the current source
+    assert retry == {"merged": False, "latest": 2, "new_versions": True}
+    assert state["checkpoint"] == 2
+    assert reconcile(_comparable(_snapshot(2)), state["target"]).matches
+
+
+def test_a_failed_reconciliation_never_moves_the_checkpoint() -> None:
+    source, state = _Source(), _fresh()
+    _run(source, state, _snapshot(1))
+    with pytest.raises(AssertionError, match="checkpoint not advanced"):
+        _run(source, state, _snapshot(2), reconcile_ok=False)
+    assert state["checkpoint"] == 1  # unchanged; a retry processes version 2 again
+
+
+def test_deleting_every_row_is_a_real_change() -> None:
+    source, state = _Source(), _fresh()
+    _run(source, state, _snapshot(1))
+    step = _run(source, state, {})
+    assert step["merged"] and state["target"] == {} and state["checkpoint"] == 2

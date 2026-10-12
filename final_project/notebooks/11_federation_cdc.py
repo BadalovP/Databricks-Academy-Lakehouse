@@ -113,32 +113,38 @@ if contract["duplicate_keys"] or contract["null_keys"]:
 # MAGIC %md
 # MAGIC ## Step 3 - Merge the snapshot into the CDF-enabled source table
 # MAGIC
-# MAGIC **What:** Create the four tables if needed, then MERGE the snapshot into `station_maintenance_source`, which has Change Data Feed enabled.
+# MAGIC **What:** Create the four tables if needed, compare the snapshot with the current source in both directions, and MERGE it into `station_maintenance_source` (Change Data Feed enabled) only when they differ.
 # MAGIC
 # MAGIC **Why:** The MERGE turns "a new full snapshot" into precise insert, update and delete events; unchanged rows are not rewritten, so they produce no events.
 # MAGIC
 # MAGIC **Input:** The snapshot view.
 # MAGIC
-# MAGIC **Output:** A new Delta version of the source table, or none when nothing changed.
+# MAGIC **Output:** A new Delta version of the source table when the snapshot changed; no new version when it is identical (a Delta MERGE that changes nothing would still record an empty commit).
 # MAGIC
 # MAGIC **Key concepts:** Change Data Feed, `WHEN NOT MATCHED BY SOURCE THEN DELETE`, idempotent DDL.
 # MAGIC
-# MAGIC **Expected result:** The source equals the snapshot; its latest version is known.
+# MAGIC **Expected result:** The source equals the snapshot; `source_merged` says whether a MERGE ran; the latest version is known.
 # MAGIC
 # MAGIC **How to explain it:** "Delta records exactly what changed between two snapshots, row by row."
 # MAGIC
-# MAGIC **Rerun and cost considerations:** Re-merging an identical snapshot changes no rows.
+# MAGIC **Rerun and cost considerations:** An identical snapshot is detected by a two-way comparison and skipped, so a replay writes nothing to the source and the checkpoint does not move. Pending versions from an earlier interrupted run are still processed in step 4.
 
 # COMMAND ----------
 
 for statement in cdc_sql.create_tables(tables):
     spark.sql(statement)
-spark.sql(cdc_sql.merge_snapshot(tables))
+differences = spark.sql(cdc_sql.snapshot_differences(tables)).first().asDict()
+source_merged = cdc_sql.snapshot_requires_merge(differences)
+if source_merged:  # an identical snapshot creates no source commit at all
+    spark.sql(cdc_sql.merge_snapshot(tables))
 latest_version = int(spark.sql(f"DESCRIBE HISTORY {tables.source} LIMIT 1").first()["version"])
 checkpoint_row = spark.sql(cdc_sql.checkpoint_version(tables)).first()["processed_version"]
 checkpoint = int(checkpoint_row) if checkpoint_row is not None else -1
+# Pending versions are processed even when the snapshot matched (e.g. a run that merged but
+# failed before its checkpoint): the decision depends on versions, never on the comparison.
 new_versions = latest_version > checkpoint
-print({"checkpoint": checkpoint, "latest_source_version": latest_version, "new": new_versions})
+print({"checkpoint": checkpoint, "latest_source_version": latest_version, "new": new_versions,
+       "source_merged": source_merged, **differences})  # fmt: skip
 
 # COMMAND ----------
 
@@ -214,7 +220,9 @@ if result["source_count"] != result["target_count"] or problems:
 if new_versions:
     spark.sql(cdc_sql.advance_checkpoint(tables, processed_version=latest_version))
 report = {"status": "PASS", "cdc_source": values["cdc_source"], "snapshot": values["cdc_snapshot"],
-          "checkpoint_before": checkpoint, "checkpoint_after": latest_version,
+          "source_merged": source_merged, "snapshot_differences": differences,
+          "checkpoint_before": checkpoint,
+          "checkpoint_after": latest_version if new_versions else checkpoint,
           "events": event_counts, **result}  # fmt: skip
 print(json.dumps(report, sort_keys=True))
 
