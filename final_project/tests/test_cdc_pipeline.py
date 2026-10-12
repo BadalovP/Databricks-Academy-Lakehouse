@@ -233,8 +233,8 @@ def test_reconciliation_runs_before_the_checkpoint_and_failure_stops_it() -> Non
 
 def test_the_notebook_processes_only_the_new_range_and_never_writes_externally() -> None:
     code = _code()
-    assert "start_version=checkpoint + 1, end_version=latest_version" in code
-    assert "if new_versions:" in code
+    assert "start_version=scan[0], end_version=scan[1]" in code
+    assert "if scan:" in code
     assert "select_statement(source)" in code  # the only external statement
     assert not re.search(r"\b(INSERT|UPDATE|DELETE|MERGE)\b[^\n]*federation", code, re.I)
     assert code.index('dbutils.notebook.exit(json.dumps({"status": "SKIPPED"') < code.index(
@@ -350,36 +350,129 @@ def test_the_notebook_skips_only_the_source_merge_and_keeps_version_driven_proce
     compare = code.index("cdc_sql.snapshot_differences(tables)")
     guard = code.index("if source_merged:")
     merge = code.index("spark.sql(cdc_sql.merge_snapshot(tables))")
-    latest = code.index("latest_version = int(")
+    latest = code.index("latest_version, earliest_retained = int(")
     assert compare < guard < merge < latest
     assert code.count("cdc_sql.merge_snapshot(tables)") == 1  # only inside the guard
     # Pending versions are still scanned: the range depends on versions, not the comparison.
-    scan = code.index("if latest_version > checkpoint:")
-    decide = code.index("new_versions = cdc_sql.range_has_changes(event_counts)")
+    plan = code.index("scan = cdc_sql.plan_scan(")
+    view = code.index("start_version=scan[0], end_version=scan[1]")
+    decide = code.index("apply_changes = cdc_sql.range_has_changes(event_counts)")
     apply = code.index("spark.sql(cdc_sql.merge_history(tables))")
-    assert latest < scan < decide < apply
-    assert "new_versions = latest_version > checkpoint" not in code
-    assert "if new_versions:" in code and "if source_merged and" not in code
-    assert '"checkpoint_after": latest_version if new_versions else checkpoint' in code
+    assert latest < plan < view < decide < apply
+    assert "if source_merged and" not in code
 
 
-def test_a_range_without_cdf_rows_is_not_work() -> None:
-    """Regression (batch_002, 2026-10-13): an automatic OPTIMIZE made version 4 with no rows."""
+def test_the_checkpoint_passes_the_whole_scanned_range_after_reconciliation() -> None:
+    """The checkpoint is the newest scanned and reconciled version, data changes or not."""
+    code = _code()
+    reconcile_at = code.index("cdc_sql.reconciliation(")
+    advance_at = code.index("cdc_sql.advance_checkpoint(tables, processed_version=scan[1])")
+    assert reconcile_at < advance_at
+    assert "if scan:  # the end of the scanned range" in code
+    assert "if apply_changes:\n    spark.sql(cdc_sql.advance_checkpoint" not in code
+    assert '"checkpoint_after": scan[1] if scan else checkpoint' in code
+    assert '"last_data_change_version": last_data' in code
+    assert "check_history=apply_changes" in code
+
+
+def test_a_range_without_cdf_rows_needs_no_merge() -> None:
+    """Regression (batch_002, 2026-10-12): an automatic OPTIMIZE made version 4 with no rows."""
     assert not cdc_sql.range_has_changes({})
     assert not cdc_sql.range_has_changes({"insert": 0})
     assert cdc_sql.range_has_changes({"delete": 1})
     assert cdc_sql.range_has_changes({"update_preimage": 2, "update_postimage": 2})
     sql = cdc_sql.change_counts()
     assert f"FROM {cdc_sql.CHANGES_VIEW}" in sql and "GROUP BY _change_type" in sql
+    last = cdc_sql.last_data_change_version(TABLES)
+    assert last.startswith("SELECT MAX(commit_version)") and TABLES.history in last
+
+
+# --- scan planning: which versions to read, and when to refuse --------------------------------
+
+
+@pytest.mark.parametrize(
+    "checkpoint, latest, earliest, expected",
+    [
+        (-1, 1, 0, (0, 1)),  # first run
+        (3, 3, 0, None),  # nothing new
+        (3, 4, 0, (4, 4)),  # one OPTIMIZE-only version is still scanned
+        (2, 4, 0, (3, 4)),  # data, then OPTIMIZE
+        (3, 9, 4, (4, 9)),  # the oldest needed version is exactly the oldest retained
+    ],
+)
+def test_plan_scan_selects_every_version_after_the_checkpoint(
+    checkpoint, latest, earliest, expected
+) -> None:
+    assert (
+        cdc_sql.plan_scan(
+            checkpoint=checkpoint, latest_version=latest, earliest_retained_version=earliest
+        )
+        == expected
+    )
+
+
+def test_a_range_older_than_the_retained_log_fails_closed_with_a_recovery_instruction() -> None:
+    with pytest.raises(cdc_sql.CdcRetentionGapError) as raised:
+        cdc_sql.plan_scan(checkpoint=3, latest_version=40, earliest_retained_version=10)
+    message = str(raised.value)
+    assert "source versions 4..40" in message and "oldest retained version is 10" in message
+    assert "checkpoint was not moved" in message and "Do not edit the checkpoint" in message
+    assert "VERSION AS OF 40" in message and "deletedFileRetentionDuration" in message
+
+
+def test_a_source_below_the_checkpoint_is_refused() -> None:
+    """A recreated or restored source would otherwise be read from the wrong versions."""
+    with pytest.raises(cdc_sql.CdcStateError, match="recreated or restored"):
+        cdc_sql.plan_scan(checkpoint=4, latest_version=2, earliest_retained_version=0)
+
+
+@pytest.mark.parametrize("checkpoint, latest, earliest", [(-2, 1, 0), (1, -1, 0), (1, 2, -1)])
+def test_plan_scan_refuses_invalid_versions(checkpoint, latest, earliest) -> None:
+    with pytest.raises(ValueError):
+        cdc_sql.plan_scan(
+            checkpoint=checkpoint, latest_version=latest, earliest_retained_version=earliest
+        )
+
+
+@pytest.mark.parametrize(
+    "message, retention",
+    [
+        ("[DELTA_CHANGE_DATA_FILE_NOT_FOUND] File ... cannot be found", True),
+        ("[DELTA_MISSING_CHANGE_DATA] Error getting change data for range [4, 9]", True),
+        ("VersionNotFoundException: Cannot time travel Delta table to version 3", True),
+        ("java.io.FileNotFoundException: .../_change_data/cdc-00000.parquet", True),
+        ("[DELTA_CDC_START_VERSION_AFTER_LATEST] Start version 5 exceeds 4", False),
+        ("[PERMISSION_DENIED] User does not have SELECT", False),
+        ("", False),
+    ],
+)
+def test_only_retention_errors_become_retention_gaps(message, retention) -> None:
+    assert cdc_sql.is_retention_error(message) is retention
+
+
+def test_the_notebook_turns_a_vacuumed_range_into_a_retention_gap_and_writes_nothing() -> None:
+    code = _code()
+    guarded = code.index("try:  # analysis (log versions) or execution (change files)")
+    read = code.index("events = spark.sql(cdc_sql.change_counts()).collect()")
+    assert guarded < code.index("start_version=scan[0], end_version=scan[1]") < read
+    gap = code.index("raise cdc_sql.CdcRetentionGapError(")
+    apply = code.index("spark.sql(cdc_sql.merge_history(tables))")
+    assert read < gap < apply
+    assert "if not cdc_sql.is_retention_error(str(error)):\n            raise" in code
+
+
+# --- the run as the notebook drives it, with a simulated Delta log ---------------------------
 
 
 class _Source:
-    """The CDF source as the fixed notebook drives it: a MERGE commits only real differences."""
+    """The CDF source: a MERGE commits only real differences; OPTIMIZE commits no CDF rows."""
 
     def __init__(self) -> None:
         self.rows: dict = {}
         self.version = 0  # CREATE TABLE
         self.events: list = []
+        self.earliest = 0  # oldest version still in the Delta log
+        self.vacuumed_before = 0  # change files of older versions removed by VACUUM
 
     def merge(self, snapshot: dict) -> None:
         self.version += 1
@@ -397,28 +490,51 @@ class _Source:
         """A commit without data changes (OPTIMIZE): a new version, no CDF rows."""
         self.version += 1
 
+    def table_changes(self, start: int, end: int) -> list:
+        if any(e.commit_version < self.vacuumed_before for e in self.events
+               if start <= e.commit_version <= end):  # fmt: skip
+            raise RuntimeError("[DELTA_CHANGE_DATA_FILE_NOT_FOUND] change file was vacuumed")
+        return [e for e in self.events if start <= e.commit_version <= end]
+
 
 def _run(source, state, snapshot, *, reconcile_ok=True):
-    """One notebook run: compare, maybe merge, process pending versions, reconcile, advance."""
+    """One notebook run: compare, maybe merge, plan, scan, apply, reconcile, advance."""
     merged = snapshot != source.rows
     if merged:
         source.merge(snapshot)
-    latest = source.version
-    scanned = [e for e in source.events if state["checkpoint"] < e.commit_version <= latest]
-    new_versions = bool(scanned)  # the notebook decides from CDF rows, not from version numbers
-    if new_versions:
-        result = apply_cdf(state["target"], source.events, checkpoint=state["checkpoint"])
-        state["target"] = result.target
-        state["history"] |= {e.change_id for e in scanned}
+    scan = cdc_sql.plan_scan(
+        checkpoint=state["checkpoint"],
+        latest_version=source.version,
+        earliest_retained_version=source.earliest,
+    )
+    events = []
+    if scan:
+        try:
+            events = source.table_changes(*scan)
+        except RuntimeError as error:
+            if not cdc_sql.is_retention_error(str(error)):
+                raise
+            raise cdc_sql.CdcRetentionGapError(
+                cdc_sql.retention_gap_message(*scan, str(error))
+            ) from error
+    counts: dict = {}
+    for event in events:
+        counts[event.change_type.value] = counts.get(event.change_type.value, 0) + 1
+    applied = cdc_sql.range_has_changes(counts)
+    if applied:
+        state["target"] = apply_cdf(state["target"], events, checkpoint=scan[0] - 1).target
+        state["history"] |= {e.change_id for e in events}
+        state["merges"] += 1
     if not reconcile_ok or not reconcile(_comparable(source.rows), state["target"]).matches:
         raise AssertionError("CDC reconciliation failed; checkpoint not advanced")
-    if new_versions:
-        state["checkpoint"] = max(state["checkpoint"], latest)  # forward only
-    return {"merged": merged, "latest": latest, "new_versions": new_versions}
+    if scan:
+        state["checkpoint"] = max(state["checkpoint"], scan[1])  # forward only
+    last_data = max((e.commit_version for e in source.events), default=None)
+    return {"merged": merged, "scan": scan, "applied": applied, "last_data": last_data}
 
 
 def _fresh():
-    return {"target": {}, "history": set(), "checkpoint": -1}
+    return {"target": {}, "history": set(), "checkpoint": -1, "merges": 0}
 
 
 def test_an_identical_replay_creates_no_version_and_leaves_the_checkpoint_alone() -> None:
@@ -426,7 +542,7 @@ def test_an_identical_replay_creates_no_version_and_leaves_the_checkpoint_alone(
     _run(source, state, _snapshot(1))
     version, checkpoint, history = source.version, state["checkpoint"], set(state["history"])
     replay = _run(source, state, _snapshot(1))
-    assert replay == {"merged": False, "latest": version, "new_versions": False}
+    assert replay == {"merged": False, "scan": None, "applied": False, "last_data": 1}
     assert (source.version, state["checkpoint"], state["history"]) == (version, checkpoint, history)
     assert len(history) == 5
 
@@ -435,9 +551,10 @@ def test_inserts_updates_and_deletes_still_merge_and_advance() -> None:
     source, state = _Source(), _fresh()
     _run(source, state, _snapshot(1))
     step = _run(source, state, _snapshot(2))  # 2 updates, 1 delete, 1 insert
-    assert step["merged"] and step["new_versions"]
+    assert step["merged"] and step["applied"] and step["scan"] == (2, 2)
     assert state["checkpoint"] == source.version == 2
     assert "MT-1003" not in state["target"] and "MT-1006" in state["target"]
+    assert len(state["history"]) == 11  # the delete event stays in the audit history
 
 
 def test_pending_versions_are_processed_even_when_the_snapshot_already_matches() -> None:
@@ -446,7 +563,7 @@ def test_pending_versions_are_processed_even_when_the_snapshot_already_matches()
     _run(source, state, _snapshot(1))
     source.merge(_snapshot(2))  # committed, but the run died before processing it
     retry = _run(source, state, _snapshot(2))  # identical to the current source
-    assert retry == {"merged": False, "latest": 2, "new_versions": True}
+    assert retry == {"merged": False, "scan": (2, 2), "applied": True, "last_data": 2}
     assert state["checkpoint"] == 2
     assert reconcile(_comparable(_snapshot(2)), state["target"]).matches
 
@@ -457,6 +574,8 @@ def test_a_failed_reconciliation_never_moves_the_checkpoint() -> None:
     with pytest.raises(AssertionError, match="checkpoint not advanced"):
         _run(source, state, _snapshot(2), reconcile_ok=False)
     assert state["checkpoint"] == 1  # unchanged; a retry processes version 2 again
+    retry = _run(source, state, _snapshot(2))
+    assert retry["scan"] == (2, 2) and state["checkpoint"] == 2
 
 
 def test_deleting_every_row_is_a_real_change() -> None:
@@ -466,35 +585,77 @@ def test_deleting_every_row_is_a_real_change() -> None:
     assert step["merged"] and state["target"] == {} and state["checkpoint"] == 2
 
 
-def test_an_optimize_after_batch_002_does_not_move_the_checkpoint_on_batch_003() -> None:
-    """Regression for the live batch_002 run: source v3 MERGE, then an automatic OPTIMIZE (v4)."""
+def test_an_empty_first_snapshot_scans_the_create_version_and_writes_no_event() -> None:
     source, state = _Source(), _fresh()
-    _run(source, state, _snapshot(1))
-    _run(source, state, _snapshot(1))  # replay: no commit
-    step = _run(source, state, _snapshot(2))
-    assert step["new_versions"] and state["checkpoint"] == 2
-    source.optimize()  # committed by Databricks after the run read the latest version
-    history = set(state["history"])
-    replay = _run(source, state, _snapshot(3))  # batch_003: same business state as batch_002
-    assert replay == {"merged": False, "latest": 3, "new_versions": False}
-    assert state["checkpoint"] == 2 and state["history"] == history
+    step = _run(source, state, {})
+    assert step == {"merged": False, "scan": (0, 0), "applied": False, "last_data": None}
+    assert state["checkpoint"] == 0 and state["history"] == set() and state["merges"] == 0
 
 
-def test_data_after_an_optimize_is_still_processed_through_the_whole_range() -> None:
+def test_batch_003_after_the_live_optimize_moves_the_checkpoint_over_version_4() -> None:
+    """The live state after run 343513312512955: v3 batch_002 MERGE, v4 automatic OPTIMIZE."""
+    source, state = _Source(), _fresh()
+    _run(source, state, _snapshot(1))  # v1
+    source.version += 1  # v2: the empty step 3 commit (before the no-op guard)
+    state["checkpoint"] = 2
+    _run(source, state, _snapshot(2))  # v3, checkpoint 3
+    source.optimize()  # v4, committed after the run read the latest version
+    history, merges = set(state["history"]), state["merges"]
+    step = _run(source, state, _snapshot(3))  # batch_003: same business state as batch_002
+    assert step == {"merged": False, "scan": (4, 4), "applied": False, "last_data": 3}
+    assert state["checkpoint"] == 4  # processed_version: scanned and reconciled
+    assert state["history"] == history and len(history) == 11 and state["merges"] == merges
+    again = _run(source, state, _snapshot(3))
+    assert again["scan"] is None and state["checkpoint"] == 4
+
+
+def test_an_optimize_before_business_changes_is_scanned_with_them() -> None:
     source, state = _Source(), _fresh()
     _run(source, state, _snapshot(1))
-    source.optimize()
-    step = _run(source, state, _snapshot(2))  # scans the OPTIMIZE version and the new MERGE
-    assert step["new_versions"] and state["checkpoint"] == source.version == 3
+    source.optimize()  # v2
+    step = _run(source, state, _snapshot(2))  # v3
+    assert step["scan"] == (2, 3) and step["applied"] and state["checkpoint"] == 3
     assert reconcile(_comparable(_snapshot(2)), state["target"]).matches
 
 
-def test_an_optimize_before_processing_does_not_hide_pending_changes() -> None:
-    """The OPTIMIZE lands between the MERGE and the latest-version read: data is still applied."""
+def test_an_optimize_between_business_changes_hides_nothing() -> None:
+    """Interrupted run: v2 data, v3 OPTIMIZE, then the retry finds both pending."""
     source, state = _Source(), _fresh()
     _run(source, state, _snapshot(1))
     source.merge(_snapshot(2))
     source.optimize()
     retry = _run(source, state, _snapshot(2))
-    assert retry == {"merged": False, "latest": 3, "new_versions": True}
+    assert retry == {"merged": False, "scan": (2, 3), "applied": True, "last_data": 2}
     assert state["checkpoint"] == 3 and "MT-1003" not in state["target"]
+
+
+def test_an_optimize_after_business_changes_is_passed_on_the_next_run() -> None:
+    source, state = _Source(), _fresh()
+    _run(source, state, _snapshot(1))
+    source.optimize()
+    source.optimize()
+    step = _run(source, state, _snapshot(1))
+    assert step == {"merged": False, "scan": (2, 3), "applied": False, "last_data": 1}
+    assert state["checkpoint"] == 3 and len(state["history"]) == 5
+
+
+def test_a_vacuumed_change_range_fails_closed_and_keeps_the_checkpoint() -> None:
+    source, state = _Source(), _fresh()
+    _run(source, state, _snapshot(1))
+    source.merge(_snapshot(2))  # v2, never processed
+    source.vacuumed_before = 3  # VACUUM removed the v2 change files
+    target, history = dict(state["target"]), set(state["history"])
+    with pytest.raises(cdc_sql.CdcRetentionGapError, match="source versions 2..2"):
+        _run(source, state, _snapshot(2))
+    assert (state["checkpoint"], state["target"], state["history"]) == (1, target, history)
+
+
+def test_a_cleaned_up_log_fails_closed_before_any_read() -> None:
+    source, state = _Source(), _fresh()
+    _run(source, state, _snapshot(1))
+    source.merge(_snapshot(2))
+    source.earliest = 3  # log entries for versions below 3 are gone
+    source.version = 4
+    with pytest.raises(cdc_sql.CdcRetentionGapError, match="oldest retained version is 3"):
+        _run(source, state, _snapshot(2))
+    assert state["checkpoint"] == 1

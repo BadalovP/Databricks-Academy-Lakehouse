@@ -9,11 +9,19 @@ Flow (``notebooks/11_federation_cdc.py``):
    Delta table with Change Data Feed. Unchanged rows are not rewritten, so only real changes become
    CDF events, and an identical snapshot creates no source commit at all (a Delta MERGE that
    changes nothing still records a commit, which would move the checkpoint over an empty version).
-3. The CDC step reads ``table_changes`` for exactly the versions after the checkpoint, MERGEs every
-   event into the audit history and the newest final state per key into the Silver target.
+3. ``plan_scan`` selects the versions after the checkpoint up to the latest source version, and
+   fails closed when the Delta log no longer holds them. The CDC step reads ``table_changes`` for
+   exactly that range. When it holds CDF rows, every event is MERGEd into the audit history and
+   the newest final state per key into the Silver target. A range of versions without data
+   changes (an automatic ``OPTIMIZE``, predictive optimization) has no rows and needs no MERGE.
 4. ``reconciliation`` compares target and source at the processed version, values included, in
-   both directions. Only after it passes does ``advance_checkpoint`` move the checkpoint - and
-   only forward.
+   both directions. Only after it passes does ``advance_checkpoint`` move the checkpoint to the
+   end of the scanned range - only forward, and also over versions without data changes, so the
+   checkpoint never falls behind the source log.
+
+``processed_version`` (the checkpoint) is the newest source version that was scanned, applied
+where needed and reconciled. ``last_data_change_version`` - the newest version with CDF events -
+is a reporting value read from the history; the two differ after an ``OPTIMIZE``.
 
 Every identifier is validated and backtick-quoted; no statement drops, truncates or replaces.
 """
@@ -157,6 +165,72 @@ SELECT *, sha2(concat_ws('|', maintenance_id, CAST(_commit_version AS STRING), _
 FROM table_changes('{tables.source_plain}', {start}, {end})"""
 
 
+def plan_scan(
+    *, checkpoint: int, latest_version: int, earliest_retained_version: int
+) -> tuple[int, int] | None:
+    """The source versions to scan, ``(checkpoint + 1, latest)``, or None when there are none.
+
+    Fails closed instead of skipping changes: a source below the checkpoint was recreated or
+    restored, and a start version older than the retained Delta log can no longer be read.
+    """
+    if checkpoint < -1 or latest_version < 0 or earliest_retained_version < 0:
+        raise ValueError("Versions must be non-negative (checkpoint -1 means never processed).")
+    if latest_version < checkpoint:
+        raise CdcStateError(
+            f"Source version {latest_version} is below the checkpoint {checkpoint}: the source "
+            "table was recreated or restored. Nothing was written and the checkpoint was not "
+            "moved. Investigate before any change; never move the checkpoint back by hand."
+        )
+    if latest_version == checkpoint:
+        return None
+    start = checkpoint + 1
+    if start < earliest_retained_version:
+        raise CdcRetentionGapError(
+            retention_gap_message(
+                start, latest_version, f"the oldest retained version is {earliest_retained_version}"
+            )
+        )
+    return start, latest_version
+
+
+class CdcStateError(RuntimeError):
+    """The persisted checkpoint and the source disagree in a way that is never safe to guess."""
+
+
+class CdcRetentionGapError(RuntimeError):
+    """Versions after the checkpoint can no longer be read from the Change Data Feed."""
+
+
+# Databricks error classes and Delta exceptions raised when a CDF range is no longer readable:
+# the log was cleaned up (logRetentionDuration) or VACUUM removed the change files
+# (deletedFileRetentionDuration). Matched only to turn them into a precise recovery message.
+RETENTION_ERROR_MARKERS = (
+    "DELTA_CHANGE_DATA_FILE_NOT_FOUND",
+    "DELTA_MISSING_CHANGE_DATA",
+    "DELTA_VERSION_NOT_FOUND",
+    "VersionNotFoundException",
+    "Cannot time travel Delta table to version",
+    "FileNotFoundException",
+)
+
+
+def is_retention_error(message: str) -> bool:
+    return any(marker in (message or "") for marker in RETENTION_ERROR_MARKERS)
+
+
+def retention_gap_message(start_version: int, end_version: int, detail: str) -> str:
+    return (
+        f"CDC retention gap: source versions {start_version}..{end_version} can no longer be read "
+        f"from the Change Data Feed ({detail}). Nothing was written and the checkpoint was not "
+        "moved. Do not edit the checkpoint by hand. Recovery, with approval: (1) record the gap "
+        f"and the audit range {start_version}..{end_version} that cannot be rebuilt; (2) re-baseline "
+        f"silver_station_maintenance from the source at VERSION AS OF {end_version} and reconcile "
+        f"it; (3) only then set the checkpoint to {end_version}. Prevention: run CDC more often "
+        "than delta.deletedFileRetentionDuration (7 days by default; VACUUM removes change files) "
+        "and delta.logRetentionDuration (30 days by default)."
+    )
+
+
 def change_counts() -> str:
     """Events per change type in the scanned range; empty when it holds only non-data commits."""
     return f"SELECT _change_type, COUNT(*) AS n FROM {CHANGES_VIEW} GROUP BY _change_type"
@@ -165,11 +239,16 @@ def change_counts() -> str:
 def range_has_changes(event_counts: dict[str, int]) -> bool:
     """True when the scanned versions carry at least one CDF event.
 
-    Delta versions are not all data changes: ``OPTIMIZE`` (manual, automatic after a write, or
-    predictive optimization) commits a new version with no CDF rows. Such a range is not work,
-    so the history, Silver and the checkpoint stay untouched.
+    ``OPTIMIZE`` (manual, automatic after a write, or predictive optimization) commits a version
+    with no CDF rows. Such a range needs no history or Silver MERGE; it is still scanned,
+    reconciled and passed by the checkpoint.
     """
     return any(int(count) > 0 for count in event_counts.values())
+
+
+def last_data_change_version(tables: CdcTables) -> str:
+    """The newest source version whose CDF events reached the history (reporting only)."""
+    return f"SELECT MAX(commit_version) AS last_data_change_version FROM {tables.history}"
 
 
 def merge_history(tables: CdcTables) -> str:

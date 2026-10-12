@@ -67,10 +67,10 @@ The two targets are in **different clouds and different metastores**, so a DEV m
 ## CDC design (Lab 10, core capability)
 
 1. A full snapshot arrives as a temporary view. It comes either from a **read-only** Lakehouse Federation query (an approved foreign catalog) or from a committed fixture. Casts give both the same types. A contract check rejects duplicate or null keys.
-2. `MERGE` makes `station_maintenance_source` equal to the snapshot. Unchanged rows are not rewritten, so Change Data Feed holds only real changes, deletes included (`WHEN NOT MATCHED BY SOURCE THEN DELETE`).
-3. `table_changes(source, checkpoint + 1, latest)` reads exactly the new versions. Every event, pre-images included, is MERGEd once into `maintenance_cdc_history`, keyed by a deterministic `change_id`. The newest final-state event per key is MERGEd into `silver_station_maintenance` (SCD Type 1).
+2. A two-way comparison skips the MERGE when the snapshot equals the source, so a replay creates no source commit. Otherwise `MERGE` makes `station_maintenance_source` equal to the snapshot. Unchanged rows are not rewritten, so Change Data Feed holds only real changes, deletes included (`WHEN NOT MATCHED BY SOURCE THEN DELETE`).
+3. `plan_scan` selects versions `checkpoint + 1 … latest`. It fails closed if the Delta log no longer holds them, or if the source is below the checkpoint. `table_changes` reads exactly that range. A range of versions without data changes (an automatic `OPTIMIZE`) has no rows and needs no MERGE. Otherwise every event, pre-images included, is MERGEd once into `maintenance_cdc_history`, keyed by a deterministic `change_id`. The newest final-state event per key is MERGEd into `silver_station_maintenance` (SCD Type 1).
 4. **Reconciliation** compares target and source `VERSION AS OF` the processed version, values included, both ways (`EXCEPT ALL`). It also checks for duplicate keys and that every event reached the history.
-5. Only then does the checkpoint advance, and only forward (`WHEN MATCHED AND t.processed_version < s.processed_version`). A failure after the MERGEs replays the same range, and the MERGEs absorb it.
+5. Only then does the checkpoint advance, and only forward (`WHEN MATCHED AND t.processed_version < s.processed_version`), to the end of the scanned range, `OPTIMIZE`-only versions included. `processed_version` is the newest scanned and reconciled version. `last_data_change_version`, the newest version with CDF events, is reported separately. A range lost to log cleanup or VACUUM raises `CdcRetentionGapError` with a recovery instruction and writes nothing. A failure after the MERGEs replays the same range, and the MERGEs absorb it.
 
 This is Delta Change Data Feed on a Final-Project-owned table. It is not database log-based CDC: the external system is only ever read.
 
@@ -128,5 +128,6 @@ The landing area is the managed Volume `/Volumes/<catalog>/<schema>/urbanflow_fi
 | Invalid record | Quarantined with every failed rule named |
 | Stream does not finish in time | Bounded wait raises; the query is stopped in `finally` |
 | Reconciliation mismatch | The task raises; the Job fails; no checkpoint moves |
+| CDF range no longer retained (log cleanup, VACUUM) | `CdcRetentionGapError` with a re-baseline instruction; nothing written; checkpoint unchanged |
 | Index not ready or incomplete | The readiness gate stops the assistant Job before any model call |
 | Rerun after a partial failure | The same execution scope or CDC range is replayed; MERGEs absorb it |

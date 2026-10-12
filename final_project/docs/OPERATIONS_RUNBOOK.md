@@ -46,16 +46,22 @@ Never delete Bronze rows, checkpoints or landed files to "repair" a run. Every r
 
 1. The snapshot (fixture or Federation) is compared with the current source in both directions. **Identical → no source MERGE → no source commit.**
 2. Otherwise the change-aware MERGE writes a new source version. Only real changes become CDF events (inserts, update pre-images and post-images, deletes).
-3. Versions `checkpoint + 1 … latest` are read with `table_changes`. If they contain CDF rows, they are merged into the append-once history (keyed by a deterministic `change_id`) and into Silver (newest final state per key). Versions without data changes, such as an automatic `OPTIMIZE`, have no CDF rows and are not work (fix prepared after step 4B, not yet deployed).
+3. `plan_scan` selects versions `checkpoint + 1 … latest`, which are read with `table_changes`. If they contain CDF rows, they are merged into the append-once history (keyed by a deterministic `change_id`) and into Silver (newest final state per key). Versions without data changes, such as an automatic `OPTIMIZE`, have no CDF rows, so no history or Silver MERGE runs.
 4. Reconciliation compares source `VERSION AS OF latest` and Silver, values and keys, in both directions, and checks that every event reached the history.
-5. **Only after reconciliation passes** does the checkpoint advance, and only forward. It does not move for a range without CDF rows.
+5. **Only after reconciliation passes** does the checkpoint advance, and only forward, to the end of the scanned range. That includes ranges holding only `OPTIMIZE` versions. The checkpoint (`processed_version`) is the newest scanned and reconciled version. `last_data_change_version` in the run report is the newest version with CDF events.
 
 Consequences:
 - A crash before step 5 replays the same range safely.
 - A run whose snapshot already matches still processes pending versions left by an interrupted run.
 - An unchanged replay leaves the source version and the checkpoint untouched (step 3 retry).
-- Databricks may add `OPTIMIZE` versions to the source by itself (step 4B saw one 5 seconds after the MERGE). Do not treat a version number above the checkpoint as unprocessed data; check `table_changes` for that range.
-- If the source has no real change for longer than the Delta log retention (30 days by default), the next run's `table_changes` read fails. Investigate before you move the checkpoint by hand.
+- Databricks may add `OPTIMIZE` versions to the source by itself (step 4B saw one 5 seconds after the MERGE). A version above the checkpoint is not necessarily data: the run report shows `scanned_range`, `changes_applied` and `last_data_change_version`.
+- **Retention gap (fails closed).** If the versions after the checkpoint have left the Delta log (`delta.logRetentionDuration`, 30 days by default), or VACUUM removed their change files (`delta.deletedFileRetentionDuration`, 7 days by default; predictive optimization runs VACUUM automatically), the task raises `CdcRetentionGapError`. Nothing is written and the checkpoint stays where it was. Recovery, with approval:
+  1. Record the gap and the audit range that cannot be rebuilt.
+  2. Re-baseline `silver_station_maintenance` from the source at `VERSION AS OF <latest>` and reconcile it.
+  3. Only then set the checkpoint to that version.
+
+  Never edit the checkpoint to skip the error. To prevent it, run CDC at least weekly.
+- A source version below the checkpoint means the source was recreated or restored. The task raises `CdcStateError` and writes nothing.
 
 This is Delta Change Data Feed over imported snapshots, **not** database log-based CDC.
 

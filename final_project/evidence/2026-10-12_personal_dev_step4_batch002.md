@@ -68,4 +68,13 @@ One trade-off: the checkpoint can stay behind non-data commits. If the source ha
 
 Running `batch_003` against this fix needs a redeploy and a new approval.
 
+**Superseded before deployment (review on 2026-10-13).** That first fix, commit `27c1956`, was never deployed. Keeping the checkpoint behind non-data versions would let it go stale until the log no longer held them. The corrected design:
+
+- The checkpoint is the newest **scanned and reconciled** version, so it passes `OPTIMIZE`-only ranges.
+- Ranges with no rows need no MERGE.
+- `last_data_change_version` is reported separately.
+- A range lost to log cleanup or VACUUM fails closed with a recovery instruction.
+
+With this design, the expected `batch_003` result is checkpoint 3 → 4.
+
 Machine-readable record: [`2026-10-12_personal_dev_step4_batch002.json`](2026-10-12_personal_dev_step4_batch002.json).

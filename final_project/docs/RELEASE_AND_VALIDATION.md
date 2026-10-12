@@ -109,8 +109,12 @@ Each item lists its exact action, bound, verification and cleanup. Approve items
 - D–G: not approved.
 
 **Revised B2 (needs approval):**
-1. Redeploy the CDF-row decision fix. Code sync only: the plan should be all `skip`, with `11_federation_cdc.py` and `cdc_sql.py` synced.
-2. Run `batch_003`. Expected: `source_merged: false`, no new source commit (the source stays at 4 unless Databricks optimizes again), no CDF rows in the scanned range, history 11, checkpoint stays 3 with its earlier `processed_at`, reconciliation 0.
+1. Redeploy the corrected checkpoint semantics. This is code sync only, so the plan should be all `skip`, with `11_federation_cdc.py` and `cdc_sql.py` synced.
+2. Run `batch_003`. Expected:
+   - `source_merged: false`; no new source commit (the source stays at 4 unless Databricks optimizes again);
+   - scanned range 4..4 with no CDF rows, so no history or Silver MERGE (history 11, Silver 5 = `batch_003`);
+   - reconciliation 0 at version 4;
+   - checkpoint **3 → 4** (the OPTIMIZE-only version is scanned and reconciled); `last_data_change_version` 3.
 3. Then run C.
 
 **A. Redeploy DEV (code only).**
@@ -127,7 +131,7 @@ Each item lists its exact action, bound, verification and cleanup. Approve items
    - history 5 → 11 events with 11 distinct IDs;
    - Silver 5 rows (`MT-1001`, `MT-1002`, `MT-1004`, `MT-1005`, `MT-1006`) equal to `batch_002`;
    - reconciliation 0; checkpoint 2 → 3.
-2. `cdc_snapshot=batch_003` (same business state as `batch_002`). Expected: `source_merged: false`, no new source version, no CDF events, history 11, checkpoint stays 3.
+2. `cdc_snapshot=batch_003` (same business state as `batch_002`). Expected as originally approved: `source_merged: false`, no new source version, no CDF events, history 11, checkpoint stays 3. Superseded by revised B2 above, because the automatic `OPTIMIZE` added version 4.
 
 Bound: 40 minutes per run, no retry; about 2–4 minutes each at measured task times. Verification: independent SQL as in step 3. Cleanup: none.
 

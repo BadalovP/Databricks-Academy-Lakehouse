@@ -112,7 +112,7 @@ sequenceDiagram
   T->>K: advance checkpoint (forward only)
 ```
 
-A failure before the checkpoint replays the same version range, and the MERGEs absorb it. A range whose versions carry no CDF rows (for example an automatic `OPTIMIZE`) is not work, and the checkpoint stays put (fixed after step 4B, not yet deployed). The external system is only read. This is Delta Change Data Feed on a table the project owns, not log-based database CDC.
+A failure before the checkpoint replays the same version range, and the MERGEs absorb it. The checkpoint is the newest source version that was scanned, applied where needed and reconciled. A version without data changes, such as an automatic `OPTIMIZE`, has no CDF rows. It needs no MERGE but is still scanned and passed, so the checkpoint never falls behind the Delta log. If the versions after the checkpoint can no longer be read (log cleanup or VACUUM), the run stops with a recovery instruction instead of skipping changes. The external system is only read. This is Delta Change Data Feed on a table the project owns, not log-based database CDC.
 
 ## 4. Mobility operations assistant (Lab 12)
 

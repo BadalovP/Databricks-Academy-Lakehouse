@@ -29,7 +29,7 @@ Keep this file current so another engineer or agent can continue without restart
 | Operations runbook, approval request, interview demo | Done | `OPERATIONS_RUNBOOK.md`, `RELEASE_AND_VALIDATION.md`, `DEMO_DAY_PRESENTATION.md` |
 | Azure `azure_prod` read-only preflight | **PASS** (validate, plan = 7 creates, validator, no collisions); nothing created | `RELEASE_AND_VALIDATION.md` |
 | **Step 4A** redeploy (preflight branches, dashboard `GRID_V1`) | **PASS**: 2 updates, post-plan all `skip`; dashboard not published | `evidence/2026-10-12_personal_dev_step4_redeploy.md` |
-| **Step 4B** CDC `batch_002` | **CDC PASS; stopped**: automatic `OPTIMIZE` made source v4 (no data). Fix (decide from CDF rows) done locally, **not deployed** | `evidence/2026-10-12_personal_dev_step4_batch002.md` |
+| **Step 4B** CDC `batch_002` | **CDC PASS; stopped**: automatic `OPTIMIZE` made source v4 (no data). First fix `27c1956` kept the checkpoint behind `OPTIMIZE` versions. It was reviewed, superseded before deploy, and replaced by scan-and-pass semantics with a fail-closed retention guard | `evidence/2026-10-12_personal_dev_step4_batch002.md` |
 | Step 4 `batch_003`, steps 5–9 | **Not run** (each needs approval) | — |
 
 ## Databricks resources
@@ -68,7 +68,7 @@ CDC: source **v4** (v3 MERGE of `batch_002`; v4 automatic `OPTIMIZE`, no data ch
 
 ## Known limitations and defects
 
-- **Non-data Delta commits in CDC (fixed locally, not deployed).** Databricks may commit an `OPTIMIZE` (automatic or predictive optimization) on the CDF source. The deployed notebook compares the latest version number with the checkpoint, so it would advance the checkpoint over such a commit. The local fix decides from the CDF rows in the scanned range. Trade-off: if the source has no real change for longer than the Delta log retention (30 days by default), the next read fails loudly.
+- **Non-data Delta commits in CDC.** Databricks may commit an `OPTIMIZE` (automatic or predictive optimization) on the CDF source. The checkpoint now means the newest scanned and reconciled version: `OPTIMIZE`-only ranges are scanned with no MERGE, and the checkpoint passes them. A range the Delta log or VACUUM no longer holds fails closed (`CdcRetentionGapError`, recovery in the runbook). This retention path is tested offline only; reproducing it live would need a VACUUM of the source.
 - **Metadata-only commits.** The 16 shared Silver, Gold, historical and weather tables still record one metadata-only MERGE commit per replay. No data or file changes; this is a performance limitation, not a correctness issue.
 - **Federation.** The Lab 10 foreign catalog (`neon_postgres_conn_catalog`, read-only PostgreSQL connection) has no maintenance table, so CDC runs on committed fixture snapshots. A real federated source needs a Final-Project table in an external database, which is an external write needing approval.
 - **Governance.** Only one identity is available, so multi-principal row-filter and mask enforcement cannot be demonstrated. The demo shows filtered vs allowed for one principal by changing a mapping row.
@@ -83,7 +83,7 @@ None running. No AI Search endpoint exists, and the warehouses are stopped (auto
 
 See the consolidated proposal in `RELEASE_AND_VALIDATION.md` ("Next approval request"):
 
-1. **Step 4 (rest):** code-only redeploy of the CDF-row fix, then CDC `batch_003` (expected: checkpoint stays 3).
+1. **Step 4 (rest):** code-only redeploy of the corrected checkpoint semantics, then CDC `batch_003` (expected: no events, checkpoint 3 → 4).
 2. **Step 5:** one Lakeflow update.
 3. **Dashboard:** redeploy plus read-only dataset query validation.
 4. **Steps 6–8:** assistant ingest, AI Search endpoint/index, smoke test, evaluation, then delete the endpoint.

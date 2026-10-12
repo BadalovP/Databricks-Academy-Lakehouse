@@ -10,7 +10,7 @@
 # MAGIC
 # MAGIC **Academy labs:** Lab 10 (Lakehouse Federation, Delta CDF, incremental MERGE, checkpointing), Lab 4 (MERGE, SCD Type 1), Lab 7 (reconciliation).
 # MAGIC
-# MAGIC **Actual validation:** Validated live in Personal DEV on 2026-10-12 (Final Project run 896549012431425, task `federation_cdc`) in fixture mode for `batch_001`: 5 inserts, checkpoint -1 to 1, reconciliation zero mismatches in both directions. `batch_002` ran live on 2026-10-12 (run 343513312512955): 1 insert, 2 updates, 1 delete (6 CDF events), checkpoint 2 to 3, reconciliation zero. Five seconds later Databricks committed an automatic `OPTIMIZE` (source version 4, no data change); step 4 therefore decides from Change Data Feed rows, not from the latest version number. The Federation source has not been run live yet.
+# MAGIC **Actual validation:** Validated live in Personal DEV on 2026-10-12 (Final Project run 896549012431425, task `federation_cdc`) in fixture mode for `batch_001`: 5 inserts, checkpoint -1 to 1, reconciliation zero mismatches in both directions. `batch_002` ran live on 2026-10-12 (run 343513312512955): 1 insert, 2 updates, 1 delete (6 CDF events), checkpoint 2 to 3, reconciliation zero. Five seconds later Databricks committed an automatic `OPTIMIZE` (source version 4, no data change). Since then the run scans every version after the checkpoint, applies only CDF rows, and moves the checkpoint over versions without data changes after reconciliation. The Federation source has not been run live yet.
 # MAGIC
 # MAGIC CDC here is **Delta Change Data Feed on a Final-Project-owned table**, not database-native CDC: no logical replication or WAL decoding of the source system is involved. The external system is only ever read.
 
@@ -127,7 +127,7 @@ if contract["duplicate_keys"] or contract["null_keys"]:
 # MAGIC
 # MAGIC **How to explain it:** "Delta records exactly what changed between two snapshots, row by row."
 # MAGIC
-# MAGIC **Rerun and cost considerations:** An identical snapshot is detected by a two-way comparison and skipped, so a replay writes nothing to the source and the checkpoint does not move. Pending versions from an earlier interrupted run are still processed in step 4.
+# MAGIC **Rerun and cost considerations:** An identical snapshot is detected by a two-way comparison and skipped, so a replay writes nothing to the source. The checkpoint then moves only over versions Databricks added by itself (such as an `OPTIMIZE`). Pending versions from an earlier interrupted run are still processed in step 4.
 
 # COMMAND ----------
 
@@ -137,7 +137,9 @@ differences = spark.sql(cdc_sql.snapshot_differences(tables)).first().asDict()
 source_merged = cdc_sql.snapshot_requires_merge(differences)
 if source_merged:  # an identical snapshot creates no source commit at all
     spark.sql(cdc_sql.merge_snapshot(tables))
-latest_version = int(spark.sql(f"DESCRIBE HISTORY {tables.source} LIMIT 1").first()["version"])
+versions = spark.sql(f"DESCRIBE HISTORY {tables.source}").selectExpr(
+    "MAX(version) AS latest", "MIN(version) AS earliest").first()  # fmt: skip
+latest_version, earliest_retained = int(versions["latest"]), int(versions["earliest"])
 checkpoint_row = spark.sql(cdc_sql.checkpoint_version(tables)).first()["processed_version"]
 checkpoint = int(checkpoint_row) if checkpoint_row is not None else -1
 print({"checkpoint": checkpoint, "latest_source_version": latest_version,
@@ -148,9 +150,9 @@ print({"checkpoint": checkpoint, "latest_source_version": latest_version,
 # MAGIC %md
 # MAGIC ## Step 4 - Process exactly the new version range
 # MAGIC
-# MAGIC **What:** Read `table_changes` for the versions after the checkpoint and, when they contain change events, MERGE every event into the audit history and the newest final state per key into the Silver target.
+# MAGIC **What:** Select the versions after the checkpoint, read their `table_changes` and, when they contain change events, MERGE every event into the audit history and the newest final state per key into the Silver target.
 # MAGIC
-# MAGIC **Why:** Reading only new versions keeps the work proportional to the change, not to the table size. The decision comes from the Change Data Feed rows, not from the version number: Databricks may add commits that change no data (an automatic `OPTIMIZE` after a MERGE, or predictive optimization), and those have no CDF rows.
+# MAGIC **Why:** Reading only new versions keeps the work proportional to the change, not to the table size. Not every version is a data change: Databricks may add an `OPTIMIZE` by itself (after a MERGE, or through predictive optimization). Such versions have no CDF rows, so they need no MERGE, but they are still scanned so the checkpoint can pass them.
 # MAGIC
 # MAGIC **Input:** Source versions `checkpoint + 1` to `latest_version`.
 # MAGIC
@@ -158,25 +160,32 @@ print({"checkpoint": checkpoint, "latest_source_version": latest_version,
 # MAGIC
 # MAGIC **Key concepts:** Incremental processing, SCD Type 1, idempotent MERGE keyed by a deterministic event ID.
 # MAGIC
-# MAGIC **Expected result:** First run: 5 inserts. After `batch_002`: 2 updates, 1 delete, 1 insert. After `batch_003`: nothing to process, even if an `OPTIMIZE` added a version.
+# MAGIC **Expected result:** First run: 5 inserts. After `batch_002`: 2 updates, 1 delete, 1 insert. After `batch_003`: no events; an `OPTIMIZE` version, if any, is scanned without a MERGE.
 # MAGIC
-# MAGIC **How to explain it:** "Both writes are MERGEs, so replaying the same range after a failure changes nothing. A commit without data changes is not work."
+# MAGIC **How to explain it:** "Both writes are MERGEs, so replaying the same range after a failure changes nothing. A version without data changes is scanned, not applied."
 # MAGIC
-# MAGIC **Rerun and cost considerations:** With no new versions this step does nothing; with only non-data versions it runs one small CDF read. Pending versions from a run that merged but failed before its checkpoint are still processed, because they have CDF rows. The checkpoint stays behind non-data commits, so if the source changes nothing for longer than the Delta log retention (30 days by default), the next read fails loudly rather than skipping changes.
+# MAGIC **Rerun and cost considerations:** With no new versions this step does nothing; with only non-data versions it runs one small CDF read. Versions from a run that merged but failed before its checkpoint are still processed, even when the new snapshot matches. If the versions after the checkpoint have left the Delta log, or VACUUM removed their change files (7 days by default), the step stops with a recovery instruction and writes nothing.
 
 # COMMAND ----------
 
+# Pending versions are scanned even when the snapshot matched (a run that merged but failed
+# before its checkpoint); a range the log no longer holds fails closed.
+scan = cdc_sql.plan_scan(checkpoint=checkpoint, latest_version=latest_version,
+                         earliest_retained_version=earliest_retained)  # fmt: skip
 event_counts = {}
-if latest_version > checkpoint:  # scanned even when the snapshot matched (recovery)
-    spark.sql(
-        cdc_sql.changes_view(tables, start_version=checkpoint + 1, end_version=latest_version)
-    )
-    events = spark.sql(cdc_sql.change_counts()).collect()
+if scan:
+    try:  # analysis (log versions) or execution (change files) can find the range gone
+        spark.sql(cdc_sql.changes_view(tables, start_version=scan[0], end_version=scan[1]))
+        events = spark.sql(cdc_sql.change_counts()).collect()
+    except Exception as error:  # VACUUM removed change files, or the log was cleaned up
+        if not cdc_sql.is_retention_error(str(error)):
+            raise
+        detail = str(error).splitlines()[0][:300]
+        raise cdc_sql.CdcRetentionGapError(cdc_sql.retention_gap_message(*scan, detail)) from error
     event_counts = {row["_change_type"]: row["n"] for row in events}
-# A range of commits without data changes (e.g. an automatic OPTIMIZE) has no CDF rows: nothing
-# to apply, and the checkpoint does not move.
-new_versions = cdc_sql.range_has_changes(event_counts)
-if new_versions:
+# Versions without data changes (OPTIMIZE) have no CDF rows: nothing to MERGE.
+apply_changes = cdc_sql.range_has_changes(event_counts)
+if apply_changes:
     spark.sql(cdc_sql.merge_history(tables))
     spark.sql(cdc_sql.latest_changes_view())
     spark.sql(cdc_sql.merge_target(tables))
@@ -186,17 +195,17 @@ if new_versions:
 # MAGIC %md
 # MAGIC ## Step 5 - Reconcile, then advance the checkpoint
 # MAGIC
-# MAGIC **What:** Compare the target with the source at the processed version - values included, in both directions - check key uniqueness and audit completeness, and only then move the checkpoint forward.
+# MAGIC **What:** Compare the target with the source at the end of the scanned range - values included, in both directions - check key uniqueness and audit completeness, and only then move the checkpoint to that version.
 # MAGIC
 # MAGIC **Why:** If the checkpoint moved before the checks, a failed run would silently skip its changes forever.
 # MAGIC
 # MAGIC **Input:** Source at `VERSION AS OF latest_version`, the target, the history and this run's changes.
 # MAGIC
-# MAGIC **Output:** A reconciliation result and, on success, the new checkpoint.
+# MAGIC **Output:** A reconciliation result and, on success, the new checkpoint (`processed_version`). The report also gives `last_data_change_version`, the newest version with CDF events, read from the history.
 # MAGIC
 # MAGIC **Key concepts:** Two-way reconciliation, time travel, forward-only checkpoint.
 # MAGIC
-# MAGIC **Expected result:** Every difference count is 0. After change events the checkpoint equals the latest scanned source version; without change events it is unchanged (data at the latest version equals data at the checkpoint, so reconciling at the latest version is equivalent).
+# MAGIC **Expected result:** Every difference count is 0 and the checkpoint equals the end of the scanned range - also when that range held only `OPTIMIZE` versions, so the checkpoint never falls behind the log. With nothing to scan it stays unchanged.
 # MAGIC
 # MAGIC **How to explain it:** "The checkpoint is the last thing we write, and only after everything matches."
 # MAGIC
@@ -206,7 +215,9 @@ if new_versions:
 
 result = (
     spark.sql(
-        cdc_sql.reconciliation(tables, processed_version=latest_version, check_history=new_versions)
+        cdc_sql.reconciliation(
+            tables, processed_version=latest_version, check_history=apply_changes
+        )
     )
     .first()
     .asDict()
@@ -215,13 +226,15 @@ problems = {name: value for name, value in result.items() if name.endswith(("tar
             "history")) and value}  # fmt: skip
 if result["source_count"] != result["target_count"] or problems:
     raise AssertionError(f"CDC reconciliation failed; checkpoint not advanced: {result}")
-if new_versions:
-    spark.sql(cdc_sql.advance_checkpoint(tables, processed_version=latest_version))
+if scan:  # the end of the scanned range, data changes or not; forward only
+    spark.sql(cdc_sql.advance_checkpoint(tables, processed_version=scan[1]))
+last_data = spark.sql(cdc_sql.last_data_change_version(tables)).first()[0]
 report = {"status": "PASS", "cdc_source": values["cdc_source"], "snapshot": values["cdc_snapshot"],
           "source_merged": source_merged, "snapshot_differences": differences,
-          "source_latest_version": latest_version, "checkpoint_before": checkpoint,
-          "checkpoint_after": latest_version if new_versions else checkpoint,
-          "events": event_counts, **result}  # fmt: skip
+          "source_latest_version": latest_version, "scanned_range": list(scan) if scan else None,
+          "changes_applied": apply_changes, "checkpoint_before": checkpoint,
+          "checkpoint_after": scan[1] if scan else checkpoint,
+          "last_data_change_version": last_data, "events": event_counts, **result}  # fmt: skip
 print(json.dumps(report, sort_keys=True))
 
 # COMMAND ----------
@@ -256,7 +269,7 @@ dbutils.notebook.exit(json.dumps(report, sort_keys=True))
 # MAGIC
 # MAGIC Successive snapshots become exact change events through a MERGE into a Change Data Feed table; processing a fixed version range with MERGE, reconciling at that version and advancing the checkpoint last makes the pipeline incremental, auditable and safe to rerun.
 # MAGIC
-# MAGIC **Common errors:** Advancing the checkpoint before reconciling; treating a commit without data changes (`OPTIMIZE`) as new work; reading `table_changes` without an upper bound; updating unchanged rows, which floods CDF with empty events; writing to the external system.
+# MAGIC **Common errors:** Advancing the checkpoint before reconciling; assuming every Delta version is a data change (an `OPTIMIZE` is not); letting the checkpoint fall behind non-data versions until the log no longer holds them; reading `table_changes` without an upper bound; updating unchanged rows, which floods CDF with empty events; writing to the external system.
 # MAGIC
 # MAGIC **Troubleshooting:** If reconciliation fails, the checkpoint did not move - fix the cause and rerun; the same range is processed again and the MERGEs absorb what was already written.
 # MAGIC
