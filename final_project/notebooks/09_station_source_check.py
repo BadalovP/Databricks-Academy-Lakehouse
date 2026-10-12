@@ -12,7 +12,7 @@
 # MAGIC
 # MAGIC **Safety:** This task runs only `tableExists`, a filtered `SELECT` and aggregate actions. It never invokes the producer or writes a table.
 # MAGIC
-# MAGIC **Actual validation:** In the Final Project this notebook has not been run successfully yet. The first DEV run (run 304828008837365) failed here because the copied notebook still expected Demo 3's 2,520-row execution; the contract now derives the expected size from the sample.
+# MAGIC **Actual validation:** Validated live in Personal DEV on 2026-10-12 (Final Project run 896549012431425, task `station_source_check`): 40 rows = 40 distinct event IDs, zero null keys. The first DEV run (304828008837365) failed here on a fixed Demo 3 count; the contract now derives the size from the sample.
 
 # COMMAND ----------
 

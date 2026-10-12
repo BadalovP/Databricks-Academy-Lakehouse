@@ -10,7 +10,7 @@
 # MAGIC
 # MAGIC **Academy labs:** Lab 1 (files, DataFrames), Lab 2 (Unity Catalog Volumes), Lab 3 (Auto Loader, checkpoints, bounded streaming).
 # MAGIC
-# MAGIC **Actual validation:** Offline tests cover event construction, path safety and Bronze-schema parity with Event Hubs; this notebook has not been run in a workspace yet.
+# MAGIC **Actual validation:** Validated live in Personal DEV on 2026-10-12 (Final Project run 896549012431425, task `land_sources`): 40 station events and the trip sample already landed and reused without duplication, and the 48-hour weather sample landed at the path notebook 07 reads. The first run (304828008837365) produced the 40 Bronze rows; offline tests cover event construction, path safety and Bronze-schema parity.
 
 # COMMAND ----------
 

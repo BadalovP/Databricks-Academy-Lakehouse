@@ -395,7 +395,7 @@ print({"status": evidence["status"], "report_path": report_path})
 # MAGIC
 # MAGIC Gold now has durable designs for a station development dimension, an availability fact, daily station summaries, shortage indicators, and explainable rebalancing priorities. Left enrichment keeps all real observations even when the 40-row sample cannot name every station.
 # MAGIC
-# MAGIC **Actual validation:** In the Final Project this notebook has not been run yet; offline tests cover its logic. Its Demo 3 predecessor ran live on 2026-10-02 - that is Demo 3 evidence, not Final Project evidence.
+# MAGIC **Actual validation:** Validated live in Personal DEV on 2026-10-12 (Final Project run 896549012431425, task `station_gold`): 40-station dimension, 40 facts, 13 shortages and 13 priorities matching the independently computed sample profile; a repeated MERGE changed no business value.
 # MAGIC
 # MAGIC **Common errors:** Treating `short_name` as the UUID, dropping unmatched facts with an inner join, describing one snapshot as a trend, or using an aggregate key that does not match its grain.
 # MAGIC

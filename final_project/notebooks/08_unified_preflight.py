@@ -12,7 +12,7 @@
 # MAGIC
 # MAGIC **Safety:** This notebook performs parameter and Spark-context reads only. It never starts compute, reads a data table, publishes Event Hubs messages, or writes data.
 # MAGIC
-# MAGIC **Actual validation:** In the Final Project this notebook has not been run yet; offline tests cover its logic. Its Demo 3 predecessor ran live on 2026-10-03 - that is Demo 3 evidence, not Final Project evidence.
+# MAGIC **Actual validation:** Validated live in Personal DEV on 2026-10-12 (Final Project run 896549012431425, task `preflight`): development-sample mode accepted on serverless compute with the Event Hubs producer excluded.
 
 # COMMAND ----------
 

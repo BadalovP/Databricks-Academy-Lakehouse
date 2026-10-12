@@ -12,7 +12,7 @@
 # MAGIC
 # MAGIC **Safety:** `run_enrichment` defaults to `false`, so the committed default exits before any call or write. The request window is bounded and refused above 62 days. The notebook never starts, stops or resizes a cluster.
 # MAGIC
-# MAGIC **Actual validation:** In the Final Project this notebook has not been run yet; offline tests cover its logic. Its Demo 3 predecessor ran live on 2026-10-02 - that is Demo 3 evidence, not Final Project evidence.
+# MAGIC **Actual validation:** Validated live in Personal DEV on 2026-10-12 (Final Project run 896549012431425, task `weather_enrichment`): 48 hourly observations, 40 trips preserved by the join, 4 with weather (coverage 0.10, reported rather than assumed).
 # MAGIC
 # MAGIC **Two limitations that must be read before any chart from this is shown:** the weather series is ONE COORDINATE for New York City, not per-station weather, and every row carries `weather_grid_label` so that resolution stays visible. And these are COMPARISONS, not predictions: grouping trips by temperature bucket shows that cold wet days have fewer rides, but it models nothing and controls for nothing, not day of week, not holidays, not closures.
 

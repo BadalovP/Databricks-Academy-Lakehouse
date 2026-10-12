@@ -10,7 +10,7 @@
 # MAGIC
 # MAGIC **Academy labs:** Lab 10 (Lakehouse Federation, Delta CDF, incremental MERGE, checkpointing), Lab 4 (MERGE, SCD Type 1), Lab 7 (reconciliation).
 # MAGIC
-# MAGIC **Actual validation:** Offline tests replay all three snapshots through the Python CDC model and check every SQL statement's safety properties; this notebook has not been run in a workspace yet.
+# MAGIC **Actual validation:** Validated live in Personal DEV on 2026-10-12 (Final Project run 896549012431425, task `federation_cdc`) in fixture mode for `batch_001`: 5 inserts, checkpoint -1 to 1, reconciliation zero mismatches in both directions. Updates and deletes (`batch_002`) and the Federation source have not been run live yet.
 # MAGIC
 # MAGIC CDC here is **Delta Change Data Feed on a Final-Project-owned table**, not database-native CDC: no logical replication or WAL decoding of the source system is involved. The external system is only ever read.
 

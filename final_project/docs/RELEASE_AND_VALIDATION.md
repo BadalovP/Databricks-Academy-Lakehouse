@@ -2,7 +2,7 @@
 
 [← Main README](../README.md) · [Coverage matrix](LABS_1_TO_12_COVERAGE.md) · [Cost and performance](COST_AND_PERFORMANCE.md)
 
-**Status:** CI runs on every pull request. **Step 1 is done (DEV deployed). Step 2 has not passed yet.** The first attempt failed on two defects, which were fixed and redeployed. The retry then ran the station and historical paths successfully, verified independently, but failed at weather enrichment because the weather sample was never landed. That third fix is in code, not deployed. Validation and CDC have not run live. No Lakeflow update or AI Search endpoint has run, and there has been no CD release. This page describes how to release and how to validate, and it is where the evidence of each approved run will be recorded.
+**Status:** CI runs on every pull request. **Steps 1 and 2 have passed in Personal DEV.** Step 1 is the deployment. Step 2, the platform sample run with station, historical, weather, validation and CDC, passed on 2026-10-12 in run `896549012431425`, after two failed attempts whose defects were fixed. Steps 3–9 have not run. There has been no Lakeflow update, AI Search endpoint, RAG inference or CD release.
 
 ## Continuous integration (`final_project_ci.yml`)
 
@@ -105,7 +105,7 @@ The first test uses the 40-row development sample. That is enough to exercise ev
 
 ## Live validation plan
 
-**After the first failed step 2 (done: redeployed and retried once):**
+**Step 2 history:** first attempt failed (2 defects), redeploy + retry failed at weather (1 defect), redeploy + second retry **passed**. The approach recorded below was followed:
 1. Redeploy the fixed code (the read-only plan shows 1 update, to the platform Job, plus synced files).
 2. Repeat step 2 with `source_execution_id=urbanflow-final-304828008837365`. Landing then reports the files as already present, Auto Loader finds no new files for that execution's checkpoint, and the run continues from the existing Bronze.
 3. Step 3 then reuses the same ID.
@@ -135,6 +135,8 @@ The optional Zerobus path and the governance demo each need their own approval. 
 | 2026-10-12 | `personal_dev` | 2. Platform sample run | Run `304828008837365`; station execution `urbanflow-final-304828008837365` | **FAILED** after 141 s: `station_source_check` expected a fixed Demo 3 row count (40 landed correctly); `historical_trips` ran before `station_gold` built the station dimension. Only the two Bronze tables were written (40 rows each). CDC never ran. Fixed in code, not redeployed. [Evidence](../evidence/2026-10-12_personal_dev_step2_sample_run.md) |
 | 2026-10-12 | `personal_dev` | Redeploy of `98cf63e` | Platform Job `158911626270744` updated | PASS: 1 update (dependency + parameter), post-plan all `skip` |
 | 2026-10-12 | `personal_dev` | 2 (retry). Platform sample run | Run `896235701785511`; same station execution `urbanflow-final-304828008837365` | **FAILED at `weather_enrichment`** (sample file never landed). Six tasks passed and were verified independently: station Bronze 40 = Silver 40 + 0 + 0, fact 40, shortages = priorities = 13 matching the sample profile; historical 40 valid. **Bronze and checkpoints unchanged, no duplication.** Validation and CDC did not run. [Evidence](../evidence/2026-10-12_personal_dev_step2_retry.md) |
+| 2026-10-12 | `personal_dev` | Redeploy of `2a3c88d` | Platform Job `158911626270744` updated | PASS: 1 update (3 weather parameters on `land_sources`), post-plan all `skip` |
+| 2026-10-12 | `personal_dev` | **2. Platform sample run: PASS** | Run `896549012431425`; station execution `urbanflow-final-304828008837365` | **PASS.** All tasks succeeded and were verified independently. Station 40/40/40, shortages = priorities = 13. Historical 40. Weather 48 hours, 4 of 40 trips with weather (coverage 0.10). `validate_medallion` PASS. CDC `batch_001`: 5 inserts, checkpoint 1, zero mismatches in keys and values. Bronze and checkpoints unchanged; reruns changed no business value. [Evidence](../evidence/2026-10-12_personal_dev_step2_pass.md) |
 | — | — | 3–9 | — | No live run yet (each step needs its own approval) |
 
 When a step passes, record it here. Add the notebook to `VALIDATED_LIVE_CLAIMS` in `tests/test_notebook_documentation.py` and update its **Actual validation** line with the run ID. Update the coverage matrix status to **Validated live**.

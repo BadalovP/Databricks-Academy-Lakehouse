@@ -85,9 +85,12 @@ def test_coverage_matrix_has_every_lab_and_claims_no_unrecorded_live_run() -> No
         cells = [cell.strip() for cell in row.strip("|").split("|")]
         assert len(cells) == 7, row
         assert cells[5] or cells[6]
-        assert "Validated live" not in cells[6], row  # no Final Project live run recorded yet
+        # A live claim must name a Final Project run and link its evidence.
+        if "validated live" in cells[6].lower():
+            assert "../evidence/" in cells[5] or "../evidence/" in row, row
+            assert "DEV" in cells[6], row
     release = (DOCS / "RELEASE_AND_VALIDATION.md").read_text(encoding="utf-8")
-    assert "No live run yet" in release
+    assert "No live run yet" in release  # later steps stay explicitly unvalidated
 
 
 def test_final_project_cd_is_manual_confirmed_approved_and_pinned() -> None:

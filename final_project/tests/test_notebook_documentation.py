@@ -25,7 +25,44 @@ MAX_CODE_CELL_LINES = 30
 NOT_EXECUTED_PHRASES = ("has not been run", "has not been executed", "No live messages")
 # Final Project notebooks may claim a live result only with Final Project evidence. Demo 3's
 # live runs belong to Demo 3. Entries are added here when a Final Project run is recorded.
-VALIDATED_LIVE_CLAIMS: dict[Path, tuple[str, ...]] = {}
+VALIDATED_LIVE_CLAIMS: dict[Path, tuple[str, ...]] = {
+    Path("notebooks/02_land_bounded_sources.py"): (
+        "Final Project run 896549012431425",
+        "Personal DEV on 2026-10-12",
+    ),
+    Path("notebooks/04_bronze_to_silver.py"): (
+        "Final Project run 896549012431425",
+        "Personal DEV on 2026-10-12",
+    ),
+    Path("notebooks/05_silver_to_gold.py"): (
+        "Final Project run 896549012431425",
+        "Personal DEV on 2026-10-12",
+    ),
+    Path("notebooks/06_historical_trips.py"): (
+        "Final Project run 896549012431425",
+        "Personal DEV on 2026-10-12",
+    ),
+    Path("notebooks/07_weather_enrichment.py"): (
+        "Final Project run 896549012431425",
+        "Personal DEV on 2026-10-12",
+    ),
+    Path("notebooks/08_unified_preflight.py"): (
+        "Final Project run 896549012431425",
+        "Personal DEV on 2026-10-12",
+    ),
+    Path("notebooks/09_station_source_check.py"): (
+        "Final Project run 896549012431425",
+        "Personal DEV on 2026-10-12",
+    ),
+    Path("notebooks/10_unified_final_validation.py"): (
+        "Final Project run 896549012431425",
+        "Personal DEV on 2026-10-12",
+    ),
+    Path("notebooks/11_federation_cdc.py"): (
+        "Final Project run 896549012431425",
+        "Personal DEV on 2026-10-12",
+    ),
+}
 
 
 def _cells(path: Path) -> list[str]:

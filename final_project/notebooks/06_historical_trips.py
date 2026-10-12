@@ -12,7 +12,7 @@
 # MAGIC
 # MAGIC **Safety:** `run_ingest` defaults to `false`, so the committed default exits before any read or write. The notebook never starts, stops or resizes a cluster, never downloads an archive, and never writes outside the UrbanFlow schema.
 # MAGIC
-# MAGIC **Actual validation:** In the Final Project this notebook has not been run yet; offline tests cover its logic. Its Demo 3 predecessor ran live on 2026-10-02 - that is Demo 3 evidence, not Final Project evidence.
+# MAGIC **Actual validation:** Validated live in Personal DEV on 2026-10-12 (Final Project run 896549012431425, task `historical_trips`): the 40-row sample gives 40 valid trips, 0 quarantine, 0 duplicates, with no new Bronze rows on the rerun.
 # MAGIC
 # MAGIC **The one mistake this notebook exists to prevent:** historical trips carry values like `7407.13` in `start_station_id`. That is the GBFS **short name**, not the UUID `station_id`. Joining on `station_id` matches nothing and produces an empty result that looks like missing data rather than a join bug, so the match rate is reported and a rate of exactly zero fails the run.
 

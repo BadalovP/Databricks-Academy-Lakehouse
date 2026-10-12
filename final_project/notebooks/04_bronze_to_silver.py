@@ -279,7 +279,7 @@ print({"status": evidence["status"], "report_path": report_path})
 # MAGIC
 # MAGIC Silver has a physical Delta workflow: a bounded Bronze slice is validated, deterministically deduplicated, routed into three accountable outcomes, reconciled, and merged by stable keys.
 # MAGIC
-# MAGIC **Actual validation:** In the Final Project this notebook has not been run yet; offline tests cover its logic. Its Demo 3 predecessor ran live on 2026-10-02 - that is Demo 3 evidence, not Final Project evidence.
+# MAGIC **Actual validation:** Validated live in Personal DEV on 2026-10-12 (Final Project run 896549012431425, task `station_silver`): Bronze 40 = Silver 40 + quarantine 0 + duplicates 0; a repeated MERGE changed no business value.
 # MAGIC
 # MAGIC **Common errors:** Wrong execution ID, a non-approved cluster, missing schema privileges, an altered Bronze row count, duplicate MERGE keys, or a target identifier from the wrong bundle environment.
 # MAGIC
