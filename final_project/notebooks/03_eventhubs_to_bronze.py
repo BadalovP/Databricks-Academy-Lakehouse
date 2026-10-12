@@ -155,7 +155,7 @@ print({"run_stream": run_stream, "stream_timeout_seconds": stream_timeout_second
 # MAGIC
 # MAGIC **What:** Take catalog, schema, and volume from job parameters, fall back to `config/azure.yml`, validate them as plain identifiers, and build the Bronze table name, Volume root, and isolated checkpoint and report paths.
 # MAGIC
-# MAGIC **Why:** `databricks.yml` gives the `dev` target its own schema (`parvinbadalov_urbanflow_dev`). Until these values reached the notebook, a `dev` deployment still wrote the `azure` target's Bronze table and checkpoint, so the two targets were not isolated.
+# MAGIC **Why:** `databricks.yml` gives each target its own schema (`urbanflow_final_dev` in `personal_dev`, `parvinbadalov_urbanflow_final_prod` in `azure_prod`). If these values did not reach the notebook, a DEV run could write the PROD target's Bronze table and checkpoint, and the targets would not be isolated.
 # MAGIC
 # MAGIC **Input:** `catalog`, `schema`, and `volume` parameters supplied by `resources/jobs.yml` from the bundle variables; empty means "use the committed default".
 # MAGIC
@@ -163,7 +163,7 @@ print({"run_stream": run_stream, "stream_timeout_seconds": stream_timeout_second
 # MAGIC
 # MAGIC **Key concepts:** Databricks Asset Bundle variables and targets, environment isolation, Unity Catalog three-level names, identifier validation, checkpoint isolation.
 # MAGIC
-# MAGIC **Expected result:** A `dev` deployment prints `dbr_dev.parvinbadalov_urbanflow_dev.bronze_station_status`; the committed default prints the `azure` schema.
+# MAGIC **Expected result:** A `personal_dev` deployment prints `workspace.urbanflow_final_dev.bronze_station_status`; with empty parameters, the committed default from `config/azure.yml` is printed.
 # MAGIC
 # MAGIC **How to explain it:** "The job passes the deployed target's own catalog, schema, and volume, so a development run can never write production evidence."
 # MAGIC
@@ -534,7 +534,7 @@ else:
 # MAGIC
 # MAGIC **Expected outputs:** the target's managed Bronze table `<catalog>.<schema>.bronze_station_status`, its per-execution checkpoint, and a Bronze JSON report with `status: PASS` for the selected execution.
 # MAGIC
-# MAGIC **Common errors:** Cluster not already running or not on the approved list, missing schema or Volume for the deployed target, denied secret read, incorrect policy in the connection string, checkpoint collision with the superseded `03_streaming.py`, unavailable Kafka connector, source count mismatch, malformed retained events, or a wait bound set too low for the published volume.
+# MAGIC **Common errors:** Classic compute instead of serverless (refused by the compute gate), missing schema or Volume for the deployed target, denied secret read, incorrect policy in the connection string, checkpoint collision with the superseded `03_streaming.py`, unavailable Kafka connector, source count mismatch, malformed retained events, or a wait bound set too low for the published volume.
 # MAGIC
 # MAGIC **Troubleshooting:** Stop after a failed preflight, retain the JSON report, compare it with the producer report offline, check `query_terminated` before blaming the data, and never print the SASL options before redaction.
 # MAGIC

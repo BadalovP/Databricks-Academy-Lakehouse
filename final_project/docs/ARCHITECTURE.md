@@ -74,6 +74,36 @@ The two targets are in **different clouds and different metastores**, so a DEV m
 
 This is Delta Change Data Feed on a Final-Project-owned table. It is not database log-based CDC: the external system is only ever read.
 
+### Federation source contract (external path NOT LIVE VERIFIED)
+
+The CDC run was validated live on committed fixture snapshots (`cdc_source=fixture_snapshot`). The Lab 10 foreign catalog `neon_postgres_conn_catalog` (connection `neon_postgres_conn`, read-only) holds only `public.demo_customers`, `public.lab10_customers` and `public.lab10_orders`, as checked read-only on 2026-10-13. It has no maintenance table, and the Final Project does not modify Lab 10.
+
+A live Federation run needs a **Final Project-only** source:
+
+```sql
+-- PostgreSQL, in a database or schema owned by the Final Project (an external write: approval required)
+CREATE SCHEMA urbanflow_final;
+CREATE TABLE urbanflow_final.station_maintenance (
+  maintenance_id TEXT        PRIMARY KEY,
+  station_id     TEXT        NOT NULL,   -- GBFS station_id of the sample stations
+  status         TEXT        NOT NULL CHECK (status IN ('OPEN', 'IN_PROGRESS', 'CLOSED')),
+  severity       TEXT        NOT NULL CHECK (severity IN ('LOW', 'MEDIUM', 'HIGH')),
+  updated_at     TIMESTAMPTZ NOT NULL
+);
+-- A login that can only read this table; the Databricks connection uses it.
+GRANT USAGE ON SCHEMA urbanflow_final TO urbanflow_final_reader;
+GRANT SELECT ON urbanflow_final.station_maintenance TO urbanflow_final_reader;
+```
+
+Then, with approval:
+1. Create a new Unity Catalog connection and foreign catalog, for example `urbanflow_final_maintenance_fed`, with that read-only login. Do not reuse or alter Lab 10's connection.
+2. Load the fictional fixture rows.
+3. Run the platform Job with `cdc_source=federation`, `federation_catalog=urbanflow_final_maintenance_fed` and `federation_table=urbanflow_final.station_maintenance`.
+
+The adapter issues exactly one statement against the source (`select_statement`), and `validate_maintenance_columns` refuses a table without the five columns.
+
+Snapshot comparison plus Delta CDF on a Final Project table is not PostgreSQL logical replication or WAL-based CDC. The source system needs no replication slot or publication.
+
 ## Assistant design (Lab 12)
 
 - **Corpus.** Eight original, fictional UrbanFlow procedures cover rebalancing, maintenance, incidents, data quality, pipeline recovery, source definitions, KPIs and security. That is 30 section-aware chunks (900 characters, 120 overlap).

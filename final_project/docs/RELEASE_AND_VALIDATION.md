@@ -114,70 +114,72 @@ Nothing was created. Azure CLI authentication (no stored secret), user `parvinba
 
 Deploying would create two schemas in the **shared** `dbr_dev` catalog, so it needs explicit approval (step 9).
 
-## Next approval request (consolidated, bounded, DEV first)
+## Next approval request (consolidated: phases D–H)
 
-Each item lists its exact action, bound, verification and cleanup. Approve items individually.
+A, B and C are done (steps 4A, 4C and 5, evidence above). Nothing below has run. **Approve each phase separately.** One phase's approval never covers another, and none covers a retry after a failure. Costs use this workspace's measured usage and list prices (`COST_AND_PERFORMANCE.md`). They are list prices, not invoiced amounts.
 
-**Status (2026-10-12):**
-- A: done (PASS).
-- B: done.
-  - `batch_002` passed. An automatic `OPTIMIZE` then added source version 4. The run stopped, the checkpoint semantics were corrected, the fix was redeployed, and `batch_003` passed with checkpoint 3 → 4.
-- C: done (PASS, Lakeflow update `a26b4385`).
-- D–G: not approved. See the consolidated proposal in `IMPLEMENTATION_PROGRESS.md`.
+Recommended order: **E1 → D → E2–E6 → F → G**. The assistant ingest (E1) creates the empty `rag_evaluation_results` table that the dashboard's assistant widget reads, so D can show a clean empty state before any model call.
 
-**Revised B2 (needs approval):**
-1. Redeploy the corrected checkpoint semantics. This is code sync only, so the plan should be all `skip`, with `11_federation_cdc.py` and `cdc_sql.py` synced.
-2. Run `batch_003`. Expected:
-   - `source_merged: false`; no new source commit (the source stays at 4 unless Databricks optimizes again);
-   - scanned range 4..4 with no CDF rows, so no history or Silver MERGE (history 11, Silver 5 = `batch_003`);
-   - reconciliation 0 at version 4;
-   - checkpoint **3 → 4** (the OPTIMIZE-only version is scanned and reconciled); `last_data_change_version` 3.
-3. Then run C.
+### Phase D: dashboard redeploy, live query check and rendering (Personal DEV)
 
-**A. Redeploy DEV (code only).**
-- The read-only plan shows 2 updates, no create or delete:
-  - the platform Job gains `run_federation_cdc` and `run_lakeflow` on the preflight task, so CDC-only and Lakeflow-only runs are possible;
-  - the dashboard gets the 12-column `GRID_V1` layout.
-- The dashboard update is included because a bundle deploys everything together.
-- Cost: none (no compute).
+| Item | Value |
+|---|---|
+| Workspace | `https://dbc-1750318a-76a9.cloud.databricks.com` (Personal DEV) |
+| Resources affected | Dashboard `01f1c647728e1ceeb2b5bd10a8700793` only (definition update: the review changes from 2026-10-13). Read-only SELECTs on the Final Project schemas. |
+| Plan expectation | 1 update (dashboard `serialized_dashboard`), 0 creates, 0 deletes; post-plan all `skip` |
+| Compute | Existing `Serverless Starter Warehouse` `410e5f3b4784e981` (2X-Small, auto-stop 10 min). No new warehouse, no resize. |
+| Work | Run each of the 25 datasets once as rendered (bounded results), record row counts and sample values. Open the dashboard once to check rendering. **Publishing:** only if approved, to the owner only, with embedded credentials off. No permission change. |
+| Duration | About 15 minutes of warehouse time |
+| Cost exposure | About 1–2 DBU of serverless SQL, ≈ $0.70–1.40 at list |
+| Verification | Every dataset runs without error. Expected live values include: maintenance 4 open tickets (`MT-1002` `IN_PROGRESS`, `MT-1004`–`1006` `OPEN`); checkpoint 4 / last data change 3 / 11 events; Lakeflow expectations from update `a26b4385`; historical `data_scope` = `40-ROW DEVELOPMENT SAMPLE`. The assistant widget is empty after E1, or "table not found" before it. |
+| Cleanup | None. The warehouse auto-stops (verified afterwards). |
+| Irreversible or shared effects | None. Publishing is reversible (unpublish). |
 
-**B. Step 4: CDC update and delete batches.** Two runs of Job `158911626270744` with only `run_federation_cdc=true` (every other branch false):
-1. `cdc_snapshot=batch_002`. Expected:
-   - snapshot differs, source MERGE runs, source v2 → v3;
-   - CDF v3 has 6 events: 1 insert (`MT-1006`), 2 update pre-images and 2 post-images (`MT-1001` → `CLOSED`, `MT-1002`), 1 delete (`MT-1003`);
-   - history 5 → 11 events with 11 distinct IDs;
-   - Silver 5 rows (`MT-1001`, `MT-1002`, `MT-1004`, `MT-1005`, `MT-1006`) equal to `batch_002`;
-   - reconciliation 0; checkpoint 2 → 3.
-2. `cdc_snapshot=batch_003` (same business state as `batch_002`). Expected as originally approved: `source_merged: false`, no new source version, no CDF events, history 11, checkpoint stays 3. Superseded by revised B2 above, because the automatic `OPTIMIZE` added version 4.
+### Phase E: assistant (RAG) in Personal DEV, with mandatory endpoint deletion
 
-Bound: 40 minutes per run, no retry; about 2–4 minutes each at measured task times. Verification: independent SQL as in step 3. Cleanup: none.
+| Item | Value |
+|---|---|
+| Workspace | Personal DEV |
+| Resources created | Tables `rag_documents`, `rag_document_chunks` (CDF on), `rag_evaluation_results`, `rag_query_monitoring` in `workspace.urbanflow_final_dev`. **AI Search endpoint `urbanflow-final-dev`** (STANDARD) and a Delta Sync index on the chunks (TRIGGERED). Lab 12's endpoint is never reused; none exists now. |
+| Compute and models | Serverless Job `887464717518046` (3 tasks); embedding `databricks-gte-large-en`; chat `databricks-gpt-oss-20b` (both READY) |
+| Sequence (stop at the first failure) | **E1** ingest 8 documents / 30 chunks (`allow_table_writes=true`). **E2** create the endpoint and index, then sync (`allow_ai_search_mutation=true`). **E3** readiness check: index rows = 30. **E4** smoke test: `eval_question_ids=q01,q17`, `run_live_inference=true` (one answerable, one unanswerable). **E5** full paired evaluation (18 questions × baseline + RAG = 36 chat calls, up to 54 searches), only if E4 cites sources and refuses q17. **E6** delete the endpoint (and with it the index) and verify that `list_endpoints()` is empty. |
+| Duration | About 1–2 endpoint-hours (provisioning and sync ≈ 25–30 min in Lab 12; evaluation minutes). Hard stop: the endpoint is deleted within 3 hours of creation, even if a step failed. |
+| Cost exposure | Endpoint ≈ 3.3 DBU/hour × $0.07 = ≈ $0.23/hour (measured on Lab 12's endpoint), so ≈ $0.47 for 2 hours. Sync ≈ 0.8 DBU jobs serverless (≈ $0.28). Job runs ≈ 1–2 DBU (≈ $0.50). Chat and embedding tokens: small (36 short prompts of at most 6,000 characters of context). Total expected ≈ $1.5. If forgotten, ≈ $5.6 per day. |
+| Verification | Reconciliation documents 8 / chunks 30 with stable `chunk_id`s and hashes. A repeat ingest adds nothing. Index has 30 rows. Results are stored in `rag_evaluation_results` and metrics compared baseline vs RAG (recall, correctness, citation precision, coverage, refusals, errors, latency). Individual answers are reviewed. Nothing is reported as better than measured. |
+| Cleanup | E6 is mandatory: delete `urbanflow-final-dev`, confirm no AI Search endpoint remains, and record endpoint-hours from billing. The Delta tables and evidence are kept. |
+| Irreversible or shared effects | None shared. Deleting the endpoint is the intended end state. |
 
-**C. Step 5: one Lakeflow update.** One run with only `run_lakeflow=true` (the Job triggers `d5e0e599-…`, a triggered serverless update in development mode).
-- Expected: update COMPLETED; pipeline Bronze 40, Silver 40, quarantine 0, duplicates 0, dimension 40, fact 40, summary 40, shortage 13, priority 13 (the imperative results); every expectation passes.
-- Bound: task timeout 40 minutes.
+### Phase F: governance demonstration (Personal DEV, isolated)
 
-**D. Dashboard: read-only live query check.**
-- Run each of the 25 dashboard datasets once on `Serverless Starter Warehouse` (2X-Small, auto-stop 10 min), as the published SQL with `LIMIT 1000`.
-- Pass criteria: every dataset runs without error, and the CDC / assistant datasets return the expected empty-state or live rows.
-- Then open the dashboard once to check rendering.
+| Item | Value |
+|---|---|
+| Command | `python scripts/run_governance_demo.py --target personal_dev --execute --confirm RUN_URBANFLOW_FINAL_GOVERNANCE_DEMO --warehouse-id 410e5f3b4784e981 --profile personal_lab10 --evidence evidence/<date>_governance_demo.json --cleanup` |
+| Resources | Creates only `workspace.urbanflow_final_dev_governance_demo` (copies of the dimension and 40 trips, a mapping table, three functions). It applies a row filter and three column masks there, inspects them, rolls them back, and drops that schema (`--cleanup`). No GRANT, no change to groups or users, no policy on the data schemas. The dry run was reviewed on 2026-10-13 and the schema does not exist yet. |
+| Compute / duration / cost | Starter warehouse, about 10 minutes, ≈ 0.5–1 DBU (≈ $0.35–0.70) |
+| Verification | Filtered vs allowed rows for the one identity (mapping row changed). Coordinates rounded and ride IDs hashed. `information_schema` shows the filter and masks during the demo and none on `urbanflow_final_dev`. |
+| Limitation | One identity and no `urbanflow_admins` group exist, so multi-principal enforcement and the admin branch of the masks stay **partially unverified**. |
+| Irreversible or shared effects | None. The demo schema is dropped. |
 
-**E. Steps 6–8: assistant**, in order, stopping at the first failure:
-1. ingest the 8 documents / 30 chunks;
-2. create one STANDARD AI Search endpoint `urbanflow-final-dev` and the Delta Sync index;
-3. sync and check readiness (30 rows);
-4. a 2-question smoke test (`eval_question_ids=q01,q17`, baseline off);
-5. the full 18-question paired evaluation (36 chat calls, up to 54 searches), only if the smoke test answers with citations;
-6. **delete the endpoint** and verify with `list_endpoints()` that none remains.
+### Phase G: Azure PROD-style deployment (Academy trial `dbr_dev_trial_2`)
 
-Exposure: the endpoint bills per hour while it exists. The planned window is about 1–2 endpoint-hours (Lab 12 provisioning took about 25–30 minutes). An earlier review cited about 4 DBU/hour, roughly $0.28/hour, for a Standard unit (a US-East public reference example). That figure is **unverified for this account**; read `system.billing.list_prices` before creation. Lab 12's objects are never reused.
+| Item | Value |
+|---|---|
+| Workspace | `https://adb-7405618361895520.0.azuredatabricks.net` (Academy **trial**, not paid production). Identity `parvinbadalov@softserve.academy` with Azure CLI login. |
+| Resources created | Schemas `dbr_dev.parvinbadalov_urbanflow_final_prod` and `..._lakeflow_prod` **in the shared Academy `dbr_dev` catalog**, 1 Volume, 2 Jobs, 1 pipeline, 1 dashboard (7 creates, 0 updates, 0 deletes, per the read-only plan of 2026-10-12, to be recalculated). No schedule, cluster or permission change. |
+| Pre-checks (read-only) | Trial still available; identity, permissions and serverless; no collision; plan recalculated and validated |
+| Optional, approved separately | One bounded sample platform run (≈ 8 minutes, ≈ 1.3 DBU) with an independent DEV/PROD comparison |
+| Cost exposure | Deploy: none. Sample run: about 1–2 DBU at Azure list prices (to be read from that workspace's `list_prices`). Storage: kilobytes. |
+| Cleanup | None planned. Removing it later means dropping the two schemas in a shared catalog, which needs its own approval. |
+| Irreversible or shared effects | **Writes to the shared Academy `dbr_dev` catalog** (two new schemas). Nothing else shared is touched. |
 
-**F. Governance demo.** `scripts/run_governance_demo.py --target personal_dev --execute --confirm RUN_URBANFLOW_FINAL_GOVERNANCE_DEMO --warehouse-id 410e5f3b4784e981 --profile personal_lab10 --evidence evidence/<date>_governance_demo.json --cleanup`.
-- It creates only `workspace.urbanflow_final_dev_governance_demo`, applies and rolls back the row filter and masks, and drops that schema.
-- One identity only, so it demonstrates mechanism, not multi-principal enforcement. No GRANT.
+### Phase H: optional (each separately)
 
-**G. Step 9: PROD.** Deploy to `azure_prod`, which creates the schemas in the shared `dbr_dev` catalog, and run step 2 there.
-
-**Optional (each separate):** full month; Zerobus (needs a Final Project service principal); a real Federation source (needs a Final-Project table in an external database).
+| Option | Effect | Prerequisite |
+|---|---|---|
+| Real Federation source | External write: a Final Project schema and table in a PostgreSQL database, a new connection and foreign catalog (never Lab 10's) | External database access; see the contract in `ARCHITECTURE.md` |
+| Event Hubs | Publish to an Event Hub and consume with `availableNow` | A Final Project Event Hub, or approval to publish to the shared namespace; Key Vault-backed secret scope |
+| Zerobus | At most 30 synthetic records into Final Project Bronze | A dedicated Final Project service principal (owner creates it) |
+| Full January 2024 month | About 1.9 million trips, ~0.4 GB landed in a separate namespace; one larger run | Download and upload approval; egress to the Open-Meteo archive API |
 
 ## Optional later: full-month January 2024 validation (not executed)
 

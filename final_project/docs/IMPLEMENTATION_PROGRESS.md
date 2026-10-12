@@ -90,13 +90,7 @@ None running. No AI Search endpoint exists, and the warehouses are stopped (auto
 
 ## Pending, each needing explicit approval
 
-See the consolidated proposal in `RELEASE_AND_VALIDATION.md` ("Next approval request"):
-
-3. **Dashboard:** redeploy plus read-only dataset query validation.
-4. **Steps 6–8:** assistant ingest, AI Search endpoint/index, smoke test, evaluation, then delete the endpoint.
-5. **Governance:** the demo in an isolated schema.
-6. **PROD:** deploy to `azure_prod`, which writes to the shared `dbr_dev` catalog.
-7. **Optional:** full month, Zerobus, real Federation source.
+The consolidated proposal for phases D–H is in `RELEASE_AND_VALIDATION.md` ("Next approval request"), with workspace, resources, compute, duration, cost, verification, cleanup and shared effects per phase. Recommended order: E1 (assistant ingest) → D (dashboard redeploy, live queries, rendering) → E2–E6 (AI Search, smoke test, evaluation, **mandatory endpoint deletion**) → F (governance demo) → G (Azure trial deploy, shared `dbr_dev` catalog). H is optional (Federation source, Event Hubs, Zerobus, full month).
 
 ## Next steps without approval
 
