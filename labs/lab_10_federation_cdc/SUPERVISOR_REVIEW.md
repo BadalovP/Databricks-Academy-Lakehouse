@@ -2,6 +2,14 @@
 
 For Łukasz. Each item below links to the thing itself; checking all of it takes about 15 minutes.
 
+> [!IMPORTANT]
+> **Please review the Azure Job before 2026-10-20.** `dbr_dev_trial_2` is an Azure Databricks **trial** workspace created on 2026-10-06, so its 14-day trial ends around 2026-10-20. After that date the Job and run pages may no longer open. These stay available regardless:
+> - the code and evidence in GitHub;
+> - the Delta tables in the shared `dbr_dev` catalog, which was created with the stable `dbr_dev` workspace on 2026-07-02;
+> - the Terraform state in HCP.
+>
+> You can open the Job as a member of the workspace `admins` group.
+
 **What Lab 10 shows:** live read-only queries against Neon PostgreSQL through Lakehouse Federation, a PostgreSQL-to-Delta join, and an incremental CDC pipeline on a Delta table with Change Data Feed. That pipeline covers range-bounded reads, `MERGE` into a target and an audit history, two-way reconciliation and a checkpoint that only advances after the checks pass. Everything is deployed as a three-task serverless Job managed by Terraform with remote HCP state.
 
 ## 1. The code (GitHub)
