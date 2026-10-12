@@ -2,7 +2,7 @@
 
 Databricks Academy **Final Project**: one integrated solution that covers Labs 1–12.
 
-> **Status: implemented and tested offline. In Personal DEV the platform sample run (step 2) passed on 2026-10-12. The idempotency rerun (step 3) showed logical and audit idempotency, with no data files rewritten, but failed one strict criterion: the CDC checkpoint advanced over an empty commit (fix proposed). Lakeflow, the assistant, the dashboard and PROD have not run live yet.**
+> **Status: implemented and tested offline. In Personal DEV the platform sample run (step 2) and the strict idempotency rerun (step 3, 19/19 criteria after a CDC no-op fix) passed on 2026-10-12. A replay changes no data, keeps audit timestamps and writes no CDC commit. The shared Silver/Gold MERGEs still record metadata-only commits. Lakeflow, the assistant, the dashboard and PROD have not run live yet.**
 > More than 700 offline tests (unit tests, local Spark and static checks) run in CI. Every live step needs explicit approval and is planned in [docs/RELEASE_AND_VALIDATION.md](docs/RELEASE_AND_VALIDATION.md). Results of the individual labs and of Demo 3 were produced in their own folders. They are not Final Project evidence and are not presented as such.
 
 | Document | Purpose |

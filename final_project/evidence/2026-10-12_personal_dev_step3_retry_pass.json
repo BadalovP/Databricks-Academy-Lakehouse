@@ -1,0 +1,3131 @@
+{
+  "step": "3 retry - strict idempotency after the CDC no-op fix",
+  "outcome": "PASS - all 19 criteria met",
+  "classification": {
+    "A_logical_idempotency": "PASS - no business record added or changed in any table",
+    "B_audit_idempotency": "PASS - all 40 ingested_at and 48 retrieved_at values identical",
+    "C_physical_data_write_avoidance": "PASS - 0 rows updated/copied/deleted and 0 data files added or removed in every table",
+    "D_metadata_only_commit_avoidance": "PARTIAL - CDC (4 tables) and Bronze (2 tables) wrote no commit at all; the 16 shared Silver/Gold/historical/weather tables each still wrote one metadata-only MERGE commit"
+  },
+  "code_commit": "f869bbb175305a88737be400989ea326ffc9e851",
+  "deploy": {
+    "pre_plan": {
+      "resources.dashboards.urbanflow_final_dashboard": "skip",
+      "resources.jobs.urbanflow_final_platform": "skip",
+      "resources.jobs.urbanflow_final_rag": "skip",
+      "resources.pipelines.urbanflow_final_pipeline": "skip",
+      "resources.schemas.urbanflow_final_lakeflow_schema": "skip",
+      "resources.schemas.urbanflow_final_schema": "skip",
+      "resources.volumes.urbanflow_final_landing": "skip"
+    },
+    "post_plan": {
+      "resources.dashboards.urbanflow_final_dashboard": "skip",
+      "resources.jobs.urbanflow_final_platform": "skip",
+      "resources.jobs.urbanflow_final_rag": "skip",
+      "resources.pipelines.urbanflow_final_pipeline": "skip",
+      "resources.schemas.urbanflow_final_lakeflow_schema": "skip",
+      "resources.schemas.urbanflow_final_schema": "skip",
+      "resources.volumes.urbanflow_final_landing": "skip"
+    },
+    "validators": {
+      "pre": "PASS",
+      "post": "PASS"
+    },
+    "scope": "code sync only"
+  },
+  "job_id": 158911626270744,
+  "run_id": 412521206243476,
+  "idempotency_token": "urbanflow-final-step3-retry-20261012-001",
+  "job_parameters": {
+    "run_station_pipeline": "true",
+    "station_source": "sample_autoloader",
+    "source_execution_id": "urbanflow-final-304828008837365",
+    "run_historical": "true",
+    "historical_execution_id": "urbanflow-final-hist-devsample40",
+    "run_weather": "true",
+    "weather_execution_id": "urbanflow-final-weather-devsample48h",
+    "weather_source": "sample_json",
+    "weather_sample_file": "open_meteo_archive_202401.sample.json",
+    "run_federation_cdc": "true",
+    "cdc_source": "fixture_snapshot",
+    "cdc_snapshot": "batch_001",
+    "run_full_month": "false",
+    "run_lakeflow": "false"
+  },
+  "run_state": {
+    "result_state": "SUCCESS",
+    "start": "2026-10-12T19:29:23+00:00",
+    "end": "2026-10-12T19:37:01+00:00",
+    "seconds": 458
+  },
+  "tasks": [
+    {
+      "task_key": "preflight",
+      "task_run_id": 536906062674103,
+      "result_state": "SUCCESS",
+      "start": "2026-10-12T19:29:23+00:00",
+      "end": "2026-10-12T19:30:12+00:00",
+      "seconds": 49
+    },
+    {
+      "task_key": "land_sources",
+      "task_run_id": 870291336089534,
+      "result_state": "SUCCESS",
+      "start": "2026-10-12T19:30:12+00:00",
+      "end": "2026-10-12T19:30:52+00:00",
+      "seconds": 39
+    },
+    {
+      "task_key": "station_source_check",
+      "task_run_id": 765793504027969,
+      "result_state": "SUCCESS",
+      "start": "2026-10-12T19:30:52+00:00",
+      "end": "2026-10-12T19:31:10+00:00",
+      "seconds": 18
+    },
+    {
+      "task_key": "station_silver",
+      "task_run_id": 458524925285691,
+      "result_state": "SUCCESS",
+      "start": "2026-10-12T19:31:10+00:00",
+      "end": "2026-10-12T19:32:13+00:00",
+      "seconds": 63
+    },
+    {
+      "task_key": "station_gold",
+      "task_run_id": 464040981895397,
+      "result_state": "SUCCESS",
+      "start": "2026-10-12T19:32:13+00:00",
+      "end": "2026-10-12T19:33:52+00:00",
+      "seconds": 99
+    },
+    {
+      "task_key": "historical_trips",
+      "task_run_id": 765993934627409,
+      "result_state": "SUCCESS",
+      "start": "2026-10-12T19:33:52+00:00",
+      "end": "2026-10-12T19:35:08+00:00",
+      "seconds": 75
+    },
+    {
+      "task_key": "weather_enrichment",
+      "task_run_id": 294354819564657,
+      "result_state": "SUCCESS",
+      "start": "2026-10-12T19:35:08+00:00",
+      "end": "2026-10-12T19:35:54+00:00",
+      "seconds": 46
+    },
+    {
+      "task_key": "validate_medallion",
+      "task_run_id": 983067619345143,
+      "result_state": "SUCCESS",
+      "start": "2026-10-12T19:35:54+00:00",
+      "end": "2026-10-12T19:36:31+00:00",
+      "seconds": 37
+    },
+    {
+      "task_key": "federation_cdc",
+      "task_run_id": 594524450516498,
+      "result_state": "SUCCESS",
+      "start": "2026-10-12T19:36:31+00:00",
+      "end": "2026-10-12T19:37:00+00:00",
+      "seconds": 29
+    },
+    {
+      "task_key": "should_refresh_lakeflow",
+      "task_run_id": 16142925775260,
+      "result_state": "SUCCESS",
+      "start": "2026-10-12T19:36:31+00:00",
+      "end": "2026-10-12T19:36:32+00:00",
+      "seconds": 1
+    },
+    {
+      "task_key": "refresh_lakeflow",
+      "task_run_id": 466019992659921,
+      "result_state": "EXCLUDED",
+      "start": "2026-10-12T19:36:32+00:00",
+      "end": "2026-10-12T19:36:32+00:00",
+      "seconds": 0
+    }
+  ],
+  "task_results": {
+    "preflight": {
+      "branches": {
+        "run_full_month": false,
+        "run_historical": true,
+        "run_station_pipeline": true,
+        "run_weather": true
+      },
+      "compute": "serverless",
+      "event_hubs_producer": "excluded",
+      "historical_execution_id": "urbanflow-final-hist-devsample40",
+      "mode": "development_sample",
+      "source_execution_id": "urbanflow-final-304828008837365",
+      "status": "PASS",
+      "target": "workspace.urbanflow_final_dev",
+      "weather_execution_id": "urbanflow-final-weather-devsample48h"
+    },
+    "land_sources": {
+      "bronze_rows_for_execution": 40,
+      "historical_landing": "already_landed",
+      "historical_landing_dir": "/Volumes/workspace/urbanflow_final_dev/urbanflow_final_landing/landing/historical_trips",
+      "source_execution_id": "urbanflow-final-304828008837365",
+      "station_events_landed": 40,
+      "station_landing": "already_landed",
+      "status": "PASS",
+      "weather_landing": "already_landed",
+      "weather_landing_path": "/Volumes/workspace/urbanflow_final_dev/urbanflow_final_landing/landing/weather/open_meteo_archive_202401.sample.json"
+    },
+    "station_source_check": {
+      "distinct_event_ids": 40,
+      "execution_id": "urbanflow-final-304828008837365",
+      "null_event_ids": 0,
+      "null_execution_ids": 0,
+      "null_station_ids": 0,
+      "rows": 40,
+      "station_source": "sample_autoloader",
+      "status": "PASS",
+      "table": "workspace.urbanflow_final_dev.bronze_station_status"
+    },
+    "validate_medallion": {
+      "checks": {
+        "fact_station_availability_unassigned_execution_ids": 0,
+        "gold_rebalancing_priority_unassigned_execution_ids": 0,
+        "gold_station_shortage_unassigned_execution_ids": 0,
+        "gold_weather_demand_unassigned_execution_ids": 0,
+        "historical_null_ride_ids": 0,
+        "historical_reconciliation": {
+          "bronze": 40,
+          "duplicate": 0,
+          "quarantine": 0,
+          "valid": 40
+        },
+        "historical_ride_id_unique": 40,
+        "historical_sample_counts": {
+          "bronze": 40,
+          "duplicate": 0,
+          "quarantine": 0,
+          "valid": 40
+        },
+        "historical_sample_days": 17,
+        "historical_sample_rider_mix": {
+          "casual": 5,
+          "member": 35
+        },
+        "historical_sample_station_matches": 40,
+        "historical_station_id_type": "string",
+        "silver_station_status_unassigned_execution_ids": 0,
+        "station_bronze_business_key_unique": 40,
+        "station_bronze_null_station_ids": 0,
+        "station_bronze_rows": 40,
+        "station_fact_business_key_unique": 40,
+        "station_fact_null_station_ids": 0,
+        "station_fact_rows": 40,
+        "station_priority_business_key_unique": 13,
+        "station_priority_null_station_ids": 0,
+        "station_priority_out_of_service": 0,
+        "station_priority_rows": 13,
+        "station_shortage_business_key_unique": 13,
+        "station_shortage_null_station_ids": 0,
+        "station_shortage_out_of_service": 0,
+        "station_shortage_rows": 13,
+        "station_silver_business_key_unique": 40,
+        "station_silver_null_station_ids": 0,
+        "station_silver_rows": 40,
+        "station_status_composition": {
+          "AVAILABLE": 25,
+          "LOW_BIKES": 4,
+          "LOW_DOCKS": 9,
+          "OUT_OF_SERVICE": 2
+        },
+        "weather_hour_business_key_unique": {
+          "rows": 48,
+          "unique": 48
+        },
+        "weather_join_no_fanout": {
+          "historical_trips": 40,
+          "summary_trips": 40
+        },
+        "weather_sample_hours": 48,
+        "weather_temperature_complete": {
+          "complete": 48,
+          "rows": 48
+        }
+      },
+      "historical_execution_id": "urbanflow-final-hist-devsample40",
+      "mode": "development_sample",
+      "source_execution_id": "urbanflow-final-304828008837365",
+      "status": "PASS",
+      "weather_execution_id": "urbanflow-final-weather-devsample48h"
+    },
+    "federation_cdc": {
+      "cdc_source": "fixture_snapshot",
+      "checkpoint_after": 2,
+      "checkpoint_before": 2,
+      "duplicate_target_keys": 0,
+      "events": {},
+      "events_missing_from_history": 0,
+      "missing_or_different_in_target": 0,
+      "snapshot": "batch_001",
+      "snapshot_differences": {
+        "snapshot_rows_not_in_source": 0,
+        "source_rows_not_in_snapshot": 0
+      },
+      "source_count": 5,
+      "source_merged": false,
+      "status": "PASS",
+      "target_count": 5,
+      "unexpected_or_different_in_target": 0
+    }
+  },
+  "cdc": {
+    "source_merged": false,
+    "snapshot_differences": {
+      "snapshot_rows_not_in_source": 0,
+      "source_rows_not_in_snapshot": 0
+    },
+    "source_version_before": [
+      {
+        "v": "2"
+      }
+    ],
+    "source_version_after": [
+      {
+        "v": "2"
+      }
+    ],
+    "checkpoint_before": [
+      {
+        "pipeline_key": "station_maintenance",
+        "processed_version": "2",
+        "processed_at": "2026-10-12T17:41:41.823Z"
+      }
+    ],
+    "checkpoint_after": [
+      {
+        "pipeline_key": "station_maintenance",
+        "processed_version": "2",
+        "processed_at": "2026-10-12T17:41:41.823Z"
+      }
+    ],
+    "history_by_type": [
+      {
+        "commit_version": "1",
+        "change_type": "insert",
+        "n": "5",
+        "ids": "5"
+      }
+    ],
+    "cdf_all": [
+      {
+        "_commit_version": "1",
+        "_change_type": "insert",
+        "n": "5"
+      }
+    ],
+    "reconciliation_independent": [
+      {
+        "source_count": "5",
+        "target_count": "5",
+        "missing_or_different_in_target": "0",
+        "unexpected_or_different_in_target": "0",
+        "duplicate_target_keys": "0",
+        "events_missing_from_history": "0"
+      }
+    ],
+    "new_commits_on_cdc_tables": {
+      "station_maintenance_source": [],
+      "maintenance_cdc_history": [],
+      "silver_station_maintenance": [],
+      "maintenance_cdc_checkpoint": []
+    }
+  },
+  "criteria": {
+    "1_station_bronze_40_unique": true,
+    "2_historical_bronze_40_unique": true,
+    "3_autoloader_checkpoints_unchanged": true,
+    "4_landing_files_unchanged": true,
+    "5_station_silver_unchanged": true,
+    "6_station_gold_40_40_13_13": true,
+    "7_historical_silver_40_ingested_at_preserved": true,
+    "8_historical_gold_unchanged": true,
+    "9_weather_48h_40_trips_4_matched": true,
+    "10_quarantine_duplicates_zero": true,
+    "11_business_columns_identical": true,
+    "12_matched_merges_zero_changes": true,
+    "13_no_new_source_cdf_events": true,
+    "14_cdc_history_5_distinct": true,
+    "15_maintenance_silver_5_matching_batch_001": true,
+    "16_cdc_checkpoint_remains_at_current_version_2": true,
+    "17_cdc_reconciliation_zero": true,
+    "18_every_required_task_succeeded": true,
+    "19_no_unrelated_changes": true
+  },
+  "before": {
+    "validation": {
+      "execution_id": "urbanflow-final-304828008837365",
+      "tables": [
+        "bronze_historical_trips",
+        "bronze_station_status",
+        "dim_station_development_sample",
+        "dim_weather_hourly",
+        "duplicate_historical_trips",
+        "duplicate_station_status",
+        "fact_station_availability",
+        "gold_daily_station_summary",
+        "gold_daily_trip_demand",
+        "gold_rebalancing_priority",
+        "gold_station_shortage",
+        "gold_weather_demand",
+        "maintenance_cdc_checkpoint",
+        "maintenance_cdc_history",
+        "quarantine_historical_trips",
+        "quarantine_station_status",
+        "silver_historical_trips",
+        "silver_station_maintenance",
+        "silver_station_status",
+        "station_maintenance_source"
+      ],
+      "lakeflow_tables": [],
+      "counts": {
+        "bronze_historical_trips": [
+          {
+            "n": "40"
+          }
+        ],
+        "bronze_station_status": [
+          {
+            "execution_id": "urbanflow-final-304828008837365",
+            "n": "40"
+          }
+        ],
+        "dim_station_development_sample": [
+          {
+            "n": "40"
+          }
+        ],
+        "dim_weather_hourly": [
+          {
+            "n": "48"
+          }
+        ],
+        "duplicate_historical_trips": [],
+        "duplicate_station_status": [],
+        "fact_station_availability": [
+          {
+            "execution_id": "urbanflow-final-304828008837365",
+            "n": "40"
+          }
+        ],
+        "gold_daily_station_summary": [
+          {
+            "n": "40"
+          }
+        ],
+        "gold_daily_trip_demand": [
+          {
+            "execution_id": "urbanflow-final-hist-devsample40",
+            "n": "40"
+          }
+        ],
+        "gold_rebalancing_priority": [
+          {
+            "execution_id": "urbanflow-final-304828008837365",
+            "n": "13"
+          }
+        ],
+        "gold_station_shortage": [
+          {
+            "execution_id": "urbanflow-final-304828008837365",
+            "n": "13"
+          }
+        ],
+        "gold_weather_demand": [
+          {
+            "execution_id": "urbanflow-final-weather-devsample48h",
+            "n": "17"
+          }
+        ],
+        "maintenance_cdc_checkpoint": [
+          {
+            "n": "1"
+          }
+        ],
+        "maintenance_cdc_history": [
+          {
+            "n": "5"
+          }
+        ],
+        "quarantine_historical_trips": [],
+        "quarantine_station_status": [],
+        "silver_historical_trips": [
+          {
+            "execution_id": "urbanflow-final-hist-devsample40",
+            "n": "40"
+          }
+        ],
+        "silver_station_maintenance": [
+          {
+            "n": "5"
+          }
+        ],
+        "silver_station_status": [
+          {
+            "execution_id": "urbanflow-final-304828008837365",
+            "n": "40"
+          }
+        ],
+        "station_maintenance_source": [
+          {
+            "n": "5"
+          }
+        ]
+      },
+      "delta_history": {
+        "bronze_historical_trips": [
+          {
+            "version": "1",
+            "operation": "STREAMING UPDATE",
+            "metrics": "{\"numRemovedFiles\":\"0\",\"numOutputRows\":\"40\",\"numOutputBytes\":\"6922\",\"numAddedFiles\":\"1\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE",
+            "metrics": "{}"
+          }
+        ],
+        "bronze_station_status": [
+          {
+            "version": "1",
+            "operation": "STREAMING UPDATE",
+            "metrics": "{\"numRemovedFiles\":\"0\",\"numOutputRows\":\"40\",\"numOutputBytes\":\"15711\",\"numAddedFiles\":\"1\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE",
+            "metrics": "{}"
+          }
+        ],
+        "dim_station_development_sample": [
+          {
+            "version": "3",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"3903\",\"materializeSourceTimeMs\":\"461\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1911\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1486\"}"
+          },
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"4476\",\"numTargetBytesRemoved\":\"4470\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"40\",\"executionTimeMs\":\"3971\",\"materializeSourceTimeMs\":\"475\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1858\",\"numTargetRowsUpdated\":\"40\",\"numOutputRows\":\"40\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"1\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1601\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"4470\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2398\",\"materializeSourceTimeMs\":\"443\",\"numTargetRowsInserted\":\"40\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"798\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"40\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1119\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE AS SELECT",
+            "metrics": "{\"numFiles\":\"0\",\"numOutputRows\":\"0\",\"numOutputBytes\":\"0\"}"
+          }
+        ],
+        "dim_weather_hourly": [
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"3862\",\"materializeSourceTimeMs\":\"128\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"2269\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"48\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1428\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"8\",\"numTargetBytesAdded\":\"31449\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2104\",\"materializeSourceTimeMs\":\"126\",\"numTargetRowsInserted\":\"48\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"856\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"48\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"48\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1089\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE AS SELECT",
+            "metrics": "{\"numFiles\":\"0\",\"numOutputRows\":\"0\",\"numOutputBytes\":\"0\"}"
+          }
+        ],
+        "duplicate_historical_trips": [
+          {
+            "version": "3",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2388\",\"materializeSourceTimeMs\":\"610\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"928\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"803\"}"
+          },
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2019\",\"materializeSourceTimeMs\":\"529\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"698\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"750\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"1955\",\"materializeSourceTimeMs\":\"517\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"777\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"619\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE AS SELECT",
+            "metrics": "{\"numFiles\":\"0\",\"numOutputRows\":\"0\",\"numOutputBytes\":\"0\"}"
+          }
+        ],
+        "duplicate_station_status": [
+          {
+            "version": "3",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2816\",\"materializeSourceTimeMs\":\"625\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1053\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1094\"}"
+          },
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2526\",\"materializeSourceTimeMs\":\"659\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"952\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"872\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2354\",\"materializeSourceTimeMs\":\"561\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"962\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"769\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE AS SELECT",
+            "metrics": "{\"numFiles\":\"0\",\"numOutputRows\":\"0\",\"numOutputBytes\":\"0\"}"
+          }
+        ],
+        "fact_station_availability": [
+          {
+            "version": "3",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"3840\",\"materializeSourceTimeMs\":\"731\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1628\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1432\"}"
+          },
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"7983\",\"numTargetBytesRemoved\":\"7983\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"40\",\"executionTimeMs\":\"4160\",\"materializeSourceTimeMs\":\"796\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1724\",\"numTargetRowsUpdated\":\"40\",\"numOutputRows\":\"40\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"1\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1589\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"7983\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2977\",\"materializeSourceTimeMs\":\"736\",\"numTargetRowsInserted\":\"40\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1049\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"40\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1143\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE AS SELECT",
+            "metrics": "{\"numFiles\":\"0\",\"numOutputRows\":\"0\",\"numOutputBytes\":\"0\"}"
+          }
+        ],
+        "gold_daily_station_summary": [
+          {
+            "version": "3",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"4223\",\"materializeSourceTimeMs\":\"1086\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1754\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1331\"}"
+          },
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"5239\",\"numTargetBytesRemoved\":\"5239\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"40\",\"executionTimeMs\":\"4908\",\"materializeSourceTimeMs\":\"829\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"2605\",\"numTargetRowsUpdated\":\"40\",\"numOutputRows\":\"40\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"1\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1438\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"5239\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"3854\",\"materializeSourceTimeMs\":\"1044\",\"numTargetRowsInserted\":\"40\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"789\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"40\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1983\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE AS SELECT",
+            "metrics": "{\"numFiles\":\"0\",\"numOutputRows\":\"0\",\"numOutputBytes\":\"0\"}"
+          }
+        ],
+        "gold_daily_trip_demand": [
+          {
+            "version": "3",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"4379\",\"materializeSourceTimeMs\":\"992\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1663\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1682\"}"
+          },
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"4005\",\"numTargetBytesRemoved\":\"4004\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"40\",\"executionTimeMs\":\"4290\",\"materializeSourceTimeMs\":\"784\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1489\",\"numTargetRowsUpdated\":\"40\",\"numOutputRows\":\"40\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"1\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1971\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"4004\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"3698\",\"materializeSourceTimeMs\":\"805\",\"numTargetRowsInserted\":\"40\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"742\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"40\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"2117\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE AS SELECT",
+            "metrics": "{\"numFiles\":\"0\",\"numOutputRows\":\"0\",\"numOutputBytes\":\"0\"}"
+          }
+        ],
+        "gold_rebalancing_priority": [
+          {
+            "version": "3",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"4572\",\"materializeSourceTimeMs\":\"1008\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1372\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"13\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"2149\"}"
+          },
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"4927\",\"numTargetBytesRemoved\":\"4927\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"13\",\"executionTimeMs\":\"4230\",\"materializeSourceTimeMs\":\"915\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1268\",\"numTargetRowsUpdated\":\"13\",\"numOutputRows\":\"13\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"13\",\"numTargetFilesRemoved\":\"1\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"2000\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"4927\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"4281\",\"materializeSourceTimeMs\":\"857\",\"numTargetRowsInserted\":\"13\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1135\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"13\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"13\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"2258\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE AS SELECT",
+            "metrics": "{\"numFiles\":\"0\",\"numOutputRows\":\"0\",\"numOutputBytes\":\"0\"}"
+          }
+        ],
+        "gold_station_shortage": [
+          {
+            "version": "3",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"4927\",\"materializeSourceTimeMs\":\"1089\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1144\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"13\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"2655\"}"
+          },
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"4850\",\"numTargetBytesRemoved\":\"4850\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"13\",\"executionTimeMs\":\"4961\",\"materializeSourceTimeMs\":\"1121\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1223\",\"numTargetRowsUpdated\":\"13\",\"numOutputRows\":\"13\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"13\",\"numTargetFilesRemoved\":\"1\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"2581\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"4850\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"5196\",\"materializeSourceTimeMs\":\"1132\",\"numTargetRowsInserted\":\"13\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"742\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"13\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"13\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"3261\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE AS SELECT",
+            "metrics": "{\"numFiles\":\"0\",\"numOutputRows\":\"0\",\"numOutputBytes\":\"0\"}"
+          }
+        ],
+        "gold_weather_demand": [
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"4321\",\"materializeSourceTimeMs\":\"780\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1329\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"17\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"2177\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"3280\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"3116\",\"materializeSourceTimeMs\":\"680\",\"numTargetRowsInserted\":\"17\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"716\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"17\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"17\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1686\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE AS SELECT",
+            "metrics": "{\"numFiles\":\"0\",\"numOutputRows\":\"0\",\"numOutputBytes\":\"0\"}"
+          }
+        ],
+        "maintenance_cdc_checkpoint": [
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"2226\",\"numTargetBytesRemoved\":\"1471\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"1\",\"executionTimeMs\":\"3272\",\"materializeSourceTimeMs\":\"1\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1532\",\"numTargetRowsUpdated\":\"1\",\"numOutputRows\":\"1\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"1\",\"numTargetFilesRemoved\":\"1\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1699\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"1471\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"1645\",\"materializeSourceTimeMs\":\"1\",\"numTargetRowsInserted\":\"1\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"618\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"1\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"1\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"990\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE",
+            "metrics": "{}"
+          }
+        ],
+        "maintenance_cdc_history": [
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2006\",\"materializeSourceTimeMs\":\"10\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"0\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1959\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"3933\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2892\",\"materializeSourceTimeMs\":\"11\",\"numTargetRowsInserted\":\"5\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"0\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"5\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"10\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"2840\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE",
+            "metrics": "{}"
+          }
+        ],
+        "quarantine_historical_trips": [
+          {
+            "version": "3",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2501\",\"materializeSourceTimeMs\":\"525\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1009\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"916\"}"
+          },
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"1946\",\"materializeSourceTimeMs\":\"424\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"803\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"671\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2417\",\"materializeSourceTimeMs\":\"1033\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"702\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"652\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE AS SELECT",
+            "metrics": "{\"numFiles\":\"0\",\"numOutputRows\":\"0\",\"numOutputBytes\":\"0\"}"
+          }
+        ],
+        "quarantine_station_status": [
+          {
+            "version": "3",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2934\",\"materializeSourceTimeMs\":\"560\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1207\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1087\"}"
+          },
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"3118\",\"materializeSourceTimeMs\":\"696\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1237\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1134\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2368\",\"materializeSourceTimeMs\":\"507\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"999\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"815\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE AS SELECT",
+            "metrics": "{\"numFiles\":\"0\",\"numOutputRows\":\"0\",\"numOutputBytes\":\"0\"}"
+          }
+        ],
+        "silver_historical_trips": [
+          {
+            "version": "3",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"3586\",\"materializeSourceTimeMs\":\"598\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1550\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1397\"}"
+          },
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"9691\",\"numTargetBytesRemoved\":\"9684\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"40\",\"executionTimeMs\":\"4290\",\"materializeSourceTimeMs\":\"683\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1987\",\"numTargetRowsUpdated\":\"40\",\"numOutputRows\":\"40\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"1\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1571\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"9684\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2627\",\"materializeSourceTimeMs\":\"581\",\"numTargetRowsInserted\":\"40\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"838\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"40\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1169\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE AS SELECT",
+            "metrics": "{\"numFiles\":\"0\",\"numOutputRows\":\"0\",\"numOutputBytes\":\"0\"}"
+          }
+        ],
+        "silver_station_maintenance": [
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2002\",\"materializeSourceTimeMs\":\"495\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"691\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"780\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"2797\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2930\",\"materializeSourceTimeMs\":\"1146\",\"numTargetRowsInserted\":\"5\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"705\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"5\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"5\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1028\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE",
+            "metrics": "{}"
+          }
+        ],
+        "silver_station_status": [
+          {
+            "version": "3",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"10198\",\"materializeSourceTimeMs\":\"1315\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"5168\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"3532\"}"
+          },
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"10839\",\"numTargetBytesRemoved\":\"10840\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"40\",\"executionTimeMs\":\"9341\",\"materializeSourceTimeMs\":\"1164\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"4448\",\"numTargetRowsUpdated\":\"40\",\"numOutputRows\":\"40\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"1\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"3549\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"10840\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"6659\",\"materializeSourceTimeMs\":\"1100\",\"numTargetRowsInserted\":\"40\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"2485\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"40\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"2937\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE AS SELECT",
+            "metrics": "{\"numFiles\":\"0\",\"numOutputRows\":\"0\",\"numOutputBytes\":\"0\"}"
+          }
+        ],
+        "station_maintenance_source": [
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"4857\",\"materializeSourceTimeMs\":\"124\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1845\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"5\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"2844\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"3262\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"4139\",\"materializeSourceTimeMs\":\"106\",\"numTargetRowsInserted\":\"5\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"832\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"5\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"1\",\"numSourceRows\":\"5\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"3164\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE",
+            "metrics": "{}"
+          }
+        ]
+      },
+      "station_identity": [
+        {
+          "bronze": "40",
+          "silver": "40",
+          "quarantine": "0",
+          "duplicates": "0",
+          "fact": "40",
+          "shortage": "13",
+          "priority": "13"
+        }
+      ],
+      "availability_breakdown": [
+        {
+          "availability_status": "AVAILABLE",
+          "n": "25"
+        },
+        {
+          "availability_status": "LOW_BIKES",
+          "n": "4"
+        },
+        {
+          "availability_status": "LOW_DOCKS",
+          "n": "9"
+        },
+        {
+          "availability_status": "OUT_OF_SERVICE",
+          "n": "2"
+        }
+      ],
+      "historical_identity": [
+        {
+          "bronze": "40",
+          "valid": "40",
+          "quarantine": "0",
+          "duplicates": "0",
+          "gold_trips": "40"
+        }
+      ],
+      "weather": [
+        {
+          "weather_hours": "48",
+          "weather_trips": "40",
+          "weather_days": "17"
+        }
+      ],
+      "cdc_source_rows": [
+        {
+          "maintenance_id": "MT-1001",
+          "station_id": "66dd9fa6-0aca-11e7-82f6-3863bb44ef7c",
+          "status": "OPEN",
+          "severity": "HIGH",
+          "updated_at": "2026-10-12T07:00:00.000Z"
+        },
+        {
+          "maintenance_id": "MT-1002",
+          "station_id": "0138452a-b9f4-4aee-80b0-7fae9a122ffe",
+          "status": "OPEN",
+          "severity": "MEDIUM",
+          "updated_at": "2026-10-12T07:05:00.000Z"
+        },
+        {
+          "maintenance_id": "MT-1003",
+          "station_id": "62b97c1e-9d06-4c5e-b9c3-d76099e37fe4",
+          "status": "IN_PROGRESS",
+          "severity": "LOW",
+          "updated_at": "2026-10-12T07:10:00.000Z"
+        },
+        {
+          "maintenance_id": "MT-1004",
+          "station_id": "180b83a0-329c-4069-87be-df862cb1baed",
+          "status": "OPEN",
+          "severity": "HIGH",
+          "updated_at": "2026-10-12T07:15:00.000Z"
+        },
+        {
+          "maintenance_id": "MT-1005",
+          "station_id": "00967b8f-1a4d-4131-a65a-17fa8ca89e28",
+          "status": "OPEN",
+          "severity": "LOW",
+          "updated_at": "2026-10-12T07:20:00.000Z"
+        }
+      ],
+      "cdc_target_rows": [
+        {
+          "maintenance_id": "MT-1001",
+          "station_id": "66dd9fa6-0aca-11e7-82f6-3863bb44ef7c",
+          "status": "OPEN",
+          "severity": "HIGH",
+          "updated_at": "2026-10-12T07:00:00.000Z",
+          "source_commit_version": "1",
+          "source_commit_timestamp": "2026-10-12T16:51:52.000Z"
+        },
+        {
+          "maintenance_id": "MT-1002",
+          "station_id": "0138452a-b9f4-4aee-80b0-7fae9a122ffe",
+          "status": "OPEN",
+          "severity": "MEDIUM",
+          "updated_at": "2026-10-12T07:05:00.000Z",
+          "source_commit_version": "1",
+          "source_commit_timestamp": "2026-10-12T16:51:52.000Z"
+        },
+        {
+          "maintenance_id": "MT-1003",
+          "station_id": "62b97c1e-9d06-4c5e-b9c3-d76099e37fe4",
+          "status": "IN_PROGRESS",
+          "severity": "LOW",
+          "updated_at": "2026-10-12T07:10:00.000Z",
+          "source_commit_version": "1",
+          "source_commit_timestamp": "2026-10-12T16:51:52.000Z"
+        },
+        {
+          "maintenance_id": "MT-1004",
+          "station_id": "180b83a0-329c-4069-87be-df862cb1baed",
+          "status": "OPEN",
+          "severity": "HIGH",
+          "updated_at": "2026-10-12T07:15:00.000Z",
+          "source_commit_version": "1",
+          "source_commit_timestamp": "2026-10-12T16:51:52.000Z"
+        },
+        {
+          "maintenance_id": "MT-1005",
+          "station_id": "00967b8f-1a4d-4131-a65a-17fa8ca89e28",
+          "status": "OPEN",
+          "severity": "LOW",
+          "updated_at": "2026-10-12T07:20:00.000Z",
+          "source_commit_version": "1",
+          "source_commit_timestamp": "2026-10-12T16:51:52.000Z"
+        }
+      ],
+      "cdc_history_by_type": [
+        {
+          "commit_version": "1",
+          "change_type": "insert",
+          "n": "5",
+          "ids": "5"
+        }
+      ],
+      "cdc_checkpoint": [
+        {
+          "pipeline_key": "station_maintenance",
+          "processed_version": "2",
+          "processed_at": "2026-10-12T17:41:41.823Z"
+        }
+      ],
+      "cdc_source_latest_version": [
+        {
+          "v": "2"
+        }
+      ],
+      "cdc_table_changes_all": [
+        {
+          "_commit_version": "1",
+          "_change_type": "insert",
+          "n": "5"
+        }
+      ],
+      "cdc_reconciliation_independent": [
+        {
+          "source_count": "5",
+          "target_count": "5",
+          "missing_or_different_in_target": "0",
+          "unexpected_or_different_in_target": "0",
+          "duplicate_target_keys": "0",
+          "events_missing_from_history": "0"
+        }
+      ],
+      "cdc_history_vs_cdf": [
+        {
+          "cdf_events_missing_from_history": "0"
+        }
+      ]
+    },
+    "audit": {
+      "historical_ingested_at": [
+        {
+          "ride_id": "0DC35AD1E04590FE",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "12FBBCF285A43999",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "13306F79597A3A06",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "137AF945E2DBBE5B",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "1B5234F18B1F0892",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "3D1553E303DA7B0D",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "4D5F80D54597D58F",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "528ADF0EB740BD0F",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "56F5265E118DCCD3",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "603F3F1441D0853A",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "625EE53222A2B947",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "62EF1AC5BE598131",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "65999D3A5AFF675B",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "67168FF34EE226A7",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "6A96FCD170996E59",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "71AB47656B2090B8",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "7656012372574079",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "7B7090807A147EBB",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "7D6E05FA1FDC13DD",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "7DD1703A3E0D8833",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "7DFBA0228776696D",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "815B668E8ADAFDA8",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "8464E543DAB27DBF",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "8BFA54A040E7AD62",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "936E5204127C4FDE",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "939190C25A5AB16F",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "9C04FDC8549F5205",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "9F24088687DC9AE1",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "A159D17432D92BCD",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "A42F107BB6BD3833",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "A586B241FF85F257",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "AA171066E1FBBA3D",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "B477DD25DB62E7F0",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "B4F6D243AF91588B",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "B7E5E6FAA9636FD5",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "B812EF7F1C64CE13",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "DC9D566EDE21493D",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "E1A0FDEFB0B92477",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "F8749351FF01B67C",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "FDC460720E42A072",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        }
+      ],
+      "weather_retrieved_at": [
+        {
+          "hour": "2024-01-24 00:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 01:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 02:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 03:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 04:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 05:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 06:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 07:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 08:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 09:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 10:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 11:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 12:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 13:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 14:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 15:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 16:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 17:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 18:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 19:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 20:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 21:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 22:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 23:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 00:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 01:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 02:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 03:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 04:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 05:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 06:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 07:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 08:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 09:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 10:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 11:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 12:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 13:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 14:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 15:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 16:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 17:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 18:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 19:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 20:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 21:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 22:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 23:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        }
+      ],
+      "latest_versions": {
+        "bronze_historical_trips": 1,
+        "bronze_station_status": 1,
+        "dim_station_development_sample": 3,
+        "dim_weather_hourly": 2,
+        "duplicate_historical_trips": 3,
+        "duplicate_station_status": 3,
+        "fact_station_availability": 3,
+        "gold_daily_station_summary": 3,
+        "gold_daily_trip_demand": 3,
+        "gold_rebalancing_priority": 3,
+        "gold_station_shortage": 3,
+        "gold_weather_demand": 2,
+        "maintenance_cdc_checkpoint": 2,
+        "maintenance_cdc_history": 2,
+        "quarantine_historical_trips": 3,
+        "quarantine_station_status": 3,
+        "silver_historical_trips": 3,
+        "silver_station_maintenance": 2,
+        "silver_station_status": 3,
+        "station_maintenance_source": 2
+      }
+    }
+  },
+  "after": {
+    "validation": {
+      "execution_id": "urbanflow-final-304828008837365",
+      "tables": [
+        "bronze_historical_trips",
+        "bronze_station_status",
+        "dim_station_development_sample",
+        "dim_weather_hourly",
+        "duplicate_historical_trips",
+        "duplicate_station_status",
+        "fact_station_availability",
+        "gold_daily_station_summary",
+        "gold_daily_trip_demand",
+        "gold_rebalancing_priority",
+        "gold_station_shortage",
+        "gold_weather_demand",
+        "maintenance_cdc_checkpoint",
+        "maintenance_cdc_history",
+        "quarantine_historical_trips",
+        "quarantine_station_status",
+        "silver_historical_trips",
+        "silver_station_maintenance",
+        "silver_station_status",
+        "station_maintenance_source"
+      ],
+      "lakeflow_tables": [],
+      "counts": {
+        "bronze_historical_trips": [
+          {
+            "n": "40"
+          }
+        ],
+        "bronze_station_status": [
+          {
+            "execution_id": "urbanflow-final-304828008837365",
+            "n": "40"
+          }
+        ],
+        "dim_station_development_sample": [
+          {
+            "n": "40"
+          }
+        ],
+        "dim_weather_hourly": [
+          {
+            "n": "48"
+          }
+        ],
+        "duplicate_historical_trips": [],
+        "duplicate_station_status": [],
+        "fact_station_availability": [
+          {
+            "execution_id": "urbanflow-final-304828008837365",
+            "n": "40"
+          }
+        ],
+        "gold_daily_station_summary": [
+          {
+            "n": "40"
+          }
+        ],
+        "gold_daily_trip_demand": [
+          {
+            "execution_id": "urbanflow-final-hist-devsample40",
+            "n": "40"
+          }
+        ],
+        "gold_rebalancing_priority": [
+          {
+            "execution_id": "urbanflow-final-304828008837365",
+            "n": "13"
+          }
+        ],
+        "gold_station_shortage": [
+          {
+            "execution_id": "urbanflow-final-304828008837365",
+            "n": "13"
+          }
+        ],
+        "gold_weather_demand": [
+          {
+            "execution_id": "urbanflow-final-weather-devsample48h",
+            "n": "17"
+          }
+        ],
+        "maintenance_cdc_checkpoint": [
+          {
+            "n": "1"
+          }
+        ],
+        "maintenance_cdc_history": [
+          {
+            "n": "5"
+          }
+        ],
+        "quarantine_historical_trips": [],
+        "quarantine_station_status": [],
+        "silver_historical_trips": [
+          {
+            "execution_id": "urbanflow-final-hist-devsample40",
+            "n": "40"
+          }
+        ],
+        "silver_station_maintenance": [
+          {
+            "n": "5"
+          }
+        ],
+        "silver_station_status": [
+          {
+            "execution_id": "urbanflow-final-304828008837365",
+            "n": "40"
+          }
+        ],
+        "station_maintenance_source": [
+          {
+            "n": "5"
+          }
+        ]
+      },
+      "delta_history": {
+        "bronze_historical_trips": [
+          {
+            "version": "1",
+            "operation": "STREAMING UPDATE",
+            "metrics": "{\"numRemovedFiles\":\"0\",\"numOutputRows\":\"40\",\"numOutputBytes\":\"6922\",\"numAddedFiles\":\"1\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE",
+            "metrics": "{}"
+          }
+        ],
+        "bronze_station_status": [
+          {
+            "version": "1",
+            "operation": "STREAMING UPDATE",
+            "metrics": "{\"numRemovedFiles\":\"0\",\"numOutputRows\":\"40\",\"numOutputBytes\":\"15711\",\"numAddedFiles\":\"1\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE",
+            "metrics": "{}"
+          }
+        ],
+        "dim_station_development_sample": [
+          {
+            "version": "4",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"4197\",\"materializeSourceTimeMs\":\"479\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"2168\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1501\"}"
+          },
+          {
+            "version": "3",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"3903\",\"materializeSourceTimeMs\":\"461\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1911\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1486\"}"
+          },
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"4476\",\"numTargetBytesRemoved\":\"4470\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"40\",\"executionTimeMs\":\"3971\",\"materializeSourceTimeMs\":\"475\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1858\",\"numTargetRowsUpdated\":\"40\",\"numOutputRows\":\"40\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"1\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1601\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"4470\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2398\",\"materializeSourceTimeMs\":\"443\",\"numTargetRowsInserted\":\"40\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"798\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"40\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1119\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE AS SELECT",
+            "metrics": "{\"numFiles\":\"0\",\"numOutputRows\":\"0\",\"numOutputBytes\":\"0\"}"
+          }
+        ],
+        "dim_weather_hourly": [
+          {
+            "version": "3",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"3179\",\"materializeSourceTimeMs\":\"143\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1740\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"48\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1249\"}"
+          },
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"3862\",\"materializeSourceTimeMs\":\"128\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"2269\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"48\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1428\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"8\",\"numTargetBytesAdded\":\"31449\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2104\",\"materializeSourceTimeMs\":\"126\",\"numTargetRowsInserted\":\"48\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"856\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"48\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"48\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1089\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE AS SELECT",
+            "metrics": "{\"numFiles\":\"0\",\"numOutputRows\":\"0\",\"numOutputBytes\":\"0\"}"
+          }
+        ],
+        "duplicate_historical_trips": [
+          {
+            "version": "4",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2531\",\"materializeSourceTimeMs\":\"564\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"973\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"938\"}"
+          },
+          {
+            "version": "3",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2388\",\"materializeSourceTimeMs\":\"610\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"928\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"803\"}"
+          },
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2019\",\"materializeSourceTimeMs\":\"529\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"698\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"750\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"1955\",\"materializeSourceTimeMs\":\"517\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"777\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"619\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE AS SELECT",
+            "metrics": "{\"numFiles\":\"0\",\"numOutputRows\":\"0\",\"numOutputBytes\":\"0\"}"
+          }
+        ],
+        "duplicate_station_status": [
+          {
+            "version": "4",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"3129\",\"materializeSourceTimeMs\":\"750\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1147\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1192\"}"
+          },
+          {
+            "version": "3",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2816\",\"materializeSourceTimeMs\":\"625\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1053\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1094\"}"
+          },
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2526\",\"materializeSourceTimeMs\":\"659\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"952\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"872\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2354\",\"materializeSourceTimeMs\":\"561\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"962\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"769\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE AS SELECT",
+            "metrics": "{\"numFiles\":\"0\",\"numOutputRows\":\"0\",\"numOutputBytes\":\"0\"}"
+          }
+        ],
+        "fact_station_availability": [
+          {
+            "version": "4",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"3883\",\"materializeSourceTimeMs\":\"759\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1664\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1412\"}"
+          },
+          {
+            "version": "3",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"3840\",\"materializeSourceTimeMs\":\"731\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1628\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1432\"}"
+          },
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"7983\",\"numTargetBytesRemoved\":\"7983\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"40\",\"executionTimeMs\":\"4160\",\"materializeSourceTimeMs\":\"796\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1724\",\"numTargetRowsUpdated\":\"40\",\"numOutputRows\":\"40\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"1\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1589\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"7983\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2977\",\"materializeSourceTimeMs\":\"736\",\"numTargetRowsInserted\":\"40\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1049\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"40\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1143\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE AS SELECT",
+            "metrics": "{\"numFiles\":\"0\",\"numOutputRows\":\"0\",\"numOutputBytes\":\"0\"}"
+          }
+        ],
+        "gold_daily_station_summary": [
+          {
+            "version": "4",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"4308\",\"materializeSourceTimeMs\":\"1003\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1826\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1440\"}"
+          },
+          {
+            "version": "3",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"4223\",\"materializeSourceTimeMs\":\"1086\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1754\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1331\"}"
+          },
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"5239\",\"numTargetBytesRemoved\":\"5239\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"40\",\"executionTimeMs\":\"4908\",\"materializeSourceTimeMs\":\"829\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"2605\",\"numTargetRowsUpdated\":\"40\",\"numOutputRows\":\"40\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"1\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1438\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"5239\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"3854\",\"materializeSourceTimeMs\":\"1044\",\"numTargetRowsInserted\":\"40\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"789\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"40\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1983\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE AS SELECT",
+            "metrics": "{\"numFiles\":\"0\",\"numOutputRows\":\"0\",\"numOutputBytes\":\"0\"}"
+          }
+        ],
+        "gold_daily_trip_demand": [
+          {
+            "version": "4",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"4234\",\"materializeSourceTimeMs\":\"711\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1569\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1909\"}"
+          },
+          {
+            "version": "3",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"4379\",\"materializeSourceTimeMs\":\"992\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1663\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1682\"}"
+          },
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"4005\",\"numTargetBytesRemoved\":\"4004\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"40\",\"executionTimeMs\":\"4290\",\"materializeSourceTimeMs\":\"784\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1489\",\"numTargetRowsUpdated\":\"40\",\"numOutputRows\":\"40\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"1\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1971\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"4004\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"3698\",\"materializeSourceTimeMs\":\"805\",\"numTargetRowsInserted\":\"40\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"742\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"40\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"2117\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE AS SELECT",
+            "metrics": "{\"numFiles\":\"0\",\"numOutputRows\":\"0\",\"numOutputBytes\":\"0\"}"
+          }
+        ],
+        "gold_rebalancing_priority": [
+          {
+            "version": "4",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"4830\",\"materializeSourceTimeMs\":\"1101\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1290\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"13\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"2395\"}"
+          },
+          {
+            "version": "3",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"4572\",\"materializeSourceTimeMs\":\"1008\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1372\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"13\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"2149\"}"
+          },
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"4927\",\"numTargetBytesRemoved\":\"4927\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"13\",\"executionTimeMs\":\"4230\",\"materializeSourceTimeMs\":\"915\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1268\",\"numTargetRowsUpdated\":\"13\",\"numOutputRows\":\"13\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"13\",\"numTargetFilesRemoved\":\"1\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"2000\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"4927\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"4281\",\"materializeSourceTimeMs\":\"857\",\"numTargetRowsInserted\":\"13\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1135\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"13\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"13\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"2258\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE AS SELECT",
+            "metrics": "{\"numFiles\":\"0\",\"numOutputRows\":\"0\",\"numOutputBytes\":\"0\"}"
+          }
+        ],
+        "gold_station_shortage": [
+          {
+            "version": "4",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"5930\",\"materializeSourceTimeMs\":\"1180\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1939\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"13\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"2770\"}"
+          },
+          {
+            "version": "3",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"4927\",\"materializeSourceTimeMs\":\"1089\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1144\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"13\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"2655\"}"
+          },
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"4850\",\"numTargetBytesRemoved\":\"4850\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"13\",\"executionTimeMs\":\"4961\",\"materializeSourceTimeMs\":\"1121\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1223\",\"numTargetRowsUpdated\":\"13\",\"numOutputRows\":\"13\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"13\",\"numTargetFilesRemoved\":\"1\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"2581\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"4850\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"5196\",\"materializeSourceTimeMs\":\"1132\",\"numTargetRowsInserted\":\"13\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"742\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"13\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"13\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"3261\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE AS SELECT",
+            "metrics": "{\"numFiles\":\"0\",\"numOutputRows\":\"0\",\"numOutputBytes\":\"0\"}"
+          }
+        ],
+        "gold_weather_demand": [
+          {
+            "version": "3",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"4368\",\"materializeSourceTimeMs\":\"762\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1502\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"17\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"2071\"}"
+          },
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"4321\",\"materializeSourceTimeMs\":\"780\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1329\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"17\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"2177\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"3280\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"3116\",\"materializeSourceTimeMs\":\"680\",\"numTargetRowsInserted\":\"17\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"716\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"17\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"17\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1686\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE AS SELECT",
+            "metrics": "{\"numFiles\":\"0\",\"numOutputRows\":\"0\",\"numOutputBytes\":\"0\"}"
+          }
+        ],
+        "maintenance_cdc_checkpoint": [
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"2226\",\"numTargetBytesRemoved\":\"1471\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"1\",\"executionTimeMs\":\"3272\",\"materializeSourceTimeMs\":\"1\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1532\",\"numTargetRowsUpdated\":\"1\",\"numOutputRows\":\"1\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"1\",\"numTargetFilesRemoved\":\"1\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1699\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"1471\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"1645\",\"materializeSourceTimeMs\":\"1\",\"numTargetRowsInserted\":\"1\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"618\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"1\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"1\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"990\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE",
+            "metrics": "{}"
+          }
+        ],
+        "maintenance_cdc_history": [
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2006\",\"materializeSourceTimeMs\":\"10\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"0\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1959\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"3933\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2892\",\"materializeSourceTimeMs\":\"11\",\"numTargetRowsInserted\":\"5\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"0\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"5\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"10\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"2840\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE",
+            "metrics": "{}"
+          }
+        ],
+        "quarantine_historical_trips": [
+          {
+            "version": "4",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2467\",\"materializeSourceTimeMs\":\"685\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"855\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"887\"}"
+          },
+          {
+            "version": "3",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2501\",\"materializeSourceTimeMs\":\"525\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1009\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"916\"}"
+          },
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"1946\",\"materializeSourceTimeMs\":\"424\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"803\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"671\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2417\",\"materializeSourceTimeMs\":\"1033\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"702\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"652\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE AS SELECT",
+            "metrics": "{\"numFiles\":\"0\",\"numOutputRows\":\"0\",\"numOutputBytes\":\"0\"}"
+          }
+        ],
+        "quarantine_station_status": [
+          {
+            "version": "4",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"3097\",\"materializeSourceTimeMs\":\"615\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1265\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1163\"}"
+          },
+          {
+            "version": "3",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2934\",\"materializeSourceTimeMs\":\"560\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1207\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1087\"}"
+          },
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"3118\",\"materializeSourceTimeMs\":\"696\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1237\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1134\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2368\",\"materializeSourceTimeMs\":\"507\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"999\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"815\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE AS SELECT",
+            "metrics": "{\"numFiles\":\"0\",\"numOutputRows\":\"0\",\"numOutputBytes\":\"0\"}"
+          }
+        ],
+        "silver_historical_trips": [
+          {
+            "version": "4",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"4036\",\"materializeSourceTimeMs\":\"598\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1753\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1639\"}"
+          },
+          {
+            "version": "3",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"3586\",\"materializeSourceTimeMs\":\"598\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1550\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1397\"}"
+          },
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"9691\",\"numTargetBytesRemoved\":\"9684\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"40\",\"executionTimeMs\":\"4290\",\"materializeSourceTimeMs\":\"683\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1987\",\"numTargetRowsUpdated\":\"40\",\"numOutputRows\":\"40\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"1\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1571\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"9684\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2627\",\"materializeSourceTimeMs\":\"581\",\"numTargetRowsInserted\":\"40\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"838\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"40\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1169\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE AS SELECT",
+            "metrics": "{\"numFiles\":\"0\",\"numOutputRows\":\"0\",\"numOutputBytes\":\"0\"}"
+          }
+        ],
+        "silver_station_maintenance": [
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2002\",\"materializeSourceTimeMs\":\"495\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"691\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"0\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"780\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"2797\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"2930\",\"materializeSourceTimeMs\":\"1146\",\"numTargetRowsInserted\":\"5\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"705\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"5\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"5\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"1028\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE",
+            "metrics": "{}"
+          }
+        ],
+        "silver_station_status": [
+          {
+            "version": "4",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"9480\",\"materializeSourceTimeMs\":\"1181\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"4860\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"3279\"}"
+          },
+          {
+            "version": "3",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"10198\",\"materializeSourceTimeMs\":\"1315\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"5168\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"3532\"}"
+          },
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"10839\",\"numTargetBytesRemoved\":\"10840\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"40\",\"executionTimeMs\":\"9341\",\"materializeSourceTimeMs\":\"1164\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"4448\",\"numTargetRowsUpdated\":\"40\",\"numOutputRows\":\"40\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"1\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"3549\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"10840\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"6659\",\"materializeSourceTimeMs\":\"1100\",\"numTargetRowsInserted\":\"40\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"2485\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"40\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"40\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"2937\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE AS SELECT",
+            "metrics": "{\"numFiles\":\"0\",\"numOutputRows\":\"0\",\"numOutputBytes\":\"0\"}"
+          }
+        ],
+        "station_maintenance_source": [
+          {
+            "version": "2",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"0\",\"numTargetBytesAdded\":\"0\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"4857\",\"materializeSourceTimeMs\":\"124\",\"numTargetRowsInserted\":\"0\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"1845\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"0\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"0\",\"numSourceRows\":\"5\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"2844\"}"
+          },
+          {
+            "version": "1",
+            "operation": "MERGE",
+            "metrics": "{\"numTargetRowsCopied\":\"0\",\"numTargetRowsDeleted\":\"0\",\"numTargetFilesAdded\":\"1\",\"numTargetBytesAdded\":\"3262\",\"numTargetBytesRemoved\":\"0\",\"numTargetDeletionVectorsAdded\":\"0\",\"numTargetRowsMatchedUpdated\":\"0\",\"executionTimeMs\":\"4139\",\"materializeSourceTimeMs\":\"106\",\"numTargetRowsInserted\":\"5\",\"numTargetRowsMatchedDeleted\":\"0\",\"numTargetDeletionVectorsUpdated\":\"0\",\"scanTimeMs\":\"832\",\"numTargetRowsUpdated\":\"0\",\"numOutputRows\":\"5\",\"numTargetDeletionVectorsRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceUpdated\":\"0\",\"numTargetChangeFilesAdded\":\"1\",\"numSourceRows\":\"5\",\"numTargetFilesRemoved\":\"0\",\"numTargetRowsNotMatchedBySourceDeleted\":\"0\",\"rewriteTimeMs\":\"3164\"}"
+          },
+          {
+            "version": "0",
+            "operation": "CREATE TABLE",
+            "metrics": "{}"
+          }
+        ]
+      },
+      "station_identity": [
+        {
+          "bronze": "40",
+          "silver": "40",
+          "quarantine": "0",
+          "duplicates": "0",
+          "fact": "40",
+          "shortage": "13",
+          "priority": "13"
+        }
+      ],
+      "availability_breakdown": [
+        {
+          "availability_status": "AVAILABLE",
+          "n": "25"
+        },
+        {
+          "availability_status": "LOW_BIKES",
+          "n": "4"
+        },
+        {
+          "availability_status": "LOW_DOCKS",
+          "n": "9"
+        },
+        {
+          "availability_status": "OUT_OF_SERVICE",
+          "n": "2"
+        }
+      ],
+      "historical_identity": [
+        {
+          "bronze": "40",
+          "valid": "40",
+          "quarantine": "0",
+          "duplicates": "0",
+          "gold_trips": "40"
+        }
+      ],
+      "weather": [
+        {
+          "weather_hours": "48",
+          "weather_trips": "40",
+          "weather_days": "17"
+        }
+      ],
+      "cdc_source_rows": [
+        {
+          "maintenance_id": "MT-1001",
+          "station_id": "66dd9fa6-0aca-11e7-82f6-3863bb44ef7c",
+          "status": "OPEN",
+          "severity": "HIGH",
+          "updated_at": "2026-10-12T07:00:00.000Z"
+        },
+        {
+          "maintenance_id": "MT-1002",
+          "station_id": "0138452a-b9f4-4aee-80b0-7fae9a122ffe",
+          "status": "OPEN",
+          "severity": "MEDIUM",
+          "updated_at": "2026-10-12T07:05:00.000Z"
+        },
+        {
+          "maintenance_id": "MT-1003",
+          "station_id": "62b97c1e-9d06-4c5e-b9c3-d76099e37fe4",
+          "status": "IN_PROGRESS",
+          "severity": "LOW",
+          "updated_at": "2026-10-12T07:10:00.000Z"
+        },
+        {
+          "maintenance_id": "MT-1004",
+          "station_id": "180b83a0-329c-4069-87be-df862cb1baed",
+          "status": "OPEN",
+          "severity": "HIGH",
+          "updated_at": "2026-10-12T07:15:00.000Z"
+        },
+        {
+          "maintenance_id": "MT-1005",
+          "station_id": "00967b8f-1a4d-4131-a65a-17fa8ca89e28",
+          "status": "OPEN",
+          "severity": "LOW",
+          "updated_at": "2026-10-12T07:20:00.000Z"
+        }
+      ],
+      "cdc_target_rows": [
+        {
+          "maintenance_id": "MT-1001",
+          "station_id": "66dd9fa6-0aca-11e7-82f6-3863bb44ef7c",
+          "status": "OPEN",
+          "severity": "HIGH",
+          "updated_at": "2026-10-12T07:00:00.000Z",
+          "source_commit_version": "1",
+          "source_commit_timestamp": "2026-10-12T16:51:52.000Z"
+        },
+        {
+          "maintenance_id": "MT-1002",
+          "station_id": "0138452a-b9f4-4aee-80b0-7fae9a122ffe",
+          "status": "OPEN",
+          "severity": "MEDIUM",
+          "updated_at": "2026-10-12T07:05:00.000Z",
+          "source_commit_version": "1",
+          "source_commit_timestamp": "2026-10-12T16:51:52.000Z"
+        },
+        {
+          "maintenance_id": "MT-1003",
+          "station_id": "62b97c1e-9d06-4c5e-b9c3-d76099e37fe4",
+          "status": "IN_PROGRESS",
+          "severity": "LOW",
+          "updated_at": "2026-10-12T07:10:00.000Z",
+          "source_commit_version": "1",
+          "source_commit_timestamp": "2026-10-12T16:51:52.000Z"
+        },
+        {
+          "maintenance_id": "MT-1004",
+          "station_id": "180b83a0-329c-4069-87be-df862cb1baed",
+          "status": "OPEN",
+          "severity": "HIGH",
+          "updated_at": "2026-10-12T07:15:00.000Z",
+          "source_commit_version": "1",
+          "source_commit_timestamp": "2026-10-12T16:51:52.000Z"
+        },
+        {
+          "maintenance_id": "MT-1005",
+          "station_id": "00967b8f-1a4d-4131-a65a-17fa8ca89e28",
+          "status": "OPEN",
+          "severity": "LOW",
+          "updated_at": "2026-10-12T07:20:00.000Z",
+          "source_commit_version": "1",
+          "source_commit_timestamp": "2026-10-12T16:51:52.000Z"
+        }
+      ],
+      "cdc_history_by_type": [
+        {
+          "commit_version": "1",
+          "change_type": "insert",
+          "n": "5",
+          "ids": "5"
+        }
+      ],
+      "cdc_checkpoint": [
+        {
+          "pipeline_key": "station_maintenance",
+          "processed_version": "2",
+          "processed_at": "2026-10-12T17:41:41.823Z"
+        }
+      ],
+      "cdc_source_latest_version": [
+        {
+          "v": "2"
+        }
+      ],
+      "cdc_table_changes_all": [
+        {
+          "_commit_version": "1",
+          "_change_type": "insert",
+          "n": "5"
+        }
+      ],
+      "cdc_reconciliation_independent": [
+        {
+          "source_count": "5",
+          "target_count": "5",
+          "missing_or_different_in_target": "0",
+          "unexpected_or_different_in_target": "0",
+          "duplicate_target_keys": "0",
+          "events_missing_from_history": "0"
+        }
+      ],
+      "cdc_history_vs_cdf": [
+        {
+          "cdf_events_missing_from_history": "0"
+        }
+      ]
+    },
+    "audit": {
+      "historical_ingested_at": [
+        {
+          "ride_id": "0DC35AD1E04590FE",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "12FBBCF285A43999",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "13306F79597A3A06",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "137AF945E2DBBE5B",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "1B5234F18B1F0892",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "3D1553E303DA7B0D",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "4D5F80D54597D58F",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "528ADF0EB740BD0F",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "56F5265E118DCCD3",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "603F3F1441D0853A",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "625EE53222A2B947",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "62EF1AC5BE598131",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "65999D3A5AFF675B",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "67168FF34EE226A7",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "6A96FCD170996E59",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "71AB47656B2090B8",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "7656012372574079",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "7B7090807A147EBB",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "7D6E05FA1FDC13DD",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "7DD1703A3E0D8833",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "7DFBA0228776696D",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "815B668E8ADAFDA8",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "8464E543DAB27DBF",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "8BFA54A040E7AD62",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "936E5204127C4FDE",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "939190C25A5AB16F",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "9C04FDC8549F5205",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "9F24088687DC9AE1",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "A159D17432D92BCD",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "A42F107BB6BD3833",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "A586B241FF85F257",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "AA171066E1FBBA3D",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "B477DD25DB62E7F0",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "B4F6D243AF91588B",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "B7E5E6FAA9636FD5",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "B812EF7F1C64CE13",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "DC9D566EDE21493D",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "E1A0FDEFB0B92477",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "F8749351FF01B67C",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        },
+        {
+          "ride_id": "FDC460720E42A072",
+          "ingested_at": "2026-10-12 16:49:12.413094"
+        }
+      ],
+      "weather_retrieved_at": [
+        {
+          "hour": "2024-01-24 00:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 01:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 02:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 03:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 04:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 05:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 06:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 07:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 08:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 09:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 10:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 11:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 12:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 13:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 14:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 15:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 16:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 17:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 18:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 19:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 20:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 21:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 22:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-24 23:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 00:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 01:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 02:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 03:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 04:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 05:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 06:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 07:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 08:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 09:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 10:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 11:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 12:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 13:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 14:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 15:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 16:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 17:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 18:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 19:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 20:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 21:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 22:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        },
+        {
+          "hour": "2024-01-25 23:00:00",
+          "retrieved_at": "2026-10-12T16:50:05.301543Z"
+        }
+      ],
+      "latest_versions": {
+        "bronze_historical_trips": 1,
+        "bronze_station_status": 1,
+        "dim_station_development_sample": 4,
+        "dim_weather_hourly": 3,
+        "duplicate_historical_trips": 4,
+        "duplicate_station_status": 4,
+        "fact_station_availability": 4,
+        "gold_daily_station_summary": 4,
+        "gold_daily_trip_demand": 4,
+        "gold_rebalancing_priority": 4,
+        "gold_station_shortage": 4,
+        "gold_weather_demand": 3,
+        "maintenance_cdc_checkpoint": 2,
+        "maintenance_cdc_history": 2,
+        "quarantine_historical_trips": 4,
+        "quarantine_station_status": 4,
+        "silver_historical_trips": 4,
+        "silver_station_maintenance": 2,
+        "silver_station_status": 4,
+        "station_maintenance_source": 2
+      }
+    }
+  },
+  "delta_commits": {
+    "bronze_historical_trips": {
+      "version_before": 1,
+      "version_after": 1,
+      "new_commits": []
+    },
+    "bronze_station_status": {
+      "version_before": 1,
+      "version_after": 1,
+      "new_commits": []
+    },
+    "dim_station_development_sample": {
+      "version_before": 3,
+      "version_after": 4,
+      "new_commits": [
+        {
+          "version": 4,
+          "operation": "MERGE",
+          "metrics": {
+            "numTargetRowsInserted": "0",
+            "numTargetRowsUpdated": "0",
+            "numTargetRowsDeleted": "0",
+            "numTargetRowsCopied": "0",
+            "numTargetRowsMatchedUpdated": "0",
+            "numTargetRowsNotMatchedBySourceDeleted": "0",
+            "numOutputRows": "0",
+            "numSourceRows": "40"
+          }
+        }
+      ],
+      "columns_differing": {},
+      "rows": {
+        "after": "40",
+        "before": "40"
+      }
+    },
+    "dim_weather_hourly": {
+      "version_before": 2,
+      "version_after": 3,
+      "new_commits": [
+        {
+          "version": 3,
+          "operation": "MERGE",
+          "metrics": {
+            "numTargetRowsInserted": "0",
+            "numTargetRowsUpdated": "0",
+            "numTargetRowsDeleted": "0",
+            "numTargetRowsCopied": "0",
+            "numTargetRowsMatchedUpdated": "0",
+            "numTargetRowsNotMatchedBySourceDeleted": "0",
+            "numOutputRows": "0",
+            "numSourceRows": "48"
+          }
+        }
+      ],
+      "columns_differing": {},
+      "rows": {
+        "after": "48",
+        "before": "48"
+      }
+    },
+    "duplicate_historical_trips": {
+      "version_before": 3,
+      "version_after": 4,
+      "new_commits": [
+        {
+          "version": 4,
+          "operation": "MERGE",
+          "metrics": {
+            "numTargetRowsInserted": "0",
+            "numTargetRowsUpdated": "0",
+            "numTargetRowsDeleted": "0",
+            "numTargetRowsCopied": "0",
+            "numTargetRowsMatchedUpdated": "0",
+            "numTargetRowsNotMatchedBySourceDeleted": "0",
+            "numOutputRows": "0",
+            "numSourceRows": "0"
+          }
+        }
+      ],
+      "columns_differing": {},
+      "rows": {
+        "after": "0",
+        "before": "0"
+      }
+    },
+    "duplicate_station_status": {
+      "version_before": 3,
+      "version_after": 4,
+      "new_commits": [
+        {
+          "version": 4,
+          "operation": "MERGE",
+          "metrics": {
+            "numTargetRowsInserted": "0",
+            "numTargetRowsUpdated": "0",
+            "numTargetRowsDeleted": "0",
+            "numTargetRowsCopied": "0",
+            "numTargetRowsMatchedUpdated": "0",
+            "numTargetRowsNotMatchedBySourceDeleted": "0",
+            "numOutputRows": "0",
+            "numSourceRows": "0"
+          }
+        }
+      ],
+      "columns_differing": {},
+      "rows": {
+        "after": "0",
+        "before": "0"
+      }
+    },
+    "fact_station_availability": {
+      "version_before": 3,
+      "version_after": 4,
+      "new_commits": [
+        {
+          "version": 4,
+          "operation": "MERGE",
+          "metrics": {
+            "numTargetRowsInserted": "0",
+            "numTargetRowsUpdated": "0",
+            "numTargetRowsDeleted": "0",
+            "numTargetRowsCopied": "0",
+            "numTargetRowsMatchedUpdated": "0",
+            "numTargetRowsNotMatchedBySourceDeleted": "0",
+            "numOutputRows": "0",
+            "numSourceRows": "40"
+          }
+        }
+      ],
+      "columns_differing": {},
+      "rows": {
+        "after": "40",
+        "before": "40"
+      }
+    },
+    "gold_daily_station_summary": {
+      "version_before": 3,
+      "version_after": 4,
+      "new_commits": [
+        {
+          "version": 4,
+          "operation": "MERGE",
+          "metrics": {
+            "numTargetRowsInserted": "0",
+            "numTargetRowsUpdated": "0",
+            "numTargetRowsDeleted": "0",
+            "numTargetRowsCopied": "0",
+            "numTargetRowsMatchedUpdated": "0",
+            "numTargetRowsNotMatchedBySourceDeleted": "0",
+            "numOutputRows": "0",
+            "numSourceRows": "40"
+          }
+        }
+      ],
+      "columns_differing": {},
+      "rows": {
+        "after": "40",
+        "before": "40"
+      }
+    },
+    "gold_daily_trip_demand": {
+      "version_before": 3,
+      "version_after": 4,
+      "new_commits": [
+        {
+          "version": 4,
+          "operation": "MERGE",
+          "metrics": {
+            "numTargetRowsInserted": "0",
+            "numTargetRowsUpdated": "0",
+            "numTargetRowsDeleted": "0",
+            "numTargetRowsCopied": "0",
+            "numTargetRowsMatchedUpdated": "0",
+            "numTargetRowsNotMatchedBySourceDeleted": "0",
+            "numOutputRows": "0",
+            "numSourceRows": "40"
+          }
+        }
+      ],
+      "columns_differing": {},
+      "rows": {
+        "after": "40",
+        "before": "40"
+      }
+    },
+    "gold_rebalancing_priority": {
+      "version_before": 3,
+      "version_after": 4,
+      "new_commits": [
+        {
+          "version": 4,
+          "operation": "MERGE",
+          "metrics": {
+            "numTargetRowsInserted": "0",
+            "numTargetRowsUpdated": "0",
+            "numTargetRowsDeleted": "0",
+            "numTargetRowsCopied": "0",
+            "numTargetRowsMatchedUpdated": "0",
+            "numTargetRowsNotMatchedBySourceDeleted": "0",
+            "numOutputRows": "0",
+            "numSourceRows": "13"
+          }
+        }
+      ],
+      "columns_differing": {},
+      "rows": {
+        "after": "13",
+        "before": "13"
+      }
+    },
+    "gold_station_shortage": {
+      "version_before": 3,
+      "version_after": 4,
+      "new_commits": [
+        {
+          "version": 4,
+          "operation": "MERGE",
+          "metrics": {
+            "numTargetRowsInserted": "0",
+            "numTargetRowsUpdated": "0",
+            "numTargetRowsDeleted": "0",
+            "numTargetRowsCopied": "0",
+            "numTargetRowsMatchedUpdated": "0",
+            "numTargetRowsNotMatchedBySourceDeleted": "0",
+            "numOutputRows": "0",
+            "numSourceRows": "13"
+          }
+        }
+      ],
+      "columns_differing": {},
+      "rows": {
+        "after": "13",
+        "before": "13"
+      }
+    },
+    "gold_weather_demand": {
+      "version_before": 2,
+      "version_after": 3,
+      "new_commits": [
+        {
+          "version": 3,
+          "operation": "MERGE",
+          "metrics": {
+            "numTargetRowsInserted": "0",
+            "numTargetRowsUpdated": "0",
+            "numTargetRowsDeleted": "0",
+            "numTargetRowsCopied": "0",
+            "numTargetRowsMatchedUpdated": "0",
+            "numTargetRowsNotMatchedBySourceDeleted": "0",
+            "numOutputRows": "0",
+            "numSourceRows": "17"
+          }
+        }
+      ],
+      "columns_differing": {},
+      "rows": {
+        "after": "17",
+        "before": "17"
+      }
+    },
+    "maintenance_cdc_checkpoint": {
+      "version_before": 2,
+      "version_after": 2,
+      "new_commits": []
+    },
+    "maintenance_cdc_history": {
+      "version_before": 2,
+      "version_after": 2,
+      "new_commits": []
+    },
+    "quarantine_historical_trips": {
+      "version_before": 3,
+      "version_after": 4,
+      "new_commits": [
+        {
+          "version": 4,
+          "operation": "MERGE",
+          "metrics": {
+            "numTargetRowsInserted": "0",
+            "numTargetRowsUpdated": "0",
+            "numTargetRowsDeleted": "0",
+            "numTargetRowsCopied": "0",
+            "numTargetRowsMatchedUpdated": "0",
+            "numTargetRowsNotMatchedBySourceDeleted": "0",
+            "numOutputRows": "0",
+            "numSourceRows": "0"
+          }
+        }
+      ],
+      "columns_differing": {},
+      "rows": {
+        "after": "0",
+        "before": "0"
+      }
+    },
+    "quarantine_station_status": {
+      "version_before": 3,
+      "version_after": 4,
+      "new_commits": [
+        {
+          "version": 4,
+          "operation": "MERGE",
+          "metrics": {
+            "numTargetRowsInserted": "0",
+            "numTargetRowsUpdated": "0",
+            "numTargetRowsDeleted": "0",
+            "numTargetRowsCopied": "0",
+            "numTargetRowsMatchedUpdated": "0",
+            "numTargetRowsNotMatchedBySourceDeleted": "0",
+            "numOutputRows": "0",
+            "numSourceRows": "0"
+          }
+        }
+      ],
+      "columns_differing": {},
+      "rows": {
+        "after": "0",
+        "before": "0"
+      }
+    },
+    "silver_historical_trips": {
+      "version_before": 3,
+      "version_after": 4,
+      "new_commits": [
+        {
+          "version": 4,
+          "operation": "MERGE",
+          "metrics": {
+            "numTargetRowsInserted": "0",
+            "numTargetRowsUpdated": "0",
+            "numTargetRowsDeleted": "0",
+            "numTargetRowsCopied": "0",
+            "numTargetRowsMatchedUpdated": "0",
+            "numTargetRowsNotMatchedBySourceDeleted": "0",
+            "numOutputRows": "0",
+            "numSourceRows": "40"
+          }
+        }
+      ],
+      "columns_differing": {},
+      "rows": {
+        "after": "40",
+        "before": "40"
+      }
+    },
+    "silver_station_maintenance": {
+      "version_before": 2,
+      "version_after": 2,
+      "new_commits": []
+    },
+    "silver_station_status": {
+      "version_before": 3,
+      "version_after": 4,
+      "new_commits": [
+        {
+          "version": 4,
+          "operation": "MERGE",
+          "metrics": {
+            "numTargetRowsInserted": "0",
+            "numTargetRowsUpdated": "0",
+            "numTargetRowsDeleted": "0",
+            "numTargetRowsCopied": "0",
+            "numTargetRowsMatchedUpdated": "0",
+            "numTargetRowsNotMatchedBySourceDeleted": "0",
+            "numOutputRows": "0",
+            "numSourceRows": "40"
+          }
+        }
+      ],
+      "columns_differing": {},
+      "rows": {
+        "after": "40",
+        "before": "40"
+      }
+    },
+    "station_maintenance_source": {
+      "version_before": 2,
+      "version_after": 2,
+      "new_commits": []
+    }
+  },
+  "file_metrics": {
+    "files": {
+      "dim_station_development_sample": {
+        "4": {
+          "numTargetFilesAdded": "0",
+          "numTargetFilesRemoved": "0",
+          "numTargetChangeFilesAdded": "0",
+          "numTargetBytesAdded": "0",
+          "numTargetBytesRemoved": "0",
+          "numTargetDeletionVectorsAdded": "0",
+          "numTargetDeletionVectorsRemoved": "0",
+          "numTargetRowsCopied": "0"
+        }
+      },
+      "dim_weather_hourly": {
+        "3": {
+          "numTargetFilesAdded": "0",
+          "numTargetFilesRemoved": "0",
+          "numTargetChangeFilesAdded": "0",
+          "numTargetBytesAdded": "0",
+          "numTargetBytesRemoved": "0",
+          "numTargetDeletionVectorsAdded": "0",
+          "numTargetDeletionVectorsRemoved": "0",
+          "numTargetRowsCopied": "0"
+        }
+      },
+      "duplicate_historical_trips": {
+        "4": {
+          "numTargetFilesAdded": "0",
+          "numTargetFilesRemoved": "0",
+          "numTargetChangeFilesAdded": "0",
+          "numTargetBytesAdded": "0",
+          "numTargetBytesRemoved": "0",
+          "numTargetDeletionVectorsAdded": "0",
+          "numTargetDeletionVectorsRemoved": "0",
+          "numTargetRowsCopied": "0"
+        }
+      },
+      "duplicate_station_status": {
+        "4": {
+          "numTargetFilesAdded": "0",
+          "numTargetFilesRemoved": "0",
+          "numTargetChangeFilesAdded": "0",
+          "numTargetBytesAdded": "0",
+          "numTargetBytesRemoved": "0",
+          "numTargetDeletionVectorsAdded": "0",
+          "numTargetDeletionVectorsRemoved": "0",
+          "numTargetRowsCopied": "0"
+        }
+      },
+      "fact_station_availability": {
+        "4": {
+          "numTargetFilesAdded": "0",
+          "numTargetFilesRemoved": "0",
+          "numTargetChangeFilesAdded": "0",
+          "numTargetBytesAdded": "0",
+          "numTargetBytesRemoved": "0",
+          "numTargetDeletionVectorsAdded": "0",
+          "numTargetDeletionVectorsRemoved": "0",
+          "numTargetRowsCopied": "0"
+        }
+      },
+      "gold_daily_station_summary": {
+        "4": {
+          "numTargetFilesAdded": "0",
+          "numTargetFilesRemoved": "0",
+          "numTargetChangeFilesAdded": "0",
+          "numTargetBytesAdded": "0",
+          "numTargetBytesRemoved": "0",
+          "numTargetDeletionVectorsAdded": "0",
+          "numTargetDeletionVectorsRemoved": "0",
+          "numTargetRowsCopied": "0"
+        }
+      },
+      "gold_daily_trip_demand": {
+        "4": {
+          "numTargetFilesAdded": "0",
+          "numTargetFilesRemoved": "0",
+          "numTargetChangeFilesAdded": "0",
+          "numTargetBytesAdded": "0",
+          "numTargetBytesRemoved": "0",
+          "numTargetDeletionVectorsAdded": "0",
+          "numTargetDeletionVectorsRemoved": "0",
+          "numTargetRowsCopied": "0"
+        }
+      },
+      "gold_rebalancing_priority": {
+        "4": {
+          "numTargetFilesAdded": "0",
+          "numTargetFilesRemoved": "0",
+          "numTargetChangeFilesAdded": "0",
+          "numTargetBytesAdded": "0",
+          "numTargetBytesRemoved": "0",
+          "numTargetDeletionVectorsAdded": "0",
+          "numTargetDeletionVectorsRemoved": "0",
+          "numTargetRowsCopied": "0"
+        }
+      },
+      "gold_station_shortage": {
+        "4": {
+          "numTargetFilesAdded": "0",
+          "numTargetFilesRemoved": "0",
+          "numTargetChangeFilesAdded": "0",
+          "numTargetBytesAdded": "0",
+          "numTargetBytesRemoved": "0",
+          "numTargetDeletionVectorsAdded": "0",
+          "numTargetDeletionVectorsRemoved": "0",
+          "numTargetRowsCopied": "0"
+        }
+      },
+      "gold_weather_demand": {
+        "3": {
+          "numTargetFilesAdded": "0",
+          "numTargetFilesRemoved": "0",
+          "numTargetChangeFilesAdded": "0",
+          "numTargetBytesAdded": "0",
+          "numTargetBytesRemoved": "0",
+          "numTargetDeletionVectorsAdded": "0",
+          "numTargetDeletionVectorsRemoved": "0",
+          "numTargetRowsCopied": "0"
+        }
+      },
+      "quarantine_historical_trips": {
+        "4": {
+          "numTargetFilesAdded": "0",
+          "numTargetFilesRemoved": "0",
+          "numTargetChangeFilesAdded": "0",
+          "numTargetBytesAdded": "0",
+          "numTargetBytesRemoved": "0",
+          "numTargetDeletionVectorsAdded": "0",
+          "numTargetDeletionVectorsRemoved": "0",
+          "numTargetRowsCopied": "0"
+        }
+      },
+      "quarantine_station_status": {
+        "4": {
+          "numTargetFilesAdded": "0",
+          "numTargetFilesRemoved": "0",
+          "numTargetChangeFilesAdded": "0",
+          "numTargetBytesAdded": "0",
+          "numTargetBytesRemoved": "0",
+          "numTargetDeletionVectorsAdded": "0",
+          "numTargetDeletionVectorsRemoved": "0",
+          "numTargetRowsCopied": "0"
+        }
+      },
+      "silver_historical_trips": {
+        "4": {
+          "numTargetFilesAdded": "0",
+          "numTargetFilesRemoved": "0",
+          "numTargetChangeFilesAdded": "0",
+          "numTargetBytesAdded": "0",
+          "numTargetBytesRemoved": "0",
+          "numTargetDeletionVectorsAdded": "0",
+          "numTargetDeletionVectorsRemoved": "0",
+          "numTargetRowsCopied": "0"
+        }
+      },
+      "silver_station_status": {
+        "4": {
+          "numTargetFilesAdded": "0",
+          "numTargetFilesRemoved": "0",
+          "numTargetChangeFilesAdded": "0",
+          "numTargetBytesAdded": "0",
+          "numTargetBytesRemoved": "0",
+          "numTargetDeletionVectorsAdded": "0",
+          "numTargetDeletionVectorsRemoved": "0",
+          "numTargetRowsCopied": "0"
+        }
+      }
+    },
+    "cdf_events_v2": [
+      {
+        "n": "0"
+      }
+    ],
+    "cdf_events_all": [
+      {
+        "_commit_version": "1",
+        "_change_type": "insert",
+        "n": "5"
+      }
+    ]
+  },
+  "tests": "755 passed, 1 skipped locally; Ruff, Black, dashboard check, offline bundle schema pass; CI green on f869bbb"
+}
