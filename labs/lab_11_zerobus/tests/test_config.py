@@ -11,6 +11,10 @@ def test_zerobus_endpoints_follow_the_documented_format(config):
         == "https://7405604503619901.zerobus.eastus.azuredatabricks.net"
     )
     assert (
+        config.target("azure_trial2").zerobus_endpoint
+        == "https://7405618361895520.zerobus.eastus.azuredatabricks.net"
+    )
+    assert (
         config.target("personal_dev").zerobus_endpoint
         == "https://7474653929863069.zerobus.us-east-2.cloud.databricks.com"
     )
@@ -21,6 +25,7 @@ def test_targets_use_separate_isolated_schemas(config):
     assert names == {
         "workspace.lab_11_zerobus.bronze_iot_events",
         "dbr_dev.parvinbadalov_lab11_zerobus.bronze_iot_events",
+        "dbr_dev.parvinbadalov_lab11_zerobus_trial2.bronze_iot_events",
     }
 
 

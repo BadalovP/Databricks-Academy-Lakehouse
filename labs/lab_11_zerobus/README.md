@@ -2,7 +2,7 @@
 
 **IoT telemetry pushed straight into Unity Catalog Delta · durability acknowledgments · at-least-once delivery · idempotent Bronze-to-Silver MERGE · Kafka vs Zerobus trade-offs**
 
-> **Status (2026-10-12): implemented and live-validated in Personal DEV.** One bounded run sent 30 real records through the official Zerobus Python SDK into a managed Delta table. All 30 were acknowledged and landed unchanged. The 6 deliberate duplicates were detected, Silver holds the 24 unique events, and a second MERGE changed nothing. The Azure `dbr_dev` run is prepared but blocked by workspace permissions (see [Azure dbr_dev](#azure-dbr_dev)). Evidence: [`evidence/`](evidence/).
+> **Status (2026-10-12): implemented and live-validated in two environments.** Personal DEV (AWS) and Academy Azure `dbr_dev_trial_2` each received one bounded run of 30 real records through the official Zerobus Python SDK into a managed Delta table. In both, all 30 were acknowledged and landed unchanged, the 6 deliberate duplicates were detected, Silver holds the 24 unique events, and a second MERGE changed nothing. Evidence: [`evidence/`](evidence/).
 
 ## Overview and scenario
 
@@ -181,7 +181,7 @@ Verification and setup use your **own** identity: the CLI profile or Azure CLI c
 
 ```powershell
 # Read-only preflight: identity, endpoint DNS, tables, service principal grants, warehouses
-.venv\Scripts\python scripts/check_access.py --target personal_dev
+.venv\Scripts\python scripts/check_access.py --target personal_dev   # or azure_trial2
 
 # Create the schema and the two tables if missing (never drops anything)
 .venv\Scripts\python scripts/setup_tables.py --target personal_dev --confirm personal_dev
@@ -240,30 +240,44 @@ Run `pdev-run-001`, details in [the live validation record](evidence/2026-10-12-
 | Silver after MERGE 1 / MERGE 2 | 24 inserted / 0 affected rows, snapshot identical |
 | Reconciliation | 0 conflicts, nulls, missing, unexpected or wrong delivery counts |
 
-### Azure dbr_dev
+### Azure dbr_dev_trial_2 - PASS
 
-**Blocked by permissions; nothing was created in Azure.** Checked read-only on 2026-10-12:
-- **Zerobus availability:** `eastus` is a supported region, and `7405604503619901.zerobus.eastus.azuredatabricks.net` resolves.
-- **Service principal:** the owner is not a workspace administrator in `dbr_dev`, so cannot create one there. The existing `zerobus-producer-prod` service principal belongs to someone else and was not used.
-- **Query capability:** the owner has no permission on the workspace's only SQL warehouse.
+Run `t2-run-001`, details in [the Azure live validation record](evidence/2026-10-12-azure-trial2-live-validation.md):
 
-To finish, a `dbr_dev` workspace administrator:
-1. Creates a service principal for this lab with `workspace-access`, and provides its OAuth secret (or makes the owner its manager).
-2. Grants the owner `CAN_USE` on a SQL warehouse.
+| Metric | Result |
+|---|---|
+| Workspace / tables | Academy `dbr_dev_trial_2` (Azure `eastus`); `dbr_dev.parvinbadalov_lab11_zerobus_trial2.bronze_iot_events`, `...silver_iot_events` |
+| Ingesting identity | Existing Academy service principal `sp-databricks-adls` (Entra-managed, `d1a2118a-...`), reused at the administrator's request; temporary workspace assignment (`USER`, `workspace-access` only) removed after the run |
+| Credential | Administrator-issued Databricks OAuth secret read from a Key Vault-backed secret scope into memory only |
+| Sent / acknowledged / retries | 30 / 30 / 0 (4 batches, each awaited with `wait_for_offset`) |
+| Acknowledgment time | 3.27 s for the first batch (includes token and stream setup), 0.19-0.20 s for the next three |
+| Landed in Bronze | 30; every row identical to the record sent |
+| Time to Delta | Bronze commit about 3 s after the last acknowledgment (Delta history, 1 s resolution) |
+| Unique events / duplicate deliveries detected | 24 / 6 |
+| Silver after MERGE 1 / MERGE 2 | 24 inserted / 0 affected rows, snapshot identical |
+| Reconciliation | 0 conflicts, nulls, missing, unexpected or wrong delivery counts |
 
-Then, as owner of the `dbr_dev.parvinbadalov_lab11_zerobus` schema:
-1. Run `setup_tables.py --target azure_dev`.
-2. Grant the service principal `USE SCHEMA` and `SELECT, MODIFY` on the Bronze table.
-3. Run the producer and validation commands above with `--target azure_dev`.
+### Environment differences
+
+| | Personal DEV | Azure trial2 |
+|---|---|---|
+| Cloud and region | AWS `us-east-2` | Azure `eastus` |
+| Catalog and schema | `workspace.lab_11_zerobus` | `dbr_dev.parvinbadalov_lab11_zerobus_trial2` (shared Academy metastore) |
+| Service principal | `lab11-zerobus-producer`, created for this lab with Bronze-only grants | Shared `sp-databricks-adls`, reused; its existing `dbr_dev` privileges cover the table |
+| Secret handling | One-hour secret created and deleted by the owner | Secret issued by the account administrator; revocation is the administrator's step |
+
+The same code, SQL and validation ran unchanged in both environments; only the `--target` differs.
+
+The `azure_dev` target (`dbr_dev` workspace) stays in the configuration but was **not tested**. In `dbr_dev` the owner is not a workspace administrator and has no SQL warehouse permission.
 
 ## Limitations and cost
 
-- **Scope:** one 30-record functional run per environment; no throughput, latency distribution or cost measurement.
+- **Scope:** one 30-record functional run in each of two environments; no throughput, latency distribution or cost measurement.
 - **Zerobus constraints:** service-principal OAuth (or an account federation policy); managed Delta or streaming tables only; table schema never auto-evolves; ordering only within one stream; the target table must not be renamed or replaced while streams write to it.
 - **Silver** reprocesses all of Bronze each time; at scale, process only new commits.
 - **Cost:** the live run used Zerobus serverless ingestion for 30 records and a few statements on an existing serverless SQL warehouse. No cluster, warehouse, Job or schedule was created. Remaining objects:
   - in Personal DEV, the two small tables and the service principal `lab11-zerobus-producer`, which has no secret left;
-  - nothing in Azure.
+  - in Azure, the two small tables in `dbr_dev.parvinbadalov_lab11_zerobus_trial2`. The shared service principal is no longer assigned to the workspace. The administrator-issued OAuth secret is still to be revoked by the administrator.
 
 ## Repository structure
 
