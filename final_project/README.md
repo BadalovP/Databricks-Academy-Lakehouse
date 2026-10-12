@@ -195,7 +195,7 @@ Dry runs that connect to nothing:
 
 ## Known limitations
 
-- **No live Final Project run yet.** Each live step and its approval is listed in [docs/RELEASE_AND_VALIDATION.md](docs/RELEASE_AND_VALIDATION.md).
+- **Live validation is partial.** Steps 1–3 (DEV deploy, platform sample run, strict idempotency) passed in Personal DEV. CDC update and delete batches, Lakeflow, the assistant, the dashboard data, governance and PROD have not run live yet. Each step and its approval is listed in [docs/RELEASE_AND_VALIDATION.md](docs/RELEASE_AND_VALIDATION.md).
 - **The `azure_prod` CD identity needs Academy account administration.** An operator can deploy with their own login instead.
 - **Small samples.** The data is a 40-station snapshot and a 40-trip sample. The full-month path exists (`run_full_month`), but it is a separate, approved run.
 - **Federation and CDC.** Federation needs an approved foreign catalog. Without one, CDC runs on the committed fictional snapshots.

@@ -2,7 +2,7 @@
 
 [← Main README](../README.md) · [Architecture](ARCHITECTURE.md)
 
-**Status:** the dashboards are generated and tested offline. They are deployed by the bundle as `[<target>] UrbanFlow 2.0 Operations`, but no Final Project dashboard has been published yet.
+**Status:** the dashboards are generated and tested offline. The `personal_dev` dashboard `01f1c647728e1ceeb2b5bd10a8700793` was deployed by the bundle in step 1, with the earlier 6-column layout. The current generator (12-column `GRID_V1` layout, table v2, theme) has not been redeployed. **No dataset query has been run against the live tables and no rendering has been checked**, so the dashboard is not validated live.
 
 ## How it is built
 

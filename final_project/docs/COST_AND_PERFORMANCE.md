@@ -2,7 +2,7 @@
 
 [← Main README](../README.md) · [Architecture](ARCHITECTURE.md) · [Release and validation](RELEASE_AND_VALIDATION.md)
 
-This analysis is **design-time**. No Final Project run has happened yet, so there are no measured DBU, warehouse or token figures to report. Prices change and differ by cloud, region and contract, so this page shows **cost drivers and hard upper bounds in units** (runs, minutes, requests). It does not invent dollar amounts. Measured figures will be added from system tables after the first approved run (see [Measuring after a live run](#measuring-after-a-live-run)).
+This analysis is mostly **design-time**. Steps 1–3 ran in Personal DEV, so wall-clock durations are measured (below). DBU, warehouse and token figures have **not** been read from billing yet. Prices change and differ by cloud, region and contract, so this page shows **cost drivers and hard upper bounds in units** (runs, minutes, requests). It does not invent dollar amounts. Measured figures will be added from system tables after the first approved run (see [Measuring after a live run](#measuring-after-a-live-run)).
 
 ## What can cost money, and the bound on each
 
@@ -59,6 +59,16 @@ Control: create it only in step 6, delete it in step 8 (approval required), and 
 | Small-file lesson kept local | `scripts/generate_many_small_files.py` shows the problem with about 0.5 MB of labelled synthetic files, not gigabytes |
 | Hybrid retrieval, top-k 4, 6,000-character context | Keeps prompts short (cost and latency) while recall stays high on the fixture |
 | Serverless with `disable_auto_optimization: true` | Predictable, bounded task behaviour for an educational workload; failures surface instead of being retried silently |
+
+## Measured live durations (Personal DEV, serverless, sample data)
+
+Wall-clock times from the Jobs API, as recorded in `evidence/`. They are dominated by serverless task startup, not data volume (40 events, 40 trips, 48 hours, 5 tickets). DBUs were not read from billing.
+
+| Run | Job run | Total (s) | preflight | land_sources | station_source_check | station_silver | station_gold | historical_trips | weather_enrichment | validate_medallion | federation_cdc |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Step 2 pass | `896549012431425` | 485 | 44 | 41 | 19 | 60 | 96 | 76 | 49 | 40 | 54 |
+| Step 3 (18/19) | `605056708110586` | 480 | 49 | 43 | 18 | 62 | 98 | 73 | 49 | 39 | 45 |
+| Step 3 retry (19/19) | `412521206243476` | 458 | 49 | 39 | 18 | 63 | 99 | 75 | 46 | 37 | 29 |
 
 ## Measured offline performance
 

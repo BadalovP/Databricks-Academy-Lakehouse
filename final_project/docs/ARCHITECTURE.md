@@ -83,22 +83,23 @@ This is Delta Change Data Feed on a Final-Project-owned table. It is not databas
 - **System scope.** Scoping excerpts to one system is opt-in, through an explicit mapping. It is off for UrbanFlow, because its documents are topics: deriving systems from title words dropped the document that answered.
 - **Evaluation.** 18 questions, two of them unanswerable. The same model answers with no retrieval (baseline) and with RAG. Metrics are correctness, recall, citation precision, source coverage and refusals. Live scores and redacted monitoring events are appended to Delta. Offline fixture scores are never stored.
 
-## Physical model (Final Project status: offline only)
+## Physical model (live status in Personal DEV, 2026-10-12)
 
-| Layer | Object | Grain |
-|---|---|---|
-| Bronze | `bronze_station_status` | One received station event (Auto Loader or Kafka) |
-| Bronze | `bronze_historical_trips` | One raw trip row of the Job's default sample namespace |
-| Silver | `silver_station_status`, `quarantine_station_status`, `duplicate_station_status` | One event ID; one rejected or repeated record |
-| Silver | `silver_historical_trips` (+ quarantine, duplicate) | One valid ride per execution |
-| Silver | `station_maintenance_source` (CDF), `silver_station_maintenance` | One ticket |
-| Audit | `maintenance_cdc_history`, `maintenance_cdc_checkpoint` | One change event; one pipeline key |
-| Gold | `fact_station_availability`, `gold_station_shortage`, `gold_rebalancing_priority` | One Silver event; one shortage; one station observation |
-| Gold | `gold_daily_trip_demand`, `gold_weather_demand`, `dim_weather_hourly` | Station-day; day; weather hour |
-| Assistant | `rag_documents`, `rag_document_chunks`, `rag_evaluation_results`, `rag_query_monitoring` | Document; chunk; question × variant; query |
-| Optional | `zerobus_station_health_bronze`, `silver_station_health` | Delivery; event |
+| Layer | Object | Grain | Live in `workspace.urbanflow_final_dev` |
+|---|---|---|---|
+| Bronze | `bronze_station_status` | One received station event (Auto Loader or Kafka) | Yes: 40 rows (sample execution) |
+| Bronze | `bronze_historical_trips` | One raw trip row of the Job's default sample namespace | Yes: 40 rows |
+| Silver | `silver_station_status`, `quarantine_station_status`, `duplicate_station_status` | One event ID; one rejected or repeated record | Yes: 40 / 0 / 0 |
+| Silver | `silver_historical_trips` (+ quarantine, duplicate) | One valid ride per execution | Yes: 40 / 0 / 0 |
+| Silver | `station_maintenance_source` (CDF), `silver_station_maintenance` | One ticket | Yes: 5 / 5 (`batch_001` only) |
+| Audit | `maintenance_cdc_history`, `maintenance_cdc_checkpoint` | One change event; one pipeline key | Yes: 5 events; checkpoint 2 |
+| Gold | `fact_station_availability`, `gold_station_shortage`, `gold_rebalancing_priority`, `dim_station_development_sample`, `gold_daily_station_summary` | One Silver event; one shortage; one station observation; one station; station-day | Yes: 40 / 13 / 13 / 40 / 40 |
+| Gold | `gold_daily_trip_demand`, `gold_weather_demand`, `dim_weather_hourly` | Station-day; day and band; weather hour | Yes: 40 / 17 / 48 |
+| Lakeflow | Pipeline datasets in `urbanflow_final_lakeflow_dev` | as the station path | **No**: no pipeline update has run |
+| Assistant | `rag_documents`, `rag_document_chunks`, `rag_evaluation_results`, `rag_query_monitoring` | Document; chunk; question × variant; query | **No**: the assistant Job has not run |
+| Optional | `zerobus_station_health_bronze`, `silver_station_health` | Delivery; event | **No**: optional path not run |
 
-None of these tables exists yet in a Final Project schema. They are created by the first approved run.
+The live tables were created and verified by the approved step 2 run (`896549012431425`) and re-verified unchanged by the idempotency rerun (`412521206243476`); see [RELEASE_AND_VALIDATION.md](RELEASE_AND_VALIDATION.md). No table exists in the `azure_prod` schemas.
 
 ## SCD and schema evolution
 
