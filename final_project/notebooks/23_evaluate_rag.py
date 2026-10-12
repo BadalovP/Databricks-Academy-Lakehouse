@@ -1,268 +1,267 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # UrbanFlow 2.0 - Evaluation: no-retrieval baseline vs RAG
+# MAGIC # UrbanFlow 2.0 - Evaluate the assistant: no-retrieval baseline vs RAG
+# MAGIC
+# MAGIC **Business context:** Before operators rely on the assistant, the team must show that retrieval makes answers more correct and better grounded than the same model answering alone, and that it refuses questions the procedures do not cover.
+# MAGIC
+# MAGIC **Prerequisites:** For live mode, the index passed the readiness gate in `21_prepare_vector_search.py` and a chat endpoint is configured. The default offline mode needs only the synced files.
+# MAGIC
+# MAGIC **Learning objectives:** Score retrieval recall, answer correctness, citation coverage and refusals; compare a no-retrieval baseline with RAG on the same model; persist scores and redacted monitoring events.
+# MAGIC
+# MAGIC **Academy labs:** Lab 12 (RAG evaluation, monitoring), Lab 7 (quality checks as gates), Lab 8 (cost-bounded live calls).
+# MAGIC
+# MAGIC **Actual validation:** The offline fixture evaluation runs in the unit tests (`tests/test_rag_domain.py`, `tests/test_rag_evaluation.py`); in the Final Project this notebook has not been run in a workspace yet, so no live scores exist.
 # MAGIC
 # MAGIC - `run_live_inference=false` (default): deterministic offline fixture only. No charges.
-# MAGIC - `run_live_inference=true`: the SAME chat model answers each question twice - once with no
-# MAGIC   context (baseline) and once with AI Search retrieval (RAG) - and both are scored.
-# MAGIC   With `allow_table_writes=true` the scores go to `evaluation_results` and redacted query
-# MAGIC   events to `query_monitoring`.
+# MAGIC - `run_live_inference=true`: the same chat model answers each question twice - once without context (baseline) and once with AI Search retrieval (RAG). With `allow_table_writes=true` the scores go to `evaluation_results` and redacted query events to `query_monitoring`.
+# MAGIC - `eval_question_ids` (for example `q01,q09`) runs exactly those questions instead of the first `eval_question_limit`; `eval_include_baseline=false` skips the baseline calls.
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Step 1 - Import the project code
 # MAGIC
-# MAGIC Live cost scales with the number of questions (two model calls and one search per question).
-# MAGIC `eval_question_ids` (comma-separated, e.g. `q01,q09`) runs exactly those questions instead of
-# MAGIC the first `eval_question_limit`; `eval_include_baseline=false` skips the no-retrieval calls.
-# MAGIC The defaults (empty list, baseline on) keep the full 18-question baseline-vs-RAG evaluation.
+# MAGIC **What:** Put the synced `src/` folder on the import path and import the evaluation helpers.
+# MAGIC
+# MAGIC **Why:** Offline and live evaluation share one scoring implementation.
+# MAGIC
+# MAGIC **Input:** The deployed bundle files.
+# MAGIC
+# MAGIC **Output:** Imported modules.
+# MAGIC
+# MAGIC **Key concepts:** One scorer for fixture and live answers.
+# MAGIC
+# MAGIC **Expected result:** No output.
+# MAGIC
+# MAGIC **How to explain it:** "Offline and live numbers are computed the same way."
+# MAGIC
+# MAGIC **Rerun and cost considerations:** Free.
 
 # COMMAND ----------
 
 import json
 import sys
-import uuid
-from datetime import UTC, datetime
 from pathlib import Path
 
 PROJECT_ROOT = Path.cwd().parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
+from urbanflow.automation import assert_serverless_compute
+from urbanflow.rag import pipeline
 from urbanflow.rag.cli import build_offline_service
 from urbanflow.rag.config import load_config
-from urbanflow.rag.delta_store import (
-    EVALUATION_SCHEMA,
-    MONITORING_SCHEMA,
-    append_rows,
-    qualified_name,
-)
-from urbanflow.rag.evaluation import (
-    baseline_answer,
-    citation_map,
-    evaluate,
-    live_call_plan,
-    load_cases,
-    run_evaluation,
-    score_answer,
-    score_to_row,
-    select_cases,
-    summarize,
-    summarize_by_category,
-    summarize_generation,
-)
-from urbanflow.rag.ingestion import document_titles, load_documents, section_headings
-from urbanflow.rag.monitoring import event_from_answer, event_to_row
+from urbanflow.rag.evaluation import live_call_plan, load_cases, run_evaluation, select_cases
 from urbanflow.rag.runtime import assert_workspace, flag, identifier, index_name
 
 # COMMAND ----------
 
-dbutils.widgets.text("expected_host", "")
-dbutils.widgets.text("catalog", "")
-dbutils.widgets.text("schema", "")
-dbutils.widgets.text("ai_search_endpoint", "")
-dbutils.widgets.text("ai_search_index", "")
-dbutils.widgets.text("chat_endpoint", "")
+# MAGIC %md
+# MAGIC ## Step 2 - Read parameters and select the questions
+# MAGIC
+# MAGIC **What:** Validate the workspace, compute and target, read the switches and select the evaluation questions.
+# MAGIC
+# MAGIC **Why:** The number of live calls is printed before any call is made, so the cost of a run is known in advance.
+# MAGIC
+# MAGIC **Input:** Job parameters and `config/rag_evaluation_questions.yml` (18 fictional questions, including unanswerable ones).
+# MAGIC
+# MAGIC **Output:** The selected question IDs and the live call plan.
+# MAGIC
+# MAGIC **Key concepts:** Bounded evaluation, explicit question selection.
+# MAGIC
+# MAGIC **Expected result:** `offline: no live requests` by default.
+# MAGIC
+# MAGIC **How to explain it:** "We know how many model calls a run will make before it starts."
+# MAGIC
+# MAGIC **Rerun and cost considerations:** Free.
+
+# COMMAND ----------
+
+names = ("expected_host", "catalog", "schema", "ai_search_endpoint", "ai_search_index",
+         "chat_endpoint", "eval_question_ids")  # fmt: skip
+for name in names:
+    dbutils.widgets.text(name, "")
 dbutils.widgets.text("eval_question_limit", "18")
-dbutils.widgets.text("eval_question_ids", "")
-dbutils.widgets.dropdown("eval_include_baseline", "true", ["true", "false"])
-dbutils.widgets.dropdown("run_live_inference", "false", ["false", "true"])
-dbutils.widgets.dropdown("allow_table_writes", "false", ["false", "true"])
+for name, default in (("eval_include_baseline", "true"), ("run_live_inference", "false"),
+                      ("allow_table_writes", "false")):  # fmt: skip
+    dbutils.widgets.dropdown(name, default, ["false", "true"])
 
 host = assert_workspace(dbutils.widgets.get("expected_host"))
+assert_serverless_compute(spark.conf.get)
 catalog = identifier(dbutils.widgets.get("catalog"), "catalog")
 schema = identifier(dbutils.widgets.get("schema"), "schema")
-live = flag(dbutils.widgets.get("run_live_inference"))
-allow_write = flag(dbutils.widgets.get("allow_table_writes"))
-include_baseline = flag(dbutils.widgets.get("eval_include_baseline"))
-limit = int(dbutils.widgets.get("eval_question_limit"))
-
+live, allow_write, include_baseline = (flag(dbutils.widgets.get(name)) for name in
+    ("run_live_inference", "allow_table_writes", "eval_include_baseline"))  # fmt: skip
 cfg = load_config(PROJECT_ROOT / "config" / "rag.yml")
 cases = select_cases(
     load_cases(PROJECT_ROOT / "config" / "rag_evaluation_questions.yml"),
     dbutils.widgets.get("eval_question_ids"),
-    limit,
+    int(dbutils.widgets.get("eval_question_limit")),
 )
-plan = (
-    live_call_plan(
-        len(cases),
-        include_baseline,
-        int(cfg.raw["retrieval"].get("max_supplemental_queries", 0)),
-    )
-    if live
-    else "offline: no live requests"
-)
-print(
-    {
-        "workspace": host,
-        "question_ids": [case.question_id for case in cases],
-        "include_baseline": include_baseline,
-        "live": live,
-        "write_enabled": allow_write,
-        "live_call_plan": plan,
-    }
-)
+supplemental = int(cfg.raw["retrieval"].get("max_supplemental_queries", 0))
+plan = live_call_plan(len(cases), include_baseline, supplemental) if live else "offline only"
+print({"workspace": host, "question_ids": [case.question_id for case in cases],
+       "live": live, "write_enabled": allow_write, "live_call_plan": plan})  # fmt: skip
 
 # COMMAND ----------
 
-# Offline (default): deterministic fixture only - no AI Search request and no model call.
+# MAGIC %md
+# MAGIC ## Step 3 - Offline evaluation (default)
+# MAGIC
+# MAGIC **What:** Score the fixture retriever and extractive model against the question set, with a deterministic baseline.
+# MAGIC
+# MAGIC **Why:** It proves the scoring and the retrieval logic without any billable request, and catches regressions in CI.
+# MAGIC
+# MAGIC **Input:** The selected questions and the committed knowledge base.
+# MAGIC
+# MAGIC **Output:** Overall and per-category summaries.
+# MAGIC
+# MAGIC **Key concepts:** Recall@k, correctness, citation coverage, refusal accuracy.
+# MAGIC
+# MAGIC **Expected result:** Offline RAG recall is at least 0.9 and citation coverage at least 0.85, as asserted in the unit tests. These are fixture numbers, not model quality.
+# MAGIC
+# MAGIC **How to explain it:** "Offline numbers test our pipeline; only a live run measures the model."
+# MAGIC
+# MAGIC **Rerun and cost considerations:** Free and deterministic.
+
+# COMMAND ----------
+
 if not live:
-    service = build_offline_service()
-    baseline = (
-        [score_answer(case, baseline_answer(case), "offline-baseline") for case in cases]
-        if include_baseline
-        else []
-    )
-    rag = evaluate(cases, service.answer, "offline-rag")
-    summary = {
-        "mode": "offline",
-        "question_ids": [case.question_id for case in cases],
-        "baseline": summarize(baseline) if include_baseline else "not_run",
-        "rag": summarize(rag),
-        "by_category": {
-            "baseline": summarize_by_category(baseline) if include_baseline else "not_run",
-            "rag": summarize_by_category(rag),
-        },
-    }
+    summary = pipeline.offline_summary(cases, build_offline_service(), include_baseline)
     print(json.dumps(summary, indent=2))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Step 4 - Live evaluation (approved runs only)
+# MAGIC
+# MAGIC **What:** Build the live assistant and, if enabled, a no-retrieval baseline on the same model; answer and score every selected question.
+# MAGIC
+# MAGIC **Why:** Comparing the same model with and without retrieval isolates what retrieval adds.
+# MAGIC
+# MAGIC **Input:** The index, the chat endpoint and the selected questions.
+# MAGIC
+# MAGIC **Output:** Baseline and RAG summaries, per category and for generation errors and latency.
+# MAGIC
+# MAGIC **Key concepts:** Paired comparison, generation diagnostics.
+# MAGIC
+# MAGIC **Expected result:** RAG beats the baseline on correctness and recall and refuses the unanswerable questions.
+# MAGIC
+# MAGIC **How to explain it:** "Same model, same questions; the only difference is retrieval."
+# MAGIC
+# MAGIC **Rerun and cost considerations:** The printed call plan is the ceiling: one search and up to three model calls per question, plus one baseline call when enabled.
 
 # COMMAND ----------
 
 if live:
     from databricks.ai_search.client import AISearchClient
 
-    from urbanflow.rag.rag import DatabricksChatModel, NoRetrievalBaseline, RagService
-    from urbanflow.rag.retrieval import DatabricksAISearchRetriever
+    from urbanflow.rag.rag import NoRetrievalBaseline
 
-    generation = cfg.raw["generation"]
     index = index_name(catalog, schema, dbutils.widgets.get("ai_search_index"))
-    model = DatabricksChatModel(
-        dbutils.widgets.get("chat_endpoint"),
-        temperature=float(generation["temperature"]),
-        max_tokens=int(generation["max_tokens"]),
-    )
-    retriever = DatabricksAISearchRetriever(
-        AISearchClient(),
-        dbutils.widgets.get("ai_search_endpoint"),
-        index,
-        query_type=cfg.raw["retrieval"].get("query_type", "HYBRID"),
-    )
-    # Titles come from the same synced corpus that was indexed; they label each excerpt's system.
-    corpus = load_documents([PROJECT_ROOT / "knowledge_base"])
-    titles = document_titles(corpus)
-    service = RagService(
-        retriever,
-        model,
-        top_k=cfg.retrieval.top_k,
-        max_context_chars=cfg.retrieval.max_context_chars,
-        titles=titles,
-        headings=section_headings(corpus),
-        max_supplemental_queries=int(cfg.raw["retrieval"].get("max_supplemental_queries", 0)),
-    )
+    service, model = pipeline.build_live_service(
+        cfg, PROJECT_ROOT, search_client=AISearchClient(), index=index,
+        ai_search_endpoint=dbutils.widgets.get("ai_search_endpoint"),
+        chat_endpoint=dbutils.widgets.get("chat_endpoint"),
+    )  # fmt: skip
     # The baseline answerer is not even constructed when it is switched off.
-    no_retrieval = NoRetrievalBaseline(model) if include_baseline else None
-
-    run = run_evaluation(
-        cases, service.answer, no_retrieval.answer if no_retrieval else None, "live"
-    )
-    baseline_answers, baseline_scores = run.baseline_answers, run.baseline_scores
-    rag_answers, rag_scores = run.rag_answers, run.rag_scores
-    summary = {
-        "mode": "live",
-        "workspace": host,
-        "index": index,
-        "chat_endpoint": model.model_name,
-        "max_tokens": int(generation["max_tokens"]),
-        "question_ids": [case.question_id for case in cases],
-        "live_call_plan": plan,
-        "baseline": summarize(baseline_scores) if include_baseline else "not_run",
-        "rag": summarize(rag_scores),
-        "by_category": {
-            "baseline": summarize_by_category(baseline_scores) if include_baseline else "not_run",
-            "rag": summarize_by_category(rag_scores),
-        },
-        "generation": {
-            "baseline": summarize_generation(baseline_answers) if include_baseline else "not_run",
-            "rag": summarize_generation(rag_answers),
-        },
-    }
+    baseline = NoRetrievalBaseline(model).answer if include_baseline else None
+    run = run_evaluation(cases, service.answer, baseline, "live")
+    summary = pipeline.live_summary(
+        run, cases, include_baseline, workspace=host, index=index, live_call_plan=plan,
+        chat_endpoint=model.model_name, max_tokens=int(cfg.raw["generation"]["max_tokens"]),
+    )  # fmt: skip
     print(json.dumps(summary, indent=2))
 
 # COMMAND ----------
 
-# Per-question review. The questions and corpus are fictional evaluation fixtures, so their text is
-# printed here for human review of grounding and citations; query_monitoring stays redacted.
-if live:
-    for position, (case, rag_answer, rag_score) in enumerate(
-        zip(cases, rag_answers, rag_scores, strict=True)
-    ):
-        review = {
-            "question_id": case.question_id,
-            "category": case.category,
-            "question": case.question,
-            "expected_sources": list(case.expected_sources),
-            "retrieved": [
-                {
-                    "rank": rank,
-                    "source": s.source_name,
-                    "section": s.section_ref,
-                    "score": round(s.score, 4),
-                    "chunk_id": s.chunk_id,
-                }
-                for rank, s in enumerate(rag_answer.sources, start=1)
-            ],
-            "rag": {
-                "answer": rag_answer.answer,
-                "citations": citation_map(rag_answer),
-                "error": rag_answer.error,
-                "latency_ms": rag_answer.latency_ms,
-                "diagnostics": rag_answer.diagnostics,
-                "score": score_to_row(rag_score, "review", "n/a")["metrics_json"],
-            },
-            "baseline": (
-                {
-                    "answer": baseline_answers[position].answer,
-                    "error": baseline_answers[position].error,
-                    "latency_ms": baseline_answers[position].latency_ms,
-                    "diagnostics": baseline_answers[position].diagnostics,
-                    "score": score_to_row(baseline_scores[position], "review", "n/a")[
-                        "metrics_json"
-                    ],
-                }
-                if include_baseline
-                else "not_run"
-            ),
-        }
-        print(json.dumps(review, indent=2, default=str))
+# MAGIC %md
+# MAGIC ## Step 5 - Review each answer
+# MAGIC
+# MAGIC **What:** Print, per question, the retrieved sections, the answer, its citations and its score, next to the baseline.
+# MAGIC
+# MAGIC **Why:** Aggregate scores hide individual grounding failures; a human reviews each answer. The questions and corpus are fictional fixtures, so printing them is safe; `query_monitoring` stays redacted.
+# MAGIC
+# MAGIC **Input:** The live run from step 4.
+# MAGIC
+# MAGIC **Output:** One JSON review record per question.
+# MAGIC
+# MAGIC **Key concepts:** Citation map, retrieval ranks, error diagnostics.
+# MAGIC
+# MAGIC **Expected result:** Every citation number maps to a retrieved excerpt that supports the sentence.
+# MAGIC
+# MAGIC **How to explain it:** "We read the answers, not just the averages."
+# MAGIC
+# MAGIC **Rerun and cost considerations:** Free; it only formats results already computed.
 
 # COMMAND ----------
 
-# Results are persisted only for a live evaluation; the offline fixture is never written.
+if live:
+    for record in pipeline.review_records(run, cases, include_baseline):
+        print(json.dumps(record, indent=2, default=str))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Step 6 - Persist live results
+# MAGIC
+# MAGIC **What:** Append the scores to `evaluation_results` and redacted query events to `query_monitoring`.
+# MAGIC
+# MAGIC **Why:** Scores over time show whether a corpus or prompt change helped; monitoring records latency and errors without storing question text.
+# MAGIC
+# MAGIC **Input:** The live run and the target tables.
+# MAGIC
+# MAGIC **Output:** An evaluation ID and the rows written per table.
+# MAGIC
+# MAGIC **Key concepts:** Append-only evaluation history, redaction.
+# MAGIC
+# MAGIC **Expected result:** Rows written equal 2 x questions (with baseline) and 1 x questions for monitoring. The offline fixture is never written.
+# MAGIC
+# MAGIC **How to explain it:** "Each live evaluation becomes a dated, queryable record."
+# MAGIC
+# MAGIC **Rerun and cost considerations:** Small serverless writes; only with `allow_table_writes=true`.
+
+# COMMAND ----------
+
 if live and allow_write:
-    evaluation_id = str(uuid.uuid4())
-    evaluated_at = datetime.now(UTC).isoformat()
-    tables = cfg.raw["tables"]
-    evaluation_rows = [
-        score_to_row(score, evaluation_id, evaluated_at) for score in baseline_scores + rag_scores
-    ]
-    monitoring_rows = [event_to_row(event_from_answer(answer, index)) for answer in rag_answers]
-    written = {
-        "evaluation_results": append_rows(
-            spark,
-            qualified_name(catalog, schema, tables["evaluation_results"]),
-            evaluation_rows,
-            schema=EVALUATION_SCHEMA,
-            timestamp_column="evaluated_at",
-            allow_write=True,
-        ),
-        "query_monitoring": append_rows(
-            spark,
-            qualified_name(catalog, schema, tables["monitoring"]),
-            monitoring_rows,
-            schema=MONITORING_SCHEMA,
-            timestamp_column="query_timestamp",
-            allow_write=True,
-        ),
-    }
-    summary.update({"evaluation_id": evaluation_id, "rows_written": written})
+    summary.update(pipeline.persist_evaluation(spark, cfg, catalog, schema, run, index))
     print(json.dumps(summary["rows_written"]))
 
 # COMMAND ----------
 
-# Exit in its own cell: the exit discards the printed output of the cell that calls it.
+# MAGIC %md
+# MAGIC ## Step 7 - Return the evaluation summary
+# MAGIC
+# MAGIC **What:** Return the summary to the Jobs API.
+# MAGIC
+# MAGIC **Why:** Output printed in the same cell as `dbutils.notebook.exit` is not kept, so the exit has its own cell.
+# MAGIC
+# MAGIC **Input:** The summary from step 3 or 4.
+# MAGIC
+# MAGIC **Output:** A JSON notebook result.
+# MAGIC
+# MAGIC **Key concepts:** Machine-readable evidence.
+# MAGIC
+# MAGIC **Expected result:** `mode` is `offline` or `live`.
+# MAGIC
+# MAGIC **How to explain it:** "The Job result says plainly whether these numbers came from a fixture or a model."
+# MAGIC
+# MAGIC **Rerun and cost considerations:** None.
+
+# COMMAND ----------
+
 dbutils.notebook.exit(json.dumps(summary, default=str))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## What we learned
+# MAGIC
+# MAGIC A RAG assistant is evaluated like a pipeline: a fixed question set, a no-retrieval baseline on the same model, metrics for retrieval, correctness, citations and refusals, and a per-answer review. Offline fixture scores test the code; only live scores describe the model.
+# MAGIC
+# MAGIC **Common errors:** Presenting offline fixture numbers as model quality; evaluating against a stale index; storing raw questions in monitoring tables.
+# MAGIC
+# MAGIC **Troubleshooting:** Low recall points to chunking or retrieval settings; good recall with low correctness points to the prompt or the model; a high error count names the failing endpoint in the generation summary.
+# MAGIC
+# MAGIC **Review questions:** Why use the same model for the baseline? Why are unanswerable questions part of the set?
+# MAGIC
+# MAGIC **Presentation summary:** We measure what retrieval adds, question by question, and keep every live result as governed evidence.
