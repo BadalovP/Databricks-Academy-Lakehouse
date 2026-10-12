@@ -31,52 +31,87 @@ def test_readme_contains_five_balanced_mermaid_diagrams() -> None:
     assert len(diagrams) == 5
 
 
-def test_workflow_keeps_live_control_plane_validation_manually_gated_and_read_only() -> None:
-    workflow = (REPOSITORY_ROOT / ".github/workflows/demo3_urbanflow.yml").read_text(
+DOCS = PROJECT_ROOT / "docs"
+REQUIRED_DOCS = (
+    "LABS_1_TO_12_COVERAGE.md",
+    "ARCHITECTURE.md",
+    "COST_AND_PERFORMANCE.md",
+    "RELEASE_AND_VALIDATION.md",
+    "DASHBOARD.md",
+    "DEMO_DAY_PRESENTATION.md",
+)
+# Demo 3 live identifiers and figures. Final Project docs must not present them as its own.
+DEMO3_EVIDENCE = (
+    "96337578882467",
+    "fb8a0b8a-cdf8-45c4-bff6-2d117a516fb9",
+    "ba6710ed",
+    "991496516229387",
+    "urbanflow-20260929T195132Z",
+    "1,886,318",
+    "1,888,085",
+    "2,520",
+    "3ed106620db591d9",
+)
+
+
+def _project_markdown() -> list[Path]:
+    return [
+        path
+        for path in PROJECT_ROOT.rglob("*.md")
+        if not {".venv", ".pytest_cache", "node_modules"} & set(path.parts)
+    ]
+
+
+def test_the_final_project_documentation_set_exists_and_is_linked_from_the_readme() -> None:
+    readme = (PROJECT_ROOT / "README.md").read_text(encoding="utf-8")
+    assert readme.startswith("# UrbanFlow 2.0")
+    for name in REQUIRED_DOCS:
+        assert (DOCS / name).exists(), name
+        assert f"docs/{name}" in readme, name
+
+
+def test_no_document_presents_demo3_live_evidence() -> None:
+    for path in _project_markdown():
+        text = path.read_text(encoding="utf-8")
+        for identifier in DEMO3_EVIDENCE:
+            assert identifier not in text, f"{path.relative_to(PROJECT_ROOT)} names {identifier}"
+
+
+def test_coverage_matrix_has_every_lab_and_claims_no_unrecorded_live_run() -> None:
+    matrix = (DOCS / "LABS_1_TO_12_COVERAGE.md").read_text(encoding="utf-8")
+    rows = [line for line in matrix.splitlines() if re.match(r"\| (\d+) \|", line)]
+    assert [int(re.match(r"\| (\d+) \|", row).group(1)) for row in rows] == list(range(1, 13))
+    for row in rows:
+        cells = [cell.strip() for cell in row.strip("|").split("|")]
+        assert len(cells) == 7, row
+        assert cells[5] or cells[6]
+        assert "Validated live" not in cells[6], row  # no Final Project live run recorded yet
+    release = (DOCS / "RELEASE_AND_VALIDATION.md").read_text(encoding="utf-8")
+    assert "No live run yet" in release
+
+
+def test_final_project_cd_is_manual_confirmed_approved_and_pinned() -> None:
+    workflow = (REPOSITORY_ROOT / ".github/workflows/final_project_cd.yml").read_text(
         encoding="utf-8"
     )
-    forbidden = (
-        "databricks bundle deploy",
-        "databricks bundle run",
-        "databricks jobs run",
-        "databricks pipelines start-update",
-        "databricks clusters start",
-        "databricks clusters restart",
-        "databricks clusters resize",
-        "databricks clusters delete",
-        "DATABRICKS_AZURE_TOKEN",
-        "${{ secrets.",
-    )
-    for command in forbidden:
-        assert command not in workflow
-
-    assert "python scripts/validate_bundle.py" in workflow
-    assert "run_live_control_plane" in workflow
-    assert (
-        workflow.count(
-            "github.event_name == 'workflow_dispatch' && inputs.run_live_control_plane == true"
-        )
-        == 2
-    )
-    assert "environment: azure-release-approval" in workflow
-    assert "needs: approve-live-control-plane" in workflow
-    assert "environment: azure-prod" in workflow
-    assert "azure/login@v2" in workflow
-    assert "databricks current-user me" in workflow
-    assert "databricks bundle validate -t azure" in workflow
-    assert "databricks bundle plan" not in workflow
-    assert "databricks jobs get" in workflow
-    # The read-only path verifies the unified Job and the isolated pipeline, never the four
-    # component Jobs retired on 2026-10-03.
-    assert "databricks jobs get 991496516229387" in workflow
-    assert "databricks pipelines get fb8a0b8a-cdf8-45c4-bff6-2d117a516fb9" in workflow
-    assert "parvinbadalov_urbanflow_lakeflow" in workflow
-    for retired in ("404404108673495", "11834365763936", "974964732439608", "860666167537092"):
-        assert retired not in workflow
-    for mutation in (
-        "bundle deploy",
-        "jobs run-now",
-        "pipelines start-update",
+    trigger = workflow[workflow.index("on:") : workflow.index("permissions:")]
+    assert "workflow_dispatch:" in trigger
+    for automatic in ("push:", "pull_request:", "schedule:"):
+        assert automatic not in trigger
+    assert 'expected="RELEASE_URBANFLOW_FINAL_${TARGET^^}"' in workflow
+    assert "environment: final-project-approval" in workflow
+    assert "environment: final-project-${{ inputs.target }}" in workflow
+    assert "needs: approve-release" in workflow
+    assert "--fail-on-active-runs" in workflow
+    assert "--phase pre" in workflow and "--phase post" in workflow
+    assert 'host="https://dbc-1750318a-76a9.cloud.databricks.com"' in workflow
+    assert 'host="https://adb-7405618361895520.0.azuredatabricks.net"' in workflow
+    assert "Refusing a shared Academy workspace" in workflow
+    assert "DATABRICKS_TOKEN" not in workflow  # no personal access token
+    for forbidden in (
+        "bundle destroy",
+        "pipelines delete",
+        "jobs delete",
         "databricks permissions",
     ):
-        assert mutation not in workflow
+        assert forbidden not in workflow

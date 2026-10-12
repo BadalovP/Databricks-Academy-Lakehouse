@@ -120,8 +120,8 @@ def test_merge_on_an_existing_table_reports_zero_inserts_when_rows_are_unchanged
     semantics, because delta-spark's jars cannot be resolved in this environment (local
     Spark raises ClassNotFoundException for DeltaSparkSessionExtension), so the Delta
     engine itself is mocked here. True end-to-end idempotency is proven by running the
-    Silver-to-Gold Job twice against the real Bronze table and observing the row counts
-    stay equal; see docs/SILVER_GOLD_RUNBOOK.md.
+    platform Job twice against the real Bronze table and observing that the row counts
+    stay equal; see docs/RELEASE_AND_VALIDATION.md.
     """
     spark = Mock()
     spark.catalog.tableExists.return_value = True

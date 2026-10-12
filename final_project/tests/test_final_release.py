@@ -436,3 +436,11 @@ def test_ci_installs_the_cli_before_offline_bundle_validation() -> None:
     assert workflow.index("databricks/setup-cli") < workflow.index("scripts/validate_bundle.py")
     assert "scripts/build_dashboard.py --check" in workflow
     assert "secrets." not in workflow  # CI never authenticates to a workspace
+    cd = (PROJECT_ROOT.parent / ".github" / "workflows" / "final_project_cd.yml").read_text(
+        encoding="utf-8"
+    )
+    static = cd[: cd.index("approve-release:")]
+    assert static.index("databricks/setup-cli") < static.index("scripts/validate_bundle.py")
+    # The bounded release run exercises the core CDC capability (fixture snapshot, no external
+    # system) next to the medallion path.
+    assert '"run_federation_cdc": "true"' in cd

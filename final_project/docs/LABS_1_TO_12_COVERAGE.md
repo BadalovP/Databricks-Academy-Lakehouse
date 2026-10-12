@@ -1,0 +1,51 @@
+# Labs 1–12 coverage matrix
+
+Each Academy lab maps to a part of the UrbanFlow 2.0 solution. Each row lists the component, its source, the tests that check it, the live evidence and an honest status.
+
+**Live evidence, stated once for the whole table:** no Final Project component has run in a Databricks workspace yet. Each lab was validated live in its own lab folder, and Demo 3 was validated live in `Demos/Demo3`. That is lab and Demo 3 evidence, not Final Project evidence, and none of it is copied here. The **Live evidence** column will name a Final Project run ID only after an approved run (see [RELEASE_AND_VALIDATION.md](RELEASE_AND_VALIDATION.md)).
+
+## Status vocabulary
+
+| Status | Meaning |
+|---|---|
+| **Implemented, tested offline** | Code is complete. Unit tests, local Spark tests or static checks pass in CI. Not yet run in a workspace. |
+| **Implemented, opt-in** | As above, but only runs when a reviewer switches it on, because it is billable or needs an approved identity or resource. |
+| **Optional** | Not part of the platform Job. It is isolated by design and the platform does not depend on it. |
+| **Validated live** | A Final Project run ID and its result are recorded. *No row has this status yet.* |
+
+## Matrix
+
+| Lab | Requirement | Final Project component | Source | Tests | Live evidence | Status |
+|---|---|---|---|---|---|---|
+| 1 | Databricks fundamentals: notebooks, DataFrames, files, SQL | Teaching notebook on the GBFS contract and Delta basics; documented notebook contract (What/Why/Input/Output per cell) | [`notebooks/01_fundamentals.py`](../notebooks/01_fundamentals.py), [`src/urbanflow/transformations.py`](../src/urbanflow/transformations.py) | `test_transformations.py`, `test_sample_contracts.py`, `test_notebook_documentation.py` | None yet | Implemented, tested offline |
+| 2 | Unity Catalog setup, Volumes, Bronze ingestion from Azure sources | Bundle-managed schemas and Volume per target; Event Hubs (Kafka) consumer into Bronze for the Azure station path | [`resources/urbanflow_final.infrastructure.yml`](../resources/urbanflow_final.infrastructure.yml), [`notebooks/03_eventhubs_to_bronze.py`](../notebooks/03_eventhubs_to_bronze.py), [`src/urbanflow/producer.py`](../src/urbanflow/producer.py) | `test_streaming.py`, `test_producer.py`, `test_compute_resources.py` | None yet | Implemented, tested offline. Event Hubs is opt-in (`station_source=existing_bronze`). |
+| 3 | Streaming and incremental ingestion: Auto Loader, checkpoints, bounded streams | `land_sources` task: idempotent landing plus Auto Loader `availableNow` into `bronze_station_status`; per-execution checkpoints; bounded waits | [`notebooks/02_land_bounded_sources.py`](../notebooks/02_land_bounded_sources.py), [`src/urbanflow/landing.py`](../src/urbanflow/landing.py), [`src/urbanflow/streaming.py`](../src/urbanflow/streaming.py) | `test_landing.py` (incl. Spark schema parity), `test_streaming.py` | None yet | Implemented, tested offline |
+| 4 | Silver quality, SCD, schema governance, Delta maintenance | Three-way quality split (valid / quarantine / duplicate), idempotent MERGE, SCD 1/2 station dimension, additive schema evolution, maintenance SQL kept commented | [`src/urbanflow/quality.py`](../src/urbanflow/quality.py), [`silver.py`](../src/urbanflow/silver.py), [`dimensions.py`](../src/urbanflow/dimensions.py), [`persistence.py`](../src/urbanflow/persistence.py), [`sql/21_maintenance_optimize_vacuum.sql`](../sql/21_maintenance_optimize_vacuum.sql) | `test_quality.py`, `test_silver.py`, `test_dimensions.py`, `test_persistence*.py`, `test_sql_assets.py` | None yet | Implemented, tested offline. SCD changes are labelled synthetic scenarios. |
+| 5 | Lakeflow Spark Declarative Pipelines | Serverless triggered pipeline in an isolated schema; expectations on every Gold dataset; optional `refresh_lakeflow` Job task (condition task) | [`pipeline/`](../pipeline/), [`resources/urbanflow_final.pipeline.yml`](../resources/urbanflow_final.pipeline.yml) | `test_lakeflow_pipeline.py`, `test_final_release.py` | None yet | Implemented, opt-in (`run_lakeflow=true`) |
+| 6 | Gold analytics, governance, AI/BI dashboard | Gold KPIs (shortage, rebalancing priority, daily demand, weather demand); five-page dashboard generated per target; row filter and column masks demonstrated on isolated copies | [`src/urbanflow/gold.py`](../src/urbanflow/gold.py), [`sql/10`–`14`](../sql/), [`scripts/build_dashboard.py`](../scripts/build_dashboard.py), [`sql/20_governance_rls_cls.sql`](../sql/20_governance_rls_cls.sql), [`scripts/run_governance_demo.py`](../scripts/run_governance_demo.py) | `test_gold.py`, `test_dashboard_and_governance_demo.py`, `test_sql_assets.py` | None yet | Implemented, tested offline. The governance demo is opt-in (dry run by default). |
+| 7 | Data quality testing | Great Expectations suites on local Spark; reconciliation identities (Bronze = Silver + Quarantine + Duplicates); final validation task as a Job gate | [`src/urbanflow/expectations.py`](../src/urbanflow/expectations.py), [`notebooks/10_unified_final_validation.py`](../notebooks/10_unified_final_validation.py), [`QUALITY_FRAMEWORK.md`](QUALITY_FRAMEWORK.md) | `test_expectations_framework.py`, `test_medallion.py`, `test_sample_end_to_end.py` | None yet | Implemented, tested offline |
+| 8 | CI/CD with Asset Bundles and approvals | DEV (`personal_dev`) and PROD (`azure_prod`) targets; CI with Ruff, Black, pytest, dashboard freshness and offline bundle schema; manual CD with two protected environments, plan gates and post-deploy no-drift check | [`databricks.yml`](../databricks.yml), [`../.github/workflows/final_project_ci.yml`](../../.github/workflows/final_project_ci.yml), [`../.github/workflows/final_project_cd.yml`](../../.github/workflows/final_project_cd.yml), [`scripts/validate_release_plan.py`](../scripts/validate_release_plan.py) | `test_final_release.py`, `test_config.py` | CI runs on the PR; no CD release yet | CI: runs on every PR. CD: implemented, needs the deploy identities (see release doc). |
+| 9 | REST API automation | Bounded REST clients for GBFS and Open-Meteo with retries; Jobs API run with an idempotency token, polling and machine validation; SQL Statement Execution API for the governance demo | [`src/urbanflow/gbfs_client.py`](../src/urbanflow/gbfs_client.py), [`weather.py`](../src/urbanflow/weather.py), [`scripts/validate_job_run.py`](../scripts/validate_job_run.py), CD workflow | `test_gbfs_client.py`, `test_weather.py`, `test_final_release.py` | None yet | Implemented, tested offline |
+| 10 | Lakehouse Federation and CDC | **Core capability.** Maintenance snapshots (read-only Federation query, or committed fixture) become Delta CDF events. Only the new version range is MERGEd into Silver, with an audit history, then reconciled before a forward-only checkpoint. | [`notebooks/11_federation_cdc.py`](../notebooks/11_federation_cdc.py), [`src/urbanflow/cdc_sql.py`](../src/urbanflow/cdc_sql.py), [`cdc.py`](../src/urbanflow/cdc.py), [`federation.py`](../src/urbanflow/federation.py), [`fixtures/maintenance/`](../fixtures/maintenance/README.md) | `test_cdc_pipeline.py` (replay, deletes, idempotency, ordering), `test_cdc.py`, `test_federation.py` | None yet | Implemented, opt-in (`run_federation_cdc=true`). Federation needs an approved foreign catalog; fixture mode does not. |
+| 11 | Zerobus Ingest | **Optional.** Synthetic station-health readings go to Final-Project-owned Bronze. Silver keeps the earliest delivery and is proven idempotent. Lab 11 schemas, tables and credentials are refused in code. | [`src/urbanflow/zerobus.py`](../src/urbanflow/zerobus.py), [`zerobus_sql.py`](../src/urbanflow/zerobus_sql.py), [`scripts/run_zerobus_health.py`](../scripts/run_zerobus_health.py), [`notebooks/12_zerobus_station_health.py`](../notebooks/12_zerobus_station_health.py) | `test_zerobus_adapter.py` | None yet | Optional; implemented, tested offline. Sending needs a Final Project service principal. |
+| 12 | AI capstone: governed RAG | Mobility operations assistant over 8 original fictional procedures (Delta store with CDF, Delta Sync hybrid index, grounded prompt with citations and refusals). Evaluated as a no-retrieval baseline vs RAG on 18 questions. | [`knowledge_base/`](../knowledge_base/), [`src/urbanflow/rag/`](../src/urbanflow/rag/), [`notebooks/20`–`23`](../notebooks/) | `test_rag_*.py` (11 files), incl. `test_rag_domain.py`, `test_rag_pipeline.py` | None yet | Implemented, opt-in (AI Search mutation and live inference are switched off by default) |
+
+## Cross-cutting requirements
+
+| Requirement | Where | Tests | Status |
+|---|---|---|---|
+| One integrated solution | The platform Job runs ingestion → Silver → Gold → validation → CDC → Lakeflow (optional). The RAG Job reads the same governed schema, and the dashboard joins CDC maintenance with Gold priorities. | `test_final_release.py`, `test_dashboard_and_governance_demo.py` | Implemented, tested offline |
+| Isolation from Demo 3 and the Labs | Own schemas, Volume, Job, pipeline, dashboard and index names. SQL is target-neutral. No Demo 3 or Lab resource IDs. | `test_sql_assets.py`, `test_dashboard_and_governance_demo.py`, `test_zerobus_adapter.py`, `test_compute_resources.py` | Implemented, tested offline |
+| Serverless-only compute | `assert_serverless_compute` in every data task. No cluster definitions in the bundle. | `test_automation.py`, `test_notebook_documentation.py`, `test_compute_resources.py` | Implemented, tested offline |
+| Honest labelling of data | Samples, synthetic and fictional data are labelled in the data, the notebooks and the dashboard. | `test_notebook_documentation.py` (validation claims), dashboard tests | Implemented, tested offline |
+
+## Measured offline results (fixture, not model quality)
+
+These figures come from `pipeline.offline_summary`: the committed corpus, a lexical fixture retriever and an extractive fixture model. They show that the retrieval and scoring code works. They say nothing about a real model.
+
+| Metric (18 questions) | No-retrieval baseline | RAG (offline fixture) |
+|---|---|---|
+| Answer correctness | 0.111 | 0.648 |
+| Retrieval recall (16 answerable) | n/a | 0.938 |
+| Source coverage | n/a | 0.875 |
+| Clean refusals | 18 | 4 |

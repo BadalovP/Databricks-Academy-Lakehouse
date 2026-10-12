@@ -295,14 +295,19 @@ def test_job_run_ids_must_be_numeric_platform_ids() -> None:
 
 
 def test_committed_evidence_files_contain_no_secret_markers() -> None:
-    """The reports are committed, so this is a real exposure check rather than a formality."""
+    """Committed reports and docs are a real exposure surface, so this is not a formality.
+
+    Evidence folders exist only after a live run; the documentation, configuration, fixtures and
+    knowledge base are always committed and are checked as well.
+    """
+    folders = ("evidence", "docs", "config", "fixtures", "knowledge_base")
     candidates = sorted(
         path
-        for folder in (PROJECT_ROOT / "evidence", PROJECT_ROOT / "docs" / "evidence")
+        for folder in (PROJECT_ROOT / name for name in folders)
         if folder.is_dir()
         for path in folder.rglob("*")
-        if path.is_file() and path.suffix in {".json", ".md", ".txt"}
-    )
+        if path.is_file() and path.suffix in {".json", ".md", ".txt", ".yml", ".csv"}
+    ) + [PROJECT_ROOT / "README.md", PROJECT_ROOT / "databricks.yml"]
     for path in candidates:
         text = path.read_text(encoding="utf-8")
         for marker in SECRET_MARKERS:

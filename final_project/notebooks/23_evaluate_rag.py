@@ -8,7 +8,7 @@
 # MAGIC
 # MAGIC **Learning objectives:** Score retrieval recall, answer correctness, citation coverage and refusals; compare a no-retrieval baseline with RAG on the same model; persist scores and redacted monitoring events.
 # MAGIC
-# MAGIC **Academy labs:** Lab 12 (RAG evaluation, monitoring), Lab 7 (quality checks as gates), Lab 8 (cost-bounded live calls).
+# MAGIC **Academy labs:** Lab 12 (RAG evaluation, monitoring), Lab 7 (quality checks as gates), Lab 9 (bounded, planned API calls).
 # MAGIC
 # MAGIC **Actual validation:** The offline fixture evaluation runs in the unit tests (`tests/test_rag_domain.py`, `tests/test_rag_evaluation.py`); in the Final Project this notebook has not been run in a workspace yet, so no live scores exist.
 # MAGIC

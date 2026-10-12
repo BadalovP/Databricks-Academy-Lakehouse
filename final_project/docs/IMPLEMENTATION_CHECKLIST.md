@@ -32,12 +32,12 @@ Working log for finishing the Final Project from the Codex handoff. Worktree:
 
 - [x] A. Coherent standalone project: paths, names, bundle, Demo 3 assumptions removed (dashboard: stage E)
 - [x] B. Federation / CDC complete with tests (replay, deletes, idempotency, reconciliation) - offline
-- [ ] C. Mobility RAG assistant complete (original docs, chunking, retrieval, citations, evaluation)
-- [ ] D. Optional Zerobus station-health ingestion (isolated, idempotent)
-- [ ] E. Medallion, Gold KPIs, quality, governance, dashboard
-- [ ] F. Lakeflow pipeline + Job orchestration
+- [x] C. Mobility RAG assistant complete (original docs, chunking, retrieval, citations, evaluation) - offline
+- [x] D. Optional Zerobus station-health ingestion (isolated, idempotent) - offline
+- [x] E. Medallion, Gold KPIs, quality, governance, dashboard - offline
+- [x] F. Lakeflow pipeline + Job orchestration - offline
 - [x] G. DEV/PROD bundle targets, `final_project_ci.yml`, `final_project_cd.yml` (CD live run needs identities)
-- [ ] H. README, architecture, Labs 1-12 coverage, cost/performance, Demo Day presentation
+- [x] H. README, architecture, Labs 1-12 coverage, cost/performance, Demo Day presentation
 - [ ] I. Live validation (only after explicit approval), evidence
 - [ ] J. PR, CI green, review
 
@@ -58,3 +58,23 @@ Working log for finishing the Final Project from the Codex handoff. Worktree:
 - 2026-10-12: `2cf6bf1` serverless gate, Job parameter wiring, land_sources + Auto Loader, release validators, CI/CD.
 - 2026-10-12: stage B - `cdc_sql.py` builders, fictional maintenance snapshots, notebook 11 rebuilt
   (reconcile before a forward-only checkpoint), Python replay tests; bundle syncs the snapshots.
+- 2026-10-12: stage C - mobility prompts, opt-in system scope (offline recall 0.625 -> 0.938);
+  notebooks 20-23 to the documentation contract with `rag/pipeline.py` and tests.
+- 2026-10-12: stage D - Zerobus: Lab 11 isolation guard, delivery with acknowledgments, Silver
+  MERGE proven idempotent, dry-run producer (<= 30 records), optional notebook 12 (not in the Job).
+- 2026-10-12: stage E - found that all dashboard/governance/maintenance SQL read Demo 3's schema;
+  SQL made target-neutral, one generated dashboard per target, fifth page (CDC + assistant),
+  governance demo target-aware and dry run by default.
+- 2026-10-12: stage F - CI and CD never installed the Databricks CLI before `validate_bundle.py`;
+  validator now merges included resource files; Lakeflow refresh task bounded; CD sample run
+  includes fixture-mode CDC.
+- 2026-10-12: stage H - Demo 3 evidence docs removed (kept in history and in `Demos/Demo3`);
+  new README, coverage matrix, architecture, cost/performance, release/validation, dashboard and
+  Demo Day docs; documentation tests check the doc set, Demo 3 identifiers and the CD gates.
+
+## Remaining (needs the owner's decision)
+
+- Stage I live validation: every step in `RELEASE_AND_VALIDATION.md` needs explicit approval
+  (billable serverless runs; AI Search endpoint; schemas in the shared `dbr_dev` catalog).
+- CD identities: a `personal_dev` service principal with an OAuth secret (owner-controlled) and an
+  `azure_prod` OIDC service principal (Academy account admin; not needed for operator deploys).

@@ -8,7 +8,7 @@
 # MAGIC
 # MAGIC **Learning objectives:** Combine hybrid retrieval with a grounded prompt, read numbered citations, and recognise a refusal when the procedures do not answer the question.
 # MAGIC
-# MAGIC **Academy labs:** Lab 12 (retrieval-augmented generation, grounding, citations, refusals), Lab 9 (governed access to the index and model endpoint).
+# MAGIC **Academy labs:** Lab 12 (retrieval-augmented generation, grounding, citations, refusals), Lab 6 (governed access to the index and model endpoint).
 # MAGIC
 # MAGIC **Actual validation:** Offline tests run the same RAG service with a fixture retriever and an extractive model; in the Final Project this notebook has not been run in a workspace yet.
 

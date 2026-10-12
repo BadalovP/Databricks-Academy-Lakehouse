@@ -41,12 +41,8 @@ The base Great Expectations 1.23.2 package installs 16 packages, none of them Sp
 against pyspark 4.1.1 before being adopted: a deliberately null-containing frame produced
 `success=False` with `unexpected_count=1`.
 
-On 2026-10-03 the suites also ran through Databricks Connect against the existing persisted tables
-on GP1. Silver passed 10/10 expectations and the named 40-row historical development sample passed
-10/10, with zero failures and zero unexpected rows. The historical duration check derives its
-expression and bounds from `historical.py`, so the external framework continues to validate the
-production contract rather than redefine it. See
-[the Batch A evidence](../evidence/BATCH_A_READ_VALIDATION.md).
+The historical duration check derives its expression and bounds from `historical.py`, so the
+external framework validates the production contract rather than redefining it.
 
 So "the lightest option that satisfies the requirement" is Great Expectations - lightest in the
 only sense that matters here, which is impact on what already works.
@@ -58,7 +54,7 @@ This is a fair question, because the project is not short of quality checks:
 | Layer | What it does | What it does not do |
 |---|---|---|
 | `quality.py` | Routes every row to valid or quarantine with named failed rules | Produces no portable report |
-| `pipeline/*.py` | 22 declarative Lakeflow expectations, all passing in update `ba6710ed-…` (2026-10-03) | Report only inside the pipeline event log |
+| `pipeline/*.py` | Declarative Lakeflow expectations on every Gold dataset | Report only inside the pipeline event log |
 | `reconcile_*` functions | Prove counts tie out between layers | Check totals, not per-column rules |
 | **Great Expectations** | **A portable, per-expectation validation report** | Does not route or persist anything |
 
@@ -99,6 +95,6 @@ no warehouse and no running service.
 
 ## Status
 
-`Implemented locally`. The suites run against real local Spark in CI. They have not been run
-against the live Azure tables, which would be a natural, cheap addition to the next GP1 batch -
-it is a read-only validation and needs no new resource.
+`Implemented, tested offline`. The suites run against real local Spark in CI. They have not been run
+against Final Project tables in a workspace yet; doing so is a cheap, read-only serverless check
+that can be added to the first approved validation run.

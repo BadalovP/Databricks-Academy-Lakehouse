@@ -8,7 +8,7 @@
 # MAGIC
 # MAGIC **Learning objectives:** Plan a Delta Sync index from configuration, provision it with bounded waits, and gate evaluation on a ready index that holds every source row.
 # MAGIC
-# MAGIC **Academy labs:** Lab 12 (AI Search / Vector Search, Delta Sync, embeddings), Lab 9 (Unity Catalog governance of the index), Lab 8 (cost-aware serverless operations).
+# MAGIC **Academy labs:** Lab 12 (AI Search / Vector Search, Delta Sync, embeddings), Lab 10 (Change Data Feed as the sync source), Lab 6 (Unity Catalog governance of the index).
 # MAGIC
 # MAGIC **Actual validation:** Offline tests cover the index plan, the configuration checks and the provisioning state machine with a fake client; in the Final Project this notebook has not been run in a workspace yet.
 # MAGIC

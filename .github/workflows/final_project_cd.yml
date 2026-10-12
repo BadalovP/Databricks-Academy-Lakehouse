@@ -61,6 +61,9 @@ jobs:
           java-version: "17"
       - name: Install package and test tools
         run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
+      - uses: databricks/setup-cli@main
+        with:
+          version: 1.12.1
       - name: Static quality gates
         run: |
           set -euo pipefail
@@ -165,7 +168,7 @@ jobs:
         run: |
           set -euo pipefail
           token="urbanflow-final-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          python -c 'import json,sys; json.dump({"job_id": int(sys.argv[1]), "idempotency_token": sys.argv[2], "job_parameters": {"run_station_pipeline": "true", "run_historical": "true", "run_weather": "true"}}, open(sys.argv[3], "w"))' "$JOB_ID" "$token" "$RUNNER_TEMP/run-request.json"
+          python -c 'import json,sys; json.dump({"job_id": int(sys.argv[1]), "idempotency_token": sys.argv[2], "job_parameters": {"run_station_pipeline": "true", "run_historical": "true", "run_weather": "true", "run_federation_cdc": "true"}}, open(sys.argv[3], "w"))' "$JOB_ID" "$token" "$RUNNER_TEMP/run-request.json"
           databricks jobs run-now --json @"$RUNNER_TEMP/run-request.json" --no-wait --output json > "$RUNNER_TEMP/submitted.json"
           run_id=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["run_id"])' "$RUNNER_TEMP/submitted.json")
           terminal=false
