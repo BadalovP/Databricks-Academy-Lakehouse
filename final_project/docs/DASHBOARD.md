@@ -32,6 +32,15 @@ python scripts/build_dashboard.py --check    # CI: fail if a file is stale
 
 The **Maintenance & Assistant** page is where the capabilities meet. The "priorities at stations under maintenance" table joins Gold rebalancing priorities with the CDC-maintained maintenance Silver table, listing the stations where a van should not be sent without a dispatcher's decision.
 
+## Offline SQL verification
+
+`tests/test_dashboard_sql_analysis.py` creates empty local Spark tables with the **live** column schemas of the 17 DEV tables, read from Unity Catalog (`tests/fixtures/dashboard_table_schemas.json`), plus the code-defined `rag_evaluation_results`. It then analyses and executes every dataset exactly as the generator renders it.
+- 24 of the 25 datasets resolve every table, column and function.
+- Every widget field exists in its dataset's output.
+- `quality_lakeflow` is excluded, because `EVENT_LOG` and the `:` JSON path exist only on Databricks.
+
+This proves the SQL matches the tables. It does not prove the values or the rendering; that needs the live query check (approval item D in [RELEASE_AND_VALIDATION.md](RELEASE_AND_VALIDATION.md)).
+
 ## Safety
 
 - Every statement is a `SELECT`. `tests/test_sql_assets.py` fails on any write, DDL or `GRANT`.
