@@ -44,21 +44,33 @@ ORDER BY stations DESC;
 -- 3. Top rebalancing priorities: the list an operator would actually work from.
 --    priority_score is a plain sum of its three components, which are shown beside it so the
 --    ranking can be recomputed by hand. There is no model and no tuned weighting.
+--    Out-of-service stations never reach this table (Gold excludes them). A station with an
+--    open maintenance ticket (CDC Silver) stays listed but is marked HOLD: no van is sent there
+--    without a dispatcher's decision.
 SELECT
-  priority_score,
-  action,
-  station_name,
-  station_id,
-  availability_status,
-  num_bikes_available,
-  num_docks_available,
-  capacity_estimate,
-  severity_points,
-  deficit_points,
-  size_points,
-  observed_at
-FROM ${catalog}.${schema}.gold_rebalancing_priority
-ORDER BY priority_score DESC, num_bikes_available ASC
+  p.priority_score,
+  p.action,
+  p.station_name,
+  p.station_id,
+  p.availability_status,
+  p.num_bikes_available,
+  p.num_docks_available,
+  p.capacity_estimate,
+  p.severity_points,
+  p.deficit_points,
+  p.size_points,
+  p.observed_at,
+  CASE WHEN m.open_tickets > 0 THEN 'HOLD - open maintenance ticket' ELSE 'clear' END
+                                                                    AS maintenance_hold
+FROM ${catalog}.${schema}.gold_rebalancing_priority AS p
+LEFT JOIN (
+  SELECT station_id, COUNT(*) AS open_tickets
+  FROM ${catalog}.${schema}.silver_station_maintenance
+  WHERE status <> 'CLOSED'
+  GROUP BY station_id
+) AS m
+  ON p.station_id = m.station_id
+ORDER BY p.priority_score DESC, p.num_bikes_available ASC
 LIMIT 25;
 
 -- 4. Station availability detail, with coordinates for a map visual.

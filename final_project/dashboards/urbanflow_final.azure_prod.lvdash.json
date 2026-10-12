@@ -38,20 +38,29 @@
       "displayName": "Top 25 priorities",
       "queryLines": [
         "SELECT\n",
-        "  priority_score,\n",
-        "  action,\n",
-        "  station_name,\n",
-        "  station_id,\n",
-        "  availability_status,\n",
-        "  num_bikes_available,\n",
-        "  num_docks_available,\n",
-        "  capacity_estimate,\n",
-        "  severity_points,\n",
-        "  deficit_points,\n",
-        "  size_points,\n",
-        "  observed_at\n",
-        "FROM dbr_dev.parvinbadalov_urbanflow_final_prod.gold_rebalancing_priority\n",
-        "ORDER BY priority_score DESC, num_bikes_available ASC\n",
+        "  p.priority_score,\n",
+        "  p.action,\n",
+        "  p.station_name,\n",
+        "  p.station_id,\n",
+        "  p.availability_status,\n",
+        "  p.num_bikes_available,\n",
+        "  p.num_docks_available,\n",
+        "  p.capacity_estimate,\n",
+        "  p.severity_points,\n",
+        "  p.deficit_points,\n",
+        "  p.size_points,\n",
+        "  p.observed_at,\n",
+        "  CASE WHEN m.open_tickets > 0 THEN 'HOLD - open maintenance ticket' ELSE 'clear' END\n",
+        "                                                                    AS maintenance_hold\n",
+        "FROM dbr_dev.parvinbadalov_urbanflow_final_prod.gold_rebalancing_priority AS p\n",
+        "LEFT JOIN (\n",
+        "  SELECT station_id, COUNT(*) AS open_tickets\n",
+        "  FROM dbr_dev.parvinbadalov_urbanflow_final_prod.silver_station_maintenance\n",
+        "  WHERE status <> 'CLOSED'\n",
+        "  GROUP BY station_id\n",
+        ") AS m\n",
+        "  ON p.station_id = m.station_id\n",
+        "ORDER BY p.priority_score DESC, p.num_bikes_available ASC\n",
         "LIMIT 25"
       ]
     },
@@ -445,21 +454,42 @@
     },
     {
       "name": "maintenance_conflicts",
-      "displayName": "Priorities at stations under maintenance",
+      "displayName": "Stations with an open maintenance ticket",
       "queryLines": [
         "SELECT\n",
+        "  m.maintenance_id,\n",
+        "  COALESCE(d.station_name, '(not in the 40-station development sample)') AS station_name,\n",
+        "  m.status                                                          AS maintenance_status,\n",
+        "  m.severity                                                        AS maintenance_severity,\n",
+        "  m.updated_at                                                      AS maintenance_updated_at,\n",
+        "  s.availability_status,\n",
         "  p.priority_score,\n",
         "  p.action,\n",
-        "  p.station_name,\n",
-        "  p.availability_status,\n",
-        "  m.maintenance_id,\n",
-        "  m.status                                                          AS maintenance_status,\n",
-        "  m.severity                                                        AS maintenance_severity\n",
-        "FROM dbr_dev.parvinbadalov_urbanflow_final_prod.gold_rebalancing_priority AS p\n",
-        "JOIN dbr_dev.parvinbadalov_urbanflow_final_prod.silver_station_maintenance AS m\n",
-        "  ON p.station_id = m.station_id\n",
+        "  CASE WHEN p.station_id IS NULL THEN 'no rebalancing action pending'\n",
+        "       ELSE 'HOLD - dispatcher decision before sending a van' END    AS dispatch_note\n",
+        "FROM dbr_dev.parvinbadalov_urbanflow_final_prod.silver_station_maintenance AS m\n",
+        "LEFT JOIN dbr_dev.parvinbadalov_urbanflow_final_prod.dim_station_development_sample AS d\n",
+        "  ON m.station_id = d.station_id\n",
+        "LEFT JOIN (\n",
+        "  SELECT station_id, availability_status FROM (\n",
+        "    SELECT station_id, availability_status,\n",
+        "           ROW_NUMBER() OVER (PARTITION BY station_id ORDER BY observed_at DESC) AS position\n",
+        "    FROM dbr_dev.parvinbadalov_urbanflow_final_prod.silver_station_status\n",
+        "  ) WHERE position = 1\n",
+        ") AS s\n",
+        "  ON m.station_id = s.station_id\n",
+        "LEFT JOIN (\n",
+        "  SELECT station_id, priority_score, action FROM (\n",
+        "    SELECT station_id, priority_score, action,\n",
+        "           ROW_NUMBER() OVER (PARTITION BY station_id ORDER BY observed_at DESC) AS position\n",
+        "    FROM dbr_dev.parvinbadalov_urbanflow_final_prod.gold_rebalancing_priority\n",
+        "  ) WHERE position = 1\n",
+        ") AS p\n",
+        "  ON m.station_id = p.station_id\n",
         "WHERE m.status <> 'CLOSED'\n",
-        "ORDER BY p.priority_score DESC, p.station_name"
+        "ORDER BY p.priority_score DESC NULLS LAST,\n",
+        "         CASE m.severity WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,\n",
+        "         m.maintenance_id"
       ]
     },
     {
@@ -481,10 +511,13 @@
       "displayName": "CDC checkpoint",
       "queryLines": [
         "SELECT\n",
-        "  pipeline_key,\n",
-        "  processed_version,\n",
-        "  processed_at\n",
-        "FROM dbr_dev.parvinbadalov_urbanflow_final_prod.maintenance_cdc_checkpoint"
+        "  c.pipeline_key,\n",
+        "  c.processed_version,\n",
+        "  c.processed_at,\n",
+        "  (SELECT MAX(commit_version) FROM dbr_dev.parvinbadalov_urbanflow_final_prod.maintenance_cdc_history)\n",
+        "                                                                    AS last_data_change_version,\n",
+        "  (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow_final_prod.maintenance_cdc_history) AS history_events\n",
+        "FROM dbr_dev.parvinbadalov_urbanflow_final_prod.maintenance_cdc_checkpoint AS c"
       ]
     },
     {
@@ -982,6 +1015,10 @@
                     {
                       "name": "size_points",
                       "expression": "`size_points`"
+                    },
+                    {
+                      "name": "maintenance_hold",
+                      "expression": "`maintenance_hold`"
                     }
                   ],
                   "disaggregated": true
@@ -1028,12 +1065,16 @@
                   {
                     "fieldName": "size_points",
                     "displayName": "size_points"
+                  },
+                  {
+                    "fieldName": "maintenance_hold",
+                    "displayName": "maintenance_hold"
                   }
                 ]
               },
               "frame": {
                 "showTitle": true,
-                "title": "Top 25 rebalancing priorities (score = severity + deficit + size)"
+                "title": "Top 25 rebalancing priorities (score = severity + deficit + size; HOLD = open maintenance ticket)"
               }
             }
           },
@@ -2732,12 +2773,16 @@
                   "datasetName": "maintenance_checkpoint",
                   "fields": [
                     {
-                      "name": "pipeline_key",
-                      "expression": "`pipeline_key`"
-                    },
-                    {
                       "name": "processed_version",
                       "expression": "`processed_version`"
+                    },
+                    {
+                      "name": "last_data_change_version",
+                      "expression": "`last_data_change_version`"
+                    },
+                    {
+                      "name": "history_events",
+                      "expression": "`history_events`"
                     },
                     {
                       "name": "processed_at",
@@ -2754,12 +2799,16 @@
               "encodings": {
                 "columns": [
                   {
-                    "fieldName": "pipeline_key",
-                    "displayName": "pipeline_key"
-                  },
-                  {
                     "fieldName": "processed_version",
                     "displayName": "processed_version"
+                  },
+                  {
+                    "fieldName": "last_data_change_version",
+                    "displayName": "last_data_change_version"
+                  },
+                  {
+                    "fieldName": "history_events",
+                    "displayName": "history_events"
                   },
                   {
                     "fieldName": "processed_at",
@@ -2769,7 +2818,7 @@
               },
               "frame": {
                 "showTitle": true,
-                "title": "CDC checkpoint (advances only after reconciliation)"
+                "title": "CDC checkpoint: newest scanned and reconciled source version (after reconciliation only)"
               }
             }
           },
@@ -2856,24 +2905,12 @@
                   "datasetName": "maintenance_conflicts",
                   "fields": [
                     {
-                      "name": "priority_score",
-                      "expression": "`priority_score`"
-                    },
-                    {
-                      "name": "action",
-                      "expression": "`action`"
+                      "name": "maintenance_id",
+                      "expression": "`maintenance_id`"
                     },
                     {
                       "name": "station_name",
                       "expression": "`station_name`"
-                    },
-                    {
-                      "name": "availability_status",
-                      "expression": "`availability_status`"
-                    },
-                    {
-                      "name": "maintenance_id",
-                      "expression": "`maintenance_id`"
                     },
                     {
                       "name": "maintenance_status",
@@ -2882,6 +2919,22 @@
                     {
                       "name": "maintenance_severity",
                       "expression": "`maintenance_severity`"
+                    },
+                    {
+                      "name": "availability_status",
+                      "expression": "`availability_status`"
+                    },
+                    {
+                      "name": "priority_score",
+                      "expression": "`priority_score`"
+                    },
+                    {
+                      "name": "action",
+                      "expression": "`action`"
+                    },
+                    {
+                      "name": "dispatch_note",
+                      "expression": "`dispatch_note`"
                     }
                   ],
                   "disaggregated": true
@@ -2894,24 +2947,12 @@
               "encodings": {
                 "columns": [
                   {
-                    "fieldName": "priority_score",
-                    "displayName": "priority_score"
-                  },
-                  {
-                    "fieldName": "action",
-                    "displayName": "action"
+                    "fieldName": "maintenance_id",
+                    "displayName": "maintenance_id"
                   },
                   {
                     "fieldName": "station_name",
                     "displayName": "station_name"
-                  },
-                  {
-                    "fieldName": "availability_status",
-                    "displayName": "availability_status"
-                  },
-                  {
-                    "fieldName": "maintenance_id",
-                    "displayName": "maintenance_id"
                   },
                   {
                     "fieldName": "maintenance_status",
@@ -2920,12 +2961,28 @@
                   {
                     "fieldName": "maintenance_severity",
                     "displayName": "maintenance_severity"
+                  },
+                  {
+                    "fieldName": "availability_status",
+                    "displayName": "availability_status"
+                  },
+                  {
+                    "fieldName": "priority_score",
+                    "displayName": "priority_score"
+                  },
+                  {
+                    "fieldName": "action",
+                    "displayName": "action"
+                  },
+                  {
+                    "fieldName": "dispatch_note",
+                    "displayName": "dispatch_note"
                   }
                 ]
               },
               "frame": {
                 "showTitle": true,
-                "title": "Rebalancing priorities at stations with an open maintenance ticket"
+                "title": "Stations with an open maintenance ticket: current status and pending action (HOLD)"
               }
             }
           },

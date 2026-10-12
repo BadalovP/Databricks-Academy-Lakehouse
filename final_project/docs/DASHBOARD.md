@@ -2,7 +2,9 @@
 
 [← Main README](../README.md) · [Architecture](ARCHITECTURE.md)
 
-**Status:** the dashboards are generated and tested offline. The `personal_dev` dashboard `01f1c647728e1ceeb2b5bd10a8700793` was deployed by the bundle in step 1, with the earlier 6-column layout. The current generator (12-column `GRID_V1` layout, table v2, theme) has not been redeployed. **No dataset query has been run against the live tables and no rendering has been checked**, so the dashboard is not validated live.
+**Status:** the dashboards are generated and tested offline. The `personal_dev` dashboard `01f1c647728e1ceeb2b5bd10a8700793` received the 12-column `GRID_V1` layout in step 4A. It has not been published.
+
+The maintenance review on 2026-10-13 changed three datasets after that deploy (below), so a dashboard-only redeploy comes first in approval item D. **No dataset query has been run against the live tables and no rendering has been checked**, so the dashboard is not validated live.
 
 ## How it is built
 
@@ -30,11 +32,36 @@ python scripts/build_dashboard.py --check    # CI: fail if a file is stale
 | Data Quality & Reliability | Station reconciliation, trip quarantine reasons, Lakeflow expectations, historical reconciliation | A low reference coverage is **not** a data-quality failure (the 40-station development dimension) |
 | Maintenance & Assistant | Tickets by status, priorities at stations under maintenance, CDC audit trail and checkpoint, latest live assistant evaluation | Maintenance tickets are **fictional, synthetic data**; assistant scores exist only after a live evaluation |
 
-The **Maintenance & Assistant** page is where the capabilities meet. The "priorities at stations under maintenance" table joins Gold rebalancing priorities with the CDC-maintained maintenance Silver table, listing the stations where a van should not be sent without a dispatcher's decision.
+The **Maintenance & Assistant** page is where the capabilities meet. The "stations with an open maintenance ticket" table lists every `OPEN` or `IN_PROGRESS` ticket from the CDC-maintained Silver table, with:
+- the station's latest availability;
+- any pending Gold rebalancing action;
+- a `HOLD` note when a van would otherwise be sent to a station under repair.
+
+Open tickets without a pending action stay visible. The **Current Operations** priority list carries the same `maintenance_hold` column. Out-of-service stations never appear there, because Gold excludes them.
+
+The CDC checkpoint table shows `processed_version` (the newest scanned and reconciled source version) next to `last_data_change_version` and the history event count. After step 4C these read 4, 3 and 11: the checkpoint passed the automatic `OPTIMIZE` version.
+
+### Review changes (2026-10-13)
+
+| Dataset | Before | After | Why |
+|---|---|---|---|
+| `maintenance_conflicts` | Inner join: only stations that had both an open ticket and a priority | Every open ticket, LEFT JOINed to the latest availability and priority, with `dispatch_note` | Open tickets at stations without a pending action were hidden |
+| `ops_priorities` | Priorities only | Plus `maintenance_hold` | The operator's list must flag stations closed for repair |
+| `maintenance_checkpoint` | `processed_version` only | Plus `last_data_change_version`, `history_events` | The checkpoint now passes non-data versions, so the two must be distinguishable |
+
+`tests/test_dashboard_sql_analysis.py` runs these datasets on a small local example (closed ticket excluded, open ticket without action kept, HOLD when an action is pending, checkpoint 4 vs last data change 3).
+
+### Empty and missing tables
+
+| Dataset | Behaviour until the source has data |
+|---|---|
+| Maintenance, CDC | Live since step 4 (5 tickets, 11 events) |
+| `quality_lakeflow` | Live since step 5 (update `a26b4385`) |
+| `assistant_evaluation` | `rag_evaluation_results` does not exist until the assistant Job's first live evaluation. Until then the widget shows a "table not found" error, not an empty state. A dashboard query cannot test whether a table exists. The assistant's ingest step (approval item E, step 1) creates it empty with its own DDL (`urbanflow.rag.delta_store`), after which the widget shows an empty table. Item D's live check therefore runs after that ingest. |
 
 ## Offline SQL verification
 
-`tests/test_dashboard_sql_analysis.py` creates empty local Spark tables with the **live** column schemas of the 17 DEV tables, read from Unity Catalog (`tests/fixtures/dashboard_table_schemas.json`), plus the code-defined `rag_evaluation_results`. It then analyses and executes every dataset exactly as the generator renders it.
+`tests/test_dashboard_sql_analysis.py` creates empty local Spark tables with the **live** column schemas of the 18 DEV tables, read from Unity Catalog (`tests/fixtures/dashboard_table_schemas.json`), plus the code-defined `rag_evaluation_results`. It then analyses and executes every dataset exactly as the generator renders it.
 - 24 of the 25 datasets resolve every table, column and function.
 - Every widget field exists in its dataset's output.
 - `quality_lakeflow` is excluded, because `EVENT_LOG` and the `:` JSON path exist only on Databricks.

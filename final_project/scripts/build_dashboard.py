@@ -119,7 +119,7 @@ DATASETS = {
     "quality_lakeflow": ("13_dashboard_data_quality.sql", 8, "Lakeflow expectations"),
     "quality_monthly": ("13_dashboard_data_quality.sql", 9, "Historical reconciliation"),
     "maintenance_status": (MAINTENANCE_SQL, 1, "Maintenance tickets"),
-    "maintenance_conflicts": (MAINTENANCE_SQL, 2, "Priorities at stations under maintenance"),
+    "maintenance_conflicts": (MAINTENANCE_SQL, 2, "Stations with an open maintenance ticket"),
     "maintenance_cdc": (MAINTENANCE_SQL, 3, "CDC audit trail"),
     "maintenance_checkpoint": (MAINTENANCE_SQL, 4, "CDC checkpoint"),
     "assistant_evaluation": (MAINTENANCE_SQL, 5, "Assistant evaluation"),
@@ -313,8 +313,10 @@ def pages(ids: dict[str, str]) -> list[dict]:
                 "severity_points",
                 "deficit_points",
                 "size_points",
+                "maintenance_hold",
             ],
-            "Top 25 rebalancing priorities (score = severity + deficit + size)",
+            "Top 25 rebalancing priorities (score = severity + deficit + size; HOLD = open "
+            "maintenance ticket)",
             (0, 13, 6, 7),
         ),
     ]
@@ -607,8 +609,14 @@ def pages(ids: dict[str, str]) -> list[dict]:
         table(
             "maintenance_checkpoint_table",
             "maintenance_checkpoint",
-            ["pipeline_key", "processed_version", "processed_at"],
-            "CDC checkpoint (advances only after reconciliation)",
+            [
+                "processed_version",
+                "last_data_change_version",
+                "history_events",
+                "processed_at",
+            ],
+            "CDC checkpoint: newest scanned and reconciled source version (after reconciliation "
+            "only)",
             (3, 2, 3, 2),
         ),
         table(
@@ -622,15 +630,16 @@ def pages(ids: dict[str, str]) -> list[dict]:
             "maintenance_conflicts_table",
             "maintenance_conflicts",
             [
-                "priority_score",
-                "action",
-                "station_name",
-                "availability_status",
                 "maintenance_id",
+                "station_name",
                 "maintenance_status",
                 "maintenance_severity",
+                "availability_status",
+                "priority_score",
+                "action",
+                "dispatch_note",
             ],
-            "Rebalancing priorities at stations with an open maintenance ticket",
+            "Stations with an open maintenance ticket: current status and pending action (HOLD)",
             (0, 8, 6, 5),
         ),
         table(

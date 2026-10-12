@@ -1,5 +1,5 @@
 {
- "source": "Unity Catalog column metadata of workspace.urbanflow_final_dev, read 2026-10-12 after step 3 (read-only); used to analyse dashboard SQL locally",
+ "source": "Unity Catalog column metadata of workspace.urbanflow_final_dev, read 2026-10-12 after step 3 (read-only); used to analyse dashboard SQL locally; dim_station_development_sample added 2026-10-13 from Unity Catalog (read-only)",
  "tables": {
   "bronze_historical_trips": [
    [
@@ -151,6 +151,36 @@
    [
     "parse_error",
     "boolean"
+   ]
+  ],
+  "dim_station_development_sample": [
+   [
+    "station_id",
+    "string"
+   ],
+   [
+    "station_short_name",
+    "string"
+   ],
+   [
+    "station_name",
+    "string"
+   ],
+   [
+    "latitude",
+    "double"
+   ],
+   [
+    "longitude",
+    "double"
+   ],
+   [
+    "capacity",
+    "int"
+   ],
+   [
+    "region_id",
+    "string"
    ]
   ],
   "dim_weather_hourly": [
