@@ -84,6 +84,69 @@ Two deploy blockers that offline tests could not see were found and fixed:
 
 Hardening added at the same time: `lifecycle.prevent_destroy` on both schemas and the Volume, and a positive serverless check in the compute gate (`DATABRICKS_RUNTIME_VERSION=client.*`).
 
+## Read-only preflight (2026-10-12, Azure trial `azure_prod`)
+
+Nothing was created. Azure CLI authentication (no stored secret), user `parvinbadalov@softserve.academy` (workspace admins) on `dbr_dev_trial_2` (`https://adb-7405618361895520.0.azuredatabricks.net`). This is an Academy **trial** workspace, not paid production.
+
+| Check | Result |
+|---|---|
+| Existing objects | No `parvinbadalov_urbanflow_final_*` schema in `dbr_dev`; no UrbanFlow 2.0 Job; no AI Search endpoint; 16 unrelated Jobs |
+| Warehouse | `Serverless Starter Warehouse` `d8b8ff9942968cb8`: serverless, Small, stopped, auto-stop 10 min |
+| `bundle validate -t azure_prod` | Passes (with `BUNDLE_VAR_warehouse_id=d8b8ff9942968cb8`) |
+| `bundle plan -t azure_prod` | 7 creates, 0 updates, 0 deletes: the reviewed resources only. Job names carry `[azure_prod]`; no schedule, trigger or cluster. |
+| `validate_release_plan.py --phase pre` | PASS; no collision with the 16 existing Jobs |
+
+Deploying would create two schemas in the **shared** `dbr_dev` catalog, so it needs explicit approval (step 9).
+
+## Next approval request (consolidated, bounded, DEV first)
+
+Nothing below has run. Each item lists its exact action, bound, verification and cleanup. Approve items individually.
+
+**A. Redeploy DEV (code only).**
+- The read-only plan shows 2 updates, no create or delete:
+  - the platform Job gains `run_federation_cdc` and `run_lakeflow` on the preflight task, so CDC-only and Lakeflow-only runs are possible;
+  - the dashboard gets the 12-column `GRID_V1` layout.
+- The dashboard update is included because a bundle deploys everything together.
+- Cost: none (no compute).
+
+**B. Step 4: CDC update and delete batches.** Two runs of Job `158911626270744` with only `run_federation_cdc=true` (every other branch false):
+1. `cdc_snapshot=batch_002`. Expected:
+   - snapshot differs, source MERGE runs, source v2 → v3;
+   - CDF v3 has 6 events: 1 insert (`MT-1006`), 2 update pre-images and 2 post-images (`MT-1001` → `CLOSED`, `MT-1002`), 1 delete (`MT-1003`);
+   - history 5 → 11 events with 11 distinct IDs;
+   - Silver 5 rows (`MT-1001`, `MT-1002`, `MT-1004`, `MT-1005`, `MT-1006`) equal to `batch_002`;
+   - reconciliation 0; checkpoint 2 → 3.
+2. `cdc_snapshot=batch_003` (same business state as `batch_002`). Expected: `source_merged: false`, no new source version, no CDF events, history 11, checkpoint stays 3.
+
+Bound: 40 minutes per run, no retry; about 2–4 minutes each at measured task times. Verification: independent SQL as in step 3. Cleanup: none.
+
+**C. Step 5: one Lakeflow update.** One run with only `run_lakeflow=true` (the Job triggers `d5e0e599-…`, a triggered serverless update in development mode).
+- Expected: update COMPLETED; pipeline Bronze 40, Silver 40, quarantine 0, duplicates 0, dimension 40, fact 40, summary 40, shortage 13, priority 13 (the imperative results); every expectation passes.
+- Bound: task timeout 40 minutes.
+
+**D. Dashboard: read-only live query check.**
+- Run each of the 25 dashboard datasets once on `Serverless Starter Warehouse` (2X-Small, auto-stop 10 min), as the published SQL with `LIMIT 1000`.
+- Pass criteria: every dataset runs without error, and the CDC / assistant datasets return the expected empty-state or live rows.
+- Then open the dashboard once to check rendering.
+
+**E. Steps 6–8: assistant**, in order, stopping at the first failure:
+1. ingest the 8 documents / 30 chunks;
+2. create one STANDARD AI Search endpoint `urbanflow-final-dev` and the Delta Sync index;
+3. sync and check readiness (30 rows);
+4. a 2-question smoke test (`eval_question_ids=q01,q17`, baseline off);
+5. the full 18-question paired evaluation (36 chat calls, up to 54 searches), only if the smoke test answers with citations;
+6. **delete the endpoint** and verify with `list_endpoints()` that none remains.
+
+Exposure: the endpoint bills per hour while it exists. The planned window is about 1–2 endpoint-hours (Lab 12 provisioning took about 25–30 minutes). An earlier review cited about 4 DBU/hour, roughly $0.28/hour, for a Standard unit (a US-East public reference example). That figure is **unverified for this account**; read `system.billing.list_prices` before creation. Lab 12's objects are never reused.
+
+**F. Governance demo.** `scripts/run_governance_demo.py --target personal_dev --execute --confirm RUN_URBANFLOW_FINAL_GOVERNANCE_DEMO --warehouse-id 410e5f3b4784e981 --profile personal_lab10 --evidence evidence/<date>_governance_demo.json --cleanup`.
+- It creates only `workspace.urbanflow_final_dev_governance_demo`, applies and rolls back the row filter and masks, and drops that schema.
+- One identity only, so it demonstrates mechanism, not multi-principal enforcement. No GRANT.
+
+**G. Step 9: PROD.** Deploy to `azure_prod`, which creates the schemas in the shared `dbr_dev` catalog, and run step 2 there.
+
+**Optional (each separate):** full month; Zerobus (needs a Final Project service principal); a real Federation source (needs a Final-Project table in an external database).
+
 ## Optional later: full-month January 2024 validation (not executed)
 
 The first test uses the 40-row development sample. That is enough to exercise every code path: landing, Auto Loader, quality split, Gold, the weather join (about 4 of the 40 trips fall inside the 48-hour weather sample), CDC and validation. The full month is a separate, approved run that proves scale, not logic.

@@ -39,6 +39,8 @@ REQUIRED_DOCS = (
     "RELEASE_AND_VALIDATION.md",
     "DASHBOARD.md",
     "DEMO_DAY_PRESENTATION.md",
+    "OPERATIONS_RUNBOOK.md",
+    "IMPLEMENTATION_PROGRESS.md",
 )
 # Demo 3 live identifiers and figures. Final Project docs must not present them as its own.
 DEMO3_EVIDENCE = (

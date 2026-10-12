@@ -13,7 +13,9 @@ Databricks Academy **Final Project**: one integrated solution that covers Labs 1
 | [Release and validation](docs/RELEASE_AND_VALIDATION.md) | CI, manual CD, identities, the live validation plan and the evidence table |
 | [Dashboard](docs/DASHBOARD.md) | Five pages generated per target from read-only SQL |
 | [Quality framework](docs/QUALITY_FRAMEWORK.md) | Why Great Expectations, and what it checks |
-| [Demo Day presentation](docs/DEMO_DAY_PRESENTATION.md) | 25-minute run of show, slides, demo checklist, expected questions |
+| [Demo Day presentation](docs/DEMO_DAY_PRESENTATION.md) | 25-minute run of show, slides, demo checklist, expected questions, five-minute interview demo |
+| [Operations runbook](docs/OPERATIONS_RUNBOOK.md) | Deploy DEV/PROD, run, recover from failures, CDC checkpoint and replay rules, security and governance, RAG report template |
+| [Implementation progress](docs/IMPLEMENTATION_PROGRESS.md) | Handoff record: commits, resource IDs, live run IDs, known limitations, pending approvals |
 
 ## Business problem
 

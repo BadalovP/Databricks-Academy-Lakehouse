@@ -4,7 +4,14 @@
 
 A 25-minute talk: 20 minutes of presentation and demo, then 5 minutes of questions. The timing column can be compressed to 20 minutes or stretched to 30 (see [Timing variants](#timing-variants)). Each slide lists **what to show** and **what to say**.
 
-**Evidence rule for the talk.** Show only Final Project evidence. If no approved live run exists by Demo Day, demo the offline path (tests, dry runs, generated dashboard definitions, offline evaluation) and say so plainly. Lab and Demo 3 live results are not Final Project results and are not shown as such.
+**Evidence rule for the talk.** Show only Final Project evidence. Lab and Demo 3 live results are not Final Project results and are not shown as such.
+
+**Live evidence available today (Personal DEV, 2026-10-12):**
+- step 1 deploy;
+- step 2 platform run `896549012431425`: 40 events → Silver 40 → 13 actionable priorities; 40 trips; 48 weather hours with 4 matched trips; CDC `batch_001` 5 inserts; all reconciled;
+- step 3 strict idempotency run `412521206243476`: 19/19, with no data change, no rewrites and the CDC checkpoint unchanged.
+
+Anything later (CDC updates and deletes, Lakeflow, the dashboard on live data, the assistant, PROD) is shown offline, and the talk says so unless it has run by then.
 
 ## Run of show
 
@@ -64,7 +71,7 @@ A 25-minute talk: 20 minutes of presentation and demo, then 5 minutes of questio
 - "We read exactly the versions after the checkpoint, keep every event in an audit history, and update Silver."
 - "The checkpoint moves only after reconciliation passes: values compared both ways at the processed version. So a crash mid-run replays safely."
 
-**Demo:** `pytest tests/test_cdc_pipeline.py -q`. If a live run exists, also show the checkpoint and the audit trail on the dashboard.
+**Demo:** `pytest tests/test_cdc_pipeline.py -q`. Live: in step 3 the identical `batch_001` replay printed `source_merged: false`, and the checkpoint stayed at 2 (evidence `2026-10-12_personal_dev_step3_retry_pass.md`). If step 4 has run, show `batch_002` (1 insert, 2 updates, 1 delete).
 
 **Payoff:** the dashboard table *Rebalancing priorities at stations with an open maintenance ticket*.
 
@@ -121,3 +128,16 @@ A 25-minute talk: 20 minutes of presentation and demo, then 5 minutes of questio
 
 - **20 minutes:** cut slide 8 (one line on slide 2) and shorten slide 4 to 1.5 min. Take questions from 18:00.
 - **30 minutes:** extend slide 7 with a live baseline-vs-RAG comparison of two questions (2 min). Walk the CDC batch 002 replay on slide 6 (2 min). Allow 6 minutes for questions.
+
+## Five-minute interview demo
+
+For a technical interview rather than Demo Day: one problem, one architecture, three proofs.
+
+| Time | Show | Say |
+|---|---|---|
+| 0:00–0:45 | README architecture diagram | "A governed lakehouse that tells dispatchers where to send a van and where not to, plus an assistant over the operating procedures. One bundle, DEV on AWS, PROD-style on an Azure trial, serverless only." |
+| 0:45–2:00 | `evidence/2026-10-12_personal_dev_step2_pass.md` | "The first live run failed on three defects that offline tests could not see: a count copied from an earlier project, a missing task dependency, and an input file nobody landed. I fixed each in code with a regression test and recorded every failed run. The passing run reconciles 40 events through Silver to 13 actionable priorities, matching an independent calculation." |
+| 2:00–3:15 | `evidence/2026-10-12_personal_dev_step3_retry_pass.md` | "Then I proved replays are safe, with 19 strict criteria. The first attempt failed one: a Delta MERGE that changes nothing still commits, so the CDC checkpoint moved over an empty version. I added a compare-first guard. Now a replay changes no data and no timestamps, rewrites no files, and leaves the checkpoint alone. Some shared tables still write a metadata-only commit, and I say so." |
+| 3:15–4:15 | `src/urbanflow/cdc_sql.py` + `tests/test_cdc_pipeline.py` | "CDC is Delta Change Data Feed over snapshots, not log-based CDC: a version range, an append-once history, reconciliation, then a forward-only checkpoint. The tests include the recovery case: pending versions are processed even when the snapshot already matches." |
+| 4:15–5:00 | `docs/IMPLEMENTATION_PROGRESS.md` | "What is not done yet, and why: CDC updates and deletes, Lakeflow, the assistant and PROD each wait for an explicit, bounded approval, and nothing billable is left running." |
+
