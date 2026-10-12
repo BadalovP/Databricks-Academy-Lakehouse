@@ -49,5 +49,5 @@ def test_discovery_is_stable(project_root: Path) -> None:
     first = load_documents([project_root / "knowledge_base"])
     second = load_documents([project_root / "knowledge_base"])
     assert [item.document_id for item in first] == [item.document_id for item in second]
-    assert len(first) == 6
+    assert len(first) == 8  # one original document per mobility-operations topic
 

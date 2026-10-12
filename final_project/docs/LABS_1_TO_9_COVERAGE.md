@@ -108,7 +108,7 @@ full-scale one.
 | Lab | Required topic | UrbanFlow implementation | File / validation | Evidence | Status |
 |---:|---|---|---|---|---|
 | 1 | Git and notebooks | Dedicated feature branch and Databricks source-format notebooks | `notebooks/01_fundamentals.py` | Local Git state; notebook format audit | Implemented locally |
-| 1 | CSV and JSON | Real GBFS JSON and January 2024 trip CSV samples | `data/samples/`, `scripts/prepare_demo.py` | 40 + 40 rows validated | Implemented locally |
+| 1 | CSV and JSON | Real GBFS JSON and January 2024 trip CSV samples | `fixtures/samples/`, `scripts/prepare_demo.py` | 40 + 40 rows validated | Implemented locally |
 | 1 | External REST API | Dynamic GBFS discovery and Open-Meteo validation | `gbfs_client.py`, `validate_sources.py` | Public endpoints returned current schemas | Implemented locally |
 | 1 | DataFrames | Explicit Spark DataFrames for station information/status | `01_fundamentals.py` | Static review; live notebook pending | Implemented locally |
 | 1 | select/filter/join/groupBy | Operational filter, UUID join, availability aggregation | `01_fundamentals.py` | Pure business rules unit-tested | Implemented locally |

@@ -25,7 +25,7 @@ PIPELINE_DIR = PROJECT_ROOT / "pipeline"
 BRONZE = PIPELINE_DIR / "bronze.py"
 SILVER = PIPELINE_DIR / "silver.py"
 GOLD = PIPELINE_DIR / "gold.py"
-PIPELINE_RESOURCE = PROJECT_ROOT / "resources" / "pipelines.yml"
+PIPELINE_RESOURCE = PROJECT_ROOT / "resources" / "urbanflow_final.pipeline.yml"
 MODULES = (BRONZE, SILVER, GOLD)
 
 
@@ -189,7 +189,7 @@ def test_one_snapshot_cannot_claim_to_be_a_trend() -> None:
 
 def _pipeline_definition() -> dict:
     resource = yaml.safe_load(PIPELINE_RESOURCE.read_text(encoding="utf-8"))
-    return resource["resources"]["pipelines"]["urbanflow_pipeline"]
+    return resource["resources"]["pipelines"]["urbanflow_final_pipeline"]
 
 
 def test_the_pipeline_is_triggered_and_never_continuous() -> None:

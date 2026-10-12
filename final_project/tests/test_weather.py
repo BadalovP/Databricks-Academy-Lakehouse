@@ -1,7 +1,7 @@
 """Tests for Open-Meteo retrieval and the weather enrichment of trip demand.
 
 The payload fixture is a REAL Open-Meteo archive response for 2024-01-24/25 at the configured
-New York coordinate, committed at `data/samples/open_meteo_archive_202401.sample.json`. Using
+New York coordinate, committed at `fixtures/samples/open_meteo_archive_202401.sample.json`. Using
 the genuine response shape matters: the API returns parallel arrays rather than a list of
 objects, and a test built on an invented shape would not catch a positional misalignment,
 which is the main way this parser could go wrong while still looking correct.
@@ -33,7 +33,7 @@ from urbanflow.weather import (
 
 SAMPLE = (
     Path(__file__).resolve().parents[1]
-    / "data"
+    / "fixtures"
     / "samples"
     / "open_meteo_archive_202401.sample.json"
 )

@@ -179,7 +179,7 @@ landing directory and raises if it finds no CSV, so a missing archive is a clear
 than a successful load of nothing.
 
 The bounded alternative has now run: the committed
-`data/samples/historical_trips_202401_sample.csv` (40 real rows) exercised the complete path on
+`fixtures/samples/historical_trips_202401_sample.csv` (40 real rows) exercised the complete path on
 GP1 without a large transfer. Its evidence says plainly that it covers 40 rows rather than a
 month.
 

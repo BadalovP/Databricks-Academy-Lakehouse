@@ -47,7 +47,7 @@ points, so every ranking can be recomputed by hand.
 | [Open-Meteo](https://open-meteo.com/en/docs) | New York weather enrichment | Current response contains observation time, temperature at 2 m, precipitation, and wind speed at 10 m. |
 
 The committed samples are dated observations for reproducible tests. They are not presented as
-current operational state. See [sample attribution](data/samples/ATTRIBUTION.md).
+current operational state. See [sample attribution](fixtures/samples/ATTRIBUTION.md).
 
 ### Station identifier finding
 

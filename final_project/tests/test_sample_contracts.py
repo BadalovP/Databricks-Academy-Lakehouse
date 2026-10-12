@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SAMPLE_DIR = PROJECT_ROOT / "data" / "samples"
+SAMPLE_DIR = PROJECT_ROOT / "fixtures" / "samples"
 
 
 def test_historical_trip_ids_map_to_current_gbfs_short_names() -> None:

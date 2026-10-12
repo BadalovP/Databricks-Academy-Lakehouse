@@ -296,14 +296,18 @@ def test_job_run_ids_must_be_numeric_platform_ids() -> None:
 
 def test_committed_evidence_files_contain_no_secret_markers() -> None:
     """The reports are committed, so this is a real exposure check rather than a formality."""
-    evidence = PROJECT_ROOT / "evidence"
-    checked = 0
-    for path in sorted(evidence.glob("*.json")):
+    candidates = sorted(
+        path
+        for folder in (PROJECT_ROOT / "evidence", PROJECT_ROOT / "docs" / "evidence")
+        if folder.is_dir()
+        for path in folder.rglob("*")
+        if path.is_file() and path.suffix in {".json", ".md", ".txt"}
+    )
+    for path in candidates:
         text = path.read_text(encoding="utf-8")
         for marker in SECRET_MARKERS:
             assert marker not in text, f"{path.name} contains {marker}"
-        checked += 1
-    assert checked > 0  # a silently empty glob would make this vacuous
+    assert candidates  # a silently empty glob would make this vacuous
 
 
 def test_notebooks_pass_the_run_id_rather_than_inventing_an_attempt_id() -> None:
@@ -322,21 +326,16 @@ def test_notebooks_pass_the_run_id_rather_than_inventing_an_attempt_id() -> None
 def test_jobs_supply_the_platform_run_id_to_every_evidence_writing_task() -> None:
     """`{{job.run_id}}` is substituted by Databricks, so the id is the platform's, not ours."""
     jobs = yaml.safe_load(
-        (PROJECT_ROOT / "resources" / "retired" / "component_jobs.yml").read_text(encoding="utf-8")
+        (PROJECT_ROOT / "resources" / "urbanflow_final.job.yml").read_text(encoding="utf-8")
     )
+    job = jobs["resources"]["jobs"]["urbanflow_final_platform"]
+    defaults = {p["name"]: p["default"] for p in job["parameters"]}
 
-    for name in (
-        "urbanflow_silver_gold_test",
-        "urbanflow_historical_trips_test",
-        "urbanflow_weather_enrichment_test",
-    ):
-        job = jobs["resources"]["jobs"][name]
-        defaults = {p["name"]: p["default"] for p in job["parameters"]}
-        assert defaults["run_attempt_id"] == "{{job.run_id}}", name
-        for task in job["tasks"]:
-            parameters = task["notebook_task"]["base_parameters"]
-            assert parameters["run_attempt_id"] == "{{job.parameters.run_attempt_id}}", name
-
+    assert defaults["run_attempt_id"] == "{{job.run_id}}"
+    # Job parameters reach every task; no task may shadow the platform id with its own value.
+    for task in job["tasks"]:
+        parameters = (task.get("notebook_task") or {}).get("base_parameters") or {}
+        assert "run_attempt_id" not in parameters, task["task_key"]
 
 # --- the Lakeflow isolation guard ------------------------------------------------
 
@@ -344,40 +343,36 @@ def test_jobs_supply_the_platform_run_id_to_every_evidence_writing_task() -> Non
 def test_the_lakeflow_pipeline_never_targets_the_validated_notebook_schema() -> None:
     """Lakeflow declares tables with the SAME names as the notebook path.
 
-    If both wrote to one schema, a Lakeflow update would take ownership of tables that already
-    carry live-validated evidence, and the declarative and imperative results could never be
-    compared. So the pipeline gets its own schema and this test fails if that is undone.
+    If both wrote to one schema, a Lakeflow update would take ownership of the notebook-owned
+    tables, and the declarative and imperative results could never be compared. So the pipeline
+    gets its own schema in every target, and this test fails if that is undone.
     """
     bundle = yaml.safe_load((PROJECT_ROOT / "databricks.yml").read_text(encoding="utf-8"))
     pipelines = yaml.safe_load(
-        (PROJECT_ROOT / "resources" / "pipelines.yml").read_text(encoding="utf-8")
+        (PROJECT_ROOT / "resources" / "urbanflow_final.pipeline.yml").read_text(encoding="utf-8")
     )
-    pipeline = pipelines["resources"]["pipelines"]["urbanflow_pipeline"]
+    pipeline = pipelines["resources"]["pipelines"]["urbanflow_final_pipeline"]
 
     assert pipeline["schema"] == "${var.lakeflow_schema}"
-    assert pipeline["schema"] != "${var.schema}"
     assert pipeline["configuration"]["urbanflow.schema"] == "${var.lakeflow_schema}"
-
-    variables = bundle["variables"]
-    notebook_schema = variables["schema"]["default"]
-    lakeflow_schema = variables["lakeflow_schema"]["default"]
-    assert lakeflow_schema != notebook_schema
-    # And per target, so a dev deployment cannot collide either.
-    for target in bundle["targets"].values():
-        overrides = target.get("variables") or {}
-        resolved_notebook = overrides.get("schema", notebook_schema)
-        resolved_lakeflow = overrides.get("lakeflow_schema", lakeflow_schema)
-        assert resolved_lakeflow != resolved_notebook
+    assert bundle["targets"], "at least one explicit target"
+    for name, target in bundle["targets"].items():
+        overrides = target["variables"]
+        assert overrides["lakeflow_schema"] != overrides["schema"], name
 
 
 def test_the_lakeflow_schema_is_a_personal_urbanflow_schema() -> None:
     """Isolation must not mean writing somewhere that belongs to someone else."""
     bundle = yaml.safe_load((PROJECT_ROOT / "databricks.yml").read_text(encoding="utf-8"))
 
-    for key in ("schema", "lakeflow_schema"):
-        default = bundle["variables"][key]["default"]
-        assert default.startswith("parvinbadalov_urbanflow"), default
-
+    for name, target in bundle["targets"].items():
+        overrides = target["variables"]
+        # The shared Academy catalog needs the owner prefix; the personal catalog does not.
+        prefix = "urbanflow_final" if overrides["catalog"] == "workspace" else (
+            "parvinbadalov_urbanflow_final"
+        )
+        for key in ("schema", "lakeflow_schema"):
+            assert overrides[key].startswith(prefix), (name, overrides[key])
 
 # --- the small-file generator ----------------------------------------------------
 

@@ -31,7 +31,7 @@ from urbanflow.historical import (
     validate_historical_trips,
 )
 
-SAMPLE = Path(__file__).resolve().parents[1] / "data" / "samples"
+SAMPLE = Path(__file__).resolve().parents[1] / "fixtures" / "samples"
 
 
 # --- contract and Auto Loader configuration (no Spark needed) -----------------

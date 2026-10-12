@@ -1,3 +1,5 @@
+import re
+
 import pytest
 
 from urbanflow.federation import FederationSource, select_statement, validate_maintenance_columns
@@ -7,7 +9,8 @@ def test_federation_query_is_select_only_and_fully_quoted() -> None:
     statement = select_statement(FederationSource("urbanflow_ops", "public.station_maintenance"))
     assert statement.startswith("SELECT maintenance_id")
     assert "FROM `urbanflow_ops`.`public`.`station_maintenance`" in statement
-    assert all(token not in statement.upper() for token in ("INSERT", "UPDATE", "DELETE", "MERGE"))
+    # Word boundaries: the column updated_at must not count as an UPDATE statement.
+    assert not re.search(r"(INSERT|UPDATE|DELETE|MERGE|DROP|ALTER)", statement.upper())
 
 
 def test_federation_identifiers_fail_closed() -> None:

@@ -162,7 +162,7 @@ report_path = evidence_report_path(
 # MAGIC
 # MAGIC **Why:** Historical trip keys and current station UUIDs need a bridge, but this small sample must never be described as the complete station dimension.
 # MAGIC
-# MAGIC **Input:** `station_information.sample.json` committed under `data/samples`.
+# MAGIC **Input:** `station_information.sample.json` committed under `fixtures/samples`.
 # MAGIC
 # MAGIC **Output:** A 40-row development dimension carrying UUID and `short_name`.
 # MAGIC
@@ -176,7 +176,7 @@ report_path = evidence_report_path(
 
 # COMMAND ----------
 
-sample_path = PROJECT_ROOT / "data" / "samples" / "station_information.sample.json"
+sample_path = PROJECT_ROOT / "fixtures" / "samples" / "station_information.sample.json"
 payload = json.loads(sample_path.read_text(encoding="utf-8"))
 information_rows = [
     {**row, "region_id": str(row.get("region_id") or "UNKNOWN")}

@@ -5,13 +5,15 @@ from pathlib import Path
 from urllib.parse import unquote
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-REPOSITORY_ROOT = PROJECT_ROOT.parents[1]
+REPOSITORY_ROOT = PROJECT_ROOT.parent  # final_project/ sits directly under the repository root
 LINK_PATTERN = re.compile(r"!?\[[^]]*\]\(([^)]+)\)")
 
 
 def test_all_local_markdown_links_resolve() -> None:
     missing: list[str] = []
     for markdown_path in PROJECT_ROOT.rglob("*.md"):
+        if {".venv", ".pytest_cache", "node_modules"} & set(markdown_path.parts):
+            continue  # third-party packages, not project documentation
         text = markdown_path.read_text(encoding="utf-8")
         for target in LINK_PATTERN.findall(text):
             target = target.strip().strip("<>").split("#", maxsplit=1)[0]

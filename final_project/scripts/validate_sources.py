@@ -82,7 +82,7 @@ def main() -> int:
     if args.live:
         result = validate_live(PROJECT_ROOT / "config" / "dev.yml")
     else:
-        result = validate_saved_samples(PROJECT_ROOT / "data" / "samples")
+        result = validate_saved_samples(PROJECT_ROOT / "fixtures" / "samples")
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0
 

@@ -40,30 +40,40 @@ def _assert_no_cluster_mutation(client: Mock) -> None:
     assert client.libraries.install.call_count == 0
 
 
-def test_notebook_job_uses_existing_cluster_and_defaults_to_dry_run() -> None:
+def _final_jobs() -> dict:
     resource = yaml.safe_load(
-        (PROJECT_ROOT / "resources/retired/component_jobs.yml").read_text(encoding="utf-8")
+        (PROJECT_ROOT / "resources/urbanflow_final.job.yml").read_text(encoding="utf-8")
     )
-    job = resource["resources"]["jobs"]["urbanflow_bounded_stream_test"]
-    task = job["tasks"][0]
+    return resource["resources"]["jobs"]
 
-    assert task["existing_cluster_id"] == "${var.compute_cluster_id}"
-    assert "new_cluster" not in task
-    assert job["parameters"][0] == {"name": "run_stream", "default": "false"}
-    assert task["notebook_task"]["notebook_path"].endswith("03_eventhubs_to_bronze.py")
-    assert "schedule" not in job
+
+def test_every_final_project_job_runs_on_serverless_and_defaults_to_dry_run() -> None:
+    for job in _final_jobs().values():
+        assert "job_clusters" not in job
+        assert "schedule" not in job and "trigger" not in job and "continuous" not in job
+        for task in job["tasks"]:
+            assert "existing_cluster_id" not in task
+            assert "new_cluster" not in task
+            if "notebook_task" in task:
+                assert task["environment_key"].startswith("urbanflow")
+                assert task["disable_auto_optimization"] is True
+        flags = [p for p in job["parameters"] if str(p["default"]).lower() in ("true", "false")]
+        for parameter in flags:
+            if parameter["name"].startswith(("run_", "allow_")):
+                assert parameter["default"] == "false", parameter["name"]
+        assert flags, "every Job has explicit on/off flags"
 
 
 def test_lakeflow_uses_managed_serverless_compute_without_gp_cluster() -> None:
-    path = PROJECT_ROOT / "resources/pipelines.yml"
+    path = PROJECT_ROOT / "resources/urbanflow_final.pipeline.yml"
     text = path.read_text(encoding="utf-8")
-    pipeline = yaml.safe_load(text)["resources"]["pipelines"]["urbanflow_pipeline"]
+    pipeline = yaml.safe_load(text)["resources"]["pipelines"]["urbanflow_final_pipeline"]
 
     assert pipeline["serverless"] is True
     assert pipeline["continuous"] is False
     assert "existing_cluster_id" not in text
-    assert "0702-132442-toro5spu" not in text
-    assert "0702-171207-xo9bbc0y" not in text
+    assert GP1_ID not in text
+    assert GP2_ID not in text
     assert (
         not (PROJECT_ROOT / "pipeline/bronze.py")
         .read_text(encoding="utf-8")
@@ -74,8 +84,9 @@ def test_lakeflow_uses_managed_serverless_compute_without_gp_cluster() -> None:
 def test_storage_bootstrap_is_isolated_and_non_destructive() -> None:
     text = (PROJECT_ROOT / "sql/00_prepare_urbanflow_storage.sql").read_text(encoding="utf-8")
 
-    assert "dbr_dev.parvinbadalov_urbanflow" in text
-    assert "urbanflow_landing" in text
+    assert "${catalog}.${schema}" in text
+    assert "urbanflow_final_landing" in text
+    assert "dbr_dev.parvinbadalov_urbanflow" not in text  # Demo 3 schema
     assert "IF NOT EXISTS" in text
     assert "DROP " not in text.upper()
     assert "REPLACE " not in text.upper()
@@ -145,25 +156,31 @@ def test_hardcoded_protection_survives_a_config_that_omits_gp2(tmp_path: Path) -
 
 
 def test_config_can_add_protection_for_a_third_cluster(tmp_path: Path) -> None:
-    extra_id = "0929-202020-extra02"
-    source = (PROJECT_ROOT / "config/dev.yml").read_text(encoding="utf-8")
-    wider = tmp_path / "adds-gp3.yml"
-    wider.write_text(
-        source.replace(
-            "  clusters:\n",
-            "  clusters:\n"
-            "    gp3:\n"
-            f"      cluster_id: {extra_id}\n"
-            "      expected_name: GP3\n"
-            "      expected_spark_version: 17.3.x-scala2.13\n"
-            "      expected_data_security_mode: USER_ISOLATION\n"
-            "      verified_state: TERMINATED\n"
-            "      verified_at: 2026-09-29\n"
-            "      unity_catalog_compatible: true\n"
-            "      kafka_compatible: true\n",
-        ),
-        encoding="utf-8",
+    # Shared-cluster mode is not used by the Final Project, but the loader still supports it, and
+    # a configured third cluster must join the hard-coded protection list.
+    extra_id = "0101-000000-extra02"
+    source = (PROJECT_ROOT / "config/azure.yml").read_text(encoding="utf-8")
+    cluster = (
+        "      expected_spark_version: 17.3.x-scala2.13\n"
+        "      expected_data_security_mode: USER_ISOLATION\n"
+        "      verified_state: RUNNING\n"
+        "      verified_at: 2026-10-12\n"
+        "      unity_catalog_compatible: true\n"
+        "      kafka_compatible: true\n"
     )
+    shared = (
+        source.replace("  mode: serverless\n", "  mode: existing_cluster\n")
+        .replace("  preferred: null\n", "  preferred: gp1\n")
+        .replace("  fallback: null\n", "  fallback: gp3\n")
+        .replace(
+            "  clusters: {}\n",
+            "  clusters:\n"
+            f"    gp1:\n      cluster_id: {GP1_ID}\n      expected_name: GP1\n{cluster}"
+            f"    gp3:\n      cluster_id: {extra_id}\n      expected_name: GP3\n{cluster}",
+        )
+    )
+    wider = tmp_path / "adds-gp3.yml"
+    wider.write_text(shared, encoding="utf-8")
     compute = load_config(wider).compute
 
     assert resolve_protected_cluster_ids(compute) >= {GP1_ID, GP2_ID, extra_id}
@@ -172,6 +189,15 @@ def test_config_can_add_protection_for_a_third_cluster(tmp_path: Path) -> None:
     with pytest.raises(WorkspaceSafetyError, match="protected shared cluster"):
         terminate_and_verify_cluster(client, extra_id, compute=compute)
     _assert_no_cluster_mutation(client)
+
+
+@pytest.mark.parametrize("config_file", CONFIG_FILES)
+def test_serverless_config_still_protects_the_academy_shared_clusters(config_file: str) -> None:
+    compute = load_config(PROJECT_ROOT / config_file).compute
+
+    assert compute.mode == "serverless"
+    assert compute.clusters == {}
+    assert resolve_protected_cluster_ids(compute) >= {GP1_ID, GP2_ID}
 
 
 def test_notebook_upload_is_allowed_inside_the_users_own_folder(tmp_path: Path) -> None:
@@ -219,13 +245,13 @@ def test_notebook_upload_refuses_any_path_outside_that_folder(
 
 
 @pytest.mark.parametrize("config_file", CONFIG_FILES)
-def test_config_records_the_latest_2026_09_29_read_only_cluster_check(config_file: str) -> None:
-    clusters = load_config(PROJECT_ROOT / config_file).compute.clusters
+def test_config_declares_no_shared_cluster_and_serverless_lakeflow(config_file: str) -> None:
+    config = load_config(PROJECT_ROOT / config_file)
 
-    assert clusters["gp1"].verified_state == "RUNNING"
-    assert clusters["gp2"].verified_state == "TERMINATED"
-    assert clusters["gp1"].verified_at == "2026-09-29"
-    assert clusters["gp2"].verified_at == "2026-09-29"
+    assert config.compute.clusters == {}
+    assert config.compute.preferred is None and config.compute.fallback is None
+    with pytest.raises(ValueError, match="serverless"):
+        config.compute.preferred_cluster
 
 
 @pytest.mark.parametrize("config_file", CONFIG_FILES)

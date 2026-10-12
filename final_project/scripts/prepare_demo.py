@@ -242,7 +242,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
-    output_dir = PROJECT_ROOT / "data" / "samples"
+    output_dir = PROJECT_ROOT / "fixtures" / "samples"
     output_dir.mkdir(parents=True, exist_ok=True)
     expected = output_dir / "station_status.sample.json"
     if expected.exists() and not args.overwrite:

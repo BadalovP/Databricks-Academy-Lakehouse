@@ -15,7 +15,7 @@ Reconfirmed by an HTTP HEAD request on 2026-10-03 - metadata only, no archive by
 
 | Fact | Value | How |
 |---|---|---|
-| Source URL | `https://s3.amazonaws.com/tripdata/202401-citibike-tripdata.zip` | Recorded in `data/samples/historical_trips_202401_sample.metadata.json` |
+| Source URL | `https://s3.amazonaws.com/tripdata/202401-citibike-tripdata.zip` | Recorded in `fixtures/samples/historical_trips_202401_sample.metadata.json` |
 | Compressed size | **369,035,302 bytes (351.9 MiB)** | HEAD `Content-Length`, matching the committed metadata exactly |
 | Content type | `application/zip` | HEAD `Content-Type` |
 | Last modified | Thu, 03 Jul 2025 15:01:20 GMT | HEAD `Last-Modified` |

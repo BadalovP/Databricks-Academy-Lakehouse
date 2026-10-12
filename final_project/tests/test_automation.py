@@ -38,6 +38,41 @@ def _mock_attach_permission(client: Mock) -> None:
     )
 
 
+def _shared_compute(tmp_path: Path):
+    """Shared-cluster mode is unused by the Final Project but still supported by the loader."""
+    cluster = (
+        "      expected_spark_version: 17.3.x-scala2.13\n"
+        "      expected_data_security_mode: USER_ISOLATION\n"
+        "      verified_state: RUNNING\n"
+        "      verified_at: 2026-10-12\n"
+        "      unity_catalog_compatible: true\n"
+        "      kafka_compatible: true\n"
+    )
+    source = (PROJECT_ROOT / "config/dev.yml").read_text(encoding="utf-8")
+    shared = (
+        source.replace("  mode: serverless\n", "  mode: existing_cluster\n")
+        .replace("  preferred: null\n", "  preferred: gp1\n")
+        .replace("  fallback: null\n", "  fallback: gp2\n")
+        .replace(
+            "  clusters: {}\n",
+            "  clusters:\n"
+            f"    gp1:\n      cluster_id: 0702-132442-toro5spu\n      expected_name: GP1\n{cluster}"
+            f"    gp2:\n      cluster_id: 0702-171207-xo9bbc0y\n      expected_name: GP2\n{cluster}",
+        )
+    )
+    path = tmp_path / "shared.yml"
+    path.write_text(shared, encoding="utf-8")
+    return load_config(path).compute
+
+
+def test_serverless_config_refuses_shared_cluster_selection() -> None:
+    config = load_config(PROJECT_ROOT / "config/dev.yml")
+    client = Mock()
+    with pytest.raises(WorkspaceSafetyError, match="serverless-only"):
+        select_ready_existing_cluster(client, config.compute)
+    client.clusters.get.assert_not_called()
+
+
 def test_poll_state_times_out_explicitly() -> None:
     times = iter([0.0, 0.0, 1.0, 2.0])
     result = poll_state(
@@ -104,8 +139,8 @@ def test_educational_cluster_creation_is_disabled_by_default() -> None:
     client.clusters.create.assert_not_called()
 
 
-def test_cluster_assessment_is_compatible_but_not_ready_when_terminated() -> None:
-    config = load_config(PROJECT_ROOT / "config/dev.yml")
+def test_cluster_assessment_is_compatible_but_not_ready_when_terminated(tmp_path: Path) -> None:
+    compute = _shared_compute(tmp_path)
     client = Mock()
     client.clusters.get.return_value = SimpleNamespace(
         cluster_name="GP1",
@@ -115,15 +150,15 @@ def test_cluster_assessment_is_compatible_but_not_ready_when_terminated() -> Non
     )
     _mock_attach_permission(client)
 
-    result = assess_existing_cluster(client, config.compute.preferred_cluster)
+    result = assess_existing_cluster(client, compute.preferred_cluster)
 
     assert result.compatible is True
     assert result.ready is False
     assert result.reasons == ("state is TERMINATED, required RUNNING",)
 
 
-def test_cluster_selection_falls_back_to_running_gp2() -> None:
-    config = load_config(PROJECT_ROOT / "config/dev.yml")
+def test_cluster_selection_falls_back_to_running_gp2(tmp_path: Path) -> None:
+    compute = _shared_compute(tmp_path)
     client = Mock()
     client.clusters.get.side_effect = [
         SimpleNamespace(
@@ -141,7 +176,7 @@ def test_cluster_selection_falls_back_to_running_gp2() -> None:
     ]
     _mock_attach_permission(client)
 
-    selected, assessments = select_ready_existing_cluster(client, config.compute)
+    selected, assessments = select_ready_existing_cluster(client, compute)
 
     assert len(assessments) == 2
     assert selected is not None

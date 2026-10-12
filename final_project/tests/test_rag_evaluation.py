@@ -5,10 +5,21 @@ from urbanflow.rag.models import RagAnswer, SearchResult
 from urbanflow.rag.rag import INSUFFICIENT
 
 
-def test_suite_has_required_categories(project_root) -> None:
+def test_suite_covers_every_knowledge_base_topic_and_refusals(project_root) -> None:
     cases = load_cases(project_root / "config" / "rag_evaluation_questions.yml")
+    documents = {path.name for path in (project_root / "knowledge_base").glob("*.md")}
+
     assert len(cases) == 18
-    assert {case.category for case in cases} == {"answerable", "unanswerable", "ambiguous"}
+    assert len({case.question_id for case in cases}) == 18
+    unanswerable = [case for case in cases if case.category == "unanswerable"]
+    assert len(unanswerable) >= 2
+    assert all(not case.expected_sources for case in unanswerable)
+    answerable = [case for case in cases if case.category != "unanswerable"]
+    # Every answerable question cites a real document, and every document is exercised.
+    assert all(case.expected_sources for case in answerable)
+    cited = {source for case in answerable for source in case.expected_sources}
+    assert cited <= documents
+    assert cited == documents
 
 
 def test_unanswerable_baseline_scores_as_correct(project_root) -> None:

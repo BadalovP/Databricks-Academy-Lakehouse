@@ -10,7 +10,7 @@
 # MAGIC
 # MAGIC **Prerequisites:** A Databricks runtime with this project deployed. The default walkthrough uses committed samples and does not call a live API.
 # MAGIC
-# MAGIC **Inputs:** `data/samples/station_information.sample.json` and `station_status.sample.json`, captured from the official Citi Bike GBFS feeds.
+# MAGIC **Inputs:** `fixtures/samples/station_information.sample.json` and `station_status.sample.json`, captured from the official Citi Bike GBFS feeds.
 # MAGIC
 # MAGIC **Outputs:** Spark DataFrames for current station availability, low-bike and low-dock views, an aggregate summary, and an optional Delta table.
 
@@ -115,7 +115,7 @@ print(f"Target={catalog}.{schema}; write_enabled={write_enabled}")
 
 # COMMAND ----------
 
-sample_dir = PROJECT_ROOT / "data" / "samples"
+sample_dir = PROJECT_ROOT / "fixtures" / "samples"
 information_payload = json.loads(
     (sample_dir / "station_information.sample.json").read_text(encoding="utf-8")
 )

@@ -7,7 +7,7 @@ Joining trips straight onto `station_id` silently matches nothing and produces a
 result that looks like a data problem rather than a join bug, so
 `join_trips_to_stations` joins on `short_name` and reports the match rate.
 
-Verified against the real archive (see data/samples/historical_trips_202401_sample.metadata.json):
+Verified against the real archive (see fixtures/samples/historical_trips_202401_sample.metadata.json):
 all 40 sampled rows matched a current GBFS short_name.
 """
 

@@ -15,7 +15,7 @@ from scripts.validate_release_plan import (
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-REPOSITORY_ROOT = PROJECT_ROOT.parents[1]
+REPOSITORY_ROOT = PROJECT_ROOT.parent  # final_project/ sits directly under the repository root
 GP1_ID = "0702-132442-toro5spu"
 WORKFLOW = REPOSITORY_ROOT / ".github/workflows/demo3_urbanflow_deploy.yml"
 

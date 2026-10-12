@@ -1,11 +1,11 @@
--- Prepared only. Do not execute until the combined first-live-test request is approved.
--- These names are isolated from Labs, Demo1, Demo2, Demo2_Olist, and other students.
+-- Optional manual bootstrap. The Asset Bundle normally creates the schema and Volume
+-- (resources/urbanflow_final.infrastructure.yml); run this only where a bundle deploy is not used.
+-- Substitute ${catalog} and ${schema} with the target's values from databricks.yml, for example
+-- workspace / urbanflow_final_dev (DEV) or dbr_dev / parvinbadalov_urbanflow_final_prod (PROD).
+-- Names are isolated from Demo 3, the Labs and other students. No destructive statement is used.
 
-CREATE SCHEMA IF NOT EXISTS dbr_dev.parvinbadalov_urbanflow
-COMMENT 'Isolated Unity Catalog schema for the UrbanFlow project';
+CREATE SCHEMA IF NOT EXISTS ${catalog}.${schema}
+COMMENT 'UrbanFlow 2.0 Final Project data, quality, CDC, and RAG assets';
 
-CREATE VOLUME IF NOT EXISTS dbr_dev.parvinbadalov_urbanflow.urbanflow_landing
-COMMENT 'Checkpoints and execution reports for the bounded UrbanFlow streaming test';
-
--- The notebook creates dbr_dev.parvinbadalov_urbanflow.bronze_station_status
--- on its first approved Delta streaming write. No destructive statement is used.
+CREATE VOLUME IF NOT EXISTS ${catalog}.${schema}.urbanflow_final_landing
+COMMENT 'UrbanFlow 2.0 landing files, schemas, checkpoints, and secret-safe reports';

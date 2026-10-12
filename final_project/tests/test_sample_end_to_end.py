@@ -48,7 +48,7 @@ from urbanflow.weather import (
     weather_coverage,
 )
 
-SAMPLES = Path(__file__).resolve().parents[1] / "data" / "samples"
+SAMPLES = Path(__file__).resolve().parents[1] / "fixtures" / "samples"
 TRIP_SAMPLE = SAMPLES / "historical_trips_202401_sample.csv"
 STATION_SAMPLE = SAMPLES / "station_information.sample.json"
 WEATHER_SAMPLE = SAMPLES / "open_meteo_archive_202401.sample.json"
