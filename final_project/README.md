@@ -2,7 +2,7 @@
 
 Databricks Academy **Final Project**: one integrated solution that covers Labs 1–12.
 
-> **Status: implemented and tested offline. Not yet run in a Databricks workspace.**
+> **Status: implemented and tested offline; deployed to Personal DEV (definitions only, 2026-10-12). No Job or pipeline has run yet.**
 > More than 700 offline tests (unit tests, local Spark and static checks) run in CI. Every live step needs explicit approval and is planned in [docs/RELEASE_AND_VALIDATION.md](docs/RELEASE_AND_VALIDATION.md). Results of the individual labs and of Demo 3 were produced in their own folders. They are not Final Project evidence and are not presented as such.
 
 | Document | Purpose |

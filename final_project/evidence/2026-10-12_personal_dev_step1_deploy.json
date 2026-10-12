@@ -1,0 +1,155 @@
+{
+  "step": "1 - Personal DEV bundle deployment (definitions only, no runs)",
+  "commit": "4adb9b566b1123d5e17fabcf5ac14f9a44e7b8c0",
+  "target": "personal_dev",
+  "workspace_host": "https://dbc-1750318a-76a9.cloud.databricks.com",
+  "workspace_id": 7474653929863069,
+  "deployed_by": "parvinbadalov@yahoo.com (CLI profile personal_lab10, owner's own login)",
+  "cli_version": "1.12.1",
+  "schemas_created_at_utc": "2026-10-12T14:15:59+00:00",
+  "pre_plan_actions": {
+    "resources.dashboards.urbanflow_final_dashboard": "create",
+    "resources.jobs.urbanflow_final_platform": "create",
+    "resources.jobs.urbanflow_final_rag": "create",
+    "resources.pipelines.urbanflow_final_pipeline": "create",
+    "resources.schemas.urbanflow_final_lakeflow_schema": "create",
+    "resources.schemas.urbanflow_final_schema": "create",
+    "resources.volumes.urbanflow_final_landing": "create"
+  },
+  "pre_release_plan_validator": "PASS",
+  "post_plan_actions": {
+    "resources.dashboards.urbanflow_final_dashboard": "skip",
+    "resources.jobs.urbanflow_final_platform": "skip",
+    "resources.jobs.urbanflow_final_rag": "skip",
+    "resources.pipelines.urbanflow_final_pipeline": "skip",
+    "resources.schemas.urbanflow_final_lakeflow_schema": "skip",
+    "resources.schemas.urbanflow_final_schema": "skip",
+    "resources.volumes.urbanflow_final_landing": "skip"
+  },
+  "post_release_plan_validator": {
+    "actions": {
+      "resources.dashboards.urbanflow_final_dashboard": "skip",
+      "resources.jobs.urbanflow_final_platform": "skip",
+      "resources.jobs.urbanflow_final_rag": "skip",
+      "resources.pipelines.urbanflow_final_pipeline": "skip",
+      "resources.schemas.urbanflow_final_lakeflow_schema": "skip",
+      "resources.schemas.urbanflow_final_schema": "skip",
+      "resources.volumes.urbanflow_final_landing": "skip"
+    },
+    "job_ids": {
+      "urbanflow_final_platform": 158911626270744,
+      "urbanflow_final_rag": 887464717518046
+    },
+    "phase": "post",
+    "status": "PASS",
+    "target": "personal_dev"
+  },
+  "resources": {
+    "workspace.urbanflow_final_dev": {
+      "owner": "parvinbadalov@yahoo.com",
+      "created_at": 1791814559361,
+      "comment": "UrbanFlow 2.0 Final Project data, quality, CDC, and RAG assets.",
+      "tables": []
+    },
+    "workspace.urbanflow_final_lakeflow_dev": {
+      "owner": "parvinbadalov@yahoo.com",
+      "created_at": 1791814559378,
+      "comment": "Pipeline-managed UrbanFlow 2.0 datasets; isolated from notebook-owned tables.",
+      "tables": []
+    },
+    "volume": {
+      "name": "workspace.urbanflow_final_dev.urbanflow_final_landing",
+      "type": "VolumeType.MANAGED",
+      "owner": "parvinbadalov@yahoo.com"
+    },
+    "job_158911626270744": {
+      "name": "[personal_dev] UrbanFlow 2.0 Platform",
+      "creator": "parvinbadalov@yahoo.com",
+      "schedule": null,
+      "trigger": null,
+      "continuous": null,
+      "max_concurrent_runs": 1,
+      "timeout_seconds": 7200,
+      "tasks": [
+        "federation_cdc",
+        "historical_trips",
+        "land_sources",
+        "preflight",
+        "refresh_lakeflow",
+        "should_refresh_lakeflow",
+        "station_gold",
+        "station_silver",
+        "station_source_check",
+        "validate_medallion",
+        "weather_enrichment"
+      ],
+      "classic_clusters": [],
+      "tags": {
+        "compute": "serverless_bounded",
+        "environment": "dev",
+        "project": "urbanflow_final_project",
+        "release": "protected_manual_only"
+      },
+      "runs_ever": []
+    },
+    "job_887464717518046": {
+      "name": "[personal_dev] UrbanFlow 2.0 Mobility RAG",
+      "creator": "parvinbadalov@yahoo.com",
+      "schedule": null,
+      "trigger": null,
+      "continuous": null,
+      "max_concurrent_runs": 1,
+      "timeout_seconds": 5400,
+      "tasks": [
+        "evaluate_rag",
+        "ingest_knowledge_base",
+        "prepare_vector_search"
+      ],
+      "classic_clusters": [],
+      "tags": {
+        "ai": "mobility_operations_rag",
+        "environment": "dev",
+        "project": "urbanflow_final_project",
+        "release": "protected_manual_only"
+      },
+      "runs_ever": []
+    },
+    "pipeline": {
+      "name": "[personal_dev] UrbanFlow 2.0 Medallion Pipeline",
+      "state": "PipelineState.IDLE",
+      "serverless": true,
+      "continuous": false,
+      "development": true,
+      "catalog": "workspace",
+      "schema": "urbanflow_final_lakeflow_dev",
+      "latest_updates": []
+    },
+    "dashboard": {
+      "name": "[personal_dev] UrbanFlow 2.0 Operations",
+      "warehouse_id": "410e5f3b4784e981",
+      "lifecycle": "LifecycleState.ACTIVE",
+      "path": "/Users/parvinbadalov@yahoo.com/.bundle/urbanflow_final_project/personal_dev/resources/[personal_dev] UrbanFlow 2.0 Operations.lvdash.json",
+      "published_warehouse": "410e5f3b4784e981"
+    }
+  },
+  "billable_activity_before": {
+    "label": "before",
+    "at": "2026-10-12T14:15:30+00:00",
+    "active_job_runs": [],
+    "ai_search_endpoints": [],
+    "warehouses": {
+      "Serverless Starter Warehouse": "State.STOPPED"
+    },
+    "running_clusters": []
+  },
+  "billable_activity_after": {
+    "label": "after",
+    "at": "2026-10-12T14:16:41+00:00",
+    "active_job_runs": [],
+    "ai_search_endpoints": [],
+    "warehouses": {
+      "Serverless Starter Warehouse": "State.STOPPED"
+    },
+    "running_clusters": []
+  }
+}

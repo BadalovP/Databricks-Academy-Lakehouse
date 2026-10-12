@@ -2,7 +2,7 @@
 
 [← Main README](../README.md) · [Coverage matrix](LABS_1_TO_12_COVERAGE.md) · [Cost and performance](COST_AND_PERFORMANCE.md)
 
-**Status:** CI runs on every pull request. **No CD release and no live run has happened yet.** This page describes how to release and how to validate, and it is where the evidence of each approved run will be recorded.
+**Status:** CI runs on every pull request. **Step 1 is done: the bundle was deployed to Personal DEV on 2026-10-12 (definitions only). No Job, pipeline update or AI Search endpoint has run yet, and there has been no CD release.** This page describes how to release and how to validate, and it is where the evidence of each approved run will be recorded.
 
 ## Continuous integration (`final_project_ci.yml`)
 
@@ -125,6 +125,7 @@ The optional Zerobus path and the governance demo each need their own approval. 
 
 | Date | Target | Step | Run / update ID | Result |
 |---|---|---|---|---|
-| — | — | — | — | No live run yet |
+| 2026-10-12 | `personal_dev` | 1. Deploy DEV (operator release, commit `4adb9b5`) | Jobs `158911626270744` (platform), `887464717518046` (assistant); pipeline `d5e0e599-c195-4c08-8217-d554ebf2b301`; dashboard `01f1c647728e1ceeb2b5bd10a8700793`; schemas `workspace.urbanflow_final_dev`, `workspace.urbanflow_final_lakeflow_dev`; Volume `urbanflow_final_landing` | PASS: pre-plan 7 creates, post-plan all `skip`, both validators PASS, nothing started. [Evidence](../evidence/2026-10-12_personal_dev_step1_deploy.md) |
+| — | — | 2–9 | — | No live run yet (each step needs its own approval) |
 
 When a step passes, record it here. Add the notebook to `VALIDATED_LIVE_CLAIMS` in `tests/test_notebook_documentation.py` and update its **Actual validation** line with the run ID. Update the coverage matrix status to **Validated live**.
