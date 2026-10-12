@@ -390,6 +390,7 @@ def persist_weather_outputs(
     from urbanflow.persistence import (
         evolve_delta_schema,
         merge_delta_table,
+        present_columns,
         replace_execution_scope,
     )
 
@@ -408,6 +409,8 @@ def persist_weather_outputs(
             weather,
             table_names["weather"],
             key_columns=("weather_grid_label", "weather_hour"),
+            # When the hour was fetched is audit, not weather: a replay keeps the first value.
+            preserve_columns=present_columns(weather, ("retrieved_at",)),
         ),
         "demand_summary": replace_execution_scope(
             spark,

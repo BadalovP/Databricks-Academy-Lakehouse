@@ -32,37 +32,118 @@ def _quote_column(value: str) -> str:
     return f"`{value}`"
 
 
+def _validate_merge_columns(
+    columns: Sequence[str], key_columns: Sequence[str], preserve_columns: Sequence[str]
+) -> None:
+    if not columns:
+        raise ValueError("At least one source column is required for a Delta MERGE.")
+    if not key_columns:
+        raise ValueError("At least one key column is required for a Delta MERGE.")
+    for column in (*columns, *key_columns, *preserve_columns):
+        _quote_column(column)
+    missing = set(key_columns) - set(columns)
+    if missing:
+        raise ValueError(f"MERGE keys are absent from the source contract: {sorted(missing)}")
+    absent = set(preserve_columns) - set(columns)
+    if absent:
+        raise ValueError(f"Preserved columns are absent from the source: {sorted(absent)}")
+    overlap = set(preserve_columns) & set(key_columns)
+    if overlap:
+        raise ValueError(f"A key column cannot be preserved: {sorted(overlap)}")
+
+
+def changed_row_predicate(
+    columns: Sequence[str],
+    key_columns: Sequence[str],
+    preserve_columns: Sequence[str] = (),
+) -> str | None:
+    """Null-safe "this matched row really changed" test, or None when nothing can change.
+
+    Only business columns are compared: keys already matched, and preserved columns (audit
+    stamps such as `ingested_at`) are never compared, so a replay that only re-stamps them is
+    not a change. `<=>` treats NULL = NULL as equal and NULL vs a value as different.
+    """
+    _validate_merge_columns(columns, key_columns, preserve_columns)
+    compared = [c for c in columns if c not in key_columns and c not in preserve_columns]
+    if not compared:
+        return None
+    equal = " AND ".join(f"t.{_quote_column(c)} <=> s.{_quote_column(c)}" for c in compared)
+    return f"NOT ({equal})"
+
+
+def _matched_update_clause(
+    columns: Sequence[str], key_columns: Sequence[str], preserve_columns: Sequence[str]
+) -> str:
+    """`WHEN MATCHED AND <changed> THEN UPDATE SET ...`; preserved columns keep the target value."""
+    predicate = changed_row_predicate(columns, key_columns, preserve_columns)
+    if predicate is None:
+        return ""
+    update = ", ".join(
+        f"t.{_quote_column(c)} = s.{_quote_column(c)}"
+        for c in columns
+        if c not in key_columns and c not in preserve_columns
+    )
+    return f"WHEN MATCHED AND {predicate} THEN UPDATE SET {update} "
+
+
 def build_merge_sql(
     *,
     table_name: str,
     source_view: str,
     columns: Sequence[str],
     key_columns: Sequence[str],
+    preserve_columns: Sequence[str] = (),
 ) -> str:
-    """Render a null-safe Delta MERGE statement after validating every identifier."""
-    if not columns:
-        raise ValueError("At least one source column is required for a Delta MERGE.")
-    if not key_columns:
-        raise ValueError("At least one key column is required for a Delta MERGE.")
-    missing = set(key_columns) - set(columns)
-    if missing:
-        raise ValueError(f"MERGE keys are absent from the source contract: {sorted(missing)}")
+    """Render a null-safe, change-aware Delta MERGE after validating every identifier.
 
+    An unchanged matched row is left alone (no update), so a replay of the same data changes
+    no business value and keeps preserved audit columns such as `ingested_at`. A genuinely
+    changed row updates every non-key, non-preserved column; a new key inserts every column.
+    """
+    _validate_merge_columns(columns, key_columns, preserve_columns)
     target = quote_qualified_identifier(table_name)
     view = quote_qualified_identifier(source_view)
     quoted_columns = [_quote_column(column) for column in columns]
-    quoted_keys = [_quote_column(column) for column in key_columns]
-    non_keys = [column for column in quoted_columns if column not in quoted_keys]
-
-    condition = " AND ".join(f"t.{column} <=> s.{column}" for column in quoted_keys)
-    update = ", ".join(f"t.{column} = s.{column}" for column in non_keys)
+    condition = " AND ".join(
+        f"t.{_quote_column(column)} <=> s.{_quote_column(column)}" for column in key_columns
+    )
     insert_columns = ", ".join(quoted_columns)
     insert_values = ", ".join(f"s.{column}" for column in quoted_columns)
-    matched = f"WHEN MATCHED THEN UPDATE SET {update} " if update else ""
+    matched = _matched_update_clause(columns, key_columns, preserve_columns)
     return (
         f"MERGE INTO {target} AS t USING {view} AS s ON {condition} "
         f"{matched}WHEN NOT MATCHED THEN INSERT ({insert_columns}) VALUES ({insert_values})"
     )
+
+
+def present_columns(frame: Any, names: Sequence[str]) -> tuple[str, ...]:
+    """The subset of `names` that `frame` actually has (empty for frames without columns)."""
+    columns = getattr(frame, "columns", ())
+    if not isinstance(columns, list | tuple):
+        return ()
+    return tuple(name for name in names if name in columns)
+
+
+MERGE_METRIC_NAMES = (
+    "num_affected_rows",
+    "num_updated_rows",
+    "num_deleted_rows",
+    "num_inserted_rows",
+)
+
+
+def merge_metrics(result: Any) -> dict[str, int]:
+    """Delta's own row counts from a MERGE result; empty when the engine reports none."""
+    try:
+        row = result.first()
+        data = row.asDict() if row is not None else {}
+    except Exception:  # noqa: BLE001 - metrics are evidence, never a reason to fail a write
+        return {}
+    return {
+        name: int(data[name])
+        for name in MERGE_METRIC_NAMES
+        if isinstance(data.get(name), int) and not isinstance(data.get(name), bool)
+    }
 
 
 def _spark_type_sql(field: Any) -> str:
@@ -297,6 +378,7 @@ def replace_execution_scope(
     key_columns: Sequence[str],
     execution_column: str,
     execution_id: str,
+    preserve_columns: Sequence[str] = (),
 ) -> dict[str, Any]:
     """Make one execution's rows in a derived table exactly match the source.
 
@@ -326,6 +408,7 @@ def replace_execution_scope(
     missing = set(key_columns) - set(columns)
     if missing:
         raise ValueError(f"MERGE keys are absent from the source frame: {sorted(missing)}")
+    _validate_merge_columns(columns, key_columns, preserve_columns)
 
     source_rows = frame.count()
     unique_keys = frame.select(*key_columns).distinct().count()
@@ -378,13 +461,12 @@ def replace_execution_scope(
     target = quote_qualified_identifier(table_name)
     view = quote_qualified_identifier(source_view)
     quoted_columns = [_quote_column(column) for column in columns]
-    quoted_keys = [_quote_column(column) for column in key_columns]
-    non_keys = [column for column in quoted_columns if column not in quoted_keys]
-    condition = " AND ".join(f"t.{column} <=> s.{column}" for column in quoted_keys)
-    update = ", ".join(f"t.{column} = s.{column}" for column in non_keys)
-    matched = f"WHEN MATCHED THEN UPDATE SET {update} " if update else ""
+    condition = " AND ".join(
+        f"t.{_quote_column(column)} <=> s.{_quote_column(column)}" for column in key_columns
+    )
+    matched = _matched_update_clause(columns, key_columns, preserve_columns)
     scope = f"t.{_quote_column(execution_column)} = '{execution_id}'"
-    spark.sql(
+    result = spark.sql(
         f"MERGE INTO {target} AS t USING {view} AS s ON {condition} "
         f"{matched}"
         f"WHEN NOT MATCHED THEN INSERT ({', '.join(quoted_columns)}) "
@@ -417,6 +499,7 @@ def replace_execution_scope(
         "other_execution_rows_after": verification["other_execution_rows"],
         "other_executions_preserved": other_rows_before == verification["other_execution_rows"],
         "verification": verification,
+        "merge_metrics": merge_metrics(result),
     }
 
 
@@ -451,8 +534,12 @@ def merge_delta_table(
     table_name: str,
     *,
     key_columns: Sequence[str],
-) -> dict[str, int | bool]:
+    preserve_columns: Sequence[str] = (),
+) -> dict[str, Any]:
     """Create a managed Delta table when absent, then idempotently MERGE unique rows.
+
+    Unchanged rows are not updated; `preserve_columns` (audit stamps) keep their stored value
+    on matched rows. See `build_merge_sql`.
 
     Duplicate source keys are rejected instead of being silently collapsed.  This both
     prevents Delta's multiple-match error and ensures upstream deduplication remains an
@@ -481,12 +568,13 @@ def merge_delta_table(
     digest = hashlib.sha256(table_name.encode("utf-8")).hexdigest()[:12]
     source_view = f"urbanflow_merge_source_{digest}"
     frame.createOrReplaceTempView(source_view)
-    spark.sql(
+    result = spark.sql(
         build_merge_sql(
             table_name=table_name,
             source_view=source_view,
             columns=columns,
             key_columns=key_columns,
+            preserve_columns=preserve_columns,
         )
     )
     rows_after = spark.table(table_name).count()
@@ -496,4 +584,5 @@ def merge_delta_table(
         "rows_before": rows_before,
         "rows_after": rows_after,
         "inserted_rows": rows_after - rows_before,
+        "merge_metrics": merge_metrics(result),
     }

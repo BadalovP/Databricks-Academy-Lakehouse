@@ -458,7 +458,10 @@ def test_demand_is_execution_scoped_while_trips_are_merged(monkeypatch) -> None:
     monkeypatch.setattr(
         persistence,
         "merge_delta_table",
-        lambda spark, frame, table, *, key_columns: merged.append((table, key_columns)) or {},
+        lambda spark, frame, table, *, key_columns, preserve_columns=(): merged.append(
+            (table, key_columns)
+        )
+        or {},
     )
     monkeypatch.setattr(
         persistence,

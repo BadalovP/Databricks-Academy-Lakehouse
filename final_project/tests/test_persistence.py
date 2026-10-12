@@ -32,7 +32,11 @@ def test_merge_sql_uses_null_safe_composite_keys_and_quotes_columns() -> None:
 
     assert "t.`topic` <=> s.`topic`" in sql
     assert "t.`partition` <=> s.`partition`" in sql
-    assert "WHEN MATCHED THEN UPDATE SET t.`reason` = s.`reason`" in sql
+    # Change-aware: an unchanged matched row is not updated (null-safe comparison).
+    assert (
+        "WHEN MATCHED AND NOT (t.`reason` <=> s.`reason`) THEN UPDATE SET t.`reason` = s.`reason`"
+        in sql
+    )
     assert "INSERT (`topic`, `partition`, `offset`, `reason`)" in sql
 
 

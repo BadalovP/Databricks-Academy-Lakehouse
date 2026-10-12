@@ -530,18 +530,21 @@ def persist_historical_outputs(
             valid,
             table_names["trips"],
             key_columns=("execution_id", "ride_id"),
+            preserve_columns=_audit_columns(valid),
         ),
         "quarantine": merge_delta_table(
             spark,
             quarantine,
             table_names["quarantine"],
             key_columns=("execution_id", "ride_id", "started_at"),
+            preserve_columns=_audit_columns(quarantine),
         ),
         "duplicates": merge_delta_table(
             spark,
             duplicates,
             table_names["duplicates"],
             key_columns=("execution_id", "ride_id", "started_at", "ended_at"),
+            preserve_columns=_audit_columns(duplicates),
         ),
         "daily_demand": replace_execution_scope(
             spark,
@@ -555,6 +558,16 @@ def persist_historical_outputs(
     for name, migration in migrations.items():
         results[name]["schema_migration"] = migration
     return results
+
+
+# Stamped at ingestion time on every run; a replay must keep the first stored value.
+HISTORICAL_AUDIT_COLUMNS = ("ingested_at",)
+
+
+def _audit_columns(frame: Any) -> tuple[str, ...]:
+    from urbanflow.persistence import present_columns
+
+    return present_columns(frame, HISTORICAL_AUDIT_COLUMNS)
 
 
 def rider_mix_summary(joined: Any) -> Any:
