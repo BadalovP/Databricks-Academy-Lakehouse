@@ -1,6 +1,6 @@
 # Administrator request — Lab 10 automated deployment identity
 
-**To:** Łukasz / Academy Databricks account administrator
+**To:** Academy Databricks account administrator
 **From:** `parvinbadalov@softserve.academy`
 **Databricks account:** `4b6644a4-eaf3-438d-bba3-6bd00ce5137e`
 **Metastore:** `metastore_azure_eastus` (`7af05576-c79e-4f56-b84f-ead80be5c8b6`)
