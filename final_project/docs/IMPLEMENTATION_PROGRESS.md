@@ -10,6 +10,8 @@ Keep this file current so another engineer or agent can continue without restart
 | Pull request | #75, **draft**, never merged; CI = `final_project_ci.yml` |
 | Worktree | `C:\Users\User\Desktop\databricks-academy-lakehouse-final-project` (do not create another) |
 | Guarantees | `Demos/Demo3` tree `583e3ab01e37517d62216b44a1e50fa0231b90de` and `labs/` identical to `main`; only `final_project/` and the two `final_project_*` workflows change |
+| Deployed to Personal DEV | Commit `8220aaa` (step 4C redeploy): CDC logic, Jobs and pipeline as in the repository. Changed since, **not deployed:** the dashboard maintenance datasets (`937b968`, redeploy is the first step of phase D) and the wording of two CDC error messages (`02f515d`, no behaviour change). |
+| Presentation | Slides artifact *UrbanFlow 2.0 Demo Day* (private, owner only; 14 slides with notes; exports to .pptx), script in `DEMO_DAY_PRESENTATION.md` |
 | Local quality | Ruff, Black and the secret scan clean; **844 passed, 2 skipped**. The skips are a bash-only test on Windows and the Databricks-only Lakeflow event-log dataset. Dashboard `--check` is current; offline bundle schema valid; CI green on PR #75. |
 
 ## Milestones
