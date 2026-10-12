@@ -10,7 +10,7 @@ Keep this file current so another engineer or agent can continue without restart
 | Pull request | #75, **draft**, never merged; CI = `final_project_ci.yml` |
 | Worktree | `C:\Users\User\Desktop\databricks-academy-lakehouse-final-project` (do not create another) |
 | Guarantees | `Demos/Demo3` tree `583e3ab01e37517d62216b44a1e50fa0231b90de` and `labs/` identical to `main`; only `final_project/` and the two `final_project_*` workflows change |
-| Local quality | Ruff and Black clean; **763 passed, 1 skipped** (the skip is a bash-only test on Windows); dashboard `--check` current; offline bundle schema valid |
+| Local quality | Ruff and Black clean; **789 passed, 2 skipped**. The skips are a bash-only test on Windows and the Databricks-only Lakeflow event-log dataset. Dashboard `--check` is current; offline bundle schema valid; CI green on PR #75. |
 
 ## Milestones
 
@@ -23,7 +23,10 @@ Keep this file current so another engineer or agent can continue without restart
 | **Step 3** strict idempotency | **PASS 19/19** after an 18/19 attempt (CDC no-op guard added) | `evidence/2026-10-12_personal_dev_step3_*.md` |
 | Dashboard GRID_V1 layout, table v2, theme (started by Codex) | Done offline; **not redeployed, no live query** | `docs/DASHBOARD.md` |
 | Assistant prompt-injection hardening (started by Codex) | Done offline | `tests/test_rag_rag.py` |
-| CDC-only platform runs allowed | Done offline; **not deployed** | commit `e63ad0a` |
+| CDC-only and Lakeflow-only platform runs allowed | Done offline; **not deployed** | commits `e63ad0a`, `e4b256d` |
+| Dashboard SQL analysed against live schemas (24/25 datasets) | Done offline | `tests/test_dashboard_sql_analysis.py` |
+| Offline RAG evaluation re-run | Reproduces correctness 0.648 (baseline 0.111), recall 0.938, coverage 0.875 (fixture, not model quality) | `urbanflow-rag evaluate` |
+| Operations runbook, approval request, interview demo | Done | `OPERATIONS_RUNBOOK.md`, `RELEASE_AND_VALIDATION.md`, `DEMO_DAY_PRESENTATION.md` |
 | Azure `azure_prod` read-only preflight | **PASS** (validate, plan = 7 creates, validator, no collisions); nothing created | `RELEASE_AND_VALIDATION.md` |
 | Steps 4–9 | **Not run** (each needs approval) | — |
 
