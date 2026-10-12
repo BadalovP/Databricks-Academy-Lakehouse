@@ -215,13 +215,15 @@ STATION_LAYER_TABLES = {
 }
 
 
-# Branches that make a platform run do real work. CDC is a branch of its own: a maintenance
-# batch (for example `batch_002`) must be processable without re-running the medallion.
+# Branches that make a platform run do real work. CDC and the Lakeflow refresh are branches of
+# their own: a maintenance batch (for example `batch_002`) or one triggered pipeline update must
+# be runnable without re-running the medallion.
 PROCESSING_BRANCHES = (
     "run_station_pipeline",
     "run_historical",
     "run_weather",
     "run_federation_cdc",
+    "run_lakeflow",
 )
 
 

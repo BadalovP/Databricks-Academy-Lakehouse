@@ -268,6 +268,7 @@ def test_a_cdc_only_run_is_a_valid_processing_branch(project_root) -> None:
     from urbanflow.landing import has_processing_branch
 
     assert has_processing_branch({"run_federation_cdc": True})
+    assert has_processing_branch({"run_lakeflow": True})
     assert has_processing_branch({"run_station_pipeline": True})
     assert not has_processing_branch({"run_full_month": True})
     assert not has_processing_branch({})
