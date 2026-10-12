@@ -16,7 +16,7 @@ For Łukasz. Each item below links to the thing itself; checking all of it takes
 
 | What | Where |
 |---|---|
-| Pull request | [PR #69](https://github.com/BadalovP/Databricks-Academy-Lakehouse/pull/69) (branch `feature/lab10-azure-prod`) |
+| Pull request | [PR #69](https://github.com/BadalovP/Databricks-Academy-Lakehouse/pull/69), squash-merged into `main` as [`ed35fb4`](https://github.com/BadalovP/Databricks-Academy-Lakehouse/commit/ed35fb495e5c10ff977ddcf0cd87463370301ec3) on 2026-10-12 |
 | Notebooks | [`01_federation_validation`](01_federation_validation.ipynb) → [`02_incremental_cdc_sync`](02_incremental_cdc_sync.ipynb) → [`03_final_validation`](03_final_validation.ipynb); one-time [`00_setup`](00_setup.ipynb) |
 | Azure Terraform | [`terraform_azure_prod/main.tf`](terraform_azure_prod/main.tf) - one serverless Job, no cluster, no schedule, auto-retry disabled |
 | Personal DEV Terraform | [`terraform/main.tf`](terraform/main.tf) |
@@ -32,6 +32,7 @@ Key logic to look at in `02_incremental_cdc_sync`: the `table_changes` range rea
 | Job | [`[Azure PROD] Lab 10 Federation & CDC` - 582983448494007](https://adb-7405618361895520.0.azuredatabricks.net/#job/582983448494007) |
 | End-to-end run | [run 499124610685736](https://adb-7405618361895520.0.azuredatabricks.net/#job/582983448494007/run/499124610685736) - 3/3 tasks SUCCESS, 2026-10-12 00:09-00:11 UTC |
 | Compute | Serverless Jobs compute; no cluster, no schedule, `max_concurrent_runs = 1` |
+| Notebook source | GitHub `main` |
 | Delta schema | `dbr_dev.parvinbadalov_lab10_prod` (`customers_delta`, `customers_target`, `customer_change_history`, `cdc_checkpoint`) |
 | Foreign catalog | `parvinbadalov_lab10_neon_catalog` on connection `parvinbadalov_lab10_neon_conn` (read-only), bound read-only to `dbr_dev_trial_2` only |
 | Terraform state | HCP Terraform `badalov-lakehouse-labs/lab10-azure-prod`: one resource, `databricks_job.lab10_azure_prod` |
@@ -75,6 +76,5 @@ The Personal workspace is not reachable from the Academy account, so its evidenc
 |---|---|
 | GitHub OIDC CD for Azure has never run | Needs the deployer service principal and federation policy, which only an account administrator can create: [ADMIN_REQUEST.md](ADMIN_REQUEST.md) |
 | Updates, deletes and the no-change rerun were not repeated in Azure | They would need artificial source changes and more runs; they are proven in Personal DEV with the same notebooks |
-| Azure Job reads branch `feature/lab10-azure-prod` | Re-pointed to `main` with a reviewed in-place Terraform update after PR #69 is merged |
 
 Full write-up: [README.md](README.md).

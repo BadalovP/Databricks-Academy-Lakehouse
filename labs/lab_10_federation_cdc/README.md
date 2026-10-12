@@ -3,7 +3,7 @@
 **Neon PostgreSQL federation · Delta Change Data Feed · checkpointed incremental MERGE · Terraform on HCP · GitHub Actions CI/CD**
 
 > [!IMPORTANT]
-> **Personal DEV is complete and verified. Azure PROD is deployed and its end-to-end run passed** (Job `582983448494007` in `dbr_dev_trial_2`, run `499124610685736`: 3/3 tasks SUCCESS, final validation PASS). The Azure Job was deployed with Terraform from the owner's Azure CLI identity; the automated GitHub OIDC deployment path is implemented but waits for an account administrator to create its identity ([ADMIN_REQUEST.md](ADMIN_REQUEST.md)).
+> **Lab 10 is complete, merged and released (2026-10-12).** PR #69 was squash-merged into `main` as `ed35fb4`. Personal DEV is verified, and Azure PROD Job `582983448494007` in `dbr_dev_trial_2` passed its end-to-end run `499124610685736` (3/3 tasks SUCCESS, final validation PASS). That Job now reads its notebooks from `main`, and both Terraform states show no drift. The automated GitHub OIDC deployment path is an optional extra that waits for an account administrator to create its identity ([ADMIN_REQUEST.md](ADMIN_REQUEST.md)); Lab 10 does not depend on it.
 >
 > "Azure PROD" is a **PROD-style deployment into the Academy workspace `dbr_dev_trial_2`** - a shared training workspace, not a production environment. It is called PROD because it is deployed like one: separate state, a reviewed saved plan, serverless compute, no schedule and no manual Job edits.
 
@@ -22,9 +22,9 @@
 | Foreign catalog | `neon_postgres_conn_catalog` | `parvinbadalov_lab10_neon_catalog` ✅ - bound read-only to `dbr_dev_trial_2` only, `ISOLATED` |
 | Neon connection | `neon_postgres_conn` | `parvinbadalov_lab10_neon_conn` ✅ (`read_only = true`) |
 | Compute | Serverless | Serverless Jobs compute ✅, auto-retry disabled on every task |
-| Databricks Job | `453391098761164` ✅ | `582983448494007` `[Azure PROD] Lab 10 Federation & CDC` ✅ |
+| Databricks Job | `453391098761164` ✅ | `582983448494007` `[Azure PROD] Lab 10 Federation & CDC` ✅ - notebooks from `main` |
 | Terraform root | [`terraform/`](terraform/) | [`terraform_azure_prod/`](terraform_azure_prod/) |
-| HCP Terraform workspace | `lab10-personal-dev` ✅ | `lab10-azure-prod` ✅ (serial 1, one resource) |
+| HCP Terraform workspace | `lab10-personal-dev` ✅ | `lab10-azure-prod` ✅ (serial 2, one resource) |
 | Deployment auth | PAT secret | Done: owner's Azure CLI identity (local apply). Automated: GitHub OIDC → dedicated service principal (*waiting for administrator*) |
 | CD workflow | [`lab10_terraform_cd.yml`](../../.github/workflows/lab10_terraform_cd.yml) ✅ | [`lab10_azure_prod_cd.yml`](../../.github/workflows/lab10_azure_prod_cd.yml) (*needs the OIDC identity*) |
 | Run workflow | Databricks UI | [`lab10_azure_prod_run.yml`](../../.github/workflows/lab10_azure_prod_run.yml) (*needs the OIDC identity*); the run above used the Jobs API |
@@ -38,11 +38,11 @@
 | Personal Terraform | HCP state holds only `databricks_job.lab10`; plan `No changes` | None |
 | Azure foreign catalog | Created by the owner; bound read-only to `dbr_dev_trial_2`, `ISOLATED`; other workspaces get "not accessible" | None |
 | Azure setup | `00_setup` run `326755590926905`: 4 tables, 12 customers seeded from Neon via Federation, checkpoint 0 | None |
-| Azure Terraform | Saved plan `1 to add` (only the Job) applied; state serial 1; re-plan `No changes` | After merge, re-point `git_branch` to `main` (in-place update) |
+| Azure Terraform | Saved plan `1 to add` (only the Job) applied; after the merge, a saved plan with one in-place change (`git_source.branch` → `main`) applied; re-plan `No changes` | None |
 | Azure end-to-end run | Run `499124610685736`: 12 CDF inserts processed, source = target = Neon, history = CDF, checkpoint 0 → 1, final validation PASS | None |
 | GitHub CI | Validator, 23 offline tests and both Terraform roots pass on every Lab 10 push | None |
 | GitHub OIDC CD | Implemented and statically validated; never run | Account administrator creates the deployer identity ([request](ADMIN_REQUEST.md)) |
-| PR #69 | Draft, CI green | Review and merge |
+| PR #69 | Squash-merged into `main` as `ed35fb4`; CI green on `main` (run `38215896847`) | None |
 
 ## Architecture
 
@@ -129,18 +129,18 @@ Three Academy workspaces share one metastore, so the target workspace decides wh
 
 Separate roots and separate HCP workspaces mean a PROD change can never read, refresh or destroy DEV state, and vice versa. No Azure Storage account is used for Lab 10 state. The Azure Job declares **no** `existing_cluster_id`, `new_cluster` or `job_cluster`, so it runs on serverless Jobs compute.
 
-### Manual Azure deployment (as done on 2026-10-12)
+### Manual Azure deployment
 
 ```powershell
 cd labs/lab_10_federation_cdc/terraform_azure_prod
 $env:DATABRICKS_AUTH_TYPE = "azure-cli"        # az login as the Job owner; no PAT
 terraform init
-terraform plan  -var git_branch=feature/lab10-azure-prod -out lab10-azure-prod.tfplan
-# Review: exactly "1 to add" (first time) or an in-place update, never a destroy.
+terraform plan -out lab10-azure-prod.tfplan    # git_branch defaults to main
+# Review: an in-place update or "No changes" - never an add, replace or destroy of the Job.
 terraform apply lab10-azure-prod.tfplan
 ```
 
-After PR #69 is merged, the same plan without `-var git_branch=...` re-points the Job to `main`.
+On 2026-10-12 the Job was first created from the feature branch (`-var git_branch=feature/lab10-azure-prod`, `1 to add`) before the merge. It was re-pointed to `main` after the merge with `0 to add, 1 to change, 0 to destroy`, where the only change was `git_source.branch`.
 
 ## CI/CD
 
@@ -182,10 +182,11 @@ After PR #69 is merged, the same plan without `-var git_branch=...` re-points th
 | Job runs | `1058102967727375`, `674533552504139` SUCCESS | `499124610685736` SUCCESS (3/3 tasks, attempt 0) |
 | Terraform | plan `No changes` | apply `1 added`; re-plan `No changes` |
 | CD | plan run `38102000753`; apply run `38102681544` (0 changes) | not run (OIDC identity pending) |
-| CI | green | green (runs `38185218270`, `38186832636`) |
+| CI | green | green on the PR and on merged `main` (run `38215896847`) |
 
 ## Evidence
 
+- [2026-10-12 release: merge and re-point to `main`](evidence/2026-10-12-release.md)
 - [2026-10-12 manual Azure deployment and end-to-end run](evidence/2026-10-12-manual-azure-deployment.md) - Azure setup, binding, Terraform apply, the Job run, independent SQL checks, Personal DEV re-verification
 - [2026-10-12 manual deployment readiness](evidence/2026-10-12-manual-deployment-readiness.md)
 - [2026-10-12 approved setup](evidence/2026-10-12-approved-setup.md) - HCP workspace, GitHub environment, first plan
@@ -210,6 +211,6 @@ Never remove Personal DEV Job `453391098761164` or its HCP state.
 - **Small scale:** 12 customers prove correctness and replay safety, not throughput.
 - **Azure proves the insert path only.** Updates, deletes and the no-change run were proven in Personal DEV with the same notebooks; repeating them in Azure would require artificial source changes and more runs.
 - **Shared catalog:** `account users` holds `ALL_PRIVILEGES` on `dbr_dev`, so the Lab 10 schema is isolated by naming and convention, not by grants. That is an Academy setting outside this lab's control.
-- **Git-backed tasks** read notebooks from GitHub with the run-as user's Git credential (GitHub OAuth linked in `dbr_dev_trial_2`). Until PR #69 is merged, the Azure Job reads branch `feature/lab10-azure-prod`.
+- **Git-backed tasks** read notebooks from GitHub with the run-as user's Git credential (GitHub OAuth linked in `dbr_dev_trial_2`). Both Jobs read branch `main`.
 - **Trial workspace** `dbr_dev_trial_2` may expire around 2026-10-20.
 - **Notebooks are committed without outputs**; results come from Job runs.
