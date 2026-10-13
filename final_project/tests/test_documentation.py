@@ -25,10 +25,12 @@ def test_all_local_markdown_links_resolve() -> None:
     assert not missing, "Broken or out-of-repository links:\n" + "\n".join(missing)
 
 
-def test_readme_contains_five_balanced_mermaid_diagrams() -> None:
+def test_readme_case_study_covers_the_required_diagram_types() -> None:
     readme = (PROJECT_ROOT / "README.md").read_text(encoding="utf-8")
-    diagrams = re.findall(r"```mermaid\s+.*?```", readme, flags=re.DOTALL)
-    assert len(diagrams) == 5
+    diagrams = re.findall(r"```mermaid\s+(.*?)```", readme, flags=re.DOTALL)
+    assert len(diagrams) >= 10
+    kinds = {diagram.split(None, 1)[0] for diagram in diagrams}
+    assert {"flowchart", "sequenceDiagram", "erDiagram", "stateDiagram-v2"} <= kinds
 
 
 DOCS = PROJECT_ROOT / "docs"
@@ -67,7 +69,7 @@ def _project_markdown() -> list[Path]:
 
 def test_the_final_project_documentation_set_exists_and_is_linked_from_the_readme() -> None:
     readme = (PROJECT_ROOT / "README.md").read_text(encoding="utf-8")
-    assert readme.startswith("# UrbanFlow 2.0")
+    assert re.search(r"^# UrbanFlow 2\.0$", readme, flags=re.MULTILINE)
     for name in REQUIRED_DOCS:
         assert (DOCS / name).exists(), name
         assert f"docs/{name}" in readme, name

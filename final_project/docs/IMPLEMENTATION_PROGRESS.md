@@ -1,18 +1,25 @@
 # UrbanFlow 2.0: implementation progress (handoff record)
 
-Keep this file current so another engineer or agent can continue without restarting. Last updated 2026-10-13 (PR #75 merged; operational closeout in progress).
+[← Final Project README](../README.md) · [Release and validation](RELEASE_AND_VALIDATION.md) · [CI/CD](CI_CD.md)
+
+> [!NOTE]
+> **Current status (final release, 2026-10-13).** **Complete.** PR #75 and the follow-ups #76–#78 are merged. Every planned live step passed, including the full protected GitHub CD on Personal DEV ([evidence](../evidence/2026-10-13_github_cd_full_deploy.md)). Nothing billable is running. What remains is optional, or needs an identity this project cannot create (Azure OIDC).
+>
+> Status terms: **Complete** · **Live-validated** · **Offline-tested** · **Documented but not demonstrated** · **Optional** (defined in the [Final Project README](../README.md)).
+
+Keep this file current so another engineer or agent can continue without restarting. Last updated 2026-10-13 (final release: PR #75 and follow-ups #76–#78 merged; full GitHub CD passed; documentation release).
 
 ## Repository state
 
 | Item | Value |
 |---|---|
-| Repository / branch | `BadalovP/Databricks-Academy-Lakehouse`, `main` at merge commit `225545fd1f54607d23996c58daee7ef7e1c924fd` |
+| Repository / branch | `BadalovP/Databricks-Academy-Lakehouse`, `main`: Final Project merge `225545fd1f54607d23996c58daee7ef7e1c924fd`, then #76 `34b458b`, #77 `e497841`, #78 `0d48970956e6502f0d969e06f0820f7e75d3f9c8` |
 | Pull request | [#75](https://github.com/BadalovP/Databricks-Academy-Lakehouse/pull/75), **merged** 2026-10-13; final CI green |
 | Worktree | `C:\Users\User\Desktop\databricks-academy-lakehouse-final-project` (isolated closeout worktree; preserve the original folder and its untracked Terraform file) |
 | Guarantees | Protected `Demos/Demo3` tree `583e3ab01e37517d62216b44a1e50fa0231b90de`; Labs 1–12, Demo 3 and shared Terraform are outside the closeout scope |
 | Deployed to Personal DEV | The completed dashboard maintenance review and title fix were deployed; all 25 datasets passed and the dashboard was published owner-only. The merged source at `225545f` contains the validated release. |
 | Presentation | Slides artifact *UrbanFlow 2.0 Demo Day* (private, owner only; 14 slides with notes; exports to .pptx), script in `DEMO_DAY_PRESENTATION.md` |
-| Local quality | Ruff, Black and the secret scan clean; **858 passed, 2 skipped**. The skips are a bash-only test on Windows and the Databricks-only Lakeflow event-log dataset. Dashboard `--check` is current; offline bundle schema valid; CI green on PR #75. |
+| Local quality | CI of the full CD run 38400575076: **867 passed, 1 skipped** (Linux). Windows release baseline before the merge of #75: Ruff, Black and the secret scan clean; **858 passed, 2 skipped**. The skips are a bash-only test on Windows and the Databricks-only Lakeflow event-log dataset. Dashboard `--check` is current; offline bundle schema valid; CI green on PR #75. |
 
 ## Milestones
 
@@ -27,6 +34,9 @@ Keep this file current so another engineer or agent can continue without restart
 | Assistant prompt-injection hardening (started by Codex) | Done offline | `tests/test_rag_rag.py` |
 | CDC-only and Lakeflow-only platform runs allowed | Deployed in step 4A; CDC-only run proven by `343513312512955` | commits `e63ad0a`, `e4b256d` |
 | Dashboard SQL analysed against live schemas (24/25 datasets) | Done offline; all 25 datasets later passed live | `tests/test_dashboard_sql_analysis.py`, `evidence/2026-10-13_personal_dev_dashboard_validation.md` |
+| GitHub CD `plan_only` | **PASS**: run [38392729496](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/38392729496) (after two `-t` failures, fixed in #77) | `CI_CD.md` |
+| Safe sample-run profile | Done: `sample_profile=replay_recorded` default (#78) | `scripts/cd_sample_request.py` |
+| **Full protected GitHub CD** (Personal DEV) | **PASS**: run [38400575076](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/38400575076), Databricks run `112906299302442`, business data unchanged; least privilege restored | `evidence/2026-10-13_github_cd_full_deploy.md` |
 | Offline RAG evaluation re-run | Reproduces correctness 0.648 (baseline 0.111), recall 0.938, coverage 0.875 (fixture, not model quality) | `urbanflow-rag evaluate` |
 | Operations runbook, approval request, interview demo | Done | `OPERATIONS_RUNBOOK.md`, `RELEASE_AND_VALIDATION.md`, `DEMO_DAY_PRESENTATION.md` |
 | Azure `azure_prod` read-only preflight | **PASS** (validate, plan = 7 creates, validator, no collisions); nothing created | `RELEASE_AND_VALIDATION.md` |
@@ -96,7 +106,7 @@ Lakeflow schema `urbanflow_final_lakeflow_dev`: 10 datasets from update `a26b438
 - **Metadata-only commits.** The 16 shared Silver, Gold, historical and weather tables still record one metadata-only MERGE commit per replay. No data or file changes; this is a performance limitation, not a correctness issue.
 - **Federation.** The Lab 10 foreign catalog (`neon_postgres_conn_catalog`, read-only PostgreSQL connection) has no maintenance table, so CDC runs on committed fixture snapshots. A real federated source needs a Final-Project table in an external database, which is an external write needing approval.
 - **Governance.** Only one identity is available, so multi-principal row-filter and mask enforcement cannot be demonstrated. The demo shows filtered vs allowed for one principal by changing a mapping row.
-- **CD workflow.** The environments and the read-only DEV service principal `sp-urbanflow-final-dev` are configured, and the bundle state paths are pinned so the principal reads the existing state. The first dispatch (`38382998636`) failed on a missing `-t` flag before any Databricks call. The second (`38389951946`) authenticated as the principal and produced a converged 7/7 `skip` plan, then failed at `jobs list` on the same missing flag, which is now fixed on every workspace command. One more `plan_only` dispatch, needing the owner's go-ahead, completes the demonstration; the OAuth secret expires about 10:22 UTC on 2026-10-14. The Azure OIDC path stays blocked by Academy identity setup.
+- **CD workflow.** Live-validated on Personal DEV: `plan_only` run 38392729496 and the full protected release run 38400575076 ([evidence](../evidence/2026-10-13_github_cd_full_deploy.md)). The two earlier `plan_only` failures (missing `-t`) and the deploy-lock failure 38397086064 are kept as evidence. The service principal is back to read-only grants. Its OAuth secret expires at 10:22 UTC on 2026-10-14, so a later run needs a new secret. The Azure OIDC path is documented but not demonstrated: it needs Academy identity setup.
 - **Dashboard.** All 25 datasets passed live, the title-rendering defect was fixed, and the dashboard was published with embedded credentials off and owner-only access.
 
 ## Active cost-bearing resources
@@ -106,7 +116,8 @@ None running. No AI Search endpoint exists, and the warehouses are stopped (auto
 ## Pending, each needing explicit approval
 
 Phases D, E, F and G are done. Only optional items remain:
-- a GitHub CD run, once the environments and identities exist (`CI_CD.md`);
+- a GitHub CD run against `azure_prod`, once an Academy admin creates the OIDC identity (`CI_CD.md`);
+- a new OAuth secret before any further Personal DEV CD run;
 - the external Federation source, Event Hubs, Zerobus and the full month (phase H in `RELEASE_AND_VALIDATION.md`);
 - a multi-principal governance test, which needs a second identity.
 

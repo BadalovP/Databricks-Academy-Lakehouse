@@ -6,12 +6,14 @@ on:
       - "final_project/**"
       - ".github/workflows/final_project_ci.yml"
       - ".github/workflows/final_project_cd.yml"
+      - "README.md"
   push:
     branches: [main]
     paths:
       - "final_project/**"
       - ".github/workflows/final_project_ci.yml"
       - ".github/workflows/final_project_cd.yml"
+      - "README.md"
   workflow_dispatch:
 
 permissions:
@@ -52,6 +54,8 @@ jobs:
         run: pytest
       - name: Dashboards match the committed SQL
         run: python scripts/build_dashboard.py --check
+      - name: Documentation links, anchors and Mermaid structure (root and Final Project READMEs, docs, evidence)
+        run: python scripts/check_docs.py
       - name: Install Databricks CLI (schema only; no workspace authentication)
         uses: databricks/setup-cli@main
         with:
@@ -71,7 +75,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Only final_project/** and the two Final Project workflows may change
+      - name: Only final_project/**, the two Final Project workflows and the root README may change
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: python final_project/scripts/check_change_scope.py --base "$BASE_SHA" --head HEAD

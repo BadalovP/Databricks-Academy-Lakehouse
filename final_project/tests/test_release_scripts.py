@@ -82,16 +82,29 @@ def test_only_final_project_paths_and_its_workflows_are_in_scope() -> None:
         [
             "final_project/src/urbanflow/cdc_sql.py",
             ".github/workflows/final_project_cd.yml",
+            "README.md",
             "Demos/Demo3/notebooks/x.py",
             "labs/lab_08_cicd_travelops/README.md",
             ".github/workflows/lab08_cicd.yml",
             ".github/terraform/lab10-azurerm-backend.tf",
+            "docs/lab_notes/lab_01_fundamentals.md",
+            "Demos/Demo3/README.md",
+            "architecture/README.md",
         ]
     ) == [
         "Demos/Demo3/notebooks/x.py",
         "labs/lab_08_cicd_travelops/README.md",
         ".github/workflows/lab08_cicd.yml",
         ".github/terraform/lab10-azurerm-backend.tf",
+        "docs/lab_notes/lab_01_fundamentals.md",
+        "Demos/Demo3/README.md",
+        "architecture/README.md",
+    ]
+    # Only the exact root README is allowed; no other Markdown outside final_project/.
+    assert scope.ALLOWED_FILES.count("README.md") == 1
+    assert scope.out_of_scope(["labs/README.md", "Demos/README.md"]) == [
+        "labs/README.md",
+        "Demos/README.md",
     ]
 
 
@@ -100,6 +113,7 @@ def test_only_final_project_paths_and_its_workflows_are_in_scope() -> None:
     [
         ("final_project/docs/ARCHITECTURE.md", False),
         ("final_project/README.md", False),
+        ("README.md", False),
         ("final_project/evidence/2026-10-12_personal_dev_step4_batch003.json", False),
         ("final_project/tests/test_cdc_pipeline.py", False),
         (".github/workflows/final_project_cd.yml", False),

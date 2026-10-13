@@ -1,6 +1,11 @@
 # AI/BI dashboard
 
-[← Main README](../README.md) · [Architecture](ARCHITECTURE.md)
+[← Final Project README](../README.md#13-aibi-dashboard) · [Architecture](ARCHITECTURE.md)
+
+> [!NOTE]
+> **Current status (final release, 2026-10-13).** **Live-validated** on Personal DEV: 25/25 datasets ran, published to the owner only. The Azure trial dashboard was deployed in step 9. No screenshots are committed.
+>
+> Status terms: **Complete** · **Live-validated** · **Offline-tested** · **Documented but not demonstrated** · **Optional** (defined in the [Final Project README](../README.md)).
 
 **Status:** the dashboards are generated and tested offline. The `personal_dev` dashboard `01f1c647728e1ceeb2b5bd10a8700793` also passed live validation: 25/25 datasets ran, the title-rendering fix was deployed, and the dashboard was published with embedded credentials off and owner-only access.
 
