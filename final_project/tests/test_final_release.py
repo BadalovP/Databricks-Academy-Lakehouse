@@ -392,6 +392,7 @@ def test_cd_is_manual_confirmed_approved_and_pinned_per_target() -> None:
     assert 'host="https://adb-7405618361895520.0.azuredatabricks.net"' in text
     assert "FORBIDDEN_HOST_DBR_DEV: https://adb-7405604503619901.1.azuredatabricks.net" in text
     assert 'auth="github-oidc"' in text and jobs["release"]["permissions"]["id-token"] == "write"
+    assert text.count('databricks current-user me -t "$TARGET" --output json') == 2
     assert jobs["plan"]["permissions"]["id-token"] == "write"
     assert "DATABRICKS_TOKEN" not in text and "azure/login" not in text
     assert jobs["plan"]["env"] == jobs["release"]["env"]
@@ -512,6 +513,22 @@ def test_bundle_uses_no_env_interpolation() -> None:
     """Bundles have no ${env.*} interpolation; `bundle plan` fails on it (found in preflight)."""
     for path in [PROJECT_ROOT / "databricks.yml", *(PROJECT_ROOT / "resources").glob("*.yml")]:
         assert "${env." not in path.read_text(encoding="utf-8"), path.name
+
+
+def test_every_target_reads_the_existing_deployment_state_whoever_authenticates() -> None:
+    """Closeout finding: a root_path built from the current user sends the CD service principal
+    to an empty state folder, so its read-only plan would propose recreating all seven resources.
+    """
+    expected = {
+        "personal_dev": "/Workspace/Users/parvinbadalov@yahoo.com/.bundle/${bundle.name}/${bundle.target}",
+        "azure_prod": (
+            "/Workspace/Users/parvinbadalov@softserve.academy/.bundle/${bundle.name}/${bundle.target}"
+        ),
+    }
+    for name, target in _bundle_targets().items():
+        root = target["workspace"]["root_path"]
+        assert "current_user" not in root, name
+        assert root == expected[name], name
 
 
 def test_dev_target_keeps_the_schema_names_the_jobs_and_dashboards_address() -> None:

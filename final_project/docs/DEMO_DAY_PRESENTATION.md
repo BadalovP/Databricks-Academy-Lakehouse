@@ -27,7 +27,7 @@ A 25-minute talk: 20 minutes of presentation and demo, then 5 minutes of questio
 - 2026-10-13, Azure trial (PROD-style, not paid production): 7 resources created; sample run `240527908342651` gave the same 40 / 40 / 13 / 13, 40 trips, 48 hours, 4 matched trips, CDC 5 inserts with reconciliation 0.
 - Dashboard title fix deployed; published to the owner only.
 
-Not demonstrated: a GitHub CD run (identities), multi-principal governance, Zerobus, Event Hubs, the full month and the external Federation source.
+Not demonstrated at the release merge: a GitHub CD run (identity/environment closeout), multi-principal governance, Zerobus, Event Hubs, the full month and the external Federation source.
 
 ## Run of show
 
@@ -121,10 +121,10 @@ Not demonstrated: a GitHub CD run (identities), multi-principal governance, Zero
 
 **Show:** the CD workflow graph. **Say:**
 
-- "CI runs a secret scan, lint, 840+ tests, a dashboard freshness check, offline bundle schema validation, and a change-scope check, so a Final Project PR cannot touch the labs or Demo 3."
+- "CI runs a secret scan, lint, 858 passing tests at final release, a dashboard freshness check, offline bundle schema validation, and a change-scope check, so a Final Project PR cannot touch the labs or Demo 3."
 - "CD is manual and starts in plan-only mode. A read-only plan is validated and uploaded before anyone approves. After approval it plans again, deploys, and requires an all-`skip` post-deploy plan. An optional sample run is bounded, validated by script and cancelled if it overruns."
 - "Compared with Lab 08: same principles, no PAT, no Terraform (nothing in Azure to manage), and no automatic deploy on push." (Table in `CI_CD.md`.)
-- "The CD workflow itself has not run yet: GitHub only dispatches workflows from the default branch, and I did not merge just to demo it."
+- "PR #75 is merged and the manual CD workflow is on `main`; its first `plan_only` demonstration is tracked separately from the validated operator releases."
 
 ### 10. Cost, safety, honesty (1 min)
 
@@ -178,5 +178,5 @@ For a technical interview rather than Demo Day: one problem, one architecture, t
 | 0:45–2:00 | `evidence/2026-10-12_personal_dev_step2_pass.md` | "The first live run failed on three defects that offline tests could not see: a count copied from an earlier project, a missing task dependency, and an input file nobody landed. I fixed each in code with a regression test and recorded every failed run. The passing run reconciles 40 events through Silver to 13 actionable priorities, matching an independent calculation." |
 | 2:00–3:15 | `evidence/2026-10-12_personal_dev_step3_retry_pass.md` | "Then I proved replays are safe, with 19 strict criteria. The first attempt failed one: a Delta MERGE that changes nothing still commits, so the CDC checkpoint moved over an empty version. I added a compare-first guard. Now a replay changes no data and no timestamps, rewrites no files, and leaves the checkpoint alone. Some shared tables still write a metadata-only commit, and I say so." |
 | 3:15–4:15 | `evidence/2026-10-12_personal_dev_step4_batch003.md` | "CDC is Delta Change Data Feed over snapshots, not log-based CDC. After a live update-and-delete batch, Databricks ran an automatic OPTIMIZE. I stopped, reviewed my own first fix, and defined the checkpoint as 'scanned and reconciled'. The replay then moved it over the empty version with no events. Lakeflow, run once, matched the imperative tables row for row." |
-| 4:15–5:00 | `docs/IMPLEMENTATION_PROGRESS.md` | "What is not done yet, and why: the assistant with AI Search, dashboard on live data, governance and PROD each wait for an explicit, bounded approval. Nothing billable is left running, and every cost figure comes from the billing tables." |
+| 4:15–5:00 | `docs/IMPLEMENTATION_PROGRESS.md` | "The assistant, dashboard, governance demo and Azure trial release all passed with evidence. The remaining optional integrations need additional infrastructure or identities. Nothing billable is left running, and estimated costs are explicitly separated from measured billing records." |
 

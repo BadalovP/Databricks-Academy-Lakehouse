@@ -77,6 +77,29 @@ In the CDC-only and Lakeflow-only runs, the disabled tasks only start, check the
 
 **Lakeflow update** `a26b4385-f0b8-454a-9aad-d9a3424151c7` (step 5): 129 s from request to `COMPLETED`, of which 34 s waiting for resources, 42 s initializing, 13 s setting up tables and 40 s computing the ten flows. The Job task `refresh_lakeflow` took 142 s.
 
+## Final billing reconciliation (read 2026-10-13 11:17 UTC)
+
+**Personal DEV** (`system.billing.usage` complete up to 2026-10-13 07:00 UTC, which covers every Final Project workload in this workspace). Values are DBU; USD is DBU × the workspace's `system.billing.list_prices` (**list price, not an invoice**).
+
+| Final Project workload | Records | DBU | USD at list |
+|---|---|---|---|
+| Platform Job, 8 runs (steps 2–5, including failed attempts) | `304828008837365` 0.3016; `896235701785511` 0.8249; `896549012431425` 1.2672; `605056708110586` 1.3531; `412521206243476` 1.1901; `343513312512955` 0.4019; `500336374896739` 0.3445; `441981394008476` 0.0324 | 5.7157 | 2.00 |
+| Lakeflow update `a26b4385` (pipeline compute) | `DLT` | 0.2258 | 0.08 |
+| RAG Job, 3 runs | `870039412110159` 0.4877; `12773923439415` 0.6878; `712590508231976` 0.4225 | 1.5980 | 0.56 |
+| AI Search endpoint `urbanflow-final-dev` (25.7 min) | `VECTOR_SEARCH`, real-time inference SKU | 0.6251 | 0.04 |
+| AI Search index sync and embeddings pipeline | `VECTOR_SEARCH`, jobs serverless SKU | 0.8898 | 0.31 |
+| Chat and embedding tokens | `MODEL_SERVING` gpt-oss-20b 0.0715, gte-large-en 0.0056; `AI_GATEWAY` 0.0023 | 0.0794 | 0.01 |
+| Cleanup guard Job, 3 runs | `599932542123256`, `247193340227492`, `402209363218717` | 0.0163 | 0.01 |
+| **Total attributable to the Final Project** | | **≈ 9.15** | **≈ $3.00** |
+
+**Not attributable to the Final Project alone:**
+- The shared `Serverless Starter Warehouse` used 17.41 DBU (≈ $12.19 at list) on 2026-10-12/13. Most of it was the read-only verification queries and dashboard validation, but it also serves other work, and each start bills a minimum.
+- Workspace-level predictive optimization (0.16 DBU), data-quality monitoring (0.48 DBU) and storage (0.41 DSU) on 2026-10-13.
+
+The AI Search endpoint measured 0.6251 DBU for 0.43 hours, about 1.5 DBU per hour. The earlier estimate of 1.4 DBU (3.3 DBU/h from Lab 12) was higher than measured.
+
+**Azure trial (`dbr_dev_trial_2`):** **not measurable.** The Academy identity has no `USE SCHEMA` on `system.billing` (`INSUFFICIENT_PERMISSIONS`), and no access was requested. The step 9 run took 473 s, comparable to the DEV runs of 1.2–1.4 DBU. Charges there belong to the Academy trial subscription, not a personal invoice.
+
 ## Assistant, dashboard and governance (2026-10-13, measured durations)
 
 | Work | Run / object | Duration | Billable exposure |
@@ -91,7 +114,7 @@ In the CDC-only and Lakeflow-only runs, the disabled tasks only start, check the
 
 | Azure trial sample run (step 9) | Platform run `240527908342651` | 473 s | Azure serverless Jobs (that workspace's own billing); comparable to the DEV run (458–485 s) |
 
-When this was written, `system.billing.usage` held data only up to 2026-10-12 22:00 UTC. The step 4–5 runs and everything on 2026-10-13 are therefore **not yet measured**. No figure above is presented as billed. Re-run the query at the end of this page after the billing tables catch up.
+When this table was first written, `system.billing.usage` held data only up to 2026-10-12 22:00 UTC. The measured values are in the final billing reconciliation above.
 
 ## Measured DBUs (from `system.billing.usage`, read-only)
 

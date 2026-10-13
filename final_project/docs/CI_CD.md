@@ -61,10 +61,10 @@ flowchart LR
 
 | Item | Status |
 |---|---|
-| CI on PR #75 | Runs on every push, green |
+| CI on PR #75 | Final checks green; PR merged to `main` as `225545fd1f54607d23996c58daee7ef7e1c924fd` |
 | Workflow structure | Tested offline: triggers, inputs, job graph, environments, permissions, timeouts, no bypass conditions, `bash -n` on every `run:` block |
 | Release gates (plan validator, post-plan check) | Exercised live by the operator releases on `personal_dev` (steps 1, 4A, 4C, D, title fix) and on `azure_prod` (step 9: 7 creates, then post-plan all `skip`), with the same scripts the CD calls |
-| CD workflow run | **Not run.** A `workflow_dispatch` workflow can be started only from the default branch, and the environments and identities below do not exist yet. PR #75 is not merged to bypass this. |
+| CD workflow run | **Not yet demonstrated at merge time.** The workflow is now on the default branch; environment, identity and bundle-state isolation checks must complete before one read-only `plan_only` dispatch. |
 
 ## Required GitHub configuration (before the first CD run)
 
@@ -97,10 +97,22 @@ flowchart LR
 
 The Final Project does not create either identity without the owner's explicit request, and it does not contact the Academy administrators.
 
+## Post-merge closeout (2026-10-13): identity and state isolation
+
+| Item | State |
+|---|---|
+| GitHub environments | `final-project-approval`: required reviewer `BadalovP`, admin bypass off. `final-project-personal_dev`: `main` only; variables `DATABRICKS_CLIENT_ID`, `DATABRICKS_WAREHOUSE_ID`; encrypted secret `DATABRICKS_CLIENT_SECRET`. `final-project-azure_prod`: `main` only; `DATABRICKS_WAREHOUSE_ID`; **no identity credential** |
+| DEV identity | Service principal `sp-urbanflow-final-dev`, entitlements `workspace-access` and `databricks-sql-access`, no group, no admin role, no ownership, no `CAN_MANAGE` |
+| DEV grants (read-only) | `CAN_VIEW` on both Jobs, the pipeline and the warehouse. `CAN_READ` on the dashboard and on the bundle state folder `/Workspace/Users/parvinbadalov@yahoo.com/.bundle/urbanflow_final_project/personal_dev`. `USE CATALOG` on `workspace`, `USE SCHEMA` on the two Final Project schemas, `READ VOLUME` on the Final Project Volume |
+| State isolation | Both targets' `workspace.root_path` used `${workspace.current_user.userName}`, so a service principal would read an empty state folder and plan seven creates. Both are now **pinned to the existing deployment folders**. The owner plans stayed all `skip` on both targets after the change (read-only check), and a test guards the pin |
+| What `bundle plan` touches | Verified with `--debug`: only GET requests (state files, warehouses, dashboard and its published version, pipeline, two schemas, Volume, two Jobs); **no lock and no write**. The principal's read-only grants make a write impossible |
+| First dispatch | Run `38382998636` (on `225545f`): static validation passed. The plan job **failed** at `databricks current-user me` with `please specify target`, before any Databricks call. Fix: `-t "$TARGET"` on both identity checks ([evidence](../evidence/2026-10-13_github_cd_plan_only_closeout.md)) |
+| Azure OIDC | **Blocked by identity setup:** no Final Project service principal or GitHub federation policy exists in the Academy account. Nothing was created there |
+
 ## Can a CD demonstration happen without any Azure identity?
 
 **Yes, for `personal_dev`.** A Personal DEV release needs only:
-1. PR #75 merged (the default-branch rule for `workflow_dispatch`);
+1. PR #75 merged (complete: `225545f`, satisfying the default-branch rule for `workflow_dispatch`);
 2. the environments `final-project-approval` and `final-project-personal_dev`;
 3. the DEV OAuth M2M service principal, which the project owner can create in the personal workspace without the Academy.
 
@@ -119,7 +131,7 @@ Until then, operator releases with the owner's own login use the same plan gates
 
 ## Post-merge demonstration checklist
 
-Run only after PR #75 is merged and the configuration above exists. Each dispatch is a separate, approved action.
+Run only after the configuration above exists and bundle-state isolation has been reviewed. Each dispatch is a separate, approved action.
 
 1. Push a docs-only change on a branch, open a PR, and confirm in CI that `change-scope` reports `deployable=false`. Close the PR.
 2. Dispatch `target=personal_dev, mode=plan_only`. Expect:
