@@ -39,6 +39,15 @@ on:
         description: Type RELEASE_URBANFLOW_FINAL_<TARGET> exactly, e.g. RELEASE_URBANFLOW_FINAL_PERSONAL_DEV
         required: true
         type: string
+      sample_profile:
+        description: >-
+          Sample run only. replay_recorded (default) replays the target's recorded executions and
+          writes no business data; first_run uses the Job defaults (new execution, CDC batch_001)
+          and is only for a target with no Final Project data.
+        required: true
+        default: replay_recorded
+        type: choice
+        options: [replay_recorded, first_run]
 
 permissions:
   contents: read
@@ -75,12 +84,13 @@ jobs:
         env:
           TARGET: ${{ inputs.target }}
           MODE: ${{ inputs.mode }}
+          SAMPLE_PROFILE: ${{ inputs.sample_profile }}
         run: |
           set -euo pipefail
           case "$MODE" in
             plan_only) echo "::notice::plan_only: read-only metadata calls; nothing is deployed or started." ;;
             deploy) echo "::warning::deploy to $TARGET writes the Final Project bundle (Jobs, pipeline, dashboard, schemas, Volume). No Job or pipeline is started." ;;
-            deploy_and_sample_run) echo "::warning::deploy_and_sample_run deploys to $TARGET and starts ONE serverless platform run (development sample, about 8 minutes, bounded at 40). It bills serverless compute." ;;
+            deploy_and_sample_run) echo "::warning::deploy_and_sample_run deploys to $TARGET and starts ONE serverless platform run (development sample, about 8 minutes, bounded at 40, profile $SAMPLE_PROFILE). It bills serverless compute." ;;
           esac
           if [[ "$TARGET" == "azure_prod" && "$MODE" != "plan_only" ]]; then
             echo "::warning::azure_prod writes schemas into the shared Academy dbr_dev catalog of an Academy trial workspace."
@@ -302,10 +312,13 @@ jobs:
         shell: bash
         env:
           JOB_ID: ${{ steps.deployed.outputs.job_id }}
+          SAMPLE_PROFILE: ${{ inputs.sample_profile }}
         run: |
           set -euo pipefail
           token="urbanflow-final-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          python -c 'import json,sys; json.dump({"job_id": int(sys.argv[1]), "idempotency_token": sys.argv[2], "job_parameters": {"run_station_pipeline": "true", "run_historical": "true", "run_weather": "true", "run_federation_cdc": "true"}}, open(sys.argv[3], "w"))' "$JOB_ID" "$token" "$RUNNER_TEMP/run-request.json"
+          # replay_recorded never reverts CDC or adds a second station execution to existing data.
+          python scripts/cd_sample_request.py --target "$TARGET" --profile "$SAMPLE_PROFILE" --job-id "$JOB_ID" --token "$token" --out "$RUNNER_TEMP/run-request.json"
+          cp "$RUNNER_TEMP/run-request.json" "$RUNNER_TEMP/evidence/run-request.json"
           databricks jobs run-now -t "$TARGET" --json @"$RUNNER_TEMP/run-request.json" --no-wait --output json > "$RUNNER_TEMP/submitted.json"
           run_id=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["run_id"])' "$RUNNER_TEMP/submitted.json")
           # Recorded so the cancellation step below can stop exactly this run.

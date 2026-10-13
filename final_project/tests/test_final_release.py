@@ -510,8 +510,16 @@ def test_ci_installs_the_cli_before_offline_bundle_validation() -> None:
     static = cd[: cd.index("approve-release:")]
     assert static.index("databricks/setup-cli") < static.index("scripts/validate_bundle.py")
     # The bounded release run exercises the core CDC capability (fixture snapshot, no external
-    # system) next to the medallion path.
-    assert '"run_federation_cdc": "true"' in cd
+    # system) next to the medallion path; its parameters come from the tested request builder,
+    # whose default profile replays the target's recorded executions instead of reverting CDC.
+    assert (
+        'python scripts/cd_sample_request.py --target "$TARGET" --profile "$SAMPLE_PROFILE"' in cd
+    )
+    inputs = _workflow(PROJECT_ROOT.parent / ".github" / "workflows" / "final_project_cd.yml")[
+        "on"
+    ]["workflow_dispatch"]["inputs"]
+    assert inputs["sample_profile"]["default"] == "replay_recorded"
+    assert inputs["sample_profile"]["options"] == ["replay_recorded", "first_run"]
 
 
 def _bundle_targets() -> dict:

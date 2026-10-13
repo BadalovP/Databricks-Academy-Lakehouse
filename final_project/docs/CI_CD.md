@@ -110,6 +110,15 @@ The Final Project does not create either identity without the owner's explicit r
 | Corrected dispatch | Run [38389951946](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/38389951946) on `34b458b`. **Authenticated as `sp-urbanflow-final-dev`**; `bundle validate` and `bundle plan` passed. The uploaded plan is **7/7 `skip`** with no field change, so the principal recognised the existing deployment. The run then **failed** at `databricks jobs list` (same missing `-t`); the release validator passed offline on the uploaded plan. All workspace commands now pass `-t "$TARGET"`, with a test. Not re-dispatched ([evidence](../evidence/2026-10-13_github_cd_plan_only_run2.md)) |
 | Azure OIDC | **Blocked by identity setup:** no Final Project service principal or GitHub federation policy exists in the Academy account. Nothing was created there |
 
+### Sample-run profile (`sample_profile` input)
+
+The platform Job's defaults describe a first run on an empty target: a new station execution and CDC snapshot `batch_001`. On Personal DEV, which is at `batch_003`, that would revert the maintenance state and add a second station execution. So `deploy_and_sample_run` builds its request with `scripts/cd_sample_request.py` (tested):
+
+| Profile | Parameters | Use |
+|---|---|---|
+| `replay_recorded` (default) | The target's recorded executions. DEV: station `urbanflow-final-304828008837365`, CDC `batch_003`. Azure trial: station `urbanflow-final-240527908342651`, CDC `batch_001` | Idempotent replay of existing data, the configuration step 3 proved writes no business data |
+| `first_run` | The Job defaults: new station execution, CDC `batch_001` | Only a target with no Final Project data |
+
 ## Can a CD demonstration happen without any Azure identity?
 
 **Yes, for `personal_dev`.** A Personal DEV release needs only:
