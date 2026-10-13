@@ -278,9 +278,7 @@ class _FailingWarehouse:
         return []
 
 
-@pytest.mark.parametrize(
-    "fail_on", ["SET ROW FILTER", "SET MASK", "zone_access VALUES"]
-)
+@pytest.mark.parametrize("fail_on", ["SET ROW FILTER", "SET MASK", "zone_access VALUES"])
 def test_a_failed_governance_step_still_rolls_back_and_drops_the_demo_schema(
     monkeypatch, tmp_path, fail_on
 ) -> None:
