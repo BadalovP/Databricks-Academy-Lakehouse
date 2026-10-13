@@ -2,7 +2,7 @@
 
 [← Main README](../README.md) · [Architecture](ARCHITECTURE.md)
 
-**Status:** the dashboards are generated and tested offline. The `personal_dev` dashboard `01f1c647728e1ceeb2b5bd10a8700793` received the 12-column `GRID_V1` layout in step 4A. It has not been published.
+**Status:** the dashboards are generated and tested offline. The `personal_dev` dashboard `01f1c647728e1ceeb2b5bd10a8700793` also passed live validation: 25/25 datasets ran, the title-rendering fix was deployed, and the dashboard was published with embedded credentials off and owner-only access.
 
 **Live validation (2026-10-13):**
 - The maintenance review was deployed (one update, post-plan all `skip`).

@@ -1,0 +1,78 @@
+{
+  "date_utc": "2026-10-13",
+  "repository": "BadalovP/Databricks-Academy-Lakehouse",
+  "merged_release_commit": "225545fd1f54607d23996c58daee7ef7e1c924fd",
+  "request": {
+    "target": "personal_dev",
+    "mode": "plan_only",
+    "confirmation": "RELEASE_URBANFLOW_FINAL_PERSONAL_DEV"
+  },
+  "workflow": {
+    "run_id": 38382998636,
+    "url": "https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/38382998636",
+    "conclusion": "FAILURE",
+    "static_validation": "PASS",
+    "pytest": "859 passed, 1 skipped",
+    "authenticated_identity": "NOT OBSERVED",
+    "bundle_plan": "NOT GENERATED",
+    "plan_validator": "NOT RUN",
+    "plan_artifact": "NOT CREATED",
+    "approval_job": "SKIPPED",
+    "release_job": "SKIPPED",
+    "databricks_writes": 0,
+    "databricks_compute_runs": 0
+  },
+  "failure": {
+    "step": "Verify the deploying identity",
+    "message": "Error: please specify target",
+    "cause": "The generic current-user command ran from the bundle root without -t $TARGET; this bundle intentionally has no default target.",
+    "correction": "Both identity checks now call databricks current-user me -t $TARGET, with an offline regression assertion.",
+    "retry": "NOT PERFORMED"
+  },
+  "personal_dev_identity": {
+    "display_name": "sp-urbanflow-final-dev",
+    "application_id": "9e50ac7f-fe72-4768-bd9c-8a9bee33d981",
+    "workspace_scim_id": "72546751202071",
+    "admin": false,
+    "oauth_secret_location": "GitHub environment final-project-personal_dev (encrypted, value not recorded)",
+    "oauth_secret_lifetime_hours": 24,
+    "resource_permissions": [
+      "CAN_VIEW: platform Job 158911626270744",
+      "CAN_VIEW: RAG Job 887464717518046",
+      "CAN_VIEW: pipeline d5e0e599-c195-4c08-8217-d554ebf2b301",
+      "CAN_READ: dashboard 01f1c647728e1ceeb2b5bd10a8700793",
+      "CAN_VIEW: warehouse 410e5f3b4784e981"
+    ]
+  },
+  "bundle_state": {
+    "owner_identity": "parvinbadalov@yahoo.com",
+    "owner_root_path": "/Workspace/Users/parvinbadalov@yahoo.com/.bundle/urbanflow_final_project/personal_dev",
+    "owner_plan": "7 skip, 0 create, 0 update, 0 delete",
+    "service_principal_plan": "NOT REACHED",
+    "deployment_identity_migration": "REQUIRED BEFORE ANY SERVICE-PRINCIPAL DEPLOY; do not deploy from the principal while root_path remains identity-dependent"
+  },
+  "resource_audit": {
+    "personal_dev": {
+      "platform_active_runs": 0,
+      "rag_active_runs": 0,
+      "pipeline": "IDLE",
+      "warehouse": "STOPPED",
+      "vector_search_endpoints": 0,
+      "cleanup_guard_jobs": 0,
+      "temporary_governance_schema": "ABSENT",
+      "active_clusters": 0,
+      "schedules_or_triggers": 0
+    },
+    "azure_trial_2": {
+      "platform_active_runs": 0,
+      "rag_active_runs": 0,
+      "pipeline": "IDLE",
+      "warehouse": "STOPPED",
+      "final_project_vector_search_endpoints": 0,
+      "active_clusters": 0,
+      "schedules_or_triggers": 0,
+      "final_project_service_principals_visible_in_workspace": 0
+    }
+  },
+  "azure_oidc": "BLOCKED BY IDENTITY SETUP: no authorized Final Project service principal or federation policy is available; no Academy permissions were changed."
+}

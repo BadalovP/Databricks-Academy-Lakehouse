@@ -165,7 +165,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          databricks current-user me --output json > "$RUNNER_TEMP/identity.json"
+          databricks current-user me -t "$TARGET" --output json > "$RUNNER_TEMP/identity.json"
           python -c "import json,sys; u=json.load(open(sys.argv[1])); print('Acting as', u.get('displayName'), u.get('userName'))" "$RUNNER_TEMP/identity.json"
       - name: Validate bundle and the pre-deploy plan
         id: preplan
@@ -262,7 +262,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          databricks current-user me --output json > "$RUNNER_TEMP/identity.json"
+          databricks current-user me -t "$TARGET" --output json > "$RUNNER_TEMP/identity.json"
           python -c "import json,sys; u=json.load(open(sys.argv[1])); print('Acting as', u.get('displayName'), u.get('userName'))" "$RUNNER_TEMP/identity.json"
       - name: Re-plan immediately before deploying
         shell: bash

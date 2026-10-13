@@ -9,7 +9,7 @@
 - CDC inserts, updates, deletes and replay, including the checkpoint across an automatic `OPTIMIZE`;
 - Lakeflow.
 
-Earlier failed attempts are kept in the evidence table below. The shared Silver/Gold MERGEs still write one metadata-only commit per table on a replay. Steps 6–9 have not run: no AI Search endpoint, RAG inference or PROD deployment, and no CD workflow release. The CI/CD design and its comparison with Lab 08 are in [CI_CD.md](CI_CD.md).
+Earlier failed attempts are kept in the evidence table below. The shared Silver/Gold MERGEs still write one metadata-only commit per table on a replay. Steps 6–9 subsequently passed: AI Search and RAG evaluation completed in Personal DEV, the endpoint was deleted, and the Azure trial deployment and sample run passed. The GitHub CD workflow itself remains a post-merge closeout item until a real `plan_only` outcome is recorded. The CI/CD design and its comparison with Lab 08 are in [CI_CD.md](CI_CD.md).
 
 ## Continuous integration (`final_project_ci.yml`)
 
@@ -154,7 +154,7 @@ Recommended order: **E1 → D → E2–E6 → F → G**. The assistant ingest (E
 | Item | Value |
 |---|---|
 | Command | `python scripts/run_governance_demo.py --target personal_dev --execute --confirm RUN_URBANFLOW_FINAL_GOVERNANCE_DEMO --warehouse-id 410e5f3b4784e981 --profile personal_lab10 --evidence evidence/<date>_governance_demo.json --cleanup` |
-| Resources | Creates only `workspace.urbanflow_final_dev_governance_demo` (copies of the dimension and 40 trips, a mapping table, three functions). It applies a row filter and three column masks there, inspects them, rolls them back, and drops that schema (`--cleanup`). No GRANT, no change to groups or users, no policy on the data schemas. The dry run was reviewed on 2026-10-13 and the schema does not exist yet. |
+| Resources | Historical approved plan: create only `workspace.urbanflow_final_dev_governance_demo` (copies of the dimension and 40 trips, a mapping table, three functions), apply a row filter and three masks, then roll them back and drop the schema (`--cleanup`). No GRANT, group/user change or policy on the data schemas. The live demo later passed and removed the schema; see the evidence table. |
 | Compute / duration / cost | Starter warehouse, about 10 minutes, ≈ 0.5–1 DBU (≈ $0.35–0.70) |
 | Verification | Filtered vs allowed rows for the one identity (mapping row changed). Coordinates rounded and ride IDs hashed. `information_schema` shows the filter and masks during the demo and none on `urbanflow_final_dev`. |
 | Limitation | One identity and no `urbanflow_admins` group exist, so multi-principal enforcement and the admin branch of the masks stay **partially unverified**. |
@@ -261,6 +261,7 @@ The optional Zerobus path and the governance demo each need their own approval. 
 | 2026-10-13 | `personal_dev` | **Dashboard title fix: PASS** | Deploy of `625916f`; dashboard `01f1c647…` | 1 update, post-plan all `skip`; the five titles render heading + paragraph; published revision 08:14:28 UTC, embedded credentials off, owner-only access. [Evidence](../evidence/2026-10-13_personal_dev_dashboard_title_fix.md) |
 | 2026-10-13 | `azure_prod` (Academy trial) | **9. Deploy: PASS** | Jobs `456376825048239` (platform), `1075074961516662` (RAG); pipeline `f5961757-69be-4800-8afe-dae6987d8bc0`; dashboard `01f1c6ddd47616e8bb703a5342a603ba`; schemas `dbr_dev.parvinbadalov_urbanflow_final_prod`, `..._final_lakeflow_prod`; Volume `urbanflow_final_landing` | Plan 7 creates / 0 updates / 0 deletes, validator PASS; post-plan all `skip`; `dbr_dev` gained only the two schemas. [Evidence](../evidence/2026-10-13_azure_prod_step9_deploy_and_sample_run.md) |
 | 2026-10-13 | `azure_prod` (Academy trial) | **9. Sample run: PASS** | Run `240527908342651` (473 s) | Every task succeeded; Lakeflow excluded. Independently verified: station 40/40/40, facts 40, shortages = priorities = 13, trips 40, weather 48 hours with 4 matched trips, quarantine and duplicates 0, reconciliation identities true; CDC 5 inserts, Silver 5, history 5, reconciliation 0, checkpoint −1 → 1. Identical to DEV. [Evidence](../evidence/2026-10-13_azure_prod_step9_deploy_and_sample_run.md) |
-| — | — | GitHub CD workflow run, Zerobus, Event Hubs, full month, external Federation | — | No live run yet (optional, or waiting for identities) |
+| 2026-10-13 | GitHub Actions → `personal_dev` | **CD `plan_only`, first dispatch: FAIL (no Databricks call)** | [Run 38382998636](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/38382998636) on `225545f` | Static validation passed; the plan job stopped at `databricks current-user me` (`please specify target`); approval and release skipped. Fixed with `-t "$TARGET"`; bundle state paths pinned so the service principal reads the existing state. [Evidence](../evidence/2026-10-13_github_cd_plan_only_closeout.md) |
+| — | — | Zerobus, Event Hubs, full month, external Federation | — | No live run yet (optional) |
 
 When a step passes, record it here. Add the notebook to `VALIDATED_LIVE_CLAIMS` in `tests/test_notebook_documentation.py` and update its **Actual validation** line with the run ID. Update the coverage matrix status to **Validated live**.

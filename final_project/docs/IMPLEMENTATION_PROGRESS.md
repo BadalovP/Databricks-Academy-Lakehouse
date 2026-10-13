@@ -1,16 +1,16 @@
 # UrbanFlow 2.0: implementation progress (handoff record)
 
-Keep this file current so another engineer or agent can continue without restarting. Last updated 2026-10-13 (final: step 9 on the Azure trial, dashboard title fix).
+Keep this file current so another engineer or agent can continue without restarting. Last updated 2026-10-13 (PR #75 merged; operational closeout in progress).
 
 ## Repository state
 
 | Item | Value |
 |---|---|
-| Repository / branch | `BadalovP/Databricks-Academy-Lakehouse`, `feature/final-project-urbanflow-2` |
-| Pull request | #75, **draft**, never merged; CI = `final_project_ci.yml` |
-| Worktree | `C:\Users\User\Desktop\databricks-academy-lakehouse-final-project` (do not create another) |
-| Guarantees | `Demos/Demo3` tree `583e3ab01e37517d62216b44a1e50fa0231b90de` and `labs/` identical to `main`; only `final_project/` and the two `final_project_*` workflows change |
-| Deployed to Personal DEV | Commit `8220aaa` (step 4C redeploy): CDC logic, Jobs and pipeline as in the repository. Changed since, **not deployed:** the dashboard maintenance datasets (`937b968`, redeploy is the first step of phase D) and the wording of two CDC error messages (`02f515d`, no behaviour change). |
+| Repository / branch | `BadalovP/Databricks-Academy-Lakehouse`, `main` at merge commit `225545fd1f54607d23996c58daee7ef7e1c924fd` |
+| Pull request | [#75](https://github.com/BadalovP/Databricks-Academy-Lakehouse/pull/75), **merged** 2026-10-13; final CI green |
+| Worktree | `C:\Users\User\Desktop\databricks-academy-lakehouse-final-project` (isolated closeout worktree; preserve the original folder and its untracked Terraform file) |
+| Guarantees | Protected `Demos/Demo3` tree `583e3ab01e37517d62216b44a1e50fa0231b90de`; Labs 1–12, Demo 3 and shared Terraform are outside the closeout scope |
+| Deployed to Personal DEV | The completed dashboard maintenance review and title fix were deployed; all 25 datasets passed and the dashboard was published owner-only. The merged source at `225545f` contains the validated release. |
 | Presentation | Slides artifact *UrbanFlow 2.0 Demo Day* (private, owner only; 14 slides with notes; exports to .pptx), script in `DEMO_DAY_PRESENTATION.md` |
 | Local quality | Ruff, Black and the secret scan clean; **858 passed, 2 skipped**. The skips are a bash-only test on Windows and the Databricks-only Lakeflow event-log dataset. Dashboard `--check` is current; offline bundle schema valid; CI green on PR #75. |
 
@@ -23,10 +23,10 @@ Keep this file current so another engineer or agent can continue without restart
 | **Step 1** DEV deploy | **PASS** | `evidence/2026-10-12_personal_dev_step1_deploy.md` |
 | **Step 2** platform sample run | **PASS** after 2 failed attempts (3 defects fixed) | `evidence/2026-10-12_personal_dev_step2_*.md` |
 | **Step 3** strict idempotency | **PASS 19/19** after an 18/19 attempt (CDC no-op guard added) | `evidence/2026-10-12_personal_dev_step3_*.md` |
-| Dashboard GRID_V1 layout, table v2, theme (started by Codex) | Deployed in step 4A; **not published, no live query** | `docs/DASHBOARD.md` |
+| Dashboard GRID_V1 layout, table v2, theme (started by Codex) | **PASS**: deployed, 25/25 datasets queried, title fix verified, published owner-only | `docs/DASHBOARD.md` |
 | Assistant prompt-injection hardening (started by Codex) | Done offline | `tests/test_rag_rag.py` |
 | CDC-only and Lakeflow-only platform runs allowed | Deployed in step 4A; CDC-only run proven by `343513312512955` | commits `e63ad0a`, `e4b256d` |
-| Dashboard SQL analysed against live schemas (24/25 datasets) | Done offline | `tests/test_dashboard_sql_analysis.py` |
+| Dashboard SQL analysed against live schemas (24/25 datasets) | Done offline; all 25 datasets later passed live | `tests/test_dashboard_sql_analysis.py`, `evidence/2026-10-13_personal_dev_dashboard_validation.md` |
 | Offline RAG evaluation re-run | Reproduces correctness 0.648 (baseline 0.111), recall 0.938, coverage 0.875 (fixture, not model quality) | `urbanflow-rag evaluate` |
 | Operations runbook, approval request, interview demo | Done | `OPERATIONS_RUNBOOK.md`, `RELEASE_AND_VALIDATION.md`, `DEMO_DAY_PRESENTATION.md` |
 | Azure `azure_prod` read-only preflight | **PASS** (validate, plan = 7 creates, validator, no collisions); nothing created | `RELEASE_AND_VALIDATION.md` |
@@ -96,8 +96,8 @@ Lakeflow schema `urbanflow_final_lakeflow_dev`: 10 datasets from update `a26b438
 - **Metadata-only commits.** The 16 shared Silver, Gold, historical and weather tables still record one metadata-only MERGE commit per replay. No data or file changes; this is a performance limitation, not a correctness issue.
 - **Federation.** The Lab 10 foreign catalog (`neon_postgres_conn_catalog`, read-only PostgreSQL connection) has no maintenance table, so CDC runs on committed fixture snapshots. A real federated source needs a Final-Project table in an external database, which is an external write needing approval.
 - **Governance.** Only one identity is available, so multi-principal row-filter and mask enforcement cannot be demonstrated. The demo shows filtered vs allowed for one principal by changing a mapping row.
-- **CD workflow.** It has never run: it must be on `main` for `workflow_dispatch`, and needs the `final-project-*` environments and identities.
-- **Dashboard.** The 12-column layout matches the workspace's own `GRID_V1` dashboards, but no dataset has been queried live and rendering is unverified.
+- **CD workflow.** The environments and the read-only DEV service principal `sp-urbanflow-final-dev` are configured, and the bundle state paths are pinned so the principal reads the existing state. The first dispatch (`38382998636`) failed on a missing `-t` flag before any Databricks call. That is fixed, and the corrected dispatch is recorded in `CI_CD.md`. The Azure OIDC path stays blocked by Academy identity setup.
+- **Dashboard.** All 25 datasets passed live, the title-rendering defect was fixed, and the dashboard was published with embedded credentials off and owner-only access.
 
 ## Active cost-bearing resources
 

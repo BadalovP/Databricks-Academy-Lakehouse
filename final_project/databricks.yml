@@ -63,7 +63,10 @@ targets:
         environment: dev
     workspace:
       host: https://dbc-1750318a-76a9.cloud.databricks.com
-      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+      # Pinned to the folder that holds this target's existing deployment state. A path built
+      # from ${workspace.current_user.userName} would send the read-only CD service principal to
+      # an empty state folder, so its plan would propose recreating all seven resources.
+      root_path: /Workspace/Users/parvinbadalov@yahoo.com/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: workspace
       schema: urbanflow_final_dev
@@ -78,7 +81,8 @@ targets:
     mode: production
     workspace:
       host: https://adb-7405618361895520.0.azuredatabricks.net
-      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+      # Pinned to the folder of the 2026-10-13 deployment's state, for the same reason.
+      root_path: /Workspace/Users/parvinbadalov@softserve.academy/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: dbr_dev
       schema: parvinbadalov_urbanflow_final_prod

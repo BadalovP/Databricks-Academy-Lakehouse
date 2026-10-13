@@ -2,7 +2,7 @@
 
 Databricks Academy **Final Project**: one integrated solution that covers Labs 1–12.
 
-> **Status: complete.** Steps 1–8 passed live in Personal DEV (2026-10-12 and 2026-10-13). **Step 9:** the PROD-style deployment to the Academy Azure trial `dbr_dev_trial_2` (not paid production) and one sample run passed on 2026-10-13 with the same figures as DEV.
+> **Status: complete and merged.** PR [#75](https://github.com/BadalovP/Databricks-Academy-Lakehouse/pull/75) was squash-merged to `main` as `225545fd1f54607d23996c58daee7ef7e1c924fd`. Steps 1–8 passed live in Personal DEV (2026-10-12 and 2026-10-13). **Step 9:** the PROD-style deployment to the Academy Azure trial `dbr_dev_trial_2` (not paid production) and one sample run passed on 2026-10-13 with the same figures as DEV.
 > - deploy;
 > - platform sample run;
 > - strict idempotency (19/19);
@@ -15,14 +15,14 @@ Databricks Academy **Final Project**: one integrated solution that covers Labs 1
 > - Azure trial: 7 resources created, run `240527908342651` gave 40 / 40 / 13 / 13, 40 trips, 48 weather hours, CDC 5 inserts, reconciliation 0.
 >
 > **Not demonstrated (documented, not blocking):**
-> - a GitHub CD run (needs the merged workflow plus environments and identities);
+> - a GitHub CD run (the workflow is on `main`; environment and identity closeout is tracked in [docs/CI_CD.md](docs/CI_CD.md));
 > - multi-principal governance (one identity);
 > - the external Federation source, Event Hubs, Zerobus and the full January month (optional).
 >
 > RAG scores use a lexical keyword metric whose limitations are listed in the evidence.
 >
 > All data is a labelled development sample or fictional fixture.
-> More than 700 offline tests (unit tests, local Spark and static checks) run in CI. Every live step needs explicit approval and is planned in [docs/RELEASE_AND_VALIDATION.md](docs/RELEASE_AND_VALIDATION.md). Results of the individual labs and of Demo 3 were produced in their own folders. They are not Final Project evidence and are not presented as such.
+> Final release validation completed with **858 passed, 2 skipped**, in addition to the static checks. Every live step needs explicit approval and is planned in [docs/RELEASE_AND_VALIDATION.md](docs/RELEASE_AND_VALIDATION.md). Results of the individual labs and of Demo 3 were produced in their own folders. They are not Final Project evidence and are not presented as such.
 
 | Document | Purpose |
 |---|---|
@@ -185,7 +185,7 @@ flowchart LR
 | `sql/` | Read-only dashboard SQL (`10`–`14`); governance and maintenance SQL with dangerous statements kept commented (`20`, `21`) |
 | `scripts/` | Release validators, dashboard generator, optional Zerobus producer, governance demo (dry run by default) |
 | `fixtures/`, `knowledge_base/`, `config/` | Labelled samples, fictional maintenance snapshots, procedures, configuration and evaluation questions |
-| `tests/` | More than 700 tests: unit, local Spark, SQL safety, notebook contract, release validators |
+| `tests/` | 858 passing tests at release: unit, local Spark, SQL safety, notebook contract, release validators |
 
 ## Run locally
 
