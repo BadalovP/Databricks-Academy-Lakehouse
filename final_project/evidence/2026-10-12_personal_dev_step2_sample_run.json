@@ -1,0 +1,225 @@
+{
+  "step": "2 - one bounded Personal DEV platform sample run",
+  "outcome": "FAILED - two defects; no automatic rerun or repair (as instructed)",
+  "deployed_commit": "4adb9b566b1123d5e17fabcf5ac14f9a44e7b8c0",
+  "job_id": 158911626270744,
+  "run_id": 304828008837365,
+  "idempotency_token": "urbanflow-final-step2-20261012-001",
+  "source_execution_id": "urbanflow-final-304828008837365",
+  "historical_execution_id": "urbanflow-final-hist-devsample40",
+  "weather_execution_id": "urbanflow-final-weather-devsample48h",
+  "job_parameters": {
+    "run_station_pipeline": "true",
+    "station_source": "sample_autoloader",
+    "run_historical": "true",
+    "run_weather": "true",
+    "run_federation_cdc": "true",
+    "cdc_source": "fixture_snapshot",
+    "cdc_snapshot": "batch_001",
+    "run_full_month": "false",
+    "run_lakeflow": "false"
+  },
+  "run_state": {
+    "life_cycle_state": "INTERNAL_ERROR",
+    "result_state": "FAILED",
+    "state_message": "Task station_source_check failed with message: Workload failed, see run output for details. This caused all downstream tasks to get skipped.",
+    "start": "2026-10-12T15:18:54+00:00",
+    "end": "2026-10-12T15:21:15+00:00",
+    "seconds": 141
+  },
+  "tasks": [
+    {
+      "task_key": "preflight",
+      "task_run_id": 836580063233159,
+      "life_cycle_state": "TERMINATED",
+      "result_state": "SUCCESS",
+      "start": "2026-10-12T15:18:54+00:00",
+      "end": "2026-10-12T15:19:24+00:00",
+      "seconds": 29
+    },
+    {
+      "task_key": "land_sources",
+      "task_run_id": 40214821676545,
+      "life_cycle_state": "TERMINATED",
+      "result_state": "SUCCESS",
+      "start": "2026-10-12T15:19:24+00:00",
+      "end": "2026-10-12T15:20:36+00:00",
+      "seconds": 72
+    },
+    {
+      "task_key": "historical_trips",
+      "task_run_id": 351363073402386,
+      "life_cycle_state": "TERMINATED",
+      "result_state": "FAILED",
+      "start": "2026-10-12T15:20:36+00:00",
+      "end": "2026-10-12T15:21:14+00:00",
+      "seconds": 38
+    },
+    {
+      "task_key": "station_source_check",
+      "task_run_id": 616197941028364,
+      "life_cycle_state": "TERMINATED",
+      "result_state": "FAILED",
+      "start": "2026-10-12T15:20:36+00:00",
+      "end": "2026-10-12T15:20:58+00:00",
+      "seconds": 21
+    },
+    {
+      "task_key": "station_silver",
+      "task_run_id": 404275446162194,
+      "life_cycle_state": "SKIPPED",
+      "result_state": "UPSTREAM_FAILED",
+      "start": "2026-10-12T15:20:58+00:00",
+      "end": "2026-10-12T15:20:58+00:00",
+      "seconds": 0
+    },
+    {
+      "task_key": "station_gold",
+      "task_run_id": 575044909661420,
+      "life_cycle_state": "SKIPPED",
+      "result_state": "UPSTREAM_FAILED",
+      "start": "2026-10-12T15:20:58+00:00",
+      "end": "2026-10-12T15:20:58+00:00",
+      "seconds": 0
+    },
+    {
+      "task_key": "weather_enrichment",
+      "task_run_id": 92663576574649,
+      "life_cycle_state": "SKIPPED",
+      "result_state": "UPSTREAM_FAILED",
+      "start": "2026-10-12T15:21:15+00:00",
+      "end": "2026-10-12T15:21:15+00:00",
+      "seconds": 0
+    },
+    {
+      "task_key": "validate_medallion",
+      "task_run_id": 529595425558287,
+      "life_cycle_state": "SKIPPED",
+      "result_state": "UPSTREAM_FAILED",
+      "start": "2026-10-12T15:21:15+00:00",
+      "end": "2026-10-12T15:21:15+00:00",
+      "seconds": 0
+    },
+    {
+      "task_key": "federation_cdc",
+      "task_run_id": 973453791752286,
+      "life_cycle_state": "SKIPPED",
+      "result_state": "UPSTREAM_FAILED",
+      "start": "2026-10-12T15:21:15+00:00",
+      "end": "2026-10-12T15:21:15+00:00",
+      "seconds": 0
+    },
+    {
+      "task_key": "should_refresh_lakeflow",
+      "task_run_id": 731701342214823,
+      "life_cycle_state": "SKIPPED",
+      "result_state": "UPSTREAM_FAILED",
+      "start": "2026-10-12T15:21:15+00:00",
+      "end": "2026-10-12T15:21:15+00:00",
+      "seconds": 0
+    },
+    {
+      "task_key": "refresh_lakeflow",
+      "task_run_id": 393414267247720,
+      "life_cycle_state": "SKIPPED",
+      "result_state": "UPSTREAM_FAILED",
+      "start": "2026-10-12T15:21:15+00:00",
+      "end": "2026-10-12T15:21:15+00:00",
+      "seconds": 0
+    }
+  ],
+  "task_results": {
+    "preflight": {
+      "branches": {
+        "run_full_month": false,
+        "run_historical": true,
+        "run_station_pipeline": true,
+        "run_weather": true
+      },
+      "compute": "serverless",
+      "event_hubs_producer": "excluded",
+      "historical_execution_id": "urbanflow-final-hist-devsample40",
+      "mode": "development_sample",
+      "source_execution_id": "urbanflow-final-304828008837365",
+      "status": "PASS",
+      "target": "workspace.urbanflow_final_dev",
+      "weather_execution_id": "urbanflow-final-weather-devsample48h"
+    },
+    "land_sources": {
+      "bronze_rows_for_execution": 40,
+      "historical_landing": "landed",
+      "historical_landing_dir": "/Volumes/workspace/urbanflow_final_dev/urbanflow_final_landing/landing/historical_trips",
+      "source_execution_id": "urbanflow-final-304828008837365",
+      "station_events_landed": 40,
+      "station_landing": "landed",
+      "status": "PASS"
+    }
+  },
+  "task_errors": {
+    "station_source_check": "RuntimeError: Bronze source contract failed for urbanflow-final-304828008837365: {'rows': {'expected': 2520, 'actual': 40}, 'distinct_event_ids': {'expected': 2520, 'actual': 40}}",
+    "historical_trips": "RuntimeError: workspace.urbanflow_final_dev.dim_station_development_sample does not exist. Run the Silver-to-Gold Job first; this notebook reuses the persisted dimension rather than re-deriving it from a landed feed."
+  },
+  "data_state_after_run": {
+    "workspace.urbanflow_final_dev.bronze_historical_trips": {
+      "counts": [
+        {
+          "n": "40"
+        }
+      ],
+      "versions": [
+        [
+          "1",
+          "STREAMING UPDATE"
+        ],
+        [
+          "0",
+          "CREATE TABLE"
+        ]
+      ]
+    },
+    "workspace.urbanflow_final_dev.bronze_station_status": {
+      "counts": [
+        {
+          "execution_id": "urbanflow-final-304828008837365",
+          "n": "40"
+        }
+      ],
+      "versions": [
+        [
+          "1",
+          "STREAMING UPDATE"
+        ],
+        [
+          "0",
+          "CREATE TABLE"
+        ]
+      ]
+    },
+    "volume_landing": [
+      "/Volumes/workspace/urbanflow_final_dev/urbanflow_final_landing/landing/historical_trips/",
+      "/Volumes/workspace/urbanflow_final_dev/urbanflow_final_landing/landing/station_events/"
+    ],
+    "warehouse_state": {
+      "Serverless Starter Warehouse": "State.RUNNING"
+    },
+    "active_runs": [],
+    "ai_search_endpoints": []
+  },
+  "pre_run_checks": {
+    "host": "https://dbc-1750318a-76a9.cloud.databricks.com",
+    "user": "parvinbadalov@yahoo.com",
+    "job_name": "[personal_dev] UrbanFlow 2.0 Platform",
+    "schedule": null,
+    "trigger": null,
+    "max_concurrent_runs": 1,
+    "runs_ever": [],
+    "active_runs_workspace": [],
+    "tables_main": [],
+    "tables_lakeflow": [],
+    "volume_top_level": [],
+    "ai_search_endpoints": [],
+    "warehouses": {
+      "Serverless Starter Warehouse": "State.STOPPED"
+    }
+  }
+}

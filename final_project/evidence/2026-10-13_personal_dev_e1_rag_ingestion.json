@@ -1,0 +1,615 @@
+{
+ "e1_compare": {
+  "bronze_historical_trips": {
+   "new_commits": [],
+   "version_after": 1,
+   "version_before": 1
+  },
+  "bronze_station_status": {
+   "new_commits": [],
+   "version_after": 1,
+   "version_before": 1
+  },
+  "dim_station_development_sample": {
+   "new_commits": [],
+   "version_after": 4,
+   "version_before": 4
+  },
+  "dim_weather_hourly": {
+   "new_commits": [],
+   "version_after": 3,
+   "version_before": 3
+  },
+  "duplicate_historical_trips": {
+   "new_commits": [],
+   "version_after": 4,
+   "version_before": 4
+  },
+  "duplicate_station_status": {
+   "new_commits": [],
+   "version_after": 4,
+   "version_before": 4
+  },
+  "fact_station_availability": {
+   "new_commits": [],
+   "version_after": 4,
+   "version_before": 4
+  },
+  "gold_daily_station_summary": {
+   "new_commits": [],
+   "version_after": 4,
+   "version_before": 4
+  },
+  "gold_daily_trip_demand": {
+   "new_commits": [],
+   "version_after": 4,
+   "version_before": 4
+  },
+  "gold_rebalancing_priority": {
+   "new_commits": [],
+   "version_after": 4,
+   "version_before": 4
+  },
+  "gold_station_shortage": {
+   "new_commits": [],
+   "version_after": 4,
+   "version_before": 4
+  },
+  "gold_weather_demand": {
+   "new_commits": [],
+   "version_after": 3,
+   "version_before": 3
+  },
+  "maintenance_cdc_checkpoint": {
+   "new_commits": [],
+   "version_after": 4,
+   "version_before": 4
+  },
+  "maintenance_cdc_history": {
+   "new_commits": [],
+   "version_after": 3,
+   "version_before": 3
+  },
+  "quarantine_historical_trips": {
+   "new_commits": [],
+   "version_after": 4,
+   "version_before": 4
+  },
+  "quarantine_station_status": {
+   "new_commits": [],
+   "version_after": 4,
+   "version_before": 4
+  },
+  "silver_historical_trips": {
+   "new_commits": [],
+   "version_after": 4,
+   "version_before": 4
+  },
+  "silver_station_maintenance": {
+   "new_commits": [],
+   "version_after": 4,
+   "version_before": 4
+  },
+  "silver_station_status": {
+   "new_commits": [],
+   "version_after": 4,
+   "version_before": 4
+  },
+  "station_maintenance_source": {
+   "new_commits": [],
+   "version_after": 4,
+   "version_before": 4
+  }
+ },
+ "e1_verify": {
+  "chunk_ids_hashes_refs_match": true,
+  "chunks_per_document": [
+   {
+    "chunks": "4",
+    "source_name": "01_station_rebalancing.md"
+   },
+   {
+    "chunks": "3",
+    "source_name": "02_station_maintenance.md"
+   },
+   {
+    "chunks": "3",
+    "source_name": "03_incident_response.md"
+   },
+   {
+    "chunks": "4",
+    "source_name": "04_data_quality.md"
+   },
+   {
+    "chunks": "4",
+    "source_name": "05_pipeline_recovery.md"
+   },
+   {
+    "chunks": "4",
+    "source_name": "06_source_definitions.md"
+   },
+   {
+    "chunks": "4",
+    "source_name": "07_kpi_definitions.md"
+   },
+   {
+    "chunks": "4",
+    "source_name": "08_security_and_access.md"
+   }
+  ],
+  "chunks_rows": 30,
+  "document_ids_and_hashes_match": true,
+  "documents": [
+   {
+    "content_hash": "47b29af76be2cd1a8860d32c134c297899ff91342ff7b54916868f39fbb77449",
+    "document_id": "doc_47b29af76be2cd1a8860",
+    "ingested_at": "2026-10-13 00:00:46.957642",
+    "source_name": "08_security_and_access.md",
+    "source_path": "/Workspace/Users/parvinbadalov@yahoo.com/.bundle/urbanflow_final_project/personal_dev/files/knowledge_base/08_security_and_access.md",
+    "title": "Security and Access Controls"
+   },
+   {
+    "content_hash": "48c24567d839895a4d79d1c17bc1b5b368f728f55c30f36b7ab8078211f955d5",
+    "document_id": "doc_48c24567d839895a4d79",
+    "ingested_at": "2026-10-13 00:00:46.957642",
+    "source_name": "05_pipeline_recovery.md",
+    "source_path": "/Workspace/Users/parvinbadalov@yahoo.com/.bundle/urbanflow_final_project/personal_dev/files/knowledge_base/05_pipeline_recovery.md",
+    "title": "Pipeline Recovery Runbook"
+   },
+   {
+    "content_hash": "57c86fa73d5cab0c8e9b94b0e955b7b8c60832003faed8777b7636f7feeffc01",
+    "document_id": "doc_57c86fa73d5cab0c8e9b",
+    "ingested_at": "2026-10-13 00:00:46.957642",
+    "source_name": "07_kpi_definitions.md",
+    "source_path": "/Workspace/Users/parvinbadalov@yahoo.com/.bundle/urbanflow_final_project/personal_dev/files/knowledge_base/07_kpi_definitions.md",
+    "title": "Business KPI Definitions"
+   },
+   {
+    "content_hash": "5ba6b71b6cad3f0e602bfd7b195b9f35e9240a5053498da48c2481de954945a4",
+    "document_id": "doc_5ba6b71b6cad3f0e602b",
+    "ingested_at": "2026-10-13 00:00:46.957642",
+    "source_name": "02_station_maintenance.md",
+    "source_path": "/Workspace/Users/parvinbadalov@yahoo.com/.bundle/urbanflow_final_project/personal_dev/files/knowledge_base/02_station_maintenance.md",
+    "title": "Station Maintenance Procedure"
+   },
+   {
+    "content_hash": "90f45079057038fdb7d7aa226d8f4a9404f6b4bd843f8875738573b875ae5256",
+    "document_id": "doc_90f45079057038fdb7d7",
+    "ingested_at": "2026-10-13 00:00:46.957642",
+    "source_name": "06_source_definitions.md",
+    "source_path": "/Workspace/Users/parvinbadalov@yahoo.com/.bundle/urbanflow_final_project/personal_dev/files/knowledge_base/06_source_definitions.md",
+    "title": "Source Data Definitions"
+   },
+   {
+    "content_hash": "b0647b9957d6b38cba9221be9113dad39d8b2b611bf49ef88c169bb17f72e4a6",
+    "document_id": "doc_b0647b9957d6b38cba92",
+    "ingested_at": "2026-10-13 00:00:46.957642",
+    "source_name": "04_data_quality.md",
+    "source_path": "/Workspace/Users/parvinbadalov@yahoo.com/.bundle/urbanflow_final_project/personal_dev/files/knowledge_base/04_data_quality.md",
+    "title": "Data Quality and Quarantine"
+   },
+   {
+    "content_hash": "b31932586251842055771b8a1491a773b9d9c76ecae0fb4d6bbb460d22f203a2",
+    "document_id": "doc_b3193258625184205577",
+    "ingested_at": "2026-10-13 00:00:46.957642",
+    "source_name": "01_station_rebalancing.md",
+    "source_path": "/Workspace/Users/parvinbadalov@yahoo.com/.bundle/urbanflow_final_project/personal_dev/files/knowledge_base/01_station_rebalancing.md",
+    "title": "Station Rebalancing Procedure"
+   },
+   {
+    "content_hash": "fc16e1fb7ec739f95ddfc389f5676555888656237e6f6db4ba25af8edd4b6a37",
+    "document_id": "doc_fc16e1fb7ec739f95ddf",
+    "ingested_at": "2026-10-13 00:00:46.957642",
+    "source_name": "03_incident_response.md",
+    "source_path": "/Workspace/Users/parvinbadalov@yahoo.com/.bundle/urbanflow_final_project/personal_dev/files/knowledge_base/03_incident_response.md",
+    "title": "Mobility Incident Response"
+   }
+  ],
+  "duplicates": [
+   {
+    "dup_chunks": "0",
+    "dup_docs": "0",
+    "orphan_chunks": "0"
+   }
+  ],
+  "empty_tables": [
+   {
+    "evaluation_rows": "0",
+    "monitoring_rows": "0"
+   }
+  ],
+  "history": {
+   "rag_document_chunks": [
+    [
+     0,
+     "CREATE TABLE"
+    ],
+    [
+     1,
+     "MERGE"
+    ]
+   ],
+   "rag_documents": [
+    [
+     0,
+     "CREATE TABLE"
+    ],
+    [
+     1,
+     "MERGE"
+    ]
+   ],
+   "rag_evaluation_results": [
+    [
+     0,
+     "CREATE TABLE"
+    ]
+   ],
+   "rag_query_monitoring": [
+    [
+     0,
+     "CREATE TABLE"
+    ]
+   ]
+  },
+  "lakeflow_latest_commits": {
+   "bronze_station_status": [
+    "2",
+    "2026-10-12T22:55:46.000Z",
+    "STREAMING UPDATE"
+   ],
+   "dim_station_development_sample": [
+    null,
+    null,
+    null
+   ],
+   "duplicate_station_status": [
+    null,
+    null,
+    null
+   ],
+   "fact_station_availability": [
+    null,
+    null,
+    null
+   ],
+   "gold_daily_station_summary": [
+    null,
+    null,
+    null
+   ],
+   "gold_rebalancing_priority": [
+    null,
+    null,
+    null
+   ],
+   "gold_station_shortage": [
+    null,
+    null,
+    null
+   ],
+   "quarantine_station_status": [
+    null,
+    null,
+    null
+   ],
+   "silver_station_status": [
+    null,
+    null,
+    null
+   ],
+   "station_information_raw": [
+    null,
+    null,
+    null
+   ]
+  },
+  "local": {
+   "chunks": 30,
+   "documents": 8
+  },
+  "properties": {
+   "rag_document_chunks": {
+    "delta.enableChangeDataFeed": "true"
+   },
+   "rag_documents": {
+    "delta.enableChangeDataFeed": null
+   },
+   "rag_evaluation_results": {
+    "delta.enableChangeDataFeed": null
+   },
+   "rag_query_monitoring": {
+    "delta.enableChangeDataFeed": null
+   }
+  },
+  "schemas": {
+   "rag_document_chunks": [
+    [
+     "chunk_id",
+     "string"
+    ],
+    [
+     "document_id",
+     "string"
+    ],
+    [
+     "source_name",
+     "string"
+    ],
+    [
+     "section_heading",
+     "string"
+    ],
+    [
+     "section_ref",
+     "string"
+    ],
+    [
+     "ordinal",
+     "int"
+    ],
+    [
+     "content",
+     "string"
+    ],
+    [
+     "content_hash",
+     "string"
+    ],
+    [
+     "metadata_json",
+     "string"
+    ],
+    [
+     "ingested_at",
+     "timestamp"
+    ]
+   ],
+   "rag_documents": [
+    [
+     "document_id",
+     "string"
+    ],
+    [
+     "title",
+     "string"
+    ],
+    [
+     "source_name",
+     "string"
+    ],
+    [
+     "source_path",
+     "string"
+    ],
+    [
+     "content",
+     "string"
+    ],
+    [
+     "content_hash",
+     "string"
+    ],
+    [
+     "metadata_json",
+     "string"
+    ],
+    [
+     "ingested_at",
+     "timestamp"
+    ]
+   ],
+   "rag_evaluation_results": [
+    [
+     "evaluation_id",
+     "string"
+    ],
+    [
+     "evaluated_at",
+     "timestamp"
+    ],
+    [
+     "variant",
+     "string"
+    ],
+    [
+     "question_id",
+     "string"
+    ],
+    [
+     "metrics_json",
+     "string"
+    ],
+    [
+     "error_status",
+     "string"
+    ]
+   ],
+   "rag_query_monitoring": [
+    [
+     "event_id",
+     "string"
+    ],
+    [
+     "query_timestamp",
+     "timestamp"
+    ],
+    [
+     "question_hash",
+     "string"
+    ],
+    [
+     "question_chars",
+     "int"
+    ],
+    [
+     "model_id",
+     "string"
+    ],
+    [
+     "index_id",
+     "string"
+    ],
+    [
+     "retrieved_chunk_ids",
+     "array<string>"
+    ],
+    [
+     "latency_ms",
+     "bigint"
+    ],
+    [
+     "error_status",
+     "string"
+    ],
+    [
+     "evaluation_json",
+     "string"
+    ]
+   ]
+  }
+ },
+ "end_time_ms": 1791849716961,
+ "job_id": 887464717518046,
+ "job_parameters": [
+  {
+   "default": "https://dbc-1750318a-76a9.cloud.databricks.com",
+   "name": "expected_host"
+  },
+  {
+   "default": "workspace",
+   "name": "catalog"
+  },
+  {
+   "default": "urbanflow_final_dev",
+   "name": "schema"
+  },
+  {
+   "default": "urbanflow-final-dev",
+   "name": "ai_search_endpoint"
+  },
+  {
+   "default": "",
+   "name": "ai_search_index"
+  },
+  {
+   "default": "databricks-gte-large-en",
+   "name": "embedding_endpoint"
+  },
+  {
+   "default": "databricks-gpt-oss-20b",
+   "name": "chat_endpoint"
+  },
+  {
+   "default": "18",
+   "name": "eval_question_limit"
+  },
+  {
+   "default": "",
+   "name": "eval_question_ids"
+  },
+  {
+   "default": "true",
+   "name": "eval_include_baseline"
+  },
+  {
+   "default": "false",
+   "name": "allow_table_writes",
+   "value": "true"
+  },
+  {
+   "default": "false",
+   "name": "allow_ai_search_mutation",
+   "value": "false"
+  },
+  {
+   "default": "false",
+   "name": "run_live_inference",
+   "value": "false"
+  }
+ ],
+ "phase": "E1_rag_ingestion",
+ "run_id": 870039412110159,
+ "run_state": {
+  "life_cycle_state": "TERMINATED",
+  "result_state": "SUCCESS",
+  "state_message": "",
+  "user_cancelled_or_timedout": false
+ },
+ "start_time_ms": 1791849560038,
+ "task_results": {
+  "evaluate_rag": "{\"mode\": \"offline\", \"question_ids\": [\"q01\", \"q02\", \"q03\", \"q04\", \"q05\", \"q06\", \"q07\", \"q08\", \"q09\", \"q10\", \"q11\", \"q12\", \"q13\", \"q14\", \"q15\", \"q16\", \"q17\", \"q18\"], \"baseline\": {\"questions\": 18, \"answer_correctness\": 0.111, \"answer_correctness_n\": 18, \"answer_completeness\": 0.111, \"answer_completeness_n\": 18, \"retrieval_recall\": \"not_applicable\", \"retrieval_recall_n\": 0, \"citation_precision\": \"not_applicable\", \"citation_precision_n\": 0, \"source_coverage\": \"not_applicable\", \"source_coverage_n\": 0, \"uncited_sentences_heuristic\": \"not_applicable\", \"invalid_citations\": 0, \"weak_citations_heuristic\": \"not_applicable\", \"refusals\": {\"clean\": 18}, \"review_flags\": 16, \"errors\": 0}, \"rag\": {\"questions\": 18, \"answer_correctness\": 0.648, \"answer_correctness_n\": 18, \"answer_completeness\": 0.648, \"answer_completeness_n\": 18, \"retrieval_recall\": 0.938, \"retrieval_recall_n\": 16, \"citation_precision\": 0.595, \"citation_precision_n\": 14, \"source_coverage\": 0.875, \"source_coverage_n\": 16, \"uncited_sentences_heuristic\": 30, \"invalid_citations\": 0, \"weak_citations_heuristic\": 0, \"refusals\": {\"none\": 14, \"clean\": 4}, \"review_flags\": 2, \"errors\": 0}, \"by_category\": {\"baseline\": {\"definitions\": {\"questions\": 2, \"answer_correctness\": 0.0, \"answer_correctness_n\": 2, \"answer_completeness\": 0.0, \"answer_completeness_n\": 2, \"retrieval_recall\": \"not_applicable\", \"retrieval_recall_n\": 0, \"citation_precision\": \"not_applicable\", \"citation_precision_n\": 0, \"source_coverage\": \"not_applicable\", \"source_coverage_n\": 0, \"uncited_sentences_heuristic\": \"not_applicable\", \"invalid_citations\": 0, \"weak_citations_heuristic\": \"not_applicable\", \"refusals\": {\"clean\": 2}, \"review_flags\": 2, \"errors\": 0}, \"incident\": {\"questions\": 2, \"answer_correctness\": 0.0, \"answer_correctness_n\": 2, \"answer_completeness\": 0.0, \"answer_completeness_n\": 2, \"retrieval_recall\": \"not_applicable\", \"retrieval_recall_n\": 0, \"citation_precision\": \"not_applicable\", \"citation_precision_n\": 0, \"source_coverage\": \"not_applicable\", \"source_coverage_n\": 0, \"uncited_sentences_heuristic\": \"not_applicable\", \"invalid_citations\": 0, \"weak_citations_heuristic\": \"not_applicable\", \"refusals\": {\"clean\": 2}, \"review_flags\": 2, \"errors\": 0}, \"kpi\": {\"questions\": 2, \"answer_correctness\": 0.0, \"answer_correctness_n\": 2, \"answer_completeness\": 0.0, \"answer_completeness_n\": 2, \"retrieval_recall\": \"not_applicable\", \"retrieval_recall_n\": 0, \"citation_precision\": \"not_applicable\", \"citation_precision_n\": 0, \"source_coverage\": \"not_applicable\", \"source_coverage_n\": 0, \"uncited_sentences_heuristic\": \"not_applicable\", \"invalid_citations\": 0, \"weak_citations_heuristic\": \"not_applicable\", \"refusals\": {\"clean\": 2}, \"review_flags\": 2, \"errors\": 0}, \"maintenance\": {\"questions\": 2, \"answer_correctness\": 0.0, \"answer_correctness_n\": 2, \"answer_completeness\": 0.0, \"answer_completeness_n\": 2, \"retrieval_recall\": \"not_applicable\", \"retrieval_recall_n\": 0, \"citation_precision\": \"not_applicable\", \"citation_precision_n\": 0, \"source_coverage\": \"not_applicable\", \"source_coverage_n\": 0, \"uncited_sentences_heuristic\": \"not_applicable\", \"invalid_citations\": 0, \"weak_citations_heuristic\": \"not_applicable\", \"refusals\": {\"clean\": 2}, \"review_flags\": 2, \"errors\": 0}, \"quality\": {\"questions\": 2, \"answer_correctness\": 0.0, \"answer_correctness_n\": 2, \"answer_completeness\": 0.0, \"answer_completeness_n\": 2, \"retrieval_recall\": \"not_applicable\", \"retrieval_recall_n\": 0, \"citation_precision\": \"not_applicable\", \"citation_precision_n\": 0, \"source_coverage\": \"not_applicable\", \"source_coverage_n\": 0, \"uncited_sentences_heuristic\": \"not_applicable\", \"invalid_citations\": 0, \"weak_citations_heuristic\": \"not_applicable\", \"refusals\": {\"clean\": 2}, \"review_flags\": 2, \"errors\": 0}, \"rebalancing\": {\"questions\": 2, \"answer_correctness\": 0.0, \"answer_correctness_n\": 2, \"answer_completeness\": 0.0, \"answer_completeness_n\": 2, \"retrieval_recall\": \"not_applicable\", \"retrieval_recall_n\": 0, \"citation_precision\": \"not_applicable\", \"citation_precision_n\": 0, \"source_coverag",
+  "ingest_knowledge_base": {
+   "chunks": {
+    "change_data_feed": true,
+    "expected_rows": 30,
+    "fingerprint_matches": true,
+    "merge": {
+     "history": {
+      "commit": "MERGE",
+      "deleted": 0,
+      "inserted": 30,
+      "updated": 0,
+      "version_after": 1,
+      "version_before": 0
+     },
+     "statement": {
+      "deleted": 0,
+      "inserted": 30,
+      "updated": 0
+     }
+    },
+    "table": {
+     "distinct_keys": 30,
+     "fingerprint": "8f73a4e6ae120d9c496d53634da62282136091fe00831cedebbcc3850c621487",
+     "max_ingested_at": "2026-10-13 00:01:00.257425",
+     "null_ingested_at": 0,
+     "row_count": 30
+    }
+   },
+   "documents": {
+    "expected_rows": 8,
+    "fingerprint_matches": true,
+    "merge": {
+     "history": {
+      "commit": "MERGE",
+      "deleted": 0,
+      "inserted": 8,
+      "updated": 0,
+      "version_after": 1,
+      "version_before": 0
+     },
+     "statement": {
+      "deleted": 0,
+      "inserted": 8,
+      "updated": 0
+     }
+    },
+    "table": {
+     "distinct_keys": 8,
+     "fingerprint": "e9118115a0e2ad0d05fa3703dbafb35a44ad5764bd57465de1d6f40f63cdbc7d",
+     "max_ingested_at": "2026-10-13 00:00:46.957642",
+     "null_ingested_at": 0,
+     "row_count": 8
+    }
+   },
+   "status": "PASS"
+  },
+  "prepare_vector_search": {
+   "endpoint_status": "missing",
+   "index": "workspace.urbanflow_final_dev.rag_document_chunks_index",
+   "index_status": "missing",
+   "status": "DRY_RUN"
+  }
+ },
+ "task_seconds": {
+  "evaluate_rag": 19,
+  "ingest_knowledge_base": 115,
+  "prepare_vector_search": 21
+ },
+ "tasks": {
+  "evaluate_rag": "SUCCESS",
+  "ingest_knowledge_base": "SUCCESS",
+  "prepare_vector_search": "SUCCESS"
+ }
+}

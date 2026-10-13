@@ -1,0 +1,3126 @@
+{
+  "datasets": [
+    {
+      "name": "ops_headline",
+      "displayName": "Snapshot headline",
+      "queryLines": [
+        "SELECT\n",
+        "  COUNT(*)                                                          AS total_stations_observed,\n",
+        "  SUM(CASE WHEN availability_status = 'AVAILABLE'            THEN 1 ELSE 0 END) AS available_stations,\n",
+        "  SUM(CASE WHEN availability_status = 'OUT_OF_SERVICE'        THEN 1 ELSE 0 END) AS out_of_service_stations,\n",
+        "  SUM(CASE WHEN availability_status = 'LOW_BIKES'             THEN 1 ELSE 0 END) AS low_bike_stations,\n",
+        "  SUM(CASE WHEN availability_status = 'LOW_DOCKS'             THEN 1 ELSE 0 END) AS low_dock_stations,\n",
+        "  SUM(CASE WHEN availability_status = 'LOW_BIKES_AND_DOCKS'   THEN 1 ELSE 0 END) AS both_low_stations,\n",
+        "  SUM(CASE WHEN availability_status IN ('LOW_BIKES','LOW_DOCKS','LOW_BIKES_AND_DOCKS')\n",
+        "           THEN 1 ELSE 0 END)                                       AS actionable_shortages,\n",
+        "  MIN(observed_at)                                                  AS snapshot_observed_from,\n",
+        "  MAX(observed_at)                                                  AS snapshot_observed_to,\n",
+        "  COUNT(DISTINCT execution_id)                                      AS executions_included,\n",
+        "  'one GBFS snapshot - a point-in-time count, not a trend'           AS reading_note\n",
+        "FROM dbr_dev.parvinbadalov_urbanflow_final_prod.silver_station_status"
+      ]
+    },
+    {
+      "name": "ops_breakdown",
+      "displayName": "Availability breakdown",
+      "queryLines": [
+        "SELECT\n",
+        "  availability_status,\n",
+        "  COUNT(*)                                                          AS stations,\n",
+        "  ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER (), 2)                AS percent_of_stations\n",
+        "FROM dbr_dev.parvinbadalov_urbanflow_final_prod.silver_station_status\n",
+        "GROUP BY availability_status\n",
+        "ORDER BY stations DESC"
+      ]
+    },
+    {
+      "name": "ops_priorities",
+      "displayName": "Top 25 priorities",
+      "queryLines": [
+        "SELECT\n",
+        "  p.priority_score,\n",
+        "  p.action,\n",
+        "  p.station_name,\n",
+        "  p.station_id,\n",
+        "  p.availability_status,\n",
+        "  p.num_bikes_available,\n",
+        "  p.num_docks_available,\n",
+        "  p.capacity_estimate,\n",
+        "  p.severity_points,\n",
+        "  p.deficit_points,\n",
+        "  p.size_points,\n",
+        "  p.observed_at,\n",
+        "  CASE WHEN m.open_tickets > 0 THEN 'HOLD - open maintenance ticket' ELSE 'clear' END\n",
+        "                                                                    AS maintenance_hold\n",
+        "FROM dbr_dev.parvinbadalov_urbanflow_final_prod.gold_rebalancing_priority AS p\n",
+        "LEFT JOIN (\n",
+        "  SELECT station_id, COUNT(*) AS open_tickets\n",
+        "  FROM dbr_dev.parvinbadalov_urbanflow_final_prod.silver_station_maintenance\n",
+        "  WHERE status <> 'CLOSED'\n",
+        "  GROUP BY station_id\n",
+        ") AS m\n",
+        "  ON p.station_id = m.station_id\n",
+        "ORDER BY p.priority_score DESC, p.num_bikes_available ASC\n",
+        "LIMIT 25"
+      ]
+    },
+    {
+      "name": "ops_actions",
+      "displayName": "Action summary",
+      "queryLines": [
+        "SELECT\n",
+        "  action,\n",
+        "  COUNT(*)                                                          AS stations,\n",
+        "  ROUND(AVG(priority_score), 2)                                     AS avg_priority_score,\n",
+        "  MAX(priority_score)                                               AS worst_priority_score\n",
+        "FROM dbr_dev.parvinbadalov_urbanflow_final_prod.gold_rebalancing_priority\n",
+        "GROUP BY action\n",
+        "ORDER BY stations DESC"
+      ]
+    },
+    {
+      "name": "demand_daily",
+      "displayName": "Trips per day",
+      "queryLines": [
+        "SELECT\n",
+        "  execution_id,\n",
+        "  CASE WHEN execution_id LIKE 'urbanflow-final-hist-devsample40%'\n",
+        "       THEN '40-ROW DEVELOPMENT SAMPLE' ELSE 'FULL ARCHIVE EXECUTION' END AS data_scope,\n",
+        "  trip_date,\n",
+        "  SUM(trips_started)                                                AS trips,\n",
+        "  SUM(member_trips)                                                 AS member_trips,\n",
+        "  SUM(casual_trips)                                                  AS casual_trips,\n",
+        "  ROUND(AVG(avg_trip_minutes), 2)                                   AS avg_trip_minutes,\n",
+        "  COUNT(DISTINCT station_short_name)                                AS stations_with_trips\n",
+        "FROM dbr_dev.parvinbadalov_urbanflow_final_prod.gold_daily_trip_demand\n",
+        "WHERE execution_id = 'urbanflow-final-hist-devsample40'\n",
+        "GROUP BY execution_id, trip_date\n",
+        "ORDER BY execution_id, trip_date"
+      ]
+    },
+    {
+      "name": "demand_hourly",
+      "displayName": "Trips by hour and weekday",
+      "queryLines": [
+        "SELECT\n",
+        "  execution_id,\n",
+        "  CASE WHEN execution_id LIKE 'urbanflow-final-hist-devsample40%'\n",
+        "       THEN '40-ROW DEVELOPMENT SAMPLE' ELSE 'FULL ARCHIVE EXECUTION' END AS data_scope,\n",
+        "  DATE_FORMAT(started_at, 'EEEE')                                   AS day_of_week,\n",
+        "  DAYOFWEEK(started_at)                                             AS day_of_week_number,\n",
+        "  HOUR(started_at)                                                  AS hour_of_day,\n",
+        "  COUNT(*)                                                          AS trips,\n",
+        "  SUM(CASE WHEN member_casual = 'member' THEN 1 ELSE 0 END)         AS member_trips,\n",
+        "  SUM(CASE WHEN member_casual = 'casual' THEN 1 ELSE 0 END)         AS casual_trips\n",
+        "FROM dbr_dev.parvinbadalov_urbanflow_final_prod.silver_historical_trips\n",
+        "WHERE execution_id = 'urbanflow-final-hist-devsample40'\n",
+        "GROUP BY ALL\n",
+        "ORDER BY execution_id, day_of_week_number, hour_of_day"
+      ]
+    },
+    {
+      "name": "demand_durations",
+      "displayName": "Duration distribution",
+      "queryLines": [
+        "SELECT\n",
+        "  execution_id,\n",
+        "  CASE WHEN execution_id LIKE 'urbanflow-final-hist-devsample40%'\n",
+        "       THEN '40-ROW DEVELOPMENT SAMPLE' ELSE 'FULL ARCHIVE EXECUTION' END AS data_scope,\n",
+        "  CASE\n",
+        "    WHEN duration_minutes <  1   THEN '00 under 1 min (false start)'\n",
+        "    WHEN duration_minutes <  5   THEN '01 1-5 min'\n",
+        "    WHEN duration_minutes < 15   THEN '02 5-15 min'\n",
+        "    WHEN duration_minutes < 30   THEN '03 15-30 min'\n",
+        "    WHEN duration_minutes < 60   THEN '04 30-60 min'\n",
+        "    WHEN duration_minutes < 1440 THEN '05 1-24 hours'\n",
+        "    ELSE                              '06 over 24 hours (not returned)'\n",
+        "  END                                                               AS duration_bucket,\n",
+        "  COUNT(*)                                                          AS trips,\n",
+        "  ROUND(\n",
+        "    100.0 * COUNT(*) / SUM(COUNT(*)) OVER (PARTITION BY execution_id), 2\n",
+        "  )                                                                 AS percent_of_trips\n",
+        "FROM (\n",
+        "  SELECT execution_id,\n",
+        "         (UNIX_TIMESTAMP(ended_at) - UNIX_TIMESTAMP(started_at)) / 60.0 AS duration_minutes\n",
+        "  FROM dbr_dev.parvinbadalov_urbanflow_final_prod.silver_historical_trips\n",
+        "  WHERE execution_id = 'urbanflow-final-hist-devsample40'\n",
+        ")\n",
+        "GROUP BY execution_id, duration_bucket\n",
+        "ORDER BY execution_id, duration_bucket"
+      ]
+    },
+    {
+      "name": "demand_headline",
+      "displayName": "Monthly headline",
+      "queryLines": [
+        "SELECT\n",
+        "  execution_id,\n",
+        "  CASE WHEN execution_id LIKE 'urbanflow-final-hist-devsample40%'\n",
+        "       THEN '40-ROW DEVELOPMENT SAMPLE' ELSE 'FULL ARCHIVE EXECUTION' END AS data_scope,\n",
+        "  COUNT(*)                                                          AS valid_trips,\n",
+        "  SUM(CASE WHEN member_casual = 'member' THEN 1 ELSE 0 END)         AS member_trips,\n",
+        "  SUM(CASE WHEN member_casual = 'casual' THEN 1 ELSE 0 END)         AS casual_trips,\n",
+        "  COUNT(DISTINCT start_station_id)                                  AS distinct_start_stations,\n",
+        "  MIN(started_at)                                                   AS first_ride_started,\n",
+        "  MAX(ended_at)                                                     AS last_ride_ended\n",
+        "FROM dbr_dev.parvinbadalov_urbanflow_final_prod.silver_historical_trips\n",
+        "WHERE execution_id = 'urbanflow-final-hist-devsample40'\n",
+        "GROUP BY execution_id"
+      ]
+    },
+    {
+      "name": "demand_rideable",
+      "displayName": "Rideable type",
+      "queryLines": [
+        "SELECT\n",
+        "  execution_id,\n",
+        "  rideable_type,\n",
+        "  COUNT(*)                                                          AS trips,\n",
+        "  ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER (PARTITION BY execution_id), 2) AS percent_of_trips\n",
+        "FROM dbr_dev.parvinbadalov_urbanflow_final_prod.silver_historical_trips\n",
+        "WHERE execution_id = 'urbanflow-final-hist-devsample40'\n",
+        "GROUP BY execution_id, rideable_type\n",
+        "ORDER BY execution_id, trips DESC"
+      ]
+    },
+    {
+      "name": "demand_top_stations",
+      "displayName": "Top stations",
+      "queryLines": [
+        "SELECT * FROM (\n",
+        "  SELECT execution_id, 'origin' AS direction, start_station_name AS station_name,\n",
+        "         start_station_id AS station_short_name, COUNT(*) AS trips\n",
+        "  FROM dbr_dev.parvinbadalov_urbanflow_final_prod.silver_historical_trips\n",
+        "  WHERE execution_id = 'urbanflow-final-hist-devsample40' AND start_station_name IS NOT NULL\n",
+        "  GROUP BY ALL ORDER BY trips DESC LIMIT 15\n",
+        ")\n",
+        "UNION ALL\n",
+        "SELECT * FROM (\n",
+        "  SELECT execution_id, 'destination' AS direction, end_station_name AS station_name,\n",
+        "         end_station_id AS station_short_name, COUNT(*) AS trips\n",
+        "  FROM dbr_dev.parvinbadalov_urbanflow_final_prod.silver_historical_trips\n",
+        "  WHERE execution_id = 'urbanflow-final-hist-devsample40' AND end_station_name IS NOT NULL\n",
+        "  GROUP BY ALL ORDER BY trips DESC LIMIT 15\n",
+        ")"
+      ]
+    },
+    {
+      "name": "demand_day_type",
+      "displayName": "Weekday vs weekend",
+      "queryLines": [
+        "SELECT\n",
+        "  execution_id,\n",
+        "  CASE WHEN DAYOFWEEK(started_at) IN (1, 7) THEN 'weekend' ELSE 'weekday' END AS day_type,\n",
+        "  COUNT(DISTINCT TO_DATE(started_at))                               AS days,\n",
+        "  COUNT(*)                                                          AS trips,\n",
+        "  ROUND(COUNT(*) / COUNT(DISTINCT TO_DATE(started_at)), 0)          AS avg_trips_per_day,\n",
+        "  ROUND(100.0 * SUM(CASE WHEN member_casual = 'casual' THEN 1 ELSE 0 END) / COUNT(*), 2)\n",
+        "                                                                    AS casual_percent\n",
+        "FROM dbr_dev.parvinbadalov_urbanflow_final_prod.silver_historical_trips\n",
+        "WHERE execution_id = 'urbanflow-final-hist-devsample40'\n",
+        "  AND started_at >= TIMESTAMP'2024-01-01 00:00:00'\n",
+        "GROUP BY execution_id, day_type\n",
+        "ORDER BY execution_id, day_type"
+      ]
+    },
+    {
+      "name": "weather_daily",
+      "displayName": "Daily trips and weather",
+      "queryLines": [
+        "SELECT\n",
+        "  execution_id,\n",
+        "  CASE WHEN execution_id LIKE 'urbanflow-final-weather-devsample48h%'\n",
+        "       THEN '48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE'\n",
+        "       ELSE 'FULL ARCHIVE WEATHER EXECUTION' END                    AS data_scope,\n",
+        "  trip_date,\n",
+        "  SUM(trips)                                                        AS trips,\n",
+        "  ROUND(AVG(avg_temperature_celsius), 2)                            AS avg_temperature_celsius,\n",
+        "  ROUND(SUM(total_precipitation_mm), 2)                             AS total_precipitation_mm,\n",
+        "  ROUND(AVG(avg_wind_speed_kmh), 2)                                 AS avg_wind_speed_kmh,\n",
+        "  ROUND(AVG(weather_coverage), 4)                                   AS weather_coverage\n",
+        "FROM dbr_dev.parvinbadalov_urbanflow_final_prod.gold_weather_demand\n",
+        "WHERE execution_id = 'urbanflow-final-weather-devsample48h'\n",
+        "GROUP BY execution_id, trip_date\n",
+        "ORDER BY execution_id, trip_date"
+      ]
+    },
+    {
+      "name": "weather_buckets",
+      "displayName": "Trips by temperature",
+      "queryLines": [
+        "SELECT\n",
+        "  execution_id,\n",
+        "  CASE WHEN execution_id LIKE 'urbanflow-final-weather-devsample48h%'\n",
+        "       THEN '48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE'\n",
+        "       ELSE 'FULL ARCHIVE WEATHER EXECUTION' END                    AS data_scope,\n",
+        "  temperature_bucket,\n",
+        "  SUM(trips)                                                        AS trips,\n",
+        "  COUNT(DISTINCT trip_date)                                         AS days_in_bucket,\n",
+        "  ROUND(SUM(trips) / NULLIF(COUNT(DISTINCT trip_date), 0), 1)       AS avg_trips_per_day,\n",
+        "  ROUND(AVG(avg_temperature_celsius), 2)                            AS avg_temperature_celsius\n",
+        "FROM dbr_dev.parvinbadalov_urbanflow_final_prod.gold_weather_demand\n",
+        "WHERE execution_id = 'urbanflow-final-weather-devsample48h'\n",
+        "GROUP BY execution_id, temperature_bucket\n",
+        "ORDER BY execution_id, temperature_bucket"
+      ]
+    },
+    {
+      "name": "weather_precipitation",
+      "displayName": "Trips by rainfall",
+      "queryLines": [
+        "SELECT\n",
+        "  execution_id,\n",
+        "  CASE WHEN execution_id LIKE 'urbanflow-final-weather-devsample48h%'\n",
+        "       THEN '48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE'\n",
+        "       ELSE 'FULL ARCHIVE WEATHER EXECUTION' END                    AS data_scope,\n",
+        "  CASE\n",
+        "    WHEN total_precipitation_mm IS NULL   THEN 'unknown'\n",
+        "    WHEN total_precipitation_mm =  0      THEN '0 dry'\n",
+        "    WHEN total_precipitation_mm <  2      THEN '1 light (under 2 mm)'\n",
+        "    WHEN total_precipitation_mm < 10      THEN '2 moderate (2-10 mm)'\n",
+        "    ELSE                                       '3 heavy (10 mm or more)'\n",
+        "  END                                                               AS precipitation_band,\n",
+        "  COUNT(DISTINCT trip_date)                                         AS days,\n",
+        "  SUM(trips)                                                        AS trips,\n",
+        "  ROUND(SUM(trips) / NULLIF(COUNT(DISTINCT trip_date), 0), 1)       AS avg_trips_per_day\n",
+        "FROM (\n",
+        "  SELECT execution_id, trip_date, SUM(trips) AS trips,\n",
+        "         SUM(total_precipitation_mm) AS total_precipitation_mm\n",
+        "  FROM dbr_dev.parvinbadalov_urbanflow_final_prod.gold_weather_demand\n",
+        "  WHERE execution_id = 'urbanflow-final-weather-devsample48h'\n",
+        "  GROUP BY execution_id, trip_date\n",
+        ")\n",
+        "GROUP BY execution_id, precipitation_band\n",
+        "ORDER BY execution_id, precipitation_band"
+      ]
+    },
+    {
+      "name": "weather_series",
+      "displayName": "Weather series provenance",
+      "queryLines": [
+        "WITH selected_window AS (\n",
+        "  SELECT MIN(trip_date) AS starts_on, MAX(trip_date) AS ends_on\n",
+        "  FROM dbr_dev.parvinbadalov_urbanflow_final_prod.gold_weather_demand\n",
+        "  WHERE execution_id = 'urbanflow-final-weather-devsample48h'\n",
+        ")\n",
+        "SELECT\n",
+        "  'urbanflow-final-weather-devsample48h'                                             AS execution_id,\n",
+        "  weather_grid_label,\n",
+        "  MIN(weather_hour)                                                 AS covers_from,\n",
+        "  MAX(weather_hour)                                                 AS covers_to,\n",
+        "  COUNT(*)                                                          AS hours_retrieved,\n",
+        "  SUM(CASE WHEN has_temperature   THEN 1 ELSE 0 END)                AS hours_with_temperature,\n",
+        "  SUM(CASE WHEN has_precipitation THEN 1 ELSE 0 END)                AS hours_with_precipitation,\n",
+        "  SUM(CASE WHEN has_wind          THEN 1 ELSE 0 END)                AS hours_with_wind,\n",
+        "  SUM(CASE WHEN NOT has_temperature THEN 1 ELSE 0 END)              AS missing_temperature_hours,\n",
+        "  MAX(source)                                                       AS source,\n",
+        "  MAX(retrieved_at)                                                 AS retrieved_at\n",
+        "FROM dbr_dev.parvinbadalov_urbanflow_final_prod.dim_weather_hourly\n",
+        "CROSS JOIN selected_window\n",
+        "WHERE TO_DATE(weather_hour) BETWEEN starts_on AND ends_on\n",
+        "GROUP BY weather_grid_label"
+      ]
+    },
+    {
+      "name": "weather_gaps",
+      "displayName": "Weather coverage",
+      "queryLines": [
+        "SELECT\n",
+        "  execution_id,\n",
+        "  CASE WHEN execution_id LIKE 'urbanflow-final-weather-devsample48h%'\n",
+        "       THEN '48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE'\n",
+        "       ELSE 'FULL ARCHIVE WEATHER EXECUTION' END                    AS data_scope,\n",
+        "  SUM(trips)                                                        AS trips,\n",
+        "  SUM(trips_with_weather)                                           AS trips_with_weather,\n",
+        "  SUM(trips) - SUM(trips_with_weather)                              AS trips_without_weather,\n",
+        "  ROUND(100.0 * SUM(trips_with_weather) / NULLIF(SUM(trips), 0), 2) AS weather_coverage_percent,\n",
+        "  COUNT(DISTINCT trip_date)                                         AS days_covered\n",
+        "FROM dbr_dev.parvinbadalov_urbanflow_final_prod.gold_weather_demand\n",
+        "WHERE execution_id = 'urbanflow-final-weather-devsample48h'\n",
+        "GROUP BY execution_id\n",
+        "ORDER BY execution_id"
+      ]
+    },
+    {
+      "name": "quality_station",
+      "displayName": "Station reconciliation",
+      "queryLines": [
+        "WITH counts AS (\n",
+        "  SELECT\n",
+        "    (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow_final_prod.bronze_station_status)     AS bronze_rows,\n",
+        "    (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow_final_prod.silver_station_status)     AS silver_rows,\n",
+        "    (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow_final_prod.quarantine_station_status) AS quarantine_rows,\n",
+        "    (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow_final_prod.duplicate_station_status)  AS duplicate_rows,\n",
+        "    (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow_final_prod.fact_station_availability) AS fact_rows,\n",
+        "    (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow_final_prod.gold_station_shortage)     AS shortage_rows,\n",
+        "    (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow_final_prod.gold_rebalancing_priority) AS priority_rows\n",
+        ")\n",
+        "SELECT\n",
+        "  *,\n",
+        "  silver_rows + quarantine_rows + duplicate_rows                    AS accounted_rows,\n",
+        "  bronze_rows = silver_rows + quarantine_rows + duplicate_rows      AS bronze_reconciles,\n",
+        "  fact_rows = silver_rows                                           AS fact_matches_silver,\n",
+        "  shortage_rows = priority_rows                                     AS derived_tables_agree\n",
+        "FROM counts"
+      ]
+    },
+    {
+      "name": "quality_trip_rules",
+      "displayName": "Trip quarantine reasons",
+      "queryLines": [
+        "SELECT\n",
+        "  execution_id,\n",
+        "  rule                                                              AS failed_rule,\n",
+        "  COUNT(*)                                                          AS trips_failing\n",
+        "FROM dbr_dev.parvinbadalov_urbanflow_final_prod.quarantine_historical_trips\n",
+        "LATERAL VIEW EXPLODE(failed_rules) exploded AS rule\n",
+        "WHERE execution_id = 'urbanflow-final-hist-devsample40'\n",
+        "GROUP BY execution_id, rule\n",
+        "ORDER BY trips_failing DESC"
+      ]
+    },
+    {
+      "name": "quality_lakeflow",
+      "displayName": "Lakeflow expectations",
+      "queryLines": [
+        "SELECT\n",
+        "  expectation.dataset                                               AS dataset,\n",
+        "  expectation.name                                                  AS expectation,\n",
+        "  SUM(expectation.passed_records)                                   AS passed_records,\n",
+        "  SUM(expectation.failed_records)                                   AS failed_records\n",
+        "FROM (\n",
+        "  SELECT EXPLODE(FROM_JSON(\n",
+        "           details:flow_progress.data_quality.expectations,\n",
+        "           'ARRAY<STRUCT<name: STRING, dataset: STRING, passed_records: BIGINT, failed_records: BIGINT>>'\n",
+        "         )) AS expectation\n",
+        "  FROM EVENT_LOG(TABLE(dbr_dev.parvinbadalov_urbanflow_final_lakeflow_prod.silver_station_status))\n",
+        "  WHERE event_type = 'flow_progress'\n",
+        "    AND details:flow_progress.data_quality.expectations IS NOT NULL\n",
+        "    AND origin.update_id = (\n",
+        "      SELECT origin.update_id\n",
+        "      FROM EVENT_LOG(TABLE(dbr_dev.parvinbadalov_urbanflow_final_lakeflow_prod.silver_station_status))\n",
+        "      WHERE event_type = 'update_progress' AND details:update_progress.state = 'COMPLETED'\n",
+        "      ORDER BY timestamp DESC LIMIT 1\n",
+        "    )\n",
+        ")\n",
+        "GROUP BY ALL\n",
+        "ORDER BY dataset, expectation"
+      ]
+    },
+    {
+      "name": "quality_monthly",
+      "displayName": "Historical reconciliation",
+      "queryLines": [
+        "SELECT\n",
+        "  'urbanflow-final-hist-devsample40'                                          AS execution_id,\n",
+        "  landed_rows,\n",
+        "  valid_trips,\n",
+        "  quarantined_trips,\n",
+        "  duplicate_trips,\n",
+        "  landed_rows = valid_trips + quarantined_trips + duplicate_trips   AS reconciles,\n",
+        "  matched_trips,\n",
+        "  ROUND(100.0 * matched_trips / NULLIF(valid_trips, 0), 2)          AS reference_coverage_percent,\n",
+        "  'coverage of the 40-station development reference dimension, not data quality' AS reading_note\n",
+        "FROM (\n",
+        "  SELECT\n",
+        "    (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow_final_prod.bronze_historical_trips)\n",
+        "                                                                    AS landed_rows,\n",
+        "    (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow_final_prod.silver_historical_trips\n",
+        "     WHERE execution_id = 'urbanflow-final-hist-devsample40')                 AS valid_trips,\n",
+        "    (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow_final_prod.quarantine_historical_trips\n",
+        "     WHERE execution_id = 'urbanflow-final-hist-devsample40')                 AS quarantined_trips,\n",
+        "    (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow_final_prod.duplicate_historical_trips\n",
+        "     WHERE execution_id = 'urbanflow-final-hist-devsample40')                 AS duplicate_trips,\n",
+        "    (SELECT SUM(trips_started) FROM dbr_dev.parvinbadalov_urbanflow_final_prod.gold_daily_trip_demand\n",
+        "     WHERE execution_id = 'urbanflow-final-hist-devsample40' AND start_station_uuid IS NOT NULL)\n",
+        "                                                                    AS matched_trips\n",
+        ")"
+      ]
+    },
+    {
+      "name": "maintenance_status",
+      "displayName": "Maintenance tickets",
+      "queryLines": [
+        "SELECT\n",
+        "  status,\n",
+        "  severity,\n",
+        "  COUNT(*)                                                          AS tickets,\n",
+        "  MAX(updated_at)                                                   AS last_updated_at,\n",
+        "  'FICTIONAL, SYNTHETIC MAINTENANCE DATA'                           AS data_scope\n",
+        "FROM dbr_dev.parvinbadalov_urbanflow_final_prod.silver_station_maintenance\n",
+        "GROUP BY status, severity\n",
+        "ORDER BY status, severity"
+      ]
+    },
+    {
+      "name": "maintenance_conflicts",
+      "displayName": "Stations with an open maintenance ticket",
+      "queryLines": [
+        "SELECT\n",
+        "  m.maintenance_id,\n",
+        "  COALESCE(d.station_name, '(not in the 40-station development sample)') AS station_name,\n",
+        "  m.status                                                          AS maintenance_status,\n",
+        "  m.severity                                                        AS maintenance_severity,\n",
+        "  m.updated_at                                                      AS maintenance_updated_at,\n",
+        "  s.availability_status,\n",
+        "  p.priority_score,\n",
+        "  p.action,\n",
+        "  CASE WHEN p.station_id IS NULL THEN 'no rebalancing action pending'\n",
+        "       ELSE 'HOLD - dispatcher decision before sending a van' END    AS dispatch_note\n",
+        "FROM dbr_dev.parvinbadalov_urbanflow_final_prod.silver_station_maintenance AS m\n",
+        "LEFT JOIN dbr_dev.parvinbadalov_urbanflow_final_prod.dim_station_development_sample AS d\n",
+        "  ON m.station_id = d.station_id\n",
+        "LEFT JOIN (\n",
+        "  SELECT station_id, availability_status FROM (\n",
+        "    SELECT station_id, availability_status,\n",
+        "           ROW_NUMBER() OVER (PARTITION BY station_id ORDER BY observed_at DESC) AS position\n",
+        "    FROM dbr_dev.parvinbadalov_urbanflow_final_prod.silver_station_status\n",
+        "  ) WHERE position = 1\n",
+        ") AS s\n",
+        "  ON m.station_id = s.station_id\n",
+        "LEFT JOIN (\n",
+        "  SELECT station_id, priority_score, action FROM (\n",
+        "    SELECT station_id, priority_score, action,\n",
+        "           ROW_NUMBER() OVER (PARTITION BY station_id ORDER BY observed_at DESC) AS position\n",
+        "    FROM dbr_dev.parvinbadalov_urbanflow_final_prod.gold_rebalancing_priority\n",
+        "  ) WHERE position = 1\n",
+        ") AS p\n",
+        "  ON m.station_id = p.station_id\n",
+        "WHERE m.status <> 'CLOSED'\n",
+        "ORDER BY p.priority_score DESC NULLS LAST,\n",
+        "         CASE m.severity WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,\n",
+        "         m.maintenance_id"
+      ]
+    },
+    {
+      "name": "maintenance_cdc",
+      "displayName": "CDC audit trail",
+      "queryLines": [
+        "SELECT\n",
+        "  commit_version,\n",
+        "  change_type,\n",
+        "  COUNT(*)                                                          AS events,\n",
+        "  MIN(commit_timestamp)                                             AS committed_at\n",
+        "FROM dbr_dev.parvinbadalov_urbanflow_final_prod.maintenance_cdc_history\n",
+        "GROUP BY commit_version, change_type\n",
+        "ORDER BY commit_version, change_type"
+      ]
+    },
+    {
+      "name": "maintenance_checkpoint",
+      "displayName": "CDC checkpoint",
+      "queryLines": [
+        "SELECT\n",
+        "  c.pipeline_key,\n",
+        "  c.processed_version,\n",
+        "  c.processed_at,\n",
+        "  (SELECT MAX(commit_version) FROM dbr_dev.parvinbadalov_urbanflow_final_prod.maintenance_cdc_history)\n",
+        "                                                                    AS last_data_change_version,\n",
+        "  (SELECT COUNT(*) FROM dbr_dev.parvinbadalov_urbanflow_final_prod.maintenance_cdc_history) AS history_events\n",
+        "FROM dbr_dev.parvinbadalov_urbanflow_final_prod.maintenance_cdc_checkpoint AS c"
+      ]
+    },
+    {
+      "name": "assistant_evaluation",
+      "displayName": "Assistant evaluation",
+      "queryLines": [
+        "SELECT\n",
+        "  variant,\n",
+        "  COUNT(*)                                                          AS questions,\n",
+        "  ROUND(AVG(CAST(get_json_object(metrics_json, '$.answer_correctness') AS DOUBLE)), 3)\n",
+        "                                                                    AS answer_correctness,\n",
+        "  ROUND(AVG(CAST(get_json_object(metrics_json, '$.retrieval_recall') AS DOUBLE)), 3)\n",
+        "                                                                    AS retrieval_recall,\n",
+        "  ROUND(AVG(CAST(get_json_object(metrics_json, '$.source_coverage') AS DOUBLE)), 3)\n",
+        "                                                                    AS source_coverage,\n",
+        "  SUM(CASE WHEN error_status IS NOT NULL THEN 1 ELSE 0 END)         AS errors,\n",
+        "  MAX(evaluated_at)                                                 AS evaluated_at\n",
+        "FROM dbr_dev.parvinbadalov_urbanflow_final_prod.rag_evaluation_results\n",
+        "WHERE evaluation_id = (\n",
+        "  SELECT evaluation_id FROM dbr_dev.parvinbadalov_urbanflow_final_prod.rag_evaluation_results\n",
+        "  ORDER BY evaluated_at DESC LIMIT 1\n",
+        ")\n",
+        "GROUP BY variant\n",
+        "ORDER BY variant"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "operations",
+      "displayName": "Current Operations",
+      "layout": [
+        {
+          "widget": {
+            "name": "ops_title",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Current Operations\n\n",
+                "**POINT-IN-TIME GBFS SNAPSHOT — NOT A HISTORICAL AVAILABILITY TREND.** The station executions loaded into this target (by default the committed, dated Citi Bike sample snapshot). Nothing on this page is charted over time."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "ops_total",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ops_headline",
+                  "fields": [
+                    {
+                      "name": "total_stations_observed",
+                      "expression": "`total_stations_observed`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "total_stations_observed",
+                  "displayName": "Stations observed"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Stations observed"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "ops_available",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ops_headline",
+                  "fields": [
+                    {
+                      "name": "available_stations",
+                      "expression": "`available_stations`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "available_stations",
+                  "displayName": "AVAILABLE"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "AVAILABLE"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "ops_low_bikes",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ops_headline",
+                  "fields": [
+                    {
+                      "name": "low_bike_stations",
+                      "expression": "`low_bike_stations`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "low_bike_stations",
+                  "displayName": "LOW_BIKES"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "LOW_BIKES"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "ops_low_docks",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ops_headline",
+                  "fields": [
+                    {
+                      "name": "low_dock_stations",
+                      "expression": "`low_dock_stations`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "low_dock_stations",
+                  "displayName": "LOW_DOCKS"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "LOW_DOCKS"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "ops_both",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ops_headline",
+                  "fields": [
+                    {
+                      "name": "both_low_stations",
+                      "expression": "`both_low_stations`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "both_low_stations",
+                  "displayName": "LOW_BIKES_AND_DOCKS"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "LOW_BIKES_AND_DOCKS"
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "ops_oos",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ops_headline",
+                  "fields": [
+                    {
+                      "name": "out_of_service_stations",
+                      "expression": "`out_of_service_stations`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "out_of_service_stations",
+                  "displayName": "OUT_OF_SERVICE"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "OUT_OF_SERVICE"
+              }
+            }
+          },
+          "position": {
+            "x": 10,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "ops_actionable",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ops_headline",
+                  "fields": [
+                    {
+                      "name": "actionable_shortages",
+                      "expression": "`actionable_shortages`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "actionable_shortages",
+                  "displayName": "Actionable shortages"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Actionable shortages"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 4,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "ops_rule",
+            "multilineTextboxSpec": {
+              "lines": [
+                "**Actionable = LOW_BIKES + LOW_DOCKS + LOW_BIKES_AND_DOCKS.** An OUT_OF_SERVICE station is excluded: no rebalancing fixes it."
+              ]
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 5,
+            "width": 8,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "ops_breakdown_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ops_breakdown",
+                  "fields": [
+                    {
+                      "name": "availability_status",
+                      "expression": "`availability_status`"
+                    },
+                    {
+                      "name": "stations",
+                      "expression": "`stations`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "availability_status",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "availability_status"
+                },
+                "y": {
+                  "fieldName": "stations",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "stations"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Stations by availability status"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 8,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "ops_actions_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ops_actions",
+                  "fields": [
+                    {
+                      "name": "action",
+                      "expression": "`action`"
+                    },
+                    {
+                      "name": "stations",
+                      "expression": "`stations`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "action",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "action"
+                },
+                "y": {
+                  "fieldName": "stations",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "stations"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Recommended action"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 8,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "ops_priorities_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ops_priorities",
+                  "fields": [
+                    {
+                      "name": "priority_score",
+                      "expression": "`priority_score`"
+                    },
+                    {
+                      "name": "action",
+                      "expression": "`action`"
+                    },
+                    {
+                      "name": "station_name",
+                      "expression": "`station_name`"
+                    },
+                    {
+                      "name": "availability_status",
+                      "expression": "`availability_status`"
+                    },
+                    {
+                      "name": "num_bikes_available",
+                      "expression": "`num_bikes_available`"
+                    },
+                    {
+                      "name": "num_docks_available",
+                      "expression": "`num_docks_available`"
+                    },
+                    {
+                      "name": "severity_points",
+                      "expression": "`severity_points`"
+                    },
+                    {
+                      "name": "deficit_points",
+                      "expression": "`deficit_points`"
+                    },
+                    {
+                      "name": "size_points",
+                      "expression": "`size_points`"
+                    },
+                    {
+                      "name": "maintenance_hold",
+                      "expression": "`maintenance_hold`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "priority_score",
+                    "displayName": "priority_score"
+                  },
+                  {
+                    "fieldName": "action",
+                    "displayName": "action"
+                  },
+                  {
+                    "fieldName": "station_name",
+                    "displayName": "station_name"
+                  },
+                  {
+                    "fieldName": "availability_status",
+                    "displayName": "availability_status"
+                  },
+                  {
+                    "fieldName": "num_bikes_available",
+                    "displayName": "num_bikes_available"
+                  },
+                  {
+                    "fieldName": "num_docks_available",
+                    "displayName": "num_docks_available"
+                  },
+                  {
+                    "fieldName": "severity_points",
+                    "displayName": "severity_points"
+                  },
+                  {
+                    "fieldName": "deficit_points",
+                    "displayName": "deficit_points"
+                  },
+                  {
+                    "fieldName": "size_points",
+                    "displayName": "size_points"
+                  },
+                  {
+                    "fieldName": "maintenance_hold",
+                    "displayName": "maintenance_hold"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Top 25 rebalancing priorities (score = severity + deficit + size; HOLD = open maintenance ticket)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 13,
+            "width": 12,
+            "height": 7
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "demand",
+      "displayName": "Historical Demand",
+      "layout": [
+        {
+          "widget": {
+            "name": "demand_title",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Historical Demand\n\n",
+                "**REAL JANUARY 2024 CITI BIKE TRIPS** — every valid trip of execution `urbanflow-final-hist-devsample40` only. With the Job defaults this is the **40-ROW DEVELOPMENT SAMPLE**, so the counts illustrate the pipeline, not the month; each dataset carries its `data_scope` label. The archive is defined by ride END time."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "demand_valid",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "demand_headline",
+                  "fields": [
+                    {
+                      "name": "valid_trips",
+                      "expression": "`valid_trips`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "valid_trips",
+                  "displayName": "Valid trips"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Valid trips"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "demand_member",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "demand_headline",
+                  "fields": [
+                    {
+                      "name": "member_trips",
+                      "expression": "`member_trips`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "member_trips",
+                  "displayName": "Member trips"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Member trips"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "demand_casual",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "demand_headline",
+                  "fields": [
+                    {
+                      "name": "casual_trips",
+                      "expression": "`casual_trips`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "casual_trips",
+                  "displayName": "Casual trips"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Casual trips"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "demand_stations",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "demand_headline",
+                  "fields": [
+                    {
+                      "name": "distinct_start_stations",
+                      "expression": "`distinct_start_stations`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "distinct_start_stations",
+                  "displayName": "Start stations"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Start stations"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "demand_day_type_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "demand_day_type",
+                  "fields": [
+                    {
+                      "name": "day_type",
+                      "expression": "`day_type`"
+                    },
+                    {
+                      "name": "avg_trips_per_day",
+                      "expression": "`avg_trips_per_day`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "day_type",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "day_type"
+                },
+                "y": {
+                  "fieldName": "avg_trips_per_day",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "avg_trips_per_day"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Average trips per day: weekday vs weekend"
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 2,
+            "width": 4,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "demand_daily_line",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "demand_daily",
+                  "fields": [
+                    {
+                      "name": "trip_date",
+                      "expression": "`trip_date`"
+                    },
+                    {
+                      "name": "trips",
+                      "expression": "`trips`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "trip_date",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "trip_date"
+                },
+                "y": {
+                  "fieldName": "trips",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "trips"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Trips per day"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 8,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "demand_rideable_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "demand_rideable",
+                  "fields": [
+                    {
+                      "name": "rideable_type",
+                      "expression": "`rideable_type`"
+                    },
+                    {
+                      "name": "trips",
+                      "expression": "`trips`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "rideable_type",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "rideable_type"
+                },
+                "y": {
+                  "fieldName": "trips",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "trips"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Rideable type"
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 6,
+            "width": 4,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "demand_hourly_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "demand_hourly",
+                  "fields": [
+                    {
+                      "name": "hour_of_day",
+                      "expression": "`hour_of_day`"
+                    },
+                    {
+                      "name": "sum(trips)",
+                      "expression": "SUM(`trips`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "hour_of_day",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "hour_of_day"
+                },
+                "y": {
+                  "fieldName": "sum(trips)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "trips"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Trips by hour of day (UTC timestamps as stored)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 10,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "demand_duration_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "demand_durations",
+                  "fields": [
+                    {
+                      "name": "duration_bucket",
+                      "expression": "`duration_bucket`"
+                    },
+                    {
+                      "name": "trips",
+                      "expression": "`trips`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "duration_bucket",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "duration_bucket"
+                },
+                "y": {
+                  "fieldName": "trips",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "trips"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Trip duration distribution"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 10,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "demand_top_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "demand_top_stations",
+                  "fields": [
+                    {
+                      "name": "direction",
+                      "expression": "`direction`"
+                    },
+                    {
+                      "name": "station_name",
+                      "expression": "`station_name`"
+                    },
+                    {
+                      "name": "station_short_name",
+                      "expression": "`station_short_name`"
+                    },
+                    {
+                      "name": "trips",
+                      "expression": "`trips`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "direction",
+                    "displayName": "direction"
+                  },
+                  {
+                    "fieldName": "station_name",
+                    "displayName": "station_name"
+                  },
+                  {
+                    "fieldName": "station_short_name",
+                    "displayName": "station_short_name"
+                  },
+                  {
+                    "fieldName": "trips",
+                    "displayName": "trips"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Top 15 origin and destination stations"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 15,
+            "width": 12,
+            "height": 8
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "weather",
+      "displayName": "Weather & Demand",
+      "layout": [
+        {
+          "widget": {
+            "name": "weather_title",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Weather & Demand\n\n",
+                "Hourly Open-Meteo archive for **one NYC reference coordinate** (40.7128, -74.0060) — **not station-level weather**. Charts show **association, not causation**: nothing controls for weekday, holidays or closures. Weather execution `urbanflow-final-weather-devsample48h`; trips outside its window have no weather and are counted, not hidden."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "weather_hours",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "weather_series",
+                  "fields": [
+                    {
+                      "name": "hours_retrieved",
+                      "expression": "`hours_retrieved`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "hours_retrieved",
+                  "displayName": "Weather hours"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Weather hours"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 3,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "weather_coverage",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "weather_gaps",
+                  "fields": [
+                    {
+                      "name": "weather_coverage_percent",
+                      "expression": "`weather_coverage_percent`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "weather_coverage_percent",
+                  "displayName": "Trip-weather coverage %"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Trip-weather coverage %"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 3,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "weather_missing",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "weather_gaps",
+                  "fields": [
+                    {
+                      "name": "trips_without_weather",
+                      "expression": "`trips_without_weather`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "trips_without_weather",
+                  "displayName": "Trips without weather"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Trips without weather"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 3,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "weather_missing_temp",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "weather_series",
+                  "fields": [
+                    {
+                      "name": "missing_temperature_hours",
+                      "expression": "`missing_temperature_hours`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "missing_temperature_hours",
+                  "displayName": "Hours missing temperature"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Hours missing temperature"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 3,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "weather_daily_trips",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "weather_daily",
+                  "fields": [
+                    {
+                      "name": "trip_date",
+                      "expression": "`trip_date`"
+                    },
+                    {
+                      "name": "trips",
+                      "expression": "`trips`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "trip_date",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "trip_date"
+                },
+                "y": {
+                  "fieldName": "trips",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "trips"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Trips per day"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 6,
+            "width": 6,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "weather_daily_temp",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "weather_daily",
+                  "fields": [
+                    {
+                      "name": "trip_date",
+                      "expression": "`trip_date`"
+                    },
+                    {
+                      "name": "avg_temperature_celsius",
+                      "expression": "`avg_temperature_celsius`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "trip_date",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "trip_date"
+                },
+                "y": {
+                  "fieldName": "avg_temperature_celsius",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "avg_temperature_celsius"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Average temperature per day (°C)"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 6,
+            "width": 6,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "weather_temp_scatter",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "weather_daily",
+                  "fields": [
+                    {
+                      "name": "avg_temperature_celsius",
+                      "expression": "`avg_temperature_celsius`"
+                    },
+                    {
+                      "name": "trips",
+                      "expression": "`trips`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "scatter",
+              "encodings": {
+                "x": {
+                  "fieldName": "avg_temperature_celsius",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "avg_temperature_celsius"
+                },
+                "y": {
+                  "fieldName": "trips",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "trips"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Daily trips vs temperature"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 10,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "weather_precip_scatter",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "weather_daily",
+                  "fields": [
+                    {
+                      "name": "total_precipitation_mm",
+                      "expression": "`total_precipitation_mm`"
+                    },
+                    {
+                      "name": "trips",
+                      "expression": "`trips`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "scatter",
+              "encodings": {
+                "x": {
+                  "fieldName": "total_precipitation_mm",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "total_precipitation_mm"
+                },
+                "y": {
+                  "fieldName": "trips",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "trips"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Daily trips vs precipitation (mm)"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 10,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "weather_wind_scatter",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "weather_daily",
+                  "fields": [
+                    {
+                      "name": "avg_wind_speed_kmh",
+                      "expression": "`avg_wind_speed_kmh`"
+                    },
+                    {
+                      "name": "trips",
+                      "expression": "`trips`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "scatter",
+              "encodings": {
+                "x": {
+                  "fieldName": "avg_wind_speed_kmh",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "avg_wind_speed_kmh"
+                },
+                "y": {
+                  "fieldName": "trips",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "trips"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Daily trips vs wind (km/h)"
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 10,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "weather_bucket_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "weather_buckets",
+                  "fields": [
+                    {
+                      "name": "temperature_bucket",
+                      "expression": "`temperature_bucket`"
+                    },
+                    {
+                      "name": "avg_trips_per_day",
+                      "expression": "`avg_trips_per_day`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "temperature_bucket",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "temperature_bucket"
+                },
+                "y": {
+                  "fieldName": "avg_trips_per_day",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "avg_trips_per_day"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Average trips per day by temperature band"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 15,
+            "width": 6,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "weather_precip_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "weather_precipitation",
+                  "fields": [
+                    {
+                      "name": "precipitation_band",
+                      "expression": "`precipitation_band`"
+                    },
+                    {
+                      "name": "avg_trips_per_day",
+                      "expression": "`avg_trips_per_day`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "precipitation_band",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "precipitation_band"
+                },
+                "y": {
+                  "fieldName": "avg_trips_per_day",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "avg_trips_per_day"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Average trips per day by rainfall band"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 15,
+            "width": 6,
+            "height": 4
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "quality",
+      "displayName": "Data Quality & Reliability",
+      "layout": [
+        {
+          "widget": {
+            "name": "quality_title",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Data Quality & Reliability\n\n",
+                "Reconciliation identities for this target's executions and the Lakeflow expectations of the latest COMPLETED update of its isolated pipeline. Run IDs and results are recorded as evidence only after a live run."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "quality_landed",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "quality_monthly",
+                  "fields": [
+                    {
+                      "name": "landed_rows",
+                      "expression": "`landed_rows`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "landed_rows",
+                  "displayName": "Landed"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Landed"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "quality_valid",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "quality_monthly",
+                  "fields": [
+                    {
+                      "name": "valid_trips",
+                      "expression": "`valid_trips`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "valid_trips",
+                  "displayName": "Valid"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Valid"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "quality_quarantine",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "quality_monthly",
+                  "fields": [
+                    {
+                      "name": "quarantined_trips",
+                      "expression": "`quarantined_trips`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "quarantined_trips",
+                  "displayName": "Quarantine"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Quarantine"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "quality_duplicates",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "quality_monthly",
+                  "fields": [
+                    {
+                      "name": "duplicate_trips",
+                      "expression": "`duplicate_trips`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "duplicate_trips",
+                  "displayName": "Duplicates"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Duplicates"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "quality_reconciles",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "quality_monthly",
+                  "fields": [
+                    {
+                      "name": "reconciles",
+                      "expression": "`reconciles`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "reconciles",
+                  "displayName": "Reconciles"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Reconciles"
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "quality_reference",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "quality_monthly",
+                  "fields": [
+                    {
+                      "name": "reference_coverage_percent",
+                      "expression": "`reference_coverage_percent`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "reference_coverage_percent",
+                  "displayName": "Reference coverage %"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Reference coverage %"
+              }
+            }
+          },
+          "position": {
+            "x": 10,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "quality_reference_note",
+            "multilineTextboxSpec": {
+              "lines": [
+                "**A low reference coverage is NOT a data-quality failure.** It is the share of rides starting at one of the 40 stations in the committed **DEVELOPMENT REFERENCE DIMENSION**, while the real network has thousands of stations. Landed = valid + quarantine + duplicates must hold exactly."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 12,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "quality_rules_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "quality_trip_rules",
+                  "fields": [
+                    {
+                      "name": "failed_rule",
+                      "expression": "`failed_rule`"
+                    },
+                    {
+                      "name": "trips_failing",
+                      "expression": "`trips_failing`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "failed_rule",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "failed_rule"
+                },
+                "y": {
+                  "fieldName": "trips_failing",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "trips_failing"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Why trips were quarantined (every row has a named reason)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 7,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "quality_station_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "quality_station",
+                  "fields": [
+                    {
+                      "name": "bronze_rows",
+                      "expression": "`bronze_rows`"
+                    },
+                    {
+                      "name": "silver_rows",
+                      "expression": "`silver_rows`"
+                    },
+                    {
+                      "name": "quarantine_rows",
+                      "expression": "`quarantine_rows`"
+                    },
+                    {
+                      "name": "duplicate_rows",
+                      "expression": "`duplicate_rows`"
+                    },
+                    {
+                      "name": "fact_rows",
+                      "expression": "`fact_rows`"
+                    },
+                    {
+                      "name": "shortage_rows",
+                      "expression": "`shortage_rows`"
+                    },
+                    {
+                      "name": "priority_rows",
+                      "expression": "`priority_rows`"
+                    },
+                    {
+                      "name": "bronze_reconciles",
+                      "expression": "`bronze_reconciles`"
+                    },
+                    {
+                      "name": "fact_matches_silver",
+                      "expression": "`fact_matches_silver`"
+                    },
+                    {
+                      "name": "derived_tables_agree",
+                      "expression": "`derived_tables_agree`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "bronze_rows",
+                    "displayName": "bronze_rows"
+                  },
+                  {
+                    "fieldName": "silver_rows",
+                    "displayName": "silver_rows"
+                  },
+                  {
+                    "fieldName": "quarantine_rows",
+                    "displayName": "quarantine_rows"
+                  },
+                  {
+                    "fieldName": "duplicate_rows",
+                    "displayName": "duplicate_rows"
+                  },
+                  {
+                    "fieldName": "fact_rows",
+                    "displayName": "fact_rows"
+                  },
+                  {
+                    "fieldName": "shortage_rows",
+                    "displayName": "shortage_rows"
+                  },
+                  {
+                    "fieldName": "priority_rows",
+                    "displayName": "priority_rows"
+                  },
+                  {
+                    "fieldName": "bronze_reconciles",
+                    "displayName": "bronze_reconciles"
+                  },
+                  {
+                    "fieldName": "fact_matches_silver",
+                    "displayName": "fact_matches_silver"
+                  },
+                  {
+                    "fieldName": "derived_tables_agree",
+                    "displayName": "derived_tables_agree"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Station snapshot reconciliation (Bronze = Silver + Quarantine + Duplicates)"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 7,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "quality_lakeflow_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "quality_lakeflow",
+                  "fields": [
+                    {
+                      "name": "dataset",
+                      "expression": "`dataset`"
+                    },
+                    {
+                      "name": "expectation",
+                      "expression": "`expectation`"
+                    },
+                    {
+                      "name": "passed_records",
+                      "expression": "`passed_records`"
+                    },
+                    {
+                      "name": "failed_records",
+                      "expression": "`failed_records`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "dataset",
+                    "displayName": "dataset"
+                  },
+                  {
+                    "fieldName": "expectation",
+                    "displayName": "expectation"
+                  },
+                  {
+                    "fieldName": "passed_records",
+                    "displayName": "passed_records"
+                  },
+                  {
+                    "fieldName": "failed_records",
+                    "displayName": "failed_records"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Lakeflow expectations from the pipeline event log (latest completed update)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 12,
+            "width": 12,
+            "height": 8
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "maintenance",
+      "displayName": "Maintenance & Assistant",
+      "layout": [
+        {
+          "widget": {
+            "name": "maintenance_title",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Maintenance & Assistant\n\n",
+                "Station maintenance arrives through **Delta Change Data Feed**; the tickets are **FICTIONAL, SYNTHETIC DATA** on real sample station IDs. Assistant scores come only from approved **live** evaluations; offline fixture scores are never stored, so empty tables mean no live evaluation has run."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "maintenance_status_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "maintenance_status",
+                  "fields": [
+                    {
+                      "name": "status",
+                      "expression": "`status`"
+                    },
+                    {
+                      "name": "sum(tickets)",
+                      "expression": "SUM(`tickets`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "status",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "status"
+                },
+                "y": {
+                  "fieldName": "sum(tickets)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "tickets"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Maintenance tickets by status"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 6,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "maintenance_checkpoint_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "maintenance_checkpoint",
+                  "fields": [
+                    {
+                      "name": "processed_version",
+                      "expression": "`processed_version`"
+                    },
+                    {
+                      "name": "last_data_change_version",
+                      "expression": "`last_data_change_version`"
+                    },
+                    {
+                      "name": "history_events",
+                      "expression": "`history_events`"
+                    },
+                    {
+                      "name": "processed_at",
+                      "expression": "`processed_at`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "processed_version",
+                    "displayName": "processed_version"
+                  },
+                  {
+                    "fieldName": "last_data_change_version",
+                    "displayName": "last_data_change_version"
+                  },
+                  {
+                    "fieldName": "history_events",
+                    "displayName": "history_events"
+                  },
+                  {
+                    "fieldName": "processed_at",
+                    "displayName": "processed_at"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "CDC checkpoint: newest scanned and reconciled source version (after reconciliation only)"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 2,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "maintenance_cdc_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "maintenance_cdc",
+                  "fields": [
+                    {
+                      "name": "commit_version",
+                      "expression": "`commit_version`"
+                    },
+                    {
+                      "name": "change_type",
+                      "expression": "`change_type`"
+                    },
+                    {
+                      "name": "events",
+                      "expression": "`events`"
+                    },
+                    {
+                      "name": "committed_at",
+                      "expression": "`committed_at`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "commit_version",
+                    "displayName": "commit_version"
+                  },
+                  {
+                    "fieldName": "change_type",
+                    "displayName": "change_type"
+                  },
+                  {
+                    "fieldName": "events",
+                    "displayName": "events"
+                  },
+                  {
+                    "fieldName": "committed_at",
+                    "displayName": "committed_at"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "CDC audit trail by source version"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 4,
+            "width": 6,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "maintenance_conflicts_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "maintenance_conflicts",
+                  "fields": [
+                    {
+                      "name": "maintenance_id",
+                      "expression": "`maintenance_id`"
+                    },
+                    {
+                      "name": "station_name",
+                      "expression": "`station_name`"
+                    },
+                    {
+                      "name": "maintenance_status",
+                      "expression": "`maintenance_status`"
+                    },
+                    {
+                      "name": "maintenance_severity",
+                      "expression": "`maintenance_severity`"
+                    },
+                    {
+                      "name": "availability_status",
+                      "expression": "`availability_status`"
+                    },
+                    {
+                      "name": "priority_score",
+                      "expression": "`priority_score`"
+                    },
+                    {
+                      "name": "action",
+                      "expression": "`action`"
+                    },
+                    {
+                      "name": "dispatch_note",
+                      "expression": "`dispatch_note`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "maintenance_id",
+                    "displayName": "maintenance_id"
+                  },
+                  {
+                    "fieldName": "station_name",
+                    "displayName": "station_name"
+                  },
+                  {
+                    "fieldName": "maintenance_status",
+                    "displayName": "maintenance_status"
+                  },
+                  {
+                    "fieldName": "maintenance_severity",
+                    "displayName": "maintenance_severity"
+                  },
+                  {
+                    "fieldName": "availability_status",
+                    "displayName": "availability_status"
+                  },
+                  {
+                    "fieldName": "priority_score",
+                    "displayName": "priority_score"
+                  },
+                  {
+                    "fieldName": "action",
+                    "displayName": "action"
+                  },
+                  {
+                    "fieldName": "dispatch_note",
+                    "displayName": "dispatch_note"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Stations with an open maintenance ticket: current status and pending action (HOLD)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 8,
+            "width": 12,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "assistant_evaluation_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "assistant_evaluation",
+                  "fields": [
+                    {
+                      "name": "variant",
+                      "expression": "`variant`"
+                    },
+                    {
+                      "name": "questions",
+                      "expression": "`questions`"
+                    },
+                    {
+                      "name": "answer_correctness",
+                      "expression": "`answer_correctness`"
+                    },
+                    {
+                      "name": "retrieval_recall",
+                      "expression": "`retrieval_recall`"
+                    },
+                    {
+                      "name": "source_coverage",
+                      "expression": "`source_coverage`"
+                    },
+                    {
+                      "name": "errors",
+                      "expression": "`errors`"
+                    },
+                    {
+                      "name": "evaluated_at",
+                      "expression": "`evaluated_at`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "variant",
+                    "displayName": "variant"
+                  },
+                  {
+                    "fieldName": "questions",
+                    "displayName": "questions"
+                  },
+                  {
+                    "fieldName": "answer_correctness",
+                    "displayName": "answer_correctness"
+                  },
+                  {
+                    "fieldName": "retrieval_recall",
+                    "displayName": "retrieval_recall"
+                  },
+                  {
+                    "fieldName": "source_coverage",
+                    "displayName": "source_coverage"
+                  },
+                  {
+                    "fieldName": "errors",
+                    "displayName": "errors"
+                  },
+                  {
+                    "fieldName": "evaluated_at",
+                    "displayName": "evaluated_at"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Assistant: baseline vs RAG, latest live evaluation"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 13,
+            "width": 12,
+            "height": 4
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "canvasBackgroundColor": {
+        "light": "#F7FAFC",
+        "dark": "#111827"
+      },
+      "widgetBackgroundColor": {
+        "light": "#FFFFFF",
+        "dark": "#1F2937"
+      },
+      "widgetBorderColor": {
+        "light": "#FFFFFF",
+        "dark": "#1F2937"
+      },
+      "fontColor": {
+        "light": "#172554",
+        "dark": "#E5E7EB"
+      },
+      "selectionColor": {
+        "light": "#0072B2",
+        "dark": "#5ADBFF"
+      },
+      "visualizationColors": [
+        "#0072B2",
+        "#E69F00",
+        "#009E73",
+        "#CC79A7",
+        "#D55E00",
+        "#56B4E9",
+        "#F0E442"
+      ],
+      "widgetHeaderAlignment": "LEFT",
+      "widgetCornerRadius": 8
+    }
+  }
+}

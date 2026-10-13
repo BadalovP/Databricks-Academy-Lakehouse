@@ -1,0 +1,577 @@
+{
+ "code_commit": "625916f",
+ "deploy": {
+  "post_plan": {
+   "actions": {
+    "resources.dashboards.urbanflow_final_dashboard": "skip",
+    "resources.jobs.urbanflow_final_platform": "skip",
+    "resources.jobs.urbanflow_final_rag": "skip",
+    "resources.pipelines.urbanflow_final_pipeline": "skip",
+    "resources.schemas.urbanflow_final_lakeflow_schema": "skip",
+    "resources.schemas.urbanflow_final_schema": "skip",
+    "resources.volumes.urbanflow_final_landing": "skip"
+   },
+   "job_ids": {
+    "urbanflow_final_platform": 456376825048239,
+    "urbanflow_final_rag": 1075074961516662
+   },
+   "phase": "post",
+   "status": "PASS",
+   "target": "azure_prod"
+  },
+  "pre_plan_actions": {
+   "resources.dashboards.urbanflow_final_dashboard": "create",
+   "resources.jobs.urbanflow_final_platform": "create",
+   "resources.jobs.urbanflow_final_rag": "create",
+   "resources.pipelines.urbanflow_final_pipeline": "create",
+   "resources.schemas.urbanflow_final_lakeflow_schema": "create",
+   "resources.schemas.urbanflow_final_schema": "create",
+   "resources.volumes.urbanflow_final_landing": "create"
+  },
+  "resources": {
+   "dashboard": {
+    "id": "01f1c6ddd47616e8bb703a5342a603ba",
+    "name": "[azure_prod] UrbanFlow 2.0 Operations",
+    "state": "LifecycleState.ACTIVE",
+    "warehouse": "d8b8ff9942968cb8"
+   },
+   "host": "https://adb-7405618361895520.0.azuredatabricks.net",
+   "parvinbadalov_urbanflow_final_lakeflow_prod": {
+    "created_at": 1791879147988,
+    "owner": "parvinbadalov@softserve.academy"
+   },
+   "parvinbadalov_urbanflow_final_prod": {
+    "created_at": 1791879147974,
+    "owner": "parvinbadalov@softserve.academy"
+   },
+   "pipeline": {
+    "catalog": "dbr_dev",
+    "continuous": false,
+    "id": "f5961757-69be-4800-8afe-dae6987d8bc0",
+    "name": "[azure_prod] UrbanFlow 2.0 Medallion Pipeline",
+    "schema": "parvinbadalov_urbanflow_final_lakeflow_prod",
+    "serverless": true,
+    "state": "PipelineState.IDLE"
+   },
+   "platform_job": {
+    "id": 456376825048239,
+    "name": "[azure_prod] UrbanFlow 2.0 Platform",
+    "schedule": null,
+    "tasks": 11,
+    "trigger": null
+   },
+   "rag_job": {
+    "id": 1075074961516662,
+    "name": "[azure_prod] UrbanFlow 2.0 Mobility RAG",
+    "schedule": null,
+    "tasks": 3,
+    "trigger": null
+   },
+   "user": "parvinbadalov@softserve.academy",
+   "volume": {
+    "name": "dbr_dev.parvinbadalov_urbanflow_final_prod.urbanflow_final_landing",
+    "type": "VolumeType.MANAGED"
+   }
+  },
+  "validator": "PASS"
+ },
+ "end_time_ms": 1791879675217,
+ "idempotency_token": "urbanflow-final-azure-prod-sample-20261013-001",
+ "identity": "Azure CLI login of the operator",
+ "independent_verification": {
+  "cdc": {
+   "cdf_events": [
+    {
+     "_change_type": "insert",
+     "_commit_version": "1",
+     "n": "5"
+    }
+   ],
+   "cdf_events_missing_from_history": [
+    {
+     "n": "0"
+    }
+   ],
+   "checkpoint": [
+    {
+     "pipeline_key": "station_maintenance",
+     "processed_at": "2026-10-13 08:21:08.744388",
+     "processed_version": "1"
+    }
+   ],
+   "checkpoint_history": [
+    [
+     0,
+     "CREATE TABLE"
+    ],
+    [
+     1,
+     "MERGE"
+    ]
+   ],
+   "history": [
+    {
+     "change_type": "insert",
+     "commit_version": "1",
+     "ids": "5",
+     "n": "5"
+    }
+   ],
+   "reconciliation_at_latest": [
+    {
+     "duplicate_target_keys": "0",
+     "events_missing_from_history": "0",
+     "missing_or_different_in_target": "0",
+     "source_count": "5",
+     "target_count": "5",
+     "unexpected_or_different_in_target": "0"
+    }
+   ],
+   "source_history": [
+    [
+     0,
+     "CREATE TABLE"
+    ],
+    [
+     1,
+     "MERGE"
+    ]
+   ]
+  },
+  "counts": {
+   "bronze_historical_trips": 40,
+   "bronze_station_status": 40,
+   "dim_station_development_sample": 40,
+   "dim_weather_hourly": 48,
+   "duplicate_historical_trips": 0,
+   "duplicate_station_status": 0,
+   "fact_station_availability": 40,
+   "gold_daily_station_summary": 40,
+   "gold_daily_trip_demand": 40,
+   "gold_rebalancing_priority": 13,
+   "gold_station_shortage": 13,
+   "gold_weather_demand": 17,
+   "maintenance_cdc_checkpoint": 1,
+   "maintenance_cdc_history": 5,
+   "quarantine_historical_trips": 0,
+   "quarantine_station_status": 0,
+   "silver_historical_trips": 40,
+   "silver_station_maintenance": 5,
+   "silver_station_status": 40,
+   "station_maintenance_source": 5
+  },
+  "dashboard_checks": {
+   "demand_headline": [
+    {
+     "casual_trips": "5",
+     "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+     "distinct_start_stations": "30",
+     "execution_id": "urbanflow-final-hist-devsample40",
+     "first_ride_started": "2024-01-14T19:43:39.741Z",
+     "last_ride_ended": "2024-01-31T22:22:45.520Z",
+     "member_trips": "35",
+     "valid_trips": "40"
+    }
+   ],
+   "maintenance_cdc": [
+    {
+     "change_type": "insert",
+     "commit_version": "1",
+     "committed_at": "2026-10-13T08:20:54.000Z",
+     "events": "5"
+    }
+   ],
+   "maintenance_checkpoint": [
+    {
+     "history_events": "5",
+     "last_data_change_version": "1",
+     "pipeline_key": "station_maintenance",
+     "processed_at": "2026-10-13T08:21:08.744Z",
+     "processed_version": "1"
+    }
+   ],
+   "maintenance_conflicts": [
+    {
+     "action": "COLLECT_BIKES",
+     "availability_status": "LOW_DOCKS",
+     "dispatch_note": "HOLD - dispatcher decision before sending a van",
+     "maintenance_id": "MT-1004",
+     "maintenance_severity": "HIGH",
+     "maintenance_status": "OPEN",
+     "maintenance_updated_at": "2026-10-12T07:15:00.000Z",
+     "priority_score": "2",
+     "station_name": "Church Ave & Story St"
+    },
+    {
+     "action": null,
+     "availability_status": "OUT_OF_SERVICE",
+     "dispatch_note": "no rebalancing action pending",
+     "maintenance_id": "MT-1001",
+     "maintenance_severity": "HIGH",
+     "maintenance_status": "OPEN",
+     "maintenance_updated_at": "2026-10-12T07:00:00.000Z",
+     "priority_score": null,
+     "station_name": "E 48 St & 5 Ave"
+    },
+    {
+     "action": null,
+     "availability_status": "AVAILABLE",
+     "dispatch_note": "no rebalancing action pending",
+     "maintenance_id": "MT-1002",
+     "maintenance_severity": "MEDIUM",
+     "maintenance_status": "OPEN",
+     "maintenance_updated_at": "2026-10-12T07:05:00.000Z",
+     "priority_score": null,
+     "station_name": "E 54 St & 1 Ave"
+    },
+    {
+     "action": null,
+     "availability_status": "AVAILABLE",
+     "dispatch_note": "no rebalancing action pending",
+     "maintenance_id": "MT-1003",
+     "maintenance_severity": "LOW",
+     "maintenance_status": "IN_PROGRESS",
+     "maintenance_updated_at": "2026-10-12T07:10:00.000Z",
+     "priority_score": null,
+     "station_name": "Prospect Pl & Vanderbilt Ave"
+    },
+    {
+     "action": null,
+     "availability_status": "AVAILABLE",
+     "dispatch_note": "no rebalancing action pending",
+     "maintenance_id": "MT-1005",
+     "maintenance_severity": "LOW",
+     "maintenance_status": "OPEN",
+     "maintenance_updated_at": "2026-10-12T07:20:00.000Z",
+     "priority_score": null,
+     "station_name": "41 Ave & 67 St"
+    }
+   ],
+   "maintenance_status": [
+    {
+     "data_scope": "FICTIONAL, SYNTHETIC MAINTENANCE DATA",
+     "last_updated_at": "2026-10-12T07:10:00.000Z",
+     "severity": "LOW",
+     "status": "IN_PROGRESS",
+     "tickets": "1"
+    },
+    {
+     "data_scope": "FICTIONAL, SYNTHETIC MAINTENANCE DATA",
+     "last_updated_at": "2026-10-12T07:15:00.000Z",
+     "severity": "HIGH",
+     "status": "OPEN",
+     "tickets": "2"
+    },
+    {
+     "data_scope": "FICTIONAL, SYNTHETIC MAINTENANCE DATA",
+     "last_updated_at": "2026-10-12T07:20:00.000Z",
+     "severity": "LOW",
+     "status": "OPEN",
+     "tickets": "1"
+    },
+    {
+     "data_scope": "FICTIONAL, SYNTHETIC MAINTENANCE DATA",
+     "last_updated_at": "2026-10-12T07:05:00.000Z",
+     "severity": "MEDIUM",
+     "status": "OPEN",
+     "tickets": "1"
+    }
+   ],
+   "ops_headline": [
+    {
+     "actionable_shortages": "13",
+     "available_stations": "25",
+     "both_low_stations": "0",
+     "executions_included": "1",
+     "low_bike_stations": "4",
+     "low_dock_stations": "9",
+     "out_of_service_stations": "2",
+     "reading_note": "one GBFS snapshot - a point-in-time count, not a trend",
+     "snapshot_observed_from": "2026-09-28T19:52:25.000Z",
+     "snapshot_observed_to": "2026-09-28T19:52:25.000Z",
+     "total_stations_observed": "40"
+    }
+   ],
+   "quality_monthly": [
+    {
+     "duplicate_trips": "0",
+     "execution_id": "urbanflow-final-hist-devsample40",
+     "landed_rows": "40",
+     "matched_trips": "40",
+     "quarantined_trips": "0",
+     "reading_note": "coverage of the 40-station development reference dimension, not data quality",
+     "reconciles": "true",
+     "reference_coverage_percent": "100.00",
+     "valid_trips": "40"
+    }
+   ],
+   "quality_station": [
+    {
+     "accounted_rows": "40",
+     "bronze_reconciles": "true",
+     "bronze_rows": "40",
+     "derived_tables_agree": "true",
+     "duplicate_rows": "0",
+     "fact_matches_silver": "true",
+     "fact_rows": "40",
+     "priority_rows": "13",
+     "quarantine_rows": "0",
+     "shortage_rows": "13",
+     "silver_rows": "40"
+    }
+   ],
+   "weather_gaps": [
+    {
+     "data_scope": "48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE",
+     "days_covered": "17",
+     "execution_id": "urbanflow-final-weather-devsample48h",
+     "trips": "40",
+     "trips_with_weather": "4",
+     "trips_without_weather": "36",
+     "weather_coverage_percent": "10.00"
+    }
+   ],
+   "weather_series": [
+    {
+     "covers_from": "2024-01-24T00:00:00.000Z",
+     "covers_to": "2024-01-25T23:00:00.000Z",
+     "execution_id": "urbanflow-final-weather-devsample48h",
+     "hours_retrieved": "48",
+     "hours_with_precipitation": "48",
+     "hours_with_temperature": "48",
+     "hours_with_wind": "48",
+     "missing_temperature_hours": "0",
+     "retrieved_at": "2026-10-13T08:19:13.636478Z",
+     "source": "open-meteo-archive",
+     "weather_grid_label": "open-meteo@40.7128,-74.0060"
+    }
+   ]
+  },
+  "tables": [
+   "bronze_historical_trips",
+   "bronze_station_status",
+   "dim_station_development_sample",
+   "dim_weather_hourly",
+   "duplicate_historical_trips",
+   "duplicate_station_status",
+   "fact_station_availability",
+   "gold_daily_station_summary",
+   "gold_daily_trip_demand",
+   "gold_rebalancing_priority",
+   "gold_station_shortage",
+   "gold_weather_demand",
+   "maintenance_cdc_checkpoint",
+   "maintenance_cdc_history",
+   "quarantine_historical_trips",
+   "quarantine_station_status",
+   "silver_historical_trips",
+   "silver_station_maintenance",
+   "silver_station_status",
+   "station_maintenance_source"
+  ]
+ },
+ "job_id": 456376825048239,
+ "job_parameters": {
+  "cdc_snapshot": "batch_001",
+  "cdc_source": "fixture_snapshot",
+  "run_federation_cdc": "true",
+  "run_full_month": "false",
+  "run_historical": "true",
+  "run_lakeflow": "false",
+  "run_station_pipeline": "true",
+  "run_weather": "true",
+  "station_source": "sample_autoloader",
+  "weather_sample_file": "open_meteo_archive_202401.sample.json",
+  "weather_source": "sample_json"
+ },
+ "outcome": "PASS",
+ "phase": "9 Azure PROD-style deployment and sample run (Academy trial dbr_dev_trial_2)",
+ "run_id": 240527908342651,
+ "run_state": {
+  "life_cycle_state": "TERMINATED",
+  "result_state": "SUCCESS",
+  "state_message": "",
+  "user_cancelled_or_timedout": false
+ },
+ "shared_catalog_changes": {
+  "jobs_added": [
+   456376825048239,
+   1075074961516662
+  ],
+  "jobs_removed": [],
+  "schemas_added": [
+   "parvinbadalov_urbanflow_final_lakeflow_prod",
+   "parvinbadalov_urbanflow_final_prod"
+  ],
+  "schemas_removed": []
+ },
+ "start_time_ms": 1791879202155,
+ "task_results": {
+  "federation_cdc": {
+   "cdc_source": "fixture_snapshot",
+   "changes_applied": true,
+   "checkpoint_after": 1,
+   "checkpoint_before": -1,
+   "duplicate_target_keys": 0,
+   "events": {
+    "insert": 5
+   },
+   "events_missing_from_history": 0,
+   "last_data_change_version": 1,
+   "missing_or_different_in_target": 0,
+   "scanned_range": [
+    0,
+    1
+   ],
+   "snapshot": "batch_001",
+   "snapshot_differences": {
+    "snapshot_rows_not_in_source": 5,
+    "source_rows_not_in_snapshot": 0
+   },
+   "source_count": 5,
+   "source_latest_version": 1,
+   "source_merged": true,
+   "status": "PASS",
+   "target_count": 5,
+   "unexpected_or_different_in_target": 0
+  },
+  "land_sources": {
+   "bronze_rows_for_execution": 40,
+   "historical_landing": "landed",
+   "historical_landing_dir": "/Volumes/dbr_dev/parvinbadalov_urbanflow_final_prod/urbanflow_final_landing/landing/historical_trips",
+   "source_execution_id": "urbanflow-final-240527908342651",
+   "station_events_landed": 40,
+   "station_landing": "landed",
+   "status": "PASS",
+   "weather_landing": "landed",
+   "weather_landing_path": "/Volumes/dbr_dev/parvinbadalov_urbanflow_final_prod/urbanflow_final_landing/landing/weather/open_meteo_archive_202401.sample.json"
+  },
+  "preflight": {
+   "branches": {
+    "run_federation_cdc": true,
+    "run_full_month": false,
+    "run_historical": true,
+    "run_lakeflow": false,
+    "run_station_pipeline": true,
+    "run_weather": true
+   },
+   "compute": "serverless",
+   "event_hubs_producer": "excluded",
+   "historical_execution_id": "urbanflow-final-hist-devsample40",
+   "mode": "development_sample",
+   "source_execution_id": "urbanflow-final-240527908342651",
+   "status": "PASS",
+   "target": "dbr_dev.parvinbadalov_urbanflow_final_prod",
+   "weather_execution_id": "urbanflow-final-weather-devsample48h"
+  },
+  "station_source_check": {
+   "distinct_event_ids": 40,
+   "execution_id": "urbanflow-final-240527908342651",
+   "null_event_ids": 0,
+   "null_execution_ids": 0,
+   "null_station_ids": 0,
+   "rows": 40,
+   "station_source": "sample_autoloader",
+   "status": "PASS",
+   "table": "dbr_dev.parvinbadalov_urbanflow_final_prod.bronze_station_status"
+  },
+  "validate_medallion": {
+   "checks": {
+    "fact_station_availability_unassigned_execution_ids": 0,
+    "gold_rebalancing_priority_unassigned_execution_ids": 0,
+    "gold_station_shortage_unassigned_execution_ids": 0,
+    "gold_weather_demand_unassigned_execution_ids": 0,
+    "historical_null_ride_ids": 0,
+    "historical_reconciliation": {
+     "bronze": 40,
+     "duplicate": 0,
+     "quarantine": 0,
+     "valid": 40
+    },
+    "historical_ride_id_unique": 40,
+    "historical_sample_counts": {
+     "bronze": 40,
+     "duplicate": 0,
+     "quarantine": 0,
+     "valid": 40
+    },
+    "historical_sample_days": 17,
+    "historical_sample_rider_mix": {
+     "casual": 5,
+     "member": 35
+    },
+    "historical_sample_station_matches": 40,
+    "historical_station_id_type": "string",
+    "silver_station_status_unassigned_execution_ids": 0,
+    "station_bronze_business_key_unique": 40,
+    "station_bronze_null_station_ids": 0,
+    "station_bronze_rows": 40,
+    "station_fact_business_key_unique": 40,
+    "station_fact_null_station_ids": 0,
+    "station_fact_rows": 40,
+    "station_priority_business_key_unique": 13,
+    "station_priority_null_station_ids": 0,
+    "station_priority_out_of_service": 0,
+    "station_priority_rows": 13,
+    "station_shortage_business_key_unique": 13,
+    "station_shortage_null_station_ids": 0,
+    "station_shortage_out_of_service": 0,
+    "station_shortage_rows": 13,
+    "station_silver_business_key_unique": 40,
+    "station_silver_null_station_ids": 0,
+    "station_silver_rows": 40,
+    "station_status_composition": {
+     "AVAILABLE": 25,
+     "LOW_BIKES": 4,
+     "LOW_DOCKS": 9,
+     "OUT_OF_SERVICE": 2
+    },
+    "weather_hour_business_key_unique": {
+     "rows": 48,
+     "unique": 48
+    },
+    "weather_join_no_fanout": {
+     "historical_trips": 40,
+     "summary_trips": 40
+    },
+    "weather_sample_hours": 48,
+    "weather_temperature_complete": {
+     "complete": 48,
+     "rows": 48
+    }
+   },
+   "historical_execution_id": "urbanflow-final-hist-devsample40",
+   "mode": "development_sample",
+   "source_execution_id": "urbanflow-final-240527908342651",
+   "status": "PASS",
+   "weather_execution_id": "urbanflow-final-weather-devsample48h"
+  }
+ },
+ "task_seconds": {
+  "federation_cdc": 52,
+  "historical_trips": 79,
+  "land_sources": 51,
+  "preflight": 44,
+  "refresh_lakeflow": 0,
+  "should_refresh_lakeflow": 2,
+  "station_gold": 82,
+  "station_silver": 53,
+  "station_source_check": 23,
+  "validate_medallion": 40,
+  "weather_enrichment": 45
+ },
+ "tasks": {
+  "federation_cdc": "SUCCESS",
+  "historical_trips": "SUCCESS",
+  "land_sources": "SUCCESS",
+  "preflight": "SUCCESS",
+  "refresh_lakeflow": "EXCLUDED",
+  "should_refresh_lakeflow": "SUCCESS",
+  "station_gold": "SUCCESS",
+  "station_silver": "SUCCESS",
+  "station_source_check": "SUCCESS",
+  "validate_medallion": "SUCCESS",
+  "weather_enrichment": "SUCCESS"
+ },
+ "workspace": "https://adb-7405618361895520.0.azuredatabricks.net"
+}

@@ -1,0 +1,1089 @@
+{
+  "step": "2 - Personal DEV platform sample run (second retry after deploying 2a3c88d)",
+  "outcome": "PASS - every required task succeeded and every reconciliation was verified independently",
+  "phase_a_redeploy": {
+    "commit": "2a3c88de57845f997f06ccc474e8fdbc34151eec",
+    "pre_plan": {
+      "resources.dashboards.urbanflow_final_dashboard": "skip",
+      "resources.jobs.urbanflow_final_platform": "update",
+      "resources.jobs.urbanflow_final_rag": "skip",
+      "resources.pipelines.urbanflow_final_pipeline": "skip",
+      "resources.schemas.urbanflow_final_lakeflow_schema": "skip",
+      "resources.schemas.urbanflow_final_schema": "skip",
+      "resources.volumes.urbanflow_final_landing": "skip"
+    },
+    "non_skip_field_changes": [
+      "land_sources.base_parameters.run_weather",
+      "land_sources.base_parameters.weather_source",
+      "land_sources.base_parameters.weather_sample_file"
+    ],
+    "pre_validator": "PASS",
+    "post_plan": {
+      "resources.dashboards.urbanflow_final_dashboard": "skip",
+      "resources.jobs.urbanflow_final_platform": "skip",
+      "resources.jobs.urbanflow_final_rag": "skip",
+      "resources.pipelines.urbanflow_final_pipeline": "skip",
+      "resources.schemas.urbanflow_final_lakeflow_schema": "skip",
+      "resources.schemas.urbanflow_final_schema": "skip",
+      "resources.volumes.urbanflow_final_landing": "skip"
+    },
+    "post_validator": "PASS"
+  },
+  "job_id": 158911626270744,
+  "run_id": 896549012431425,
+  "idempotency_token": "urbanflow-final-step2-retry2-20261012-001",
+  "job_parameters": {
+    "run_station_pipeline": "true",
+    "station_source": "sample_autoloader",
+    "source_execution_id": "urbanflow-final-304828008837365",
+    "run_historical": "true",
+    "historical_execution_id": "urbanflow-final-hist-devsample40",
+    "run_weather": "true",
+    "weather_execution_id": "urbanflow-final-weather-devsample48h",
+    "weather_source": "sample_json",
+    "weather_sample_file": "open_meteo_archive_202401.sample.json",
+    "run_federation_cdc": "true",
+    "cdc_source": "fixture_snapshot",
+    "cdc_snapshot": "batch_001",
+    "run_full_month": "false",
+    "run_lakeflow": "false"
+  },
+  "run_state": {
+    "life_cycle_state": "TERMINATED",
+    "result_state": "SUCCESS",
+    "start": "2026-10-12T16:44:12+00:00",
+    "end": "2026-10-12T16:52:17+00:00",
+    "seconds": 485
+  },
+  "tasks": [
+    {
+      "task_key": "preflight",
+      "task_run_id": 361077411060835,
+      "life_cycle_state": "TERMINATED",
+      "result_state": "SUCCESS",
+      "start": "2026-10-12T16:44:12+00:00",
+      "end": "2026-10-12T16:44:56+00:00",
+      "seconds": 44
+    },
+    {
+      "task_key": "land_sources",
+      "task_run_id": 642218570791832,
+      "life_cycle_state": "TERMINATED",
+      "result_state": "SUCCESS",
+      "start": "2026-10-12T16:44:57+00:00",
+      "end": "2026-10-12T16:45:38+00:00",
+      "seconds": 41
+    },
+    {
+      "task_key": "station_source_check",
+      "task_run_id": 431059921164595,
+      "life_cycle_state": "TERMINATED",
+      "result_state": "SUCCESS",
+      "start": "2026-10-12T16:45:38+00:00",
+      "end": "2026-10-12T16:45:57+00:00",
+      "seconds": 19
+    },
+    {
+      "task_key": "station_silver",
+      "task_run_id": 1002476401470673,
+      "life_cycle_state": "TERMINATED",
+      "result_state": "SUCCESS",
+      "start": "2026-10-12T16:45:58+00:00",
+      "end": "2026-10-12T16:46:58+00:00",
+      "seconds": 60
+    },
+    {
+      "task_key": "station_gold",
+      "task_run_id": 752250633905171,
+      "life_cycle_state": "TERMINATED",
+      "result_state": "SUCCESS",
+      "start": "2026-10-12T16:46:59+00:00",
+      "end": "2026-10-12T16:48:35+00:00",
+      "seconds": 96
+    },
+    {
+      "task_key": "historical_trips",
+      "task_run_id": 122086201959894,
+      "life_cycle_state": "TERMINATED",
+      "result_state": "SUCCESS",
+      "start": "2026-10-12T16:48:35+00:00",
+      "end": "2026-10-12T16:49:52+00:00",
+      "seconds": 76
+    },
+    {
+      "task_key": "weather_enrichment",
+      "task_run_id": 236494714139808,
+      "life_cycle_state": "TERMINATED",
+      "result_state": "SUCCESS",
+      "start": "2026-10-12T16:49:52+00:00",
+      "end": "2026-10-12T16:50:42+00:00",
+      "seconds": 49
+    },
+    {
+      "task_key": "validate_medallion",
+      "task_run_id": 991091185896390,
+      "life_cycle_state": "TERMINATED",
+      "result_state": "SUCCESS",
+      "start": "2026-10-12T16:50:42+00:00",
+      "end": "2026-10-12T16:51:22+00:00",
+      "seconds": 40
+    },
+    {
+      "task_key": "federation_cdc",
+      "task_run_id": 799371538416217,
+      "life_cycle_state": "TERMINATED",
+      "result_state": "SUCCESS",
+      "start": "2026-10-12T16:51:22+00:00",
+      "end": "2026-10-12T16:52:17+00:00",
+      "seconds": 54
+    },
+    {
+      "task_key": "should_refresh_lakeflow",
+      "task_run_id": 821669035636873,
+      "life_cycle_state": "TERMINATED",
+      "result_state": "SUCCESS",
+      "start": "2026-10-12T16:51:22+00:00",
+      "end": "2026-10-12T16:51:23+00:00",
+      "seconds": 1
+    },
+    {
+      "task_key": "refresh_lakeflow",
+      "task_run_id": 1014869426114752,
+      "life_cycle_state": "SKIPPED",
+      "result_state": "EXCLUDED",
+      "start": "2026-10-12T16:51:24+00:00",
+      "end": "2026-10-12T16:51:24+00:00",
+      "seconds": 0
+    }
+  ],
+  "task_results": {
+    "preflight": {
+      "branches": {
+        "run_full_month": false,
+        "run_historical": true,
+        "run_station_pipeline": true,
+        "run_weather": true
+      },
+      "compute": "serverless",
+      "event_hubs_producer": "excluded",
+      "historical_execution_id": "urbanflow-final-hist-devsample40",
+      "mode": "development_sample",
+      "source_execution_id": "urbanflow-final-304828008837365",
+      "status": "PASS",
+      "target": "workspace.urbanflow_final_dev",
+      "weather_execution_id": "urbanflow-final-weather-devsample48h"
+    },
+    "land_sources": {
+      "bronze_rows_for_execution": 40,
+      "historical_landing": "already_landed",
+      "historical_landing_dir": "/Volumes/workspace/urbanflow_final_dev/urbanflow_final_landing/landing/historical_trips",
+      "source_execution_id": "urbanflow-final-304828008837365",
+      "station_events_landed": 40,
+      "station_landing": "already_landed",
+      "status": "PASS",
+      "weather_landing": "landed",
+      "weather_landing_path": "/Volumes/workspace/urbanflow_final_dev/urbanflow_final_landing/landing/weather/open_meteo_archive_202401.sample.json"
+    },
+    "station_source_check": {
+      "distinct_event_ids": 40,
+      "execution_id": "urbanflow-final-304828008837365",
+      "null_event_ids": 0,
+      "null_execution_ids": 0,
+      "null_station_ids": 0,
+      "rows": 40,
+      "station_source": "sample_autoloader",
+      "status": "PASS",
+      "table": "workspace.urbanflow_final_dev.bronze_station_status"
+    },
+    "validate_medallion": {
+      "checks": {
+        "fact_station_availability_unassigned_execution_ids": 0,
+        "gold_rebalancing_priority_unassigned_execution_ids": 0,
+        "gold_station_shortage_unassigned_execution_ids": 0,
+        "gold_weather_demand_unassigned_execution_ids": 0,
+        "historical_null_ride_ids": 0,
+        "historical_reconciliation": {
+          "bronze": 40,
+          "duplicate": 0,
+          "quarantine": 0,
+          "valid": 40
+        },
+        "historical_ride_id_unique": 40,
+        "historical_sample_counts": {
+          "bronze": 40,
+          "duplicate": 0,
+          "quarantine": 0,
+          "valid": 40
+        },
+        "historical_sample_days": 17,
+        "historical_sample_rider_mix": {
+          "casual": 5,
+          "member": 35
+        },
+        "historical_sample_station_matches": 40,
+        "historical_station_id_type": "string",
+        "silver_station_status_unassigned_execution_ids": 0,
+        "station_bronze_business_key_unique": 40,
+        "station_bronze_null_station_ids": 0,
+        "station_bronze_rows": 40,
+        "station_fact_business_key_unique": 40,
+        "station_fact_null_station_ids": 0,
+        "station_fact_rows": 40,
+        "station_priority_business_key_unique": 13,
+        "station_priority_null_station_ids": 0,
+        "station_priority_out_of_service": 0,
+        "station_priority_rows": 13,
+        "station_shortage_business_key_unique": 13,
+        "station_shortage_null_station_ids": 0,
+        "station_shortage_out_of_service": 0,
+        "station_shortage_rows": 13,
+        "station_silver_business_key_unique": 40,
+        "station_silver_null_station_ids": 0,
+        "station_silver_rows": 40,
+        "station_status_composition": {
+          "AVAILABLE": 25,
+          "LOW_BIKES": 4,
+          "LOW_DOCKS": 9,
+          "OUT_OF_SERVICE": 2
+        },
+        "weather_hour_business_key_unique": {
+          "rows": 48,
+          "unique": 48
+        },
+        "weather_join_no_fanout": {
+          "historical_trips": 40,
+          "summary_trips": 40
+        },
+        "weather_sample_hours": 48,
+        "weather_temperature_complete": {
+          "complete": 48,
+          "rows": 48
+        }
+      },
+      "historical_execution_id": "urbanflow-final-hist-devsample40",
+      "mode": "development_sample",
+      "source_execution_id": "urbanflow-final-304828008837365",
+      "status": "PASS",
+      "weather_execution_id": "urbanflow-final-weather-devsample48h"
+    },
+    "federation_cdc": {
+      "cdc_source": "fixture_snapshot",
+      "checkpoint_after": 1,
+      "checkpoint_before": -1,
+      "duplicate_target_keys": 0,
+      "events": {
+        "insert": 5
+      },
+      "events_missing_from_history": 0,
+      "missing_or_different_in_target": 0,
+      "snapshot": "batch_001",
+      "source_count": 5,
+      "status": "PASS",
+      "target_count": 5,
+      "unexpected_or_different_in_target": 0
+    }
+  },
+  "independent_validation": {
+    "station_identity": [
+      {
+        "bronze": "40",
+        "silver": "40",
+        "quarantine": "0",
+        "duplicates": "0",
+        "fact": "40",
+        "shortage": "13",
+        "priority": "13"
+      }
+    ],
+    "availability_breakdown": [
+      {
+        "availability_status": "AVAILABLE",
+        "n": "25"
+      },
+      {
+        "availability_status": "LOW_BIKES",
+        "n": "4"
+      },
+      {
+        "availability_status": "LOW_DOCKS",
+        "n": "9"
+      },
+      {
+        "availability_status": "OUT_OF_SERVICE",
+        "n": "2"
+      }
+    ],
+    "expected_sample_profile": {
+      "events": 40,
+      "composition": {
+        "AVAILABLE": 25,
+        "LOW_BIKES": 4,
+        "LOW_DOCKS": 9,
+        "OUT_OF_SERVICE": 2
+      },
+      "actionable": 13
+    },
+    "historical_identity": [
+      {
+        "bronze": "40",
+        "valid": "40",
+        "quarantine": "0",
+        "duplicates": "0",
+        "gold_trips": "40"
+      }
+    ],
+    "weather": {
+      "landing": [
+        {
+          "path": "/Volumes/workspace/urbanflow_final_dev/urbanflow_final_landing/landing/weather/open_meteo_archive_202401.sample.json",
+          "size": 2698
+        }
+      ],
+      "hours": [
+        {
+          "n": "48",
+          "unique_hours": "48",
+          "first_hour": "2024-01-24T00:00:00.000Z",
+          "last_hour": "2024-01-25T23:00:00.000Z",
+          "null_temps": "0"
+        }
+      ],
+      "demand": [
+        {
+          "rows": "17",
+          "trips": "40",
+          "trips_with_weather": "4",
+          "overall_coverage": "0.1"
+        }
+      ],
+      "trips_in_weather_window": [
+        {
+          "n": "4"
+        }
+      ],
+      "by_day": [
+        {
+          "trip_date": "2024-01-14",
+          "temperature_bucket": "UNKNOWN",
+          "trips": "1",
+          "trips_with_weather": "0",
+          "weather_coverage": "0.0"
+        },
+        {
+          "trip_date": "2024-01-15",
+          "temperature_bucket": "UNKNOWN",
+          "trips": "3",
+          "trips_with_weather": "0",
+          "weather_coverage": "0.0"
+        },
+        {
+          "trip_date": "2024-01-16",
+          "temperature_bucket": "UNKNOWN",
+          "trips": "2",
+          "trips_with_weather": "0",
+          "weather_coverage": "0.0"
+        },
+        {
+          "trip_date": "2024-01-18",
+          "temperature_bucket": "UNKNOWN",
+          "trips": "5",
+          "trips_with_weather": "0",
+          "weather_coverage": "0.0"
+        },
+        {
+          "trip_date": "2024-01-19",
+          "temperature_bucket": "UNKNOWN",
+          "trips": "1",
+          "trips_with_weather": "0",
+          "weather_coverage": "0.0"
+        },
+        {
+          "trip_date": "2024-01-20",
+          "temperature_bucket": "UNKNOWN",
+          "trips": "1",
+          "trips_with_weather": "0",
+          "weather_coverage": "0.0"
+        },
+        {
+          "trip_date": "2024-01-21",
+          "temperature_bucket": "UNKNOWN",
+          "trips": "1",
+          "trips_with_weather": "0",
+          "weather_coverage": "0.0"
+        },
+        {
+          "trip_date": "2024-01-22",
+          "temperature_bucket": "UNKNOWN",
+          "trips": "2",
+          "trips_with_weather": "0",
+          "weather_coverage": "0.0"
+        },
+        {
+          "trip_date": "2024-01-23",
+          "temperature_bucket": "UNKNOWN",
+          "trips": "3",
+          "trips_with_weather": "0",
+          "weather_coverage": "0.0"
+        },
+        {
+          "trip_date": "2024-01-24",
+          "temperature_bucket": "COLD_0_10C",
+          "trips": "2",
+          "trips_with_weather": "2",
+          "weather_coverage": "1.0"
+        },
+        {
+          "trip_date": "2024-01-25",
+          "temperature_bucket": "COLD_0_10C",
+          "trips": "2",
+          "trips_with_weather": "2",
+          "weather_coverage": "1.0"
+        },
+        {
+          "trip_date": "2024-01-26",
+          "temperature_bucket": "UNKNOWN",
+          "trips": "4",
+          "trips_with_weather": "0",
+          "weather_coverage": "0.0"
+        },
+        {
+          "trip_date": "2024-01-27",
+          "temperature_bucket": "UNKNOWN",
+          "trips": "3",
+          "trips_with_weather": "0",
+          "weather_coverage": "0.0"
+        },
+        {
+          "trip_date": "2024-01-28",
+          "temperature_bucket": "UNKNOWN",
+          "trips": "3",
+          "trips_with_weather": "0",
+          "weather_coverage": "0.0"
+        },
+        {
+          "trip_date": "2024-01-29",
+          "temperature_bucket": "UNKNOWN",
+          "trips": "3",
+          "trips_with_weather": "0",
+          "weather_coverage": "0.0"
+        },
+        {
+          "trip_date": "2024-01-30",
+          "temperature_bucket": "UNKNOWN",
+          "trips": "2",
+          "trips_with_weather": "0",
+          "weather_coverage": "0.0"
+        },
+        {
+          "trip_date": "2024-01-31",
+          "temperature_bucket": "UNKNOWN",
+          "trips": "2",
+          "trips_with_weather": "0",
+          "weather_coverage": "0.0"
+        }
+      ]
+    },
+    "cdc": {
+      "source_rows": [
+        {
+          "maintenance_id": "MT-1001",
+          "station_id": "66dd9fa6-0aca-11e7-82f6-3863bb44ef7c",
+          "status": "OPEN",
+          "severity": "HIGH",
+          "updated_at": "2026-10-12T07:00:00.000Z"
+        },
+        {
+          "maintenance_id": "MT-1002",
+          "station_id": "0138452a-b9f4-4aee-80b0-7fae9a122ffe",
+          "status": "OPEN",
+          "severity": "MEDIUM",
+          "updated_at": "2026-10-12T07:05:00.000Z"
+        },
+        {
+          "maintenance_id": "MT-1003",
+          "station_id": "62b97c1e-9d06-4c5e-b9c3-d76099e37fe4",
+          "status": "IN_PROGRESS",
+          "severity": "LOW",
+          "updated_at": "2026-10-12T07:10:00.000Z"
+        },
+        {
+          "maintenance_id": "MT-1004",
+          "station_id": "180b83a0-329c-4069-87be-df862cb1baed",
+          "status": "OPEN",
+          "severity": "HIGH",
+          "updated_at": "2026-10-12T07:15:00.000Z"
+        },
+        {
+          "maintenance_id": "MT-1005",
+          "station_id": "00967b8f-1a4d-4131-a65a-17fa8ca89e28",
+          "status": "OPEN",
+          "severity": "LOW",
+          "updated_at": "2026-10-12T07:20:00.000Z"
+        }
+      ],
+      "target_rows": [
+        {
+          "maintenance_id": "MT-1001",
+          "station_id": "66dd9fa6-0aca-11e7-82f6-3863bb44ef7c",
+          "status": "OPEN",
+          "severity": "HIGH",
+          "updated_at": "2026-10-12T07:00:00.000Z",
+          "source_commit_version": "1",
+          "source_commit_timestamp": "2026-10-12T16:51:52.000Z"
+        },
+        {
+          "maintenance_id": "MT-1002",
+          "station_id": "0138452a-b9f4-4aee-80b0-7fae9a122ffe",
+          "status": "OPEN",
+          "severity": "MEDIUM",
+          "updated_at": "2026-10-12T07:05:00.000Z",
+          "source_commit_version": "1",
+          "source_commit_timestamp": "2026-10-12T16:51:52.000Z"
+        },
+        {
+          "maintenance_id": "MT-1003",
+          "station_id": "62b97c1e-9d06-4c5e-b9c3-d76099e37fe4",
+          "status": "IN_PROGRESS",
+          "severity": "LOW",
+          "updated_at": "2026-10-12T07:10:00.000Z",
+          "source_commit_version": "1",
+          "source_commit_timestamp": "2026-10-12T16:51:52.000Z"
+        },
+        {
+          "maintenance_id": "MT-1004",
+          "station_id": "180b83a0-329c-4069-87be-df862cb1baed",
+          "status": "OPEN",
+          "severity": "HIGH",
+          "updated_at": "2026-10-12T07:15:00.000Z",
+          "source_commit_version": "1",
+          "source_commit_timestamp": "2026-10-12T16:51:52.000Z"
+        },
+        {
+          "maintenance_id": "MT-1005",
+          "station_id": "00967b8f-1a4d-4131-a65a-17fa8ca89e28",
+          "status": "OPEN",
+          "severity": "LOW",
+          "updated_at": "2026-10-12T07:20:00.000Z",
+          "source_commit_version": "1",
+          "source_commit_timestamp": "2026-10-12T16:51:52.000Z"
+        }
+      ],
+      "target_equals_fixture_batch_001": true,
+      "table_changes": [
+        {
+          "_commit_version": "1",
+          "_change_type": "insert",
+          "n": "5"
+        }
+      ],
+      "history_by_type": [
+        {
+          "commit_version": "1",
+          "change_type": "insert",
+          "n": "5",
+          "ids": "5"
+        }
+      ],
+      "checkpoint": [
+        {
+          "pipeline_key": "station_maintenance",
+          "processed_version": "1",
+          "processed_at": "2026-10-12T16:52:12.157Z"
+        }
+      ],
+      "source_latest_version": [
+        {
+          "v": "1"
+        }
+      ],
+      "reconciliation_independent": [
+        {
+          "source_count": "5",
+          "target_count": "5",
+          "missing_or_different_in_target": "0",
+          "unexpected_or_different_in_target": "0",
+          "duplicate_target_keys": "0",
+          "events_missing_from_history": "0"
+        }
+      ],
+      "cdf_events_missing_from_history": [
+        {
+          "cdf_events_missing_from_history": "0"
+        }
+      ]
+    },
+    "delta_versions": {
+      "bronze_historical_trips": [
+        {
+          "version": 0,
+          "operation": "CREATE TABLE"
+        },
+        {
+          "version": 1,
+          "operation": "STREAMING UPDATE",
+          "numOutputRows": "40"
+        }
+      ],
+      "bronze_station_status": [
+        {
+          "version": 0,
+          "operation": "CREATE TABLE"
+        },
+        {
+          "version": 1,
+          "operation": "STREAMING UPDATE",
+          "numOutputRows": "40"
+        }
+      ],
+      "dim_station_development_sample": [
+        {
+          "version": 0,
+          "operation": "CREATE TABLE AS SELECT",
+          "numOutputRows": "0"
+        },
+        {
+          "version": 1,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "40",
+          "numTargetRowsUpdated": "0",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "40"
+        },
+        {
+          "version": 2,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "0",
+          "numTargetRowsUpdated": "40",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "40"
+        }
+      ],
+      "dim_weather_hourly": [
+        {
+          "version": 0,
+          "operation": "CREATE TABLE AS SELECT",
+          "numOutputRows": "0"
+        },
+        {
+          "version": 1,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "48",
+          "numTargetRowsUpdated": "0",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "48"
+        }
+      ],
+      "duplicate_historical_trips": [
+        {
+          "version": 0,
+          "operation": "CREATE TABLE AS SELECT",
+          "numOutputRows": "0"
+        },
+        {
+          "version": 1,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "0",
+          "numTargetRowsUpdated": "0",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "0"
+        },
+        {
+          "version": 2,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "0",
+          "numTargetRowsUpdated": "0",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "0"
+        }
+      ],
+      "duplicate_station_status": [
+        {
+          "version": 0,
+          "operation": "CREATE TABLE AS SELECT",
+          "numOutputRows": "0"
+        },
+        {
+          "version": 1,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "0",
+          "numTargetRowsUpdated": "0",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "0"
+        },
+        {
+          "version": 2,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "0",
+          "numTargetRowsUpdated": "0",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "0"
+        }
+      ],
+      "fact_station_availability": [
+        {
+          "version": 0,
+          "operation": "CREATE TABLE AS SELECT",
+          "numOutputRows": "0"
+        },
+        {
+          "version": 1,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "40",
+          "numTargetRowsUpdated": "0",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "40"
+        },
+        {
+          "version": 2,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "0",
+          "numTargetRowsUpdated": "40",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "40"
+        }
+      ],
+      "gold_daily_station_summary": [
+        {
+          "version": 0,
+          "operation": "CREATE TABLE AS SELECT",
+          "numOutputRows": "0"
+        },
+        {
+          "version": 1,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "40",
+          "numTargetRowsUpdated": "0",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "40"
+        },
+        {
+          "version": 2,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "0",
+          "numTargetRowsUpdated": "40",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "40"
+        }
+      ],
+      "gold_daily_trip_demand": [
+        {
+          "version": 0,
+          "operation": "CREATE TABLE AS SELECT",
+          "numOutputRows": "0"
+        },
+        {
+          "version": 1,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "40",
+          "numTargetRowsUpdated": "0",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "40"
+        },
+        {
+          "version": 2,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "0",
+          "numTargetRowsUpdated": "40",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "40"
+        }
+      ],
+      "gold_rebalancing_priority": [
+        {
+          "version": 0,
+          "operation": "CREATE TABLE AS SELECT",
+          "numOutputRows": "0"
+        },
+        {
+          "version": 1,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "13",
+          "numTargetRowsUpdated": "0",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "13"
+        },
+        {
+          "version": 2,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "0",
+          "numTargetRowsUpdated": "13",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "13"
+        }
+      ],
+      "gold_station_shortage": [
+        {
+          "version": 0,
+          "operation": "CREATE TABLE AS SELECT",
+          "numOutputRows": "0"
+        },
+        {
+          "version": 1,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "13",
+          "numTargetRowsUpdated": "0",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "13"
+        },
+        {
+          "version": 2,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "0",
+          "numTargetRowsUpdated": "13",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "13"
+        }
+      ],
+      "gold_weather_demand": [
+        {
+          "version": 0,
+          "operation": "CREATE TABLE AS SELECT",
+          "numOutputRows": "0"
+        },
+        {
+          "version": 1,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "17",
+          "numTargetRowsUpdated": "0",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "17"
+        }
+      ],
+      "maintenance_cdc_checkpoint": [
+        {
+          "version": 0,
+          "operation": "CREATE TABLE"
+        },
+        {
+          "version": 1,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "1",
+          "numTargetRowsUpdated": "0",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "1"
+        }
+      ],
+      "maintenance_cdc_history": [
+        {
+          "version": 0,
+          "operation": "CREATE TABLE"
+        },
+        {
+          "version": 1,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "5",
+          "numTargetRowsUpdated": "0",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "5"
+        }
+      ],
+      "quarantine_historical_trips": [
+        {
+          "version": 0,
+          "operation": "CREATE TABLE AS SELECT",
+          "numOutputRows": "0"
+        },
+        {
+          "version": 1,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "0",
+          "numTargetRowsUpdated": "0",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "0"
+        },
+        {
+          "version": 2,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "0",
+          "numTargetRowsUpdated": "0",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "0"
+        }
+      ],
+      "quarantine_station_status": [
+        {
+          "version": 0,
+          "operation": "CREATE TABLE AS SELECT",
+          "numOutputRows": "0"
+        },
+        {
+          "version": 1,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "0",
+          "numTargetRowsUpdated": "0",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "0"
+        },
+        {
+          "version": 2,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "0",
+          "numTargetRowsUpdated": "0",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "0"
+        }
+      ],
+      "silver_historical_trips": [
+        {
+          "version": 0,
+          "operation": "CREATE TABLE AS SELECT",
+          "numOutputRows": "0"
+        },
+        {
+          "version": 1,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "40",
+          "numTargetRowsUpdated": "0",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "40"
+        },
+        {
+          "version": 2,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "0",
+          "numTargetRowsUpdated": "40",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "40"
+        }
+      ],
+      "silver_station_maintenance": [
+        {
+          "version": 0,
+          "operation": "CREATE TABLE"
+        },
+        {
+          "version": 1,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "5",
+          "numTargetRowsUpdated": "0",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "5"
+        }
+      ],
+      "silver_station_status": [
+        {
+          "version": 0,
+          "operation": "CREATE TABLE AS SELECT",
+          "numOutputRows": "0"
+        },
+        {
+          "version": 1,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "40",
+          "numTargetRowsUpdated": "0",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "40"
+        },
+        {
+          "version": 2,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "0",
+          "numTargetRowsUpdated": "40",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "40"
+        }
+      ],
+      "station_maintenance_source": [
+        {
+          "version": 0,
+          "operation": "CREATE TABLE"
+        },
+        {
+          "version": 1,
+          "operation": "MERGE",
+          "numTargetRowsInserted": "5",
+          "numTargetRowsUpdated": "0",
+          "numTargetRowsDeleted": "0",
+          "numOutputRows": "5"
+        }
+      ]
+    },
+    "idempotency_v1_vs_v2_column_diff": {
+      "silver_station_status": {
+        "columns": 28,
+        "changed_columns": [],
+        "unchanged_columns_rows_differing": "0"
+      },
+      "fact_station_availability": {
+        "columns": 15,
+        "changed_columns": [],
+        "unchanged_columns_rows_differing": "0"
+      },
+      "gold_station_shortage": {
+        "columns": 10,
+        "changed_columns": [],
+        "unchanged_columns_rows_differing": "0"
+      },
+      "gold_rebalancing_priority": {
+        "columns": 13,
+        "changed_columns": [],
+        "unchanged_columns_rows_differing": "0"
+      },
+      "dim_station_development_sample": {
+        "columns": 7,
+        "changed_columns": [],
+        "unchanged_columns_rows_differing": "0"
+      },
+      "gold_daily_station_summary": {
+        "columns": 12,
+        "changed_columns": [],
+        "unchanged_columns_rows_differing": "0"
+      },
+      "silver_historical_trips": {
+        "columns": 19,
+        "changed_columns": [
+          {
+            "column": "ingested_at",
+            "rows_differing": 40
+          }
+        ],
+        "unchanged_columns_rows_differing": "0"
+      },
+      "gold_daily_trip_demand": {
+        "columns": 8,
+        "changed_columns": [],
+        "unchanged_columns_rows_differing": "0"
+      }
+    }
+  },
+  "bronze_preservation": {
+    "station_before": [
+      {
+        "execution_id": "urbanflow-final-304828008837365",
+        "n": "40",
+        "ids": "40"
+      }
+    ],
+    "station_after": [
+      {
+        "execution_id": "urbanflow-final-304828008837365",
+        "n": "40",
+        "ids": "40"
+      }
+    ],
+    "historical_before": [
+      {
+        "n": "40",
+        "rides": "40"
+      }
+    ],
+    "historical_after": [
+      {
+        "n": "40",
+        "rides": "40"
+      }
+    ],
+    "bronze_histories_unchanged": true,
+    "checkpoint_files_unchanged": true,
+    "landing_added_only_weather_sample": true
+  },
+  "unrelated_tables": {
+    "tracked": 173,
+    "changed": []
+  },
+  "after_run": {
+    "active_runs": [],
+    "ai_search_endpoints": []
+  },
+  "finding": "Station and historical MERGEs rewrite matched rows on a rerun (numTargetRowsUpdated = rows) although business values are identical; silver_historical_trips refreshes ingested_at. No duplicates or KPI change; a conditional MERGE (as in CDC) would avoid the rewrite."
+}

@@ -1,0 +1,55 @@
+project:
+  name: urbanflow_final_project
+  environment: academy-azure-prod
+
+business_rules:
+  low_bike_threshold: 2
+  low_dock_threshold: 2
+
+sources:
+  gbfs_discovery_url: https://gbfs.citibikenyc.com/gbfs/2.3/gbfs.json
+  gbfs_language: en
+  open_meteo_url: https://api.open-meteo.com/v1/forecast
+  weather_latitude: 40.7128
+  weather_longitude: -74.0060
+  historical_object: 202401-citibike-tripdata.zip
+
+azure:
+  expected_databricks_host: https://adb-7405618361895520.0.azuredatabricks.net
+  catalog: dbr_dev
+  schema: parvinbadalov_urbanflow_final_prod
+  volume: urbanflow_final_landing
+  event_hubs_namespace: evhpl24databricks
+  event_hub_name: parvinbadalov_evh
+  consumer_group: parvinbadalov
+  key_vault_name: kvpl24databricks2
+  event_hubs_secret_name: parvinbadalov-eventhub-cs
+
+streaming:
+  max_events_per_trigger: 5000
+  max_publish_events: 5000
+  bounded_trigger: availableNow
+  starting_offsets: earliest
+  checkpoint_subpath: checkpoints/urbanflow_final/station_status
+  schema_subpath: schemas/urbanflow_final/station_status
+  report_subpath: reports/urbanflow_final
+  minimum_poll_interval_seconds: 60
+
+compute:
+  mode: serverless
+  preferred: null
+  fallback: null
+  required_state: RUNNING
+  allow_start: false
+  allow_restart: false
+  allow_resize: false
+  allow_terminate: false
+  educational_cluster_creation_enabled: false
+  protected_from_termination: true
+  clusters: {}
+
+lakeflow:
+  compute_mode: serverless
+  continuous: false
+  shared_cluster_id: null
+

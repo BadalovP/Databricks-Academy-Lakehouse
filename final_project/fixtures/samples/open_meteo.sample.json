@@ -1,0 +1,23 @@
+{
+  "current": {
+    "interval": 900,
+    "precipitation": 0.0,
+    "temperature_2m": 16.4,
+    "time": "2026-09-28T15:45",
+    "wind_speed_10m": 12.3
+  },
+  "current_units": {
+    "interval": "seconds",
+    "precipitation": "mm",
+    "temperature_2m": "\u00b0C",
+    "time": "iso8601",
+    "wind_speed_10m": "km/h"
+  },
+  "elevation": 32.0,
+  "generationtime_ms": 0.056624412536621094,
+  "latitude": 40.710335,
+  "longitude": -73.99308,
+  "timezone": "America/New_York",
+  "timezone_abbreviation": "GMT-4",
+  "utc_offset_seconds": -14400
+}

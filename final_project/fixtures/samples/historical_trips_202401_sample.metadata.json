@@ -1,0 +1,11 @@
+{
+  "archive_member": "202401-citibike-tripdata_2.csv",
+  "archive_object": "202401-citibike-tripdata.zip",
+  "archive_size_bytes": 369035302,
+  "join_note": "Historical start_station_id maps to current GBFS short_name, not the UUID station_id.",
+  "method": "HTTP byte-range read of the first CSV member; full archive not downloaded",
+  "sample_rows": 40,
+  "sample_rows_matching_current_short_names": 40,
+  "source_url": "https://s3.amazonaws.com/tripdata/202401-citibike-tripdata.zip",
+  "verified_at": "2026-09-28T19:53:31.102997Z"
+}

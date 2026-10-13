@@ -1,0 +1,79 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "urbanflow-final-project"
+version = "2.0.0"
+description = "UrbanFlow 2.0 intelligent urban mobility lakehouse and operations assistant"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "azure-eventhub>=5.12,<6",
+  # Lets the producer read the Event Hubs connection string straight from Azure
+  # Key Vault with the operator's existing Azure CLI sign-in, so the secret never
+  # reaches a shell variable, a shell history file, or this repository.
+  "azure-identity>=1.17,<2",
+  "azure-keyvault-secrets>=4.8,<5",
+  # Required by azure-eventhub's AmqpOverWebsocket transport, which the producer uses
+  # to reach Event Hubs on port 443. The SDK imports it lazily when it opens the
+  # connection, so without it a publish fails with ImportError mid-send.
+  "websocket-client>=1.7,<2",
+  "databricks-sdk>=0.68",
+  "PyYAML>=6.0",
+  "requests>=2.31",
+]
+
+[project.optional-dependencies]
+ai = [
+  "databricks-ai-search>=0.78,<1",
+  "databricks-openai>=0.17,<1",
+  "pypdf>=5,<6",
+]
+dev = [
+  "black>=24,<26",
+  "chispa>=0.11,<1",
+  # Great Expectations, not Soda: soda-core-spark-df requires pyspark<4 and resolves 3.5.9,
+  # while the base GE package leaves the existing Spark 4.1.1 installation alone.
+  "great_expectations>=1.23,<2",
+  "jsonschema>=4.23,<5",
+  "pyspark>=3.5,<4.2",
+  "pre-commit>=4,<5",
+  "pytest>=8,<10",
+  "ruff>=0.9,<1",
+]
+
+[project.scripts]
+urbanflow-final = "urbanflow.cli:main"
+urbanflow-rag = "urbanflow.rag.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+  "spark: requires a local Spark session",
+  "remote: requires explicitly approved Azure resources",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+builtins = ["dbutils", "display", "spark"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["urbanflow"]
+
+[tool.ruff.lint.per-file-ignores]
+"notebooks/*.py" = ["E402"]
+"pipeline/*.py" = ["E402"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]

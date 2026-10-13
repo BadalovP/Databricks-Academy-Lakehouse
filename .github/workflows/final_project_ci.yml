@@ -1,0 +1,77 @@
+name: Final Project · UrbanFlow 2.0 CI
+
+on:
+  pull_request:
+    paths:
+      - "final_project/**"
+      - ".github/workflows/final_project_ci.yml"
+      - ".github/workflows/final_project_cd.yml"
+  push:
+    branches: [main]
+    paths:
+      - "final_project/**"
+      - ".github/workflows/final_project_ci.yml"
+      - ".github/workflows/final_project_cd.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: final-project-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  offline-validation:
+    name: Ruff, Black, pytest and offline bundle validation (no Databricks access)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: final_project
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: final_project/pyproject.toml
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Install package and test tools
+        run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
+      - name: Secret scan (credential formats in every tracked Final Project file)
+        run: python scripts/scan_secrets.py
+      - name: Ruff
+        run: ruff check .
+      - name: Black
+        run: black --check .
+      - name: Pytest (offline, mocked and local Spark only)
+        run: pytest
+      - name: Dashboards match the committed SQL
+        run: python scripts/build_dashboard.py --check
+      - name: Install Databricks CLI (schema only; no workspace authentication)
+        uses: databricks/setup-cli@main
+        with:
+          version: 1.12.1
+      - name: Validate bundle structure without workspace authentication
+        run: python scripts/validate_bundle.py
+
+  change-scope:
+    name: Change scope (Final Project only) and deployable classification
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Only final_project/** and the two Final Project workflows may change
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: python final_project/scripts/check_change_scope.py --base "$BASE_SHA" --head HEAD

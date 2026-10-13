@@ -1,0 +1,224 @@
+# UrbanFlow 2.0: Intelligent Urban Mobility Lakehouse & AI Operations Assistant
+
+Databricks Academy **Final Project**: one integrated solution that covers Labs 1–12.
+
+> **Status: complete.** Steps 1–8 passed live in Personal DEV (2026-10-12 and 2026-10-13). **Step 9:** the PROD-style deployment to the Academy Azure trial `dbr_dev_trial_2` (not paid production) and one sample run passed on 2026-10-13 with the same figures as DEV.
+> - deploy;
+> - platform sample run;
+> - strict idempotency (19/19);
+> - CDC with inserts, updates, deletes and replay, including the checkpoint across an automatic `OPTIMIZE`;
+> - Lakeflow (row-for-row parity);
+> - assistant: ingest, AI Search index, live evaluation with RAG 0.685 vs baseline 0.148 correctness and 18/18 refusal decisions; the endpoint was deleted after 25.7 minutes;
+> - 25/25 dashboard queries;
+> - governance demo on isolated copies;
+> - dashboard title fix deployed and published to the owner only;
+> - Azure trial: 7 resources created, run `240527908342651` gave 40 / 40 / 13 / 13, 40 trips, 48 weather hours, CDC 5 inserts, reconciliation 0.
+>
+> **Not demonstrated (documented, not blocking):**
+> - a GitHub CD run (needs the merged workflow plus environments and identities);
+> - multi-principal governance (one identity);
+> - the external Federation source, Event Hubs, Zerobus and the full January month (optional).
+>
+> RAG scores use a lexical keyword metric whose limitations are listed in the evidence.
+>
+> All data is a labelled development sample or fictional fixture.
+> More than 700 offline tests (unit tests, local Spark and static checks) run in CI. Every live step needs explicit approval and is planned in [docs/RELEASE_AND_VALIDATION.md](docs/RELEASE_AND_VALIDATION.md). Results of the individual labs and of Demo 3 were produced in their own folders. They are not Final Project evidence and are not presented as such.
+
+| Document | Purpose |
+|---|---|
+| [Labs 1–12 coverage](docs/LABS_1_TO_12_COVERAGE.md) | Requirement → component → source → tests → live evidence → status |
+| [Architecture](docs/ARCHITECTURE.md) | Components, environments, CDC and RAG design, security, failure handling |
+| [Cost and performance](docs/COST_AND_PERFORMANCE.md) | Cost drivers with hard bounds, performance decisions, how to measure after a run |
+| [Release and validation](docs/RELEASE_AND_VALIDATION.md) | CI, manual CD, identities, the live validation plan and the evidence table |
+| [Dashboard](docs/DASHBOARD.md) | Five pages generated per target from read-only SQL |
+| [Quality framework](docs/QUALITY_FRAMEWORK.md) | Why Great Expectations, and what it checks |
+| [Demo Day presentation](docs/DEMO_DAY_PRESENTATION.md) | 25-minute run of show, slides, demo checklist, expected questions, five-minute interview demo |
+| [CI/CD](docs/CI_CD.md) | Pipeline diagram, comparison with Lab 08, required GitHub environments and identities, post-merge demonstration checklist |
+| [Operations runbook](docs/OPERATIONS_RUNBOOK.md) | Deploy DEV/PROD, run, recover from failures, CDC checkpoint and replay rules, security and governance, RAG report template |
+| [Implementation progress](docs/IMPLEMENTATION_PROGRESS.md) | Handoff record: commits, resource IDs, live run IDs, known limitations, pending approvals |
+
+## Business problem
+
+An empty station prevents a rental, and a full station prevents a return. Dispatchers need to know **where to send a rebalancing van next, and where not to send one**: a station closed for maintenance cannot be fixed by moving bikes. When something goes wrong, they need **the right procedure, quickly**.
+
+UrbanFlow 2.0 answers both from one governed lakehouse:
+
+- **Station operations:** real Citi Bike GBFS and trip data, plus Open-Meteo weather, flow through Bronze, Silver and Gold to a transparent rebalancing priority. The score is severity + deficit + size, so it can be recomputed by hand.
+- **Maintenance awareness:** maintenance tickets arrive through **Lakehouse Federation and Delta Change Data Feed**. The dashboard flags priorities at stations with an open ticket.
+- **Operations assistant:** a **RAG assistant** answers from eight UrbanFlow procedures. It cites its sources and refuses when they do not cover the question.
+
+Thresholds (≤ 2 bikes, ≤ 2 docks) are teaching rules, not Citi Bike operating standards.
+
+## Data, honestly labelled
+
+| Data | Source | Label |
+|---|---|---|
+| Station status and information | [Citi Bike GBFS](https://gbfs.citibikenyc.com/gbfs/2.3/gbfs.json), 40-station dated sample | Real, point-in-time sample; not current operations |
+| Trips | [Citi Bike trip history](https://citibikenyc.com/system-data), January 2024, 40-row sample | Real; a **development sample**, not the month |
+| Weather | [Open-Meteo archive](https://open-meteo.com/en/docs/historical-weather-api), 48 hours at one NYC coordinate | Real; area-level, not per station |
+| Maintenance tickets | [`fixtures/maintenance/`](fixtures/maintenance/README.md), 3 snapshot batches | **Fictional, synthetic** tickets on real sample station IDs |
+| Assistant corpus | [`knowledge_base/`](knowledge_base/), 8 procedures | **Fictional** training documents written for this project |
+| Station-health telemetry (optional) | Generated by `zerobus.py` | **Synthetic**, flagged `synthetic = true` |
+
+Attribution: [fixtures/samples/ATTRIBUTION.md](fixtures/samples/ATTRIBUTION.md). Historical trips use the GBFS **short name** as `start_station_id`, not the UUID `station_id`. The station dimension keeps both keys.
+
+## 1. Solution architecture
+
+```mermaid
+flowchart LR
+  subgraph Sources
+    GBFS[Citi Bike GBFS]
+    TRIPS[Trip archive]
+    METEO[Open-Meteo]
+    MAINT[(Maintenance system<br/>Federation, read-only)]
+    DOCS[Procedures<br/>knowledge_base]
+    HEALTH[Dock health<br/>Zerobus, optional]
+  end
+  subgraph Lakehouse["Unity Catalog: one schema per target"]
+    VOL[/Volume landing/]
+    BRZ[Bronze]
+    SLV[Silver + Quarantine]
+    GLD[Gold KPIs]
+    CDC[CDF source → Silver maintenance<br/>+ audit + checkpoint]
+    RAG[Chunks with CDF<br/>→ AI Search Delta Sync]
+    LKF[Lakeflow pipeline<br/>isolated schema]
+  end
+  GBFS --> VOL --> BRZ --> SLV --> GLD
+  TRIPS --> VOL
+  METEO --> GLD
+  MAINT --> CDC
+  DOCS --> RAG
+  HEALTH -.-> BRZ
+  BRZ --> LKF
+  GLD --> DASH[AI/BI dashboard]
+  CDC --> DASH
+  RAG --> BOT[Mobility operations assistant]
+  BOT --> DASH
+```
+
+## 2. Platform Job orchestration
+
+Manual and serverless, with no schedule. Every task has a timeout, and every switch defaults to `false`.
+
+```mermaid
+flowchart TD
+  P[preflight] --> L[land_sources<br/>Auto Loader availableNow]
+  L --> C[station_source_check] --> S[station_silver] --> G[station_gold]
+  L --> H[historical_trips] --> W[weather_enrichment]
+  G --> V[validate_medallion]
+  H --> V
+  W --> V
+  V --> F[federation_cdc]
+  V --> Q{should_refresh_lakeflow}
+  Q -- true --> R[refresh_lakeflow]
+```
+
+The assistant has its own Job: `ingest_knowledge_base → prepare_vector_search → evaluate_rag`. AI Search mutation, live inference and table writes are all off by default.
+
+## 3. Maintenance CDC (Lab 10, core capability)
+
+```mermaid
+sequenceDiagram
+  participant Src as Federation query / fixture snapshot
+  participant S as station_maintenance_source (CDF)
+  participant H as maintenance_cdc_history
+  participant T as silver_station_maintenance
+  participant K as checkpoint
+  Src->>S: MERGE snapshot (unchanged rows untouched, deletes by source)
+  S->>H: table_changes(checkpoint+1, latest) → every event once (change_id)
+  S->>T: newest final state per key (SCD 1)
+  T-->>S: reconcile VERSION AS OF latest, values both ways
+  Note over T,K: only if reconciliation passes
+  T->>K: advance checkpoint (forward only)
+```
+
+A failure before the checkpoint replays the same version range, and the MERGEs absorb it. The checkpoint is the newest source version that was scanned, applied where needed and reconciled. A version without data changes, such as an automatic `OPTIMIZE`, has no CDF rows. It needs no MERGE but is still scanned and passed, so the checkpoint never falls behind the Delta log. If the versions after the checkpoint can no longer be read (log cleanup or VACUUM), the run stops with a recovery instruction instead of skipping changes. The external system is only read. This is Delta Change Data Feed on a table the project owns, not log-based database CDC.
+
+## 4. Mobility operations assistant (Lab 12)
+
+```mermaid
+flowchart LR
+  KB[8 procedures] --> CH[Section-aware chunks<br/>900 chars, 120 overlap]
+  CH --> DT[(rag_document_chunks<br/>MERGE, CDF, reconciled)]
+  DT --> IX[AI Search Delta Sync<br/>TRIGGERED, HYBRID]
+  Q[Operator question] --> IX
+  IX --> PR[Grounded prompt<br/>numbered excerpts, untrusted text]
+  PR --> LLM[Chat model]
+  LLM --> A[Answer with citations<br/>or a clean refusal]
+  A --> EV[(Evaluation: baseline vs RAG<br/>redacted monitoring)]
+```
+
+Offline fixture results (not model quality): retrieval recall 0.938, source coverage 0.875, correctness 0.648, against 0.111 for the no-retrieval baseline. Try it offline:
+
+```bash
+urbanflow-rag ask "What should an operator do when both bikes and docks are critically low?"
+urbanflow-rag evaluate
+```
+
+## 5. CI/CD (Labs 8 and 9)
+
+```mermaid
+flowchart LR
+  PR[Pull request] --> CI[CI: Ruff, Black, pytest,<br/>dashboard check, bundle schema]
+  CI --> M[main]
+  M --> D[Manual CD: target + typed confirmation]
+  D --> A{Protected approval}
+  A --> PL[bundle plan → only our 7 resources,<br/>no deletes]
+  PL --> DEP[bundle deploy]
+  DEP --> NP[post plan all skip]
+  NP --> RUN[optional sample run<br/>idempotency token → validate_job_run]
+```
+
+| Target | Workspace | Schema | Auth in CD |
+|---|---|---|---|
+| `personal_dev` | Personal Databricks (AWS) | `workspace.urbanflow_final_dev` | OAuth M2M service principal |
+| `azure_prod` | Academy Azure `dbr_dev_trial_2` (PROD-style trial) | `dbr_dev.parvinbadalov_urbanflow_final_prod` | GitHub OIDC, no secret |
+
+## Repository layout
+
+| Path | Contents |
+|---|---|
+| `databricks.yml`, `resources/` | Bundle: two targets; schemas and Volume, two Jobs, Lakeflow pipeline, dashboard |
+| `notebooks/` | `01`–`12` platform and optional paths; `20`–`23` assistant. Each code cell has a documented markdown cell. |
+| `src/urbanflow/` | Tested library: sources, landing, streaming, Silver, Gold, CDC, Zerobus, automation; `rag/` for the assistant |
+| `pipeline/` | Lakeflow declarative Bronze, Silver and Gold with expectations |
+| `sql/` | Read-only dashboard SQL (`10`–`14`); governance and maintenance SQL with dangerous statements kept commented (`20`, `21`) |
+| `scripts/` | Release validators, dashboard generator, optional Zerobus producer, governance demo (dry run by default) |
+| `fixtures/`, `knowledge_base/`, `config/` | Labelled samples, fictional maintenance snapshots, procedures, configuration and evaluation questions |
+| `tests/` | More than 700 tests: unit, local Spark, SQL safety, notebook contract, release validators |
+
+## Run locally
+
+```powershell
+cd final_project
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+.\.venv\Scripts\python.exe -m ruff check .
+.\.venv\Scripts\python.exe -m black --check .
+.\.venv\Scripts\python.exe -m pytest                     # local Spark needs Java 17+
+.\.venv\Scripts\python.exe scripts\build_dashboard.py --check
+.\.venv\Scripts\python.exe scripts\validate_bundle.py    # needs the Databricks CLI, no login
+```
+
+Dry runs that connect to nothing:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\run_zerobus_health.py --target personal_dev --run-id local-001
+.\.venv\Scripts\python.exe scripts\run_governance_demo.py --target personal_dev
+```
+
+## Safety and isolation
+
+- **Own resources only.** The project uses its own schemas, Volume, Jobs, pipeline, dashboard, index and identities. Tests reject Demo 3 schema names in SQL, dashboards and governance code. The Zerobus code refuses Lab 11's schemas, tables and credentials.
+- **Serverless only.** Every data task calls `assert_serverless_compute` and refuses classic and shared clusters.
+- **Bounded.** No schedules. Streams use `availableNow` with bounded waits. Every task has a timeout, and live call plans are printed before any model call.
+- **No secrets in Git.** CD uses OAuth M2M or OIDC. Event Hubs credentials come from a Key Vault-backed secret scope. Monitoring stores question hashes, not questions.
+- **Event Hubs path (opt-in).** `station_source=existing_bronze` reads the student's Academy-assigned Event Hub. That hub was also used in earlier coursework, so the consumer filters strictly by execution ID. It needs approval and is not part of the default run.
+
+## Known limitations
+
+- **Live validation:** steps 1–8 in Personal DEV, step 9 on the Azure trial (PROD-style, not paid production). A GitHub CD run, Zerobus, Event Hubs, the full month and the external Federation source have not run live. Each step and its approval is listed in [docs/RELEASE_AND_VALIDATION.md](docs/RELEASE_AND_VALIDATION.md).
+- **The `azure_prod` CD identity needs Academy account administration.** An operator can deploy with their own login instead.
+- **Small samples.** The data is a 40-station snapshot and a 40-trip sample. The full-month path exists (`run_full_month`), but it is a separate, approved run.
+- **Federation and CDC.** Federation needs an approved foreign catalog. Without one, CDC runs on the committed fictional snapshots.
+- **Offline assistant figures.** These come from a fixture retriever and an extractive model. Only a live evaluation measures the chat model.

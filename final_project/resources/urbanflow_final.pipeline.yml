@@ -1,0 +1,27 @@
+resources:
+  pipelines:
+    urbanflow_final_pipeline:
+      name: "[${bundle.target}] UrbanFlow 2.0 Medallion Pipeline"
+      catalog: ${var.catalog}
+      schema: ${var.lakeflow_schema}
+      root_path: ../src
+      serverless: true
+      continuous: false
+      channel: CURRENT
+      edition: ADVANCED
+      configuration:
+        urbanflow.catalog: ${var.catalog}
+        urbanflow.schema: ${var.lakeflow_schema}
+        urbanflow.volume: ${var.volume}
+        urbanflow.station_bronze_source_table: ${var.catalog}.${var.schema}.bronze_station_status
+        urbanflow.station_reference_source_table: ${var.catalog}.${var.schema}.dim_station_development_sample
+        urbanflow.low_bike_threshold: "2"
+        urbanflow.low_dock_threshold: "2"
+      libraries:
+        - file:
+            path: ../pipeline/bronze.py
+        - file:
+            path: ../pipeline/silver.py
+        - file:
+            path: ../pipeline/gold.py
+

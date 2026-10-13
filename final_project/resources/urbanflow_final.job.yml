@@ -1,0 +1,348 @@
+resources:
+  jobs:
+    urbanflow_final_platform:
+      name: "[${bundle.target}] UrbanFlow 2.0 Platform"
+      description: >-
+        Manual-only orchestration: bounded landing and Auto Loader ingestion, medallion transforms,
+        historical trips and weather, read-only validation, Federation/CDC, and a triggered
+        Lakeflow refresh. Every branch is off by default; preflight refuses an empty run.
+      max_concurrent_runs: 1
+      queue:
+        enabled: true
+      timeout_seconds: 7200
+      parameters:
+        - name: expected_host
+          default: ${workspace.host}
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema
+          default: ${var.schema}
+        - name: volume
+          default: ${var.volume}
+        - name: run_station_pipeline
+          default: "false"
+        - name: station_source
+          default: sample_autoloader
+        - name: run_historical
+          default: "false"
+        - name: run_weather
+          default: "false"
+        - name: run_full_month
+          default: "false"
+        - name: run_federation_cdc
+          default: "false"
+        - name: run_lakeflow
+          default: "false"
+        - name: source_execution_id
+          default: "urbanflow-final-{{job.run_id}}"
+        - name: run_attempt_id
+          default: "{{job.run_id}}"
+        - name: historical_execution_id
+          default: urbanflow-final-hist-devsample40
+        - name: historical_landing_subdir
+          default: ""
+        - name: weather_execution_id
+          default: urbanflow-final-weather-devsample48h
+        - name: weather_source
+          default: sample_json
+        - name: weather_sample_file
+          default: open_meteo_archive_202401.sample.json
+        - name: weather_start_date
+          default: "2024-01-24"
+        - name: weather_end_date
+          default: "2024-01-25"
+        - name: stream_timeout_seconds
+          default: "900"
+        - name: federation_catalog
+          default: ${var.federation_catalog}
+        - name: federation_table
+          default: ${var.federation_table}
+        - name: cdc_source
+          default: fixture_snapshot
+        - name: cdc_snapshot
+          default: batch_001
+      environments:
+        - environment_key: urbanflow_serverless
+          spec:
+            client: "4"
+            dependencies:
+              - PyYAML==6.0.3
+              - requests==2.32.5
+      tasks:
+        - task_key: preflight
+          environment_key: urbanflow_serverless
+          disable_auto_optimization: true
+          timeout_seconds: 300
+          notebook_task:
+            notebook_path: ../notebooks/08_unified_preflight.py
+            source: WORKSPACE
+            base_parameters:
+              run_station_pipeline: "{{job.parameters.run_station_pipeline}}"
+              run_historical: "{{job.parameters.run_historical}}"
+              run_weather: "{{job.parameters.run_weather}}"
+              run_full_month: "{{job.parameters.run_full_month}}"
+              run_federation_cdc: "{{job.parameters.run_federation_cdc}}"
+              run_lakeflow: "{{job.parameters.run_lakeflow}}"
+              station_source: "{{job.parameters.station_source}}"
+              source_execution_id: "{{job.parameters.source_execution_id}}"
+              historical_execution_id: "{{job.parameters.historical_execution_id}}"
+              historical_landing_subdir: "{{job.parameters.historical_landing_subdir}}"
+              weather_execution_id: "{{job.parameters.weather_execution_id}}"
+              weather_source: "{{job.parameters.weather_source}}"
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume: "{{job.parameters.volume}}"
+        - task_key: land_sources
+          depends_on:
+            - task_key: preflight
+          environment_key: urbanflow_serverless
+          disable_auto_optimization: true
+          timeout_seconds: 1200
+          notebook_task:
+            notebook_path: ../notebooks/02_land_bounded_sources.py
+            source: WORKSPACE
+            base_parameters:
+              run_station_pipeline: "{{job.parameters.run_station_pipeline}}"
+              station_source: "{{job.parameters.station_source}}"
+              run_historical: "{{job.parameters.run_historical}}"
+              run_full_month: "{{job.parameters.run_full_month}}"
+              source_execution_id: "{{job.parameters.source_execution_id}}"
+              historical_execution_id: "{{job.parameters.historical_execution_id}}"
+              historical_landing_subdir: "{{job.parameters.historical_landing_subdir}}"
+              stream_timeout_seconds: "{{job.parameters.stream_timeout_seconds}}"
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume: "{{job.parameters.volume}}"
+              run_weather: "{{job.parameters.run_weather}}"
+              weather_source: "{{job.parameters.weather_source}}"
+              weather_sample_file: "{{job.parameters.weather_sample_file}}"
+        - task_key: station_source_check
+          depends_on:
+            - task_key: land_sources
+          environment_key: urbanflow_serverless
+          disable_auto_optimization: true
+          timeout_seconds: 600
+          notebook_task:
+            notebook_path: ../notebooks/09_station_source_check.py
+            source: WORKSPACE
+            base_parameters:
+              run_station_pipeline: "{{job.parameters.run_station_pipeline}}"
+              station_source: "{{job.parameters.station_source}}"
+              source_execution_id: "{{job.parameters.source_execution_id}}"
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+        - task_key: station_silver
+          depends_on:
+            - task_key: station_source_check
+          environment_key: urbanflow_serverless
+          disable_auto_optimization: true
+          timeout_seconds: 900
+          notebook_task:
+            notebook_path: ../notebooks/04_bronze_to_silver.py
+            source: WORKSPACE
+            base_parameters:
+              run_transform: "{{job.parameters.run_station_pipeline}}"
+              run_attempt_id: "{{job.parameters.run_attempt_id}}"
+              source_execution_id: "{{job.parameters.source_execution_id}}"
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume: "{{job.parameters.volume}}"
+        - task_key: station_gold
+          depends_on:
+            - task_key: station_silver
+          environment_key: urbanflow_serverless
+          disable_auto_optimization: true
+          timeout_seconds: 900
+          notebook_task:
+            notebook_path: ../notebooks/05_silver_to_gold.py
+            source: WORKSPACE
+            base_parameters:
+              run_transform: "{{job.parameters.run_station_pipeline}}"
+              run_attempt_id: "{{job.parameters.run_attempt_id}}"
+              source_execution_id: "{{job.parameters.source_execution_id}}"
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume: "{{job.parameters.volume}}"
+        - task_key: historical_trips
+          # Trips join the station dimension that station_gold writes; on a fresh schema it does
+          # not exist until station_gold has run (the first DEV run failed on exactly this).
+          depends_on:
+            - task_key: land_sources
+            - task_key: station_gold
+          environment_key: urbanflow_serverless
+          disable_auto_optimization: true
+          timeout_seconds: 3600
+          notebook_task:
+            notebook_path: ../notebooks/06_historical_trips.py
+            source: WORKSPACE
+            base_parameters:
+              run_ingest: "{{job.parameters.run_historical}}"
+              run_attempt_id: "{{job.parameters.run_attempt_id}}"
+              execution_id: "{{job.parameters.historical_execution_id}}"
+              stream_timeout_seconds: "{{job.parameters.stream_timeout_seconds}}"
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume: "{{job.parameters.volume}}"
+              landing_subdir: "{{job.parameters.historical_landing_subdir}}"
+        - task_key: weather_enrichment
+          depends_on:
+            - task_key: historical_trips
+          environment_key: urbanflow_serverless
+          disable_auto_optimization: true
+          timeout_seconds: 900
+          notebook_task:
+            notebook_path: ../notebooks/07_weather_enrichment.py
+            source: WORKSPACE
+            base_parameters:
+              run_enrichment: "{{job.parameters.run_weather}}"
+              run_attempt_id: "{{job.parameters.run_attempt_id}}"
+              execution_id: "{{job.parameters.weather_execution_id}}"
+              # Not `source_execution_id`: that Job parameter (the station execution) would
+              # override a task parameter of the same name.
+              historical_execution_id: "{{job.parameters.historical_execution_id}}"
+              weather_source: "{{job.parameters.weather_source}}"
+              weather_sample_file: "{{job.parameters.weather_sample_file}}"
+              start_date: "{{job.parameters.weather_start_date}}"
+              end_date: "{{job.parameters.weather_end_date}}"
+              latitude: "40.7128"
+              longitude: "-74.0060"
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              volume: "{{job.parameters.volume}}"
+        - task_key: validate_medallion
+          depends_on:
+            - task_key: station_gold
+            - task_key: historical_trips
+            - task_key: weather_enrichment
+          environment_key: urbanflow_serverless
+          disable_auto_optimization: true
+          timeout_seconds: 900
+          notebook_task:
+            notebook_path: ../notebooks/10_unified_final_validation.py
+            source: WORKSPACE
+            base_parameters:
+              run_station_pipeline: "{{job.parameters.run_station_pipeline}}"
+              run_historical: "{{job.parameters.run_historical}}"
+              run_weather: "{{job.parameters.run_weather}}"
+              run_full_month: "{{job.parameters.run_full_month}}"
+              station_source: "{{job.parameters.station_source}}"
+              source_execution_id: "{{job.parameters.source_execution_id}}"
+              historical_execution_id: "{{job.parameters.historical_execution_id}}"
+              historical_landing_subdir: "{{job.parameters.historical_landing_subdir}}"
+              weather_execution_id: "{{job.parameters.weather_execution_id}}"
+              weather_start_date: "{{job.parameters.weather_start_date}}"
+              weather_end_date: "{{job.parameters.weather_end_date}}"
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+        - task_key: federation_cdc
+          depends_on:
+            - task_key: validate_medallion
+          environment_key: urbanflow_serverless
+          disable_auto_optimization: true
+          timeout_seconds: 1200
+          notebook_task:
+            notebook_path: ../notebooks/11_federation_cdc.py
+            source: WORKSPACE
+            base_parameters:
+              expected_host: "{{job.parameters.expected_host}}"
+              run_federation_cdc: "{{job.parameters.run_federation_cdc}}"
+              cdc_source: "{{job.parameters.cdc_source}}"
+              cdc_snapshot: "{{job.parameters.cdc_snapshot}}"
+              federation_catalog: "{{job.parameters.federation_catalog}}"
+              federation_table: "{{job.parameters.federation_table}}"
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+        - task_key: should_refresh_lakeflow
+          depends_on:
+            - task_key: validate_medallion
+          condition_task:
+            op: EQUAL_TO
+            left: "{{job.parameters.run_lakeflow}}"
+            right: "true"
+        - task_key: refresh_lakeflow
+          depends_on:
+            - task_key: should_refresh_lakeflow
+              outcome: "true"
+          # A bounded triggered update; without a task timeout only the 2-hour Job limit applies.
+          timeout_seconds: 2400
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.urbanflow_final_pipeline.id}
+            full_refresh: false
+      tags:
+        project: urbanflow_final_project
+        release: protected_manual_only
+        compute: serverless_bounded
+
+    urbanflow_final_rag:
+      name: "[${bundle.target}] UrbanFlow 2.0 Mobility RAG"
+      description: >-
+        Manual-only knowledge ingestion, triggered Vector Search synchronization, and
+        baseline-versus-RAG evaluation. Writes, index mutation, and inference are off by default.
+      max_concurrent_runs: 1
+      queue:
+        enabled: true
+      timeout_seconds: 5400
+      parameters:
+        - name: expected_host
+          default: ${workspace.host}
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema
+          default: ${var.schema}
+        - name: ai_search_endpoint
+          default: ${var.ai_search_endpoint}
+        - name: ai_search_index
+          default: ${var.ai_search_index}
+        - name: embedding_endpoint
+          default: ${var.embedding_endpoint}
+        - name: chat_endpoint
+          default: ${var.chat_endpoint}
+        - name: eval_question_limit
+          default: "18"
+        - name: eval_question_ids
+          default: ""
+        - name: eval_include_baseline
+          default: "true"
+        - name: allow_table_writes
+          default: "false"
+        - name: allow_ai_search_mutation
+          default: "false"
+        - name: run_live_inference
+          default: "false"
+      environments:
+        - environment_key: urbanflow_rag_serverless
+          spec:
+            client: "4"
+            dependencies:
+              - databricks-ai-search==0.78
+              - databricks-openai==0.17.1
+      tasks:
+        - task_key: ingest_knowledge_base
+          environment_key: urbanflow_rag_serverless
+          disable_auto_optimization: true
+          timeout_seconds: 1200
+          notebook_task:
+            notebook_path: ../notebooks/20_ingest_knowledge_base.py
+            source: WORKSPACE
+        - task_key: prepare_vector_search
+          depends_on:
+            - task_key: ingest_knowledge_base
+          environment_key: urbanflow_rag_serverless
+          disable_auto_optimization: true
+          timeout_seconds: 3600
+          notebook_task:
+            notebook_path: ../notebooks/21_prepare_vector_search.py
+            source: WORKSPACE
+        - task_key: evaluate_rag
+          depends_on:
+            - task_key: prepare_vector_search
+          environment_key: urbanflow_rag_serverless
+          disable_auto_optimization: true
+          timeout_seconds: 1800
+          notebook_task:
+            notebook_path: ../notebooks/23_evaluate_rag.py
+            source: WORKSPACE
+      tags:
+        project: urbanflow_final_project
+        release: protected_manual_only
+        ai: mobility_operations_rag
