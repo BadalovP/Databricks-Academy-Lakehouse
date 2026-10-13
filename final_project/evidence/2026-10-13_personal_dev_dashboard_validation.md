@@ -60,6 +60,6 @@ No browser was available to the operator, so no screenshot exists. The deployed 
 | Item | Result |
 |---|---|
 | Published | **No.** The draft is visible to the owner, and publishing with merged titles would present a known defect. Publish (owner only, embedded credentials off) after the text fix is deployed. |
-| Warehouse auto-stop | See the record of the auto-stop check in `RELEASE_AND_VALIDATION.md` |
+| Warehouse auto-stop | **Verified.** The last query of the session ran at 00:50:43 UTC; the warehouse reported `STOPPING` at **01:00:59 UTC** (auto-stop 10 min), with no resize and no new warehouse |
 
 Machine-readable record: [`2026-10-13_personal_dev_dashboard_validation.json`](2026-10-13_personal_dev_dashboard_validation.json), with every dataset's columns and up to 30 rows.
