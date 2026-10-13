@@ -260,3 +260,48 @@ def test_governance_demo_is_a_dry_run_unless_confirmed(capsys) -> None:
     assert json.loads(capsys.readouterr().out)["mode"] == "DRY_RUN"
     with pytest.raises(SystemExit):
         run_governance_demo.main(["--target", "personal_dev", "--execute"])
+
+
+class _FailingWarehouse:
+    """Runs statements in memory and fails on the first one containing ``fail_on``."""
+
+    def __init__(self, fail_on: str) -> None:
+        self.fail_on = fail_on
+        self.executed: list[str] = []
+
+    def __call__(self, client, warehouse_id, catalog, statement):
+        self.executed.append(statement)
+        if self.fail_on in statement:
+            raise RuntimeError("FAILED: simulated warehouse error")
+        if "current_user()" in statement and statement.startswith("SELECT current_user"):
+            return [{"u": "owner@example.com"}]
+        return []
+
+
+@pytest.mark.parametrize(
+    "fail_on", ["SET ROW FILTER", "SET MASK", "zone_access VALUES"]
+)
+def test_a_failed_governance_step_still_rolls_back_and_drops_the_demo_schema(
+    monkeypatch, tmp_path, fail_on
+) -> None:
+    """A failure mid-demo must never leave the isolated schema or a policy behind."""
+    import types
+
+    warehouse = _FailingWarehouse(fail_on)
+    monkeypatch.setattr(run_governance_demo, "run", warehouse)
+    monkeypatch.setitem(
+        sys.modules, "databricks.sdk", types.SimpleNamespace(WorkspaceClient=lambda profile: None)
+    )
+    evidence = tmp_path / "governance.json"
+    code = run_governance_demo.main([
+        "--target", "personal_dev", "--execute",
+        "--confirm", run_governance_demo.CONFIRMATION, "--warehouse-id", "wh",
+        "--profile", "p", "--evidence", str(evidence), "--cleanup",
+    ])  # fmt: skip
+    assert code == 1
+    recorded = json.loads(evidence.read_text(encoding="utf-8"))
+    assert recorded["error"].startswith("RuntimeError")
+    cleanup = run_governance_demo.statements("personal_dev")["cleanup"]
+    assert warehouse.executed[-2] == cleanup  # the drop ran after the failure
+    assert recorded["demo_schema_exists_after_cleanup"] is False
+    assert len(recorded["rollback_after_error"]) == 4

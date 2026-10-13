@@ -157,30 +157,47 @@ def execute(plan: dict, args: argparse.Namespace) -> dict:
         ev[label] = {name: sql(query) for name, query in plan["inspect"].items()}
 
     snap("before")
-    for statement in plan["setup"]:
-        sql(statement)
-    ev["raw_unpoliced"] = {"stations": sql(plan["station_view"]), "trips": sql(plan["trip_view"])}
-    for statement in plan["apply"]:
-        sql(statement)
-    snap("after_apply")
-    ev["filtered_no_mapping"] = sql(plan["station_view"])
-    sql(f"INSERT INTO {plan['demo']}.zone_access VALUES ('{me}', 'SOUTH')")
-    ev["filtered_south_only"] = sql(plan["station_view"])
-    sql(f"INSERT INTO {plan['demo']}.zone_access VALUES ('{me}', 'ALL')")
-    ev["allowed_all_zones_coordinates_masked"] = sql(plan["station_view"])
-    ev["ride_id_masked"] = sql(plan["trip_view"])
-    for statement in plan["rollback"]:
-        sql(statement)
-    snap("after_rollback")
-    if args.cleanup:
-        sql(plan["cleanup"])
-        ev["demo_schema_exists_after_cleanup"] = bool(
-            sql(
-                f"SELECT 1 FROM {plan['catalog']}.information_schema.schemata "
-                f"WHERE schema_name = '{plan['demo_schema']}'"
-            )
-        )
-    ev["statements"] = {key: plan[key] for key in ("setup", "apply", "rollback")}
+    try:
+        for statement in plan["setup"]:
+            sql(statement)
+        ev["raw_unpoliced"] = {
+            "stations": sql(plan["station_view"]),
+            "trips": sql(plan["trip_view"]),
+        }
+        for statement in plan["apply"]:
+            sql(statement)
+        snap("after_apply")
+        ev["filtered_no_mapping"] = sql(plan["station_view"])
+        sql(f"INSERT INTO {plan['demo']}.zone_access VALUES ('{me}', 'SOUTH')")
+        ev["filtered_south_only"] = sql(plan["station_view"])
+        sql(f"INSERT INTO {plan['demo']}.zone_access VALUES ('{me}', 'ALL')")
+        ev["allowed_all_zones_coordinates_masked"] = sql(plan["station_view"])
+        ev["ride_id_masked"] = sql(plan["trip_view"])
+        for statement in plan["rollback"]:
+            sql(statement)
+        snap("after_rollback")
+    except Exception as error:  # record, roll back what may have been applied, then clean up
+        ev["error"] = f"{type(error).__name__}: {str(error)[:500]}"
+        ev["rollback_after_error"] = []
+        for statement in plan["rollback"]:
+            try:
+                sql(statement)
+                ev["rollback_after_error"].append("ok")
+            except Exception as rollback_error:  # e.g. the policy was never applied
+                ev["rollback_after_error"].append(type(rollback_error).__name__)
+    finally:
+        if args.cleanup:
+            try:
+                sql(plan["cleanup"])
+                ev["demo_schema_exists_after_cleanup"] = bool(
+                    sql(
+                        f"SELECT 1 FROM {plan['catalog']}.information_schema.schemata "
+                        f"WHERE schema_name = '{plan['demo_schema']}'"
+                    )
+                )
+            except Exception as cleanup_error:
+                ev["cleanup_error"] = f"{type(cleanup_error).__name__}: {str(cleanup_error)[:300]}"
+        ev["statements"] = {key: plan[key] for key in ("setup", "apply", "rollback")}
     return ev
 
 
@@ -204,7 +221,7 @@ def main(argv: list[str] | None = None) -> int:
     evidence = execute(plan, args)
     Path(args.evidence).write_text(json.dumps(evidence, indent=2), encoding="utf-8")
     print(json.dumps({k: v for k, v in evidence.items() if k != "statements"}, indent=1)[:6000])
-    return 0
+    return 1 if "error" in evidence or "cleanup_error" in evidence else 0
 
 
 if __name__ == "__main__":

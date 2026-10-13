@@ -97,6 +97,26 @@ flowchart LR
 
 The Final Project does not create either identity without the owner's explicit request, and it does not contact the Academy administrators.
 
+## Can a CD demonstration happen without any Azure identity?
+
+**Yes, for `personal_dev`.** A Personal DEV release needs only:
+1. PR #75 merged (the default-branch rule for `workflow_dispatch`);
+2. the environments `final-project-approval` and `final-project-personal_dev`;
+3. the DEV OAuth M2M service principal, which the project owner can create in the personal workspace without the Academy.
+
+`plan_only` against `personal_dev` is read-only and writes nothing, so it is the safest first run. The `azure_prod` path stays unavailable until the OIDC identity exists. Its plan job fails at authentication, before any write.
+
+**Remaining admin dependencies:**
+
+| Dependency | Who | Needed for |
+|---|---|---|
+| DEV service principal + OAuth secret | Project owner (workspace admin of the personal workspace) | Any CD run against `personal_dev` |
+| `azure_prod` service principal + GitHub federation policy | Academy account admin of `dbr_dev_trial_2` | Any CD run against `azure_prod` |
+| Grants in shared `dbr_dev` for that principal | Academy catalog owner | `azure_prod` deploy as the principal |
+| GitHub environments and required reviewer | Repository owner | Any CD run |
+
+Until then, operator releases with the owner's own login use the same plan gates. They are recorded for every DEV deploy in `RELEASE_AND_VALIDATION.md`.
+
 ## Post-merge demonstration checklist
 
 Run only after PR #75 is merged and the configuration above exists. Each dispatch is a separate, approved action.

@@ -165,8 +165,17 @@ Recommended order: **E1 → D → E2–E6 → F → G**. The assistant ingest (E
 | Item | Value |
 |---|---|
 | Workspace | `https://adb-7405618361895520.0.azuredatabricks.net` (Academy **trial**, not paid production). Identity `parvinbadalov@softserve.academy` with Azure CLI login. |
-| Resources created | Schemas `dbr_dev.parvinbadalov_urbanflow_final_prod` and `..._lakeflow_prod` **in the shared Academy `dbr_dev` catalog**, 1 Volume, 2 Jobs, 1 pipeline, 1 dashboard (7 creates, 0 updates, 0 deletes, per the read-only plan of 2026-10-12, to be recalculated). No schedule, cluster or permission change. |
-| Pre-checks (read-only) | Trial still available; identity, permissions and serverless; no collision; plan recalculated and validated |
+| Resources created | Schemas `dbr_dev.parvinbadalov_urbanflow_final_prod` and `..._lakeflow_prod` **in the shared Academy `dbr_dev` catalog**, 1 Volume, 2 Jobs, 1 pipeline, 1 dashboard (7 creates, 0 updates, 0 deletes, recalculated 2026-10-13). No schedule, cluster or permission change. |
+| Pre-checks (read-only) | **Re-run 2026-10-13 00:10 UTC, PASS:**
+- the trial workspace is usable;
+- `parvinbadalov@softserve.academy` is a workspace admin (Azure CLI login);
+- `bundle validate -t azure_prod` passes;
+- the recalculated plan is **7 creates, 0 updates, 0 deletes**, and the validator passes with no collision among 16 existing Jobs;
+- the target schemas are absent among the 130 `dbr_dev` schemas (Demo 3's `parvinbadalov_urbanflow*` exist and are untouched);
+- warehouse `d8b8ff9942968cb8` is serverless, Small, stopped, auto-stop 10 min;
+- no AI Search endpoint exists.
+
+Evidence: [`2026-10-13_azure_prod_phase_g_preflight.json`](../evidence/2026-10-13_azure_prod_phase_g_preflight.json). |
 | Optional, approved separately | One bounded sample platform run (≈ 8 minutes, ≈ 1.3 DBU) with an independent DEV/PROD comparison |
 | Cost exposure | Deploy: none. Sample run: about 1–2 DBU at Azure list prices (to be read from that workspace's `list_prices`). Storage: kilobytes. |
 | Cleanup | None planned. Removing it later means dropping the two schemas in a shared catalog, which needs its own approval. |

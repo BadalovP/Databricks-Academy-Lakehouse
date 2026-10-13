@@ -1,0 +1,22 @@
+{
+ "phase": "G read-only preflight (not deployed)",
+ "checked_at_utc": "2026-10-13T00:10Z",
+ "workspace": "https://adb-7405618361895520.0.azuredatabricks.net (dbr_dev_trial_2, Academy trial)",
+ "identity": "parvinbadalov@softserve.academy",
+ "workspace_admin": true,
+ "plan_actions": {
+  "resources.dashboards.urbanflow_final_dashboard": "create",
+  "resources.jobs.urbanflow_final_platform": "create",
+  "resources.jobs.urbanflow_final_rag": "create",
+  "resources.pipelines.urbanflow_final_pipeline": "create",
+  "resources.schemas.urbanflow_final_lakeflow_schema": "create",
+  "resources.schemas.urbanflow_final_schema": "create",
+  "resources.volumes.urbanflow_final_landing": "create"
+ },
+ "validator": "PASS (phase pre, 7 creates, 0 updates, 0 deletes, no job-name collision)",
+ "existing_jobs": 16,
+ "existing_urbanflow_jobs": [],
+ "dbr_dev_schema_collision": "none: parvinbadalov_urbanflow_final_prod and ..._lakeflow_prod absent (Demo 3's parvinbadalov_urbanflow schemas exist and are untouched)",
+ "warehouse": "d8b8ff9942968cb8 Serverless Starter Warehouse, Small, serverless, STOPPED, auto-stop 10 min",
+ "ai_search_endpoints": []
+}
