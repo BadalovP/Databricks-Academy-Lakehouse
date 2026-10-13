@@ -62,6 +62,18 @@ VALIDATED_LIVE_CLAIMS: dict[Path, tuple[str, ...]] = {
         "Final Project run 896549012431425",
         "Personal DEV on 2026-10-12",
     ),
+    Path("notebooks/20_ingest_knowledge_base.py"): (
+        "Final Project run 870039412110159",
+        "Personal DEV on 2026-10-13",
+    ),
+    Path("notebooks/21_prepare_vector_search.py"): (
+        "Final Project run 12773923439415",
+        "Personal DEV on 2026-10-13",
+    ),
+    Path("notebooks/23_evaluate_rag.py"): (
+        "Final Project run 712590508231976",
+        "Personal DEV on 2026-10-13",
+    ),
 }
 
 

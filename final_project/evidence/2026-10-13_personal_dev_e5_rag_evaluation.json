@@ -1,0 +1,2362 @@
+{
+ "e5_review_records": [
+  {
+   "baseline": {
+    "answer": "In most bike\u2011sharing or bike\u2011delivery systems the \u201cstation\u201d that is chosen for a delivery is determined by a combination of the following factors:\n\n| Factor | What it means | Why it matters |\n|--------|---------------|----------------|\n| **Proximity to the delivery address** | The station that is closest to the pickup or drop\u2011off point. | Minimises walking distance for the customer and the delivery rider. |\n| **Bike availability** | Whether the station currently has a bike that can be taken (or a dock that can receive a bike). | A station with no bikes or no free docks cannot be used. |\n| **Station capacity** | The number of bikes a station can hold and the number of free docks it has. | Ensures the system stays balanced and prevents over\u2011full or empty stations. |\n| **Traffic and safety** | Road conditions, traffic volume, and pedestrian safety around the station. | Reduces risk of accidents and improves rider experience. |\n| **Operational constraints** | Time of day, maintenance schedules, or special events that might affect station availability. | Keeps the service reliable and predictable. |\n| **Customer preferences** | Some services allow users to specify a preferred station or a range of acceptable stations. | Improves customer satisfaction. |\n| **Algorithmic optimisation** | Many systems use real\u2011time data and optimisation algorithms to pick the best station that balances all the above factors. | Maximises efficiency and reduces delivery time. |\n\n**Typical selection process**\n\n1. **Receive the delivery request** \u2013 the system knows the pickup and drop\u2011off locations.  \n2. **Query real\u2011time station data** \u2013 current bike counts, dock availability, and station status.  \n3. **Filter stations** \u2013 keep only those that have the required resource (bike or dock) and are within a reasonable distance.  \n4. **Score or rank the remaining stations** \u2013 using a weighted formula that considers distance, capacity, traffic, and any user\u2011specified preferences.  \n5. **Choose the top\u2011ranked station** \u2013 assign the delivery rider to that station.  \n6. **Update the system** \u2013 mark the bike as \u201cin\u2011transit\u201d and reserve the dock for the return.\n\nIf a station is unavailable (e.g., no free docks for a return), the system automatically selects the next best alternative. This process is usually automated and happens in seconds, ensuring a smooth experience for both the rider and the customer.",
+    "diagnostics": {
+     "answer_chars": 2407,
+     "completion_tokens": 629,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 4214,
+     "max_tokens": 1800,
+     "prompt_tokens": 150,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 0,
+     "sources": 0,
+     "total_tokens": 779,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 4214,
+    "score": "{\"answer_completeness\": 0.0, \"answer_correctness\": 0.0, \"category\": \"rebalancing\", \"citation_precision\": null, \"diagnostics\": {\"answer_chars\": 2407, \"completion_tokens\": 629, \"content_blocks\": [\"reasoning\", \"text\"], \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 4214, \"max_tokens\": 1800, \"prompt_tokens\": 150, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 0, \"sources\": 0, \"total_tokens\": 779, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"none\", \"retrieval_recall\": null, \"review_flags\": [], \"source_coverage\": null, \"uncited_sentences\": null, \"weak_citations\": null}"
+   },
+   "category": "rebalancing",
+   "expected_sources": [
+    "01_station_rebalancing.md"
+   ],
+   "question": "How is a station selected for bike delivery?",
+   "question_id": "q01",
+   "rag": {
+    "answer": "A station is selected for bike delivery when it meets the rebalancing trigger for low\u2011bike availability and is not out\u2011of\u2011service.  \nWhen a station\u2019s available bikes are at or below the low\u2011bike threshold, it is added to the rebalancing queue and normally receives the **DELIVER BIKES** action. The dispatcher then chooses the station with the highest priority score\u2014calculated as the sum of severity points, deficit points, and station\u2011size points\u2014while also checking nearby stations and current telemetry before moving a vehicle. If both bikes and docks appear critically low, the dispatcher instead performs an **INSPECT STATION** rather than an automatic bike movement.  \n\n[4] [3]",
+    "citations": {
+     "3": "01_station_rebalancing.md#priority-and-dispatch",
+     "4": "01_station_rebalancing.md#trigger-conditions"
+    },
+    "diagnostics": {
+     "answer_chars": 684,
+     "completion_tokens": 444,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "context_chars": 1681,
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 2139,
+     "max_tokens": 1800,
+     "preamble_dropped": 0,
+     "prompt_tokens": 715,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 1198,
+     "sources": 4,
+     "sources_in_context": 4,
+     "total_tokens": 1159,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 3337,
+    "score": "{\"answer_completeness\": 0.667, \"answer_correctness\": 0.667, \"category\": \"rebalancing\", \"citation_precision\": 1.0, \"diagnostics\": {\"answer_chars\": 684, \"completion_tokens\": 444, \"content_blocks\": [\"reasoning\", \"text\"], \"context_chars\": 1681, \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 2139, \"max_tokens\": 1800, \"preamble_dropped\": 0, \"prompt_tokens\": 715, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 1198, \"sources\": 4, \"sources_in_context\": 4, \"total_tokens\": 1159, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"none\", \"retrieval_recall\": 1.0, \"review_flags\": [], \"source_coverage\": 1.0, \"uncited_sentences\": 4, \"weak_citations\": 0}"
+   },
+   "retrieved": [
+    {
+     "chunk_id": "chk_e5202c5faa62a2d0c7c0752c",
+     "rank": 1,
+     "score": 0.9766,
+     "section": "02_station_maintenance.md#intake-and-safety",
+     "source": "02_station_maintenance.md"
+    },
+    {
+     "chunk_id": "chk_c162329a93c4be83622728ab",
+     "rank": 2,
+     "score": 0.9683,
+     "section": "07_kpi_definitions.md#availability",
+     "source": "07_kpi_definitions.md"
+    },
+    {
+     "chunk_id": "chk_83e5c9f4be5b55453ca4d6bd",
+     "rank": 3,
+     "score": 0.9541,
+     "section": "01_station_rebalancing.md#priority-and-dispatch",
+     "source": "01_station_rebalancing.md"
+    },
+    {
+     "chunk_id": "chk_c6ae884602a2e7aaed6f6141",
+     "rank": 4,
+     "score": 0.9485,
+     "section": "01_station_rebalancing.md#trigger-conditions",
+     "source": "01_station_rebalancing.md"
+    }
+   ]
+  },
+  {
+   "baseline": {
+    "answer": "When a station shows that **both the number of available bikes and the number of free docks are critically low**, the operator should treat it as a dual\u2011inventory emergency and act quickly to restore service. The typical steps are:\n\n1. **Verify the counts**  \n   \u2022 Double\u2011check the on\u2011site sensors or manual count to confirm that the low\u2011bike and low\u2011dock conditions are accurate.  \n   \u2022 Look for any obvious causes (e.g., a recent surge of riders, a malfunctioning dock, or a bike that\u2019s stuck).\n\n2. **Notify the central operations team**  \n   \u2022 Send an immediate alert (via the operations dashboard, radio, or phone) that the station is in a \u201ccritical\u201d state.  \n   \u2022 Include the station ID, current bike count, free dock count, and any observed issues.\n\n3. **Request a bike relocation**  \n   \u2022 Ask the fleet\u2011management or logistics crew to move bikes from nearby stations with excess inventory to the affected station.  \n   \u2022 If the station is in a high\u2011traffic area, prioritize bringing in bikes that are most likely to be used.\n\n4. **Request a dock relocation (if possible)**  \n   \u2022 If the station has a modular dock system, request that a dock be moved from a neighboring station that has spare capacity.  \n   \u2022 If the dock system is fixed, consider temporarily closing the station or marking it as \u201cmaintenance\u201d until docks can be restored.\n\n5. **Communicate with riders**  \n   \u2022 Update the station status in the app (e.g., \u201cOut of Service\u201d or \u201cLimited Availability\u201d).  \n   \u2022 Post a notice on the station\u2019s signage explaining the situation and expected resolution time.\n\n6. **Plan a follow\u2011up**  \n   \u2022 Schedule a maintenance or inventory check for the next shift to ensure the problem is fully resolved.  \n   \u2022 If the station repeatedly hits critical lows, consider a longer\u2011term solution such as adding more docks or re\u2011balancing the fleet.\n\nBy acting promptly\u2014confirming the issue, alerting central ops, moving bikes and docks, and keeping riders informed\u2014the operator can minimize downtime and maintain a reliable service for the community.",
+    "diagnostics": {
+     "answer_chars": 2049,
+     "completion_tokens": 820,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 4828,
+     "max_tokens": 1800,
+     "prompt_tokens": 155,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 0,
+     "sources": 0,
+     "total_tokens": 975,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 4828,
+    "score": "{\"answer_completeness\": 0.0, \"answer_correctness\": 0.0, \"category\": \"rebalancing\", \"citation_precision\": null, \"diagnostics\": {\"answer_chars\": 2049, \"completion_tokens\": 820, \"content_blocks\": [\"reasoning\", \"text\"], \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 4828, \"max_tokens\": 1800, \"prompt_tokens\": 155, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 0, \"sources\": 0, \"total_tokens\": 975, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"none\", \"retrieval_recall\": null, \"review_flags\": [], \"source_coverage\": null, \"uncited_sentences\": null, \"weak_citations\": null}"
+   },
+   "category": "rebalancing",
+   "expected_sources": [
+    "01_station_rebalancing.md"
+   ],
+   "question": "What should an operator do when both bikes and docks are critically low?",
+   "question_id": "q02",
+   "rag": {
+    "answer": "When both bikes and docks are critically low, the operator should **inspect the station** rather than automatically moving bikes. This is the prescribed action when telemetry is conflicting for a station that is low on both resources. [1]",
+    "citations": {
+     "1": "01_station_rebalancing.md#priority-and-dispatch"
+    },
+    "diagnostics": {
+     "answer_chars": 238,
+     "completion_tokens": 150,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "context_chars": 1681,
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 989,
+     "max_tokens": 1800,
+     "preamble_dropped": 0,
+     "prompt_tokens": 720,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 429,
+     "sources": 4,
+     "sources_in_context": 4,
+     "total_tokens": 870,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 1418,
+    "score": "{\"answer_completeness\": 0.667, \"answer_correctness\": 0.667, \"category\": \"rebalancing\", \"citation_precision\": 1.0, \"diagnostics\": {\"answer_chars\": 238, \"completion_tokens\": 150, \"content_blocks\": [\"reasoning\", \"text\"], \"context_chars\": 1681, \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 989, \"max_tokens\": 1800, \"preamble_dropped\": 0, \"prompt_tokens\": 720, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 429, \"sources\": 4, \"sources_in_context\": 4, \"total_tokens\": 870, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"none\", \"retrieval_recall\": 1.0, \"review_flags\": [], \"source_coverage\": 1.0, \"uncited_sentences\": 2, \"weak_citations\": 0}"
+   },
+   "retrieved": [
+    {
+     "chunk_id": "chk_83e5c9f4be5b55453ca4d6bd",
+     "rank": 1,
+     "score": 1.0,
+     "section": "01_station_rebalancing.md#priority-and-dispatch",
+     "source": "01_station_rebalancing.md"
+    },
+    {
+     "chunk_id": "chk_c6ae884602a2e7aaed6f6141",
+     "rank": 2,
+     "score": 0.9839,
+     "section": "01_station_rebalancing.md#trigger-conditions",
+     "source": "01_station_rebalancing.md"
+    },
+    {
+     "chunk_id": "chk_c162329a93c4be83622728ab",
+     "rank": 3,
+     "score": 0.9612,
+     "section": "07_kpi_definitions.md#availability",
+     "source": "07_kpi_definitions.md"
+    },
+    {
+     "chunk_id": "chk_e5202c5faa62a2d0c7c0752c",
+     "rank": 4,
+     "score": 0.9607,
+     "section": "02_station_maintenance.md#intake-and-safety",
+     "source": "02_station_maintenance.md"
+    }
+   ]
+  },
+  {
+   "baseline": {
+    "answer": "I\u2019m sorry, but I don\u2019t have enough information to answer that.",
+    "diagnostics": {
+     "answer_chars": 62,
+     "completion_tokens": 141,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 1197,
+     "max_tokens": 1800,
+     "prompt_tokens": 152,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 0,
+     "sources": 0,
+     "total_tokens": 293,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 1197,
+    "score": "{\"answer_completeness\": 0.0, \"answer_correctness\": 0.0, \"category\": \"maintenance\", \"citation_precision\": null, \"diagnostics\": {\"answer_chars\": 62, \"completion_tokens\": 141, \"content_blocks\": [\"reasoning\", \"text\"], \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 1197, \"max_tokens\": 1800, \"prompt_tokens\": 152, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 0, \"sources\": 0, \"total_tokens\": 293, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"clean\", \"retrieval_recall\": null, \"review_flags\": [\"answerable_question_refused:clean\"], \"source_coverage\": null, \"uncited_sentences\": null, \"weak_citations\": null}"
+   },
+   "category": "maintenance",
+   "expected_sources": [
+    "02_station_maintenance.md"
+   ],
+   "question": "Which checks are required before closing a station maintenance ticket?",
+   "question_id": "q03",
+   "rag": {
+    "answer": "The ticket may close only after a functional check passes, a completion photo is attached, and a UTC completion timestamp is recorded.\u202f[1]",
+    "citations": {
+     "1": "02_station_maintenance.md#closure-evidence"
+    },
+    "diagnostics": {
+     "answer_chars": 138,
+     "completion_tokens": 208,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "context_chars": 1361,
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 939,
+     "max_tokens": 1800,
+     "preamble_dropped": 0,
+     "prompt_tokens": 638,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 518,
+     "sources": 4,
+     "sources_in_context": 4,
+     "total_tokens": 846,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 1457,
+    "score": "{\"answer_completeness\": 1.0, \"answer_correctness\": 1.0, \"category\": \"maintenance\", \"citation_precision\": 1.0, \"diagnostics\": {\"answer_chars\": 138, \"completion_tokens\": 208, \"content_blocks\": [\"reasoning\", \"text\"], \"context_chars\": 1361, \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 939, \"max_tokens\": 1800, \"preamble_dropped\": 0, \"prompt_tokens\": 638, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 518, \"sources\": 4, \"sources_in_context\": 4, \"total_tokens\": 846, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"none\", \"retrieval_recall\": 1.0, \"review_flags\": [], \"source_coverage\": 1.0, \"uncited_sentences\": 1, \"weak_citations\": 0}"
+   },
+   "retrieved": [
+    {
+     "chunk_id": "chk_244a8c09ba762798d1c0df43",
+     "rank": 1,
+     "score": 0.9919,
+     "section": "02_station_maintenance.md#closure-evidence",
+     "source": "02_station_maintenance.md"
+    },
+    {
+     "chunk_id": "chk_e5202c5faa62a2d0c7c0752c",
+     "rank": 2,
+     "score": 0.9841,
+     "section": "02_station_maintenance.md#intake-and-safety",
+     "source": "02_station_maintenance.md"
+    },
+    {
+     "chunk_id": "chk_c74c2c107ef03b9bb10a1e29",
+     "rank": 3,
+     "score": 0.9761,
+     "section": "01_station_rebalancing.md#completion",
+     "source": "01_station_rebalancing.md"
+    },
+    {
+     "chunk_id": "chk_4450b1db497dcad0202bd419",
+     "rank": 4,
+     "score": 0.9534,
+     "section": "02_station_maintenance.md#repair-workflow",
+     "source": "02_station_maintenance.md"
+    }
+   ]
+  },
+  {
+   "baseline": {
+    "answer": "A station should be marked \u201cout of service\u201d whenever it is not safe, reliable, or available for passengers to use. Typical situations include:\n\n1. **Scheduled or unscheduled maintenance** \u2013 If the station is undergoing repairs, upgrades, or routine maintenance that will keep it closed for a period of time, it should be marked out of service until the work is complete.\n\n2. **Equipment or infrastructure failure** \u2013 When critical components (e.g., ticket machines, turnstiles, elevators, lighting, or structural elements) are broken or malfunctioning and cannot be quickly fixed, the station should be taken out of service to avoid safety risks.\n\n3. **Safety hazards** \u2013 Any condition that poses a danger to passengers or staff\u2014such as a structural defect, flooding, fire, or hazardous material spill\u2014requires the station to be closed until the hazard is removed.\n\n4. **Low or zero usage** \u2013 If a station consistently has very low ridership and the cost of keeping it open outweighs the benefits, it may be temporarily or permanently closed.\n\n5. **Permanent closure or relocation** \u2013 When a station is being permanently shut down, relocated, or replaced, it should be marked out of service before the transition.\n\n6. **Regulatory or compliance issues** \u2013 If the station fails to meet safety, accessibility, or other regulatory standards, it must be closed until it is brought into compliance.\n\nIn all cases, the decision to mark a station out of service should be based on a clear assessment of safety, operational viability, and regulatory compliance, and it should be communicated promptly to passengers and relevant stakeholders.",
+    "diagnostics": {
+     "answer_chars": 1633,
+     "completion_tokens": 574,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 3265,
+     "max_tokens": 1800,
+     "prompt_tokens": 151,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 0,
+     "sources": 0,
+     "total_tokens": 725,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 3265,
+    "score": "{\"answer_completeness\": 0.333, \"answer_correctness\": 0.333, \"category\": \"maintenance\", \"citation_precision\": null, \"diagnostics\": {\"answer_chars\": 1633, \"completion_tokens\": 574, \"content_blocks\": [\"reasoning\", \"text\"], \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 3265, \"max_tokens\": 1800, \"prompt_tokens\": 151, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 0, \"sources\": 0, \"total_tokens\": 725, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"none\", \"retrieval_recall\": null, \"review_flags\": [], \"source_coverage\": null, \"uncited_sentences\": null, \"weak_citations\": null}"
+   },
+   "category": "maintenance",
+   "expected_sources": [
+    "02_station_maintenance.md"
+   ],
+   "question": "When should a station be marked out of service?",
+   "question_id": "q04",
+   "rag": {
+    "answer": "A station should be marked out of service when a safety hazard exists or when the station\u2019s ability to rent or return bikes is disabled. This status excludes the station from rebalancing operations. [1]",
+    "citations": {
+     "1": "02_station_maintenance.md#intake-and-safety"
+    },
+    "diagnostics": {
+     "answer_chars": 202,
+     "completion_tokens": 203,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "context_chars": 1546,
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 1145,
+     "max_tokens": 1800,
+     "preamble_dropped": 0,
+     "prompt_tokens": 694,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 328,
+     "sources": 4,
+     "sources_in_context": 4,
+     "total_tokens": 897,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 1473,
+    "score": "{\"answer_completeness\": 0.333, \"answer_correctness\": 0.333, \"category\": \"maintenance\", \"citation_precision\": 1.0, \"diagnostics\": {\"answer_chars\": 202, \"completion_tokens\": 203, \"content_blocks\": [\"reasoning\", \"text\"], \"context_chars\": 1546, \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 1145, \"max_tokens\": 1800, \"preamble_dropped\": 0, \"prompt_tokens\": 694, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 328, \"sources\": 4, \"sources_in_context\": 4, \"total_tokens\": 897, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"none\", \"retrieval_recall\": 1.0, \"review_flags\": [], \"source_coverage\": 1.0, \"uncited_sentences\": 2, \"weak_citations\": 0}"
+   },
+   "retrieved": [
+    {
+     "chunk_id": "chk_e5202c5faa62a2d0c7c0752c",
+     "rank": 1,
+     "score": 1.0,
+     "section": "02_station_maintenance.md#intake-and-safety",
+     "source": "02_station_maintenance.md"
+    },
+    {
+     "chunk_id": "chk_c6ae884602a2e7aaed6f6141",
+     "rank": 2,
+     "score": 0.9839,
+     "section": "01_station_rebalancing.md#trigger-conditions",
+     "source": "01_station_rebalancing.md"
+    },
+    {
+     "chunk_id": "chk_ebdbec917494bddcd7e60fcf",
+     "rank": 3,
+     "score": 0.9612,
+     "section": "04_data_quality.md#contract-failures",
+     "source": "04_data_quality.md"
+    },
+    {
+     "chunk_id": "chk_c162329a93c4be83622728ab",
+     "rank": 4,
+     "score": 0.9607,
+     "section": "07_kpi_definitions.md#availability",
+     "source": "07_kpi_definitions.md"
+    }
+   ]
+  },
+  {
+   "baseline": {
+    "answer": "I\u2019m sorry, but the available documents do not contain enough information to answer that.",
+    "diagnostics": {
+     "answer_chars": 88,
+     "completion_tokens": 255,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 1924,
+     "max_tokens": 1800,
+     "prompt_tokens": 151,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 0,
+     "sources": 0,
+     "total_tokens": 406,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 1924,
+    "score": "{\"answer_completeness\": 0.0, \"answer_correctness\": 0.0, \"category\": \"incident\", \"citation_precision\": null, \"diagnostics\": {\"answer_chars\": 88, \"completion_tokens\": 255, \"content_blocks\": [\"reasoning\", \"text\"], \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 1924, \"max_tokens\": 1800, \"prompt_tokens\": 151, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 0, \"sources\": 0, \"total_tokens\": 406, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"clean\", \"retrieval_recall\": null, \"review_flags\": [\"answerable_question_refused:clean\"], \"source_coverage\": null, \"uncited_sentences\": null, \"weak_citations\": null}"
+   },
+   "category": "incident",
+   "expected_sources": [
+    "03_incident_response.md"
+   ],
+   "question": "What is the first response to stale station telemetry?",
+   "question_id": "q05",
+   "rag": {
+    "answer": "The first response to stale station telemetry is to **verify the source feed and ingestion status**. [1]",
+    "citations": {
+     "1": "03_incident_response.md#stale-telemetry"
+    },
+    "diagnostics": {
+     "answer_chars": 104,
+     "completion_tokens": 147,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "context_chars": 1561,
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 766,
+     "max_tokens": 1800,
+     "preamble_dropped": 0,
+     "prompt_tokens": 684,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 1025,
+     "sources": 4,
+     "sources_in_context": 4,
+     "supplemental_added": 0,
+     "supplemental_headings": [
+      "Stale telemetry"
+     ],
+     "supplemental_queries": 1,
+     "total_tokens": 831,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 1791,
+    "score": "{\"answer_completeness\": 0.333, \"answer_correctness\": 0.333, \"category\": \"incident\", \"citation_precision\": 1.0, \"diagnostics\": {\"answer_chars\": 104, \"completion_tokens\": 147, \"content_blocks\": [\"reasoning\", \"text\"], \"context_chars\": 1561, \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 766, \"max_tokens\": 1800, \"preamble_dropped\": 0, \"prompt_tokens\": 684, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 1025, \"sources\": 4, \"sources_in_context\": 4, \"supplemental_added\": 0, \"supplemental_queries\": 1, \"total_tokens\": 831, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"none\", \"retrieval_recall\": 1.0, \"review_flags\": [], \"source_coverage\": 1.0, \"uncited_sentences\": 1, \"weak_citations\": 0}"
+   },
+   "retrieved": [
+    {
+     "chunk_id": "chk_1c8aa4aa6efb48f0f213deb6",
+     "rank": 1,
+     "score": 1.0,
+     "section": "03_incident_response.md#stale-telemetry",
+     "source": "03_incident_response.md"
+    },
+    {
+     "chunk_id": "chk_ebdbec917494bddcd7e60fcf",
+     "rank": 2,
+     "score": 0.9612,
+     "section": "04_data_quality.md#contract-failures",
+     "source": "04_data_quality.md"
+    },
+    {
+     "chunk_id": "chk_83e5c9f4be5b55453ca4d6bd",
+     "rank": 3,
+     "score": 0.9472,
+     "section": "01_station_rebalancing.md#priority-and-dispatch",
+     "source": "01_station_rebalancing.md"
+    },
+    {
+     "chunk_id": "chk_4450b1db497dcad0202bd419",
+     "rank": 4,
+     "score": 0.9186,
+     "section": "02_station_maintenance.md#repair-workflow",
+     "source": "02_station_maintenance.md"
+    }
+   ]
+  },
+  {
+   "baseline": {
+    "answer": "I\u2019m sorry, but I don\u2019t have enough information to answer that.",
+    "diagnostics": {
+     "answer_chars": 62,
+     "completion_tokens": 122,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 1174,
+     "max_tokens": 1800,
+     "prompt_tokens": 150,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 0,
+     "sources": 0,
+     "total_tokens": 272,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 1174,
+    "score": "{\"answer_completeness\": 0.0, \"answer_correctness\": 0.0, \"category\": \"incident\", \"citation_precision\": null, \"diagnostics\": {\"answer_chars\": 62, \"completion_tokens\": 122, \"content_blocks\": [\"reasoning\", \"text\"], \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 1174, \"max_tokens\": 1800, \"prompt_tokens\": 150, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 0, \"sources\": 0, \"total_tokens\": 272, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"clean\", \"retrieval_recall\": null, \"review_flags\": [\"answerable_question_refused:clean\"], \"source_coverage\": null, \"uncited_sentences\": null, \"weak_citations\": null}"
+   },
+   "category": "incident",
+   "expected_sources": [
+    "03_incident_response.md"
+   ],
+   "question": "How are severity-one mobility incidents escalated?",
+   "question_id": "q06",
+   "rag": {
+    "answer": "Severity\u2011one incidents are escalated by the on\u2011call engineer: they must acknowledge the incident within five minutes, assign an incident commander, and notify operations within fifteen minutes. All logs and run identifiers are preserved, and no secrets or raw credentials are posted in the incident channel. [1]",
+    "citations": {
+     "1": "03_incident_response.md#severity-and-escalation"
+    },
+    "diagnostics": {
+     "answer_chars": 311,
+     "completion_tokens": 215,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "context_chars": 1770,
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 1575,
+     "max_tokens": 1800,
+     "preamble_dropped": 0,
+     "prompt_tokens": 723,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 260,
+     "sources": 4,
+     "sources_in_context": 4,
+     "total_tokens": 938,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 1835,
+    "score": "{\"answer_completeness\": 1.0, \"answer_correctness\": 1.0, \"category\": \"incident\", \"citation_precision\": 1.0, \"diagnostics\": {\"answer_chars\": 311, \"completion_tokens\": 215, \"content_blocks\": [\"reasoning\", \"text\"], \"context_chars\": 1770, \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 1575, \"max_tokens\": 1800, \"preamble_dropped\": 0, \"prompt_tokens\": 723, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 260, \"sources\": 4, \"sources_in_context\": 4, \"total_tokens\": 938, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"none\", \"retrieval_recall\": 1.0, \"review_flags\": [], \"source_coverage\": 1.0, \"uncited_sentences\": 2, \"weak_citations\": 0}"
+   },
+   "retrieved": [
+    {
+     "chunk_id": "chk_91d35bc9ffddff002ddb0ce2",
+     "rank": 1,
+     "score": 1.0,
+     "section": "03_incident_response.md#severity-and-escalation",
+     "source": "03_incident_response.md"
+    },
+    {
+     "chunk_id": "chk_83e5c9f4be5b55453ca4d6bd",
+     "rank": 2,
+     "score": 0.9685,
+     "section": "01_station_rebalancing.md#priority-and-dispatch",
+     "source": "01_station_rebalancing.md"
+    },
+    {
+     "chunk_id": "chk_44b8795009b6671301e7117a",
+     "rank": 3,
+     "score": 0.9462,
+     "section": "07_kpi_definitions.md#rebalancing-priority",
+     "source": "07_kpi_definitions.md"
+    },
+    {
+     "chunk_id": "chk_c6ae884602a2e7aaed6f6141",
+     "rank": 4,
+     "score": 0.9314,
+     "section": "01_station_rebalancing.md#trigger-conditions",
+     "source": "01_station_rebalancing.md"
+    }
+   ]
+  },
+  {
+   "baseline": {
+    "answer": "If a station event arrives without a station identifier, the system treats it as an incomplete or invalid record. In most mobility\u2011operations platforms the following happens:\n\n1. **Validation failure** \u2013 The event does not pass the required\u2011field check and is rejected from the normal processing pipeline.  \n2. **Error logging** \u2013 The failure is recorded in the audit or error logs so that the missing data can be traced.  \n3. **Dead\u2011letter or hold queue** \u2013 Many systems move the event to a \u201cdead\u2011letter\u201d or \u201chold\u201d queue where it can be examined and, if possible, enriched with the missing identifier before re\u2011processing.  \n4. **Manual review** \u2013 If the system cannot automatically resolve the missing ID, the event is typically flagged for manual intervention by an operator or data\u2011quality team.  \n\nIn short, a station event lacking an identifier is not processed normally; it is either dropped, held for later correction, or routed to a queue for manual handling.",
+    "diagnostics": {
+     "answer_chars": 968,
+     "completion_tokens": 626,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 4305,
+     "max_tokens": 1800,
+     "prompt_tokens": 153,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 0,
+     "sources": 0,
+     "total_tokens": 779,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 4305,
+    "score": "{\"answer_completeness\": 0.0, \"answer_correctness\": 0.0, \"category\": \"quality\", \"citation_precision\": null, \"diagnostics\": {\"answer_chars\": 968, \"completion_tokens\": 626, \"content_blocks\": [\"reasoning\", \"text\"], \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 4305, \"max_tokens\": 1800, \"prompt_tokens\": 153, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 0, \"sources\": 0, \"total_tokens\": 779, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"none\", \"retrieval_recall\": null, \"review_flags\": [], \"source_coverage\": null, \"uncited_sentences\": null, \"weak_citations\": null}"
+   },
+   "category": "quality",
+   "expected_sources": [
+    "04_data_quality.md"
+   ],
+   "question": "What happens to a station event with a missing station identifier?",
+   "question_id": "q07",
+   "rag": {
+    "answer": "A station event that lacks a station identifier is routed to quarantine under the failed rule; it is never silently dropped. [1]",
+    "citations": {
+     "1": "04_data_quality.md#contract-failures"
+    },
+    "diagnostics": {
+     "answer_chars": 128,
+     "completion_tokens": 95,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "context_chars": 1494,
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 744,
+     "max_tokens": 1800,
+     "preamble_dropped": 0,
+     "prompt_tokens": 678,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 280,
+     "sources": 4,
+     "sources_in_context": 4,
+     "total_tokens": 773,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 1024,
+    "score": "{\"answer_completeness\": 0.667, \"answer_correctness\": 0.667, \"category\": \"quality\", \"citation_precision\": 1.0, \"diagnostics\": {\"answer_chars\": 128, \"completion_tokens\": 95, \"content_blocks\": [\"reasoning\", \"text\"], \"context_chars\": 1494, \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 744, \"max_tokens\": 1800, \"preamble_dropped\": 0, \"prompt_tokens\": 678, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 280, \"sources\": 4, \"sources_in_context\": 4, \"total_tokens\": 773, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"none\", \"retrieval_recall\": 1.0, \"review_flags\": [], \"source_coverage\": 1.0, \"uncited_sentences\": 1, \"weak_citations\": 0}"
+   },
+   "retrieved": [
+    {
+     "chunk_id": "chk_ebdbec917494bddcd7e60fcf",
+     "rank": 1,
+     "score": 1.0,
+     "section": "04_data_quality.md#contract-failures",
+     "source": "04_data_quality.md"
+    },
+    {
+     "chunk_id": "chk_c74c2c107ef03b9bb10a1e29",
+     "rank": 2,
+     "score": 0.9761,
+     "section": "01_station_rebalancing.md#completion",
+     "source": "01_station_rebalancing.md"
+    },
+    {
+     "chunk_id": "chk_1c8aa4aa6efb48f0f213deb6",
+     "rank": 3,
+     "score": 0.9534,
+     "section": "03_incident_response.md#stale-telemetry",
+     "source": "03_incident_response.md"
+    },
+    {
+     "chunk_id": "chk_03a2a95eea5f263f4fb8c62e",
+     "rank": 4,
+     "score": 0.9531,
+     "section": "06_source_definitions.md#gbfs",
+     "source": "06_source_definitions.md"
+    }
+   ]
+  },
+  {
+   "baseline": {
+    "answer": "I\u2019m sorry, but I don\u2019t have enough information to answer that.",
+    "diagnostics": {
+     "answer_chars": 62,
+     "completion_tokens": 195,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 1203,
+     "max_tokens": 1800,
+     "prompt_tokens": 148,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 0,
+     "sources": 0,
+     "total_tokens": 343,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 1203,
+    "score": "{\"answer_completeness\": 0.0, \"answer_correctness\": 0.0, \"category\": \"quality\", \"citation_precision\": null, \"diagnostics\": {\"answer_chars\": 62, \"completion_tokens\": 195, \"content_blocks\": [\"reasoning\", \"text\"], \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 1203, \"max_tokens\": 1800, \"prompt_tokens\": 148, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 0, \"sources\": 0, \"total_tokens\": 343, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"clean\", \"retrieval_recall\": null, \"review_flags\": [\"answerable_question_refused:clean\"], \"source_coverage\": null, \"uncited_sentences\": null, \"weak_citations\": null}"
+   },
+   "category": "quality",
+   "expected_sources": [
+    "04_data_quality.md"
+   ],
+   "question": "How are duplicate station events handled?",
+   "question_id": "q08",
+   "rag": {
+    "answer": "Duplicate station events are identified by their **event_id**.  \nThe first deterministic arrival for a given event_id is written to the Silver table, while any\nsubsequent deliveries with the same event_id are recorded in the duplicate audit set.  \nBusiness keys and timestamps are kept in the audit set to aid diagnosis. [3]",
+    "citations": {
+     "3": "04_data_quality.md#duplicates"
+    },
+    "diagnostics": {
+     "answer_chars": 324,
+     "completion_tokens": 197,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "context_chars": 1515,
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 788,
+     "max_tokens": 1800,
+     "preamble_dropped": 0,
+     "prompt_tokens": 676,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 483,
+     "sources": 4,
+     "sources_in_context": 4,
+     "supplemental_added": 0,
+     "supplemental_headings": [
+      "Duplicates"
+     ],
+     "supplemental_queries": 1,
+     "total_tokens": 873,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 1271,
+    "score": "{\"answer_completeness\": 0.667, \"answer_correctness\": 0.667, \"category\": \"quality\", \"citation_precision\": 1.0, \"diagnostics\": {\"answer_chars\": 324, \"completion_tokens\": 197, \"content_blocks\": [\"reasoning\", \"text\"], \"context_chars\": 1515, \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 788, \"max_tokens\": 1800, \"preamble_dropped\": 0, \"prompt_tokens\": 676, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 483, \"sources\": 4, \"sources_in_context\": 4, \"supplemental_added\": 0, \"supplemental_queries\": 1, \"total_tokens\": 873, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"none\", \"retrieval_recall\": 1.0, \"review_flags\": [], \"source_coverage\": 1.0, \"uncited_sentences\": 4, \"weak_citations\": 0}"
+   },
+   "retrieved": [
+    {
+     "chunk_id": "chk_ebdbec917494bddcd7e60fcf",
+     "rank": 1,
+     "score": 1.0,
+     "section": "04_data_quality.md#contract-failures",
+     "source": "04_data_quality.md"
+    },
+    {
+     "chunk_id": "chk_c6ae884602a2e7aaed6f6141",
+     "rank": 2,
+     "score": 0.9685,
+     "section": "01_station_rebalancing.md#trigger-conditions",
+     "source": "01_station_rebalancing.md"
+    },
+    {
+     "chunk_id": "chk_b3130b89a7a25da2a3b93906",
+     "rank": 3,
+     "score": 0.9534,
+     "section": "04_data_quality.md#duplicates",
+     "source": "04_data_quality.md"
+    },
+    {
+     "chunk_id": "chk_d5cf4af1a1392cc6c0a590ae",
+     "rank": 4,
+     "score": 0.9276,
+     "section": "04_data_quality.md#reconciliation",
+     "source": "04_data_quality.md"
+    }
+   ]
+  },
+  {
+   "baseline": {
+    "answer": "I\u2019m sorry, but the available documents do not contain enough information to answer that.",
+    "diagnostics": {
+     "answer_chars": 88,
+     "completion_tokens": 259,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 1250,
+     "max_tokens": 1800,
+     "prompt_tokens": 152,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 0,
+     "sources": 0,
+     "total_tokens": 411,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 1250,
+    "score": "{\"answer_completeness\": 0.0, \"answer_correctness\": 0.0, \"category\": \"recovery\", \"citation_precision\": null, \"diagnostics\": {\"answer_chars\": 88, \"completion_tokens\": 259, \"content_blocks\": [\"reasoning\", \"text\"], \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 1250, \"max_tokens\": 1800, \"prompt_tokens\": 152, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 0, \"sources\": 0, \"total_tokens\": 411, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"clean\", \"retrieval_recall\": null, \"review_flags\": [\"answerable_question_refused:clean\"], \"source_coverage\": null, \"uncited_sentences\": null, \"weak_citations\": null}"
+   },
+   "category": "recovery",
+   "expected_sources": [
+    "05_pipeline_recovery.md"
+   ],
+   "question": "How should an operator replay an Auto Loader batch safely?",
+   "question_id": "q09",
+   "rag": {
+    "answer": "To replay an Auto Loader batch safely, an operator should:\n\n- Stop before deleting or editing a checkpoint.  \n- Confirm the target, source range, and last successful run.  \n- Prefer a new execution ID and an isolated checkpoint.  \n- Process the batch with `availableNow`, then reconcile the input, accepted, quarantined, duplicate, and Gold counts. [1]",
+    "citations": {
+     "1": "05_pipeline_recovery.md#bounded-replay"
+    },
+    "diagnostics": {
+     "answer_chars": 352,
+     "completion_tokens": 344,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "context_chars": 1547,
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 1200,
+     "max_tokens": 1800,
+     "preamble_dropped": 0,
+     "prompt_tokens": 680,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 241,
+     "sources": 4,
+     "sources_in_context": 4,
+     "total_tokens": 1024,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 1441,
+    "score": "{\"answer_completeness\": 1.0, \"answer_correctness\": 1.0, \"category\": \"recovery\", \"citation_precision\": 1.0, \"diagnostics\": {\"answer_chars\": 352, \"completion_tokens\": 344, \"content_blocks\": [\"reasoning\", \"text\"], \"context_chars\": 1547, \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 1200, \"max_tokens\": 1800, \"preamble_dropped\": 0, \"prompt_tokens\": 680, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 241, \"sources\": 4, \"sources_in_context\": 4, \"total_tokens\": 1024, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"none\", \"retrieval_recall\": 1.0, \"review_flags\": [], \"source_coverage\": 1.0, \"uncited_sentences\": 5, \"weak_citations\": 0}"
+   },
+   "retrieved": [
+    {
+     "chunk_id": "chk_5ff40a9eed06958f7efc039d",
+     "rank": 1,
+     "score": 0.9841,
+     "section": "05_pipeline_recovery.md#bounded-replay",
+     "source": "05_pipeline_recovery.md"
+    },
+    {
+     "chunk_id": "chk_44b8795009b6671301e7117a",
+     "rank": 2,
+     "score": 0.942,
+     "section": "07_kpi_definitions.md#rebalancing-priority",
+     "source": "07_kpi_definitions.md"
+    },
+    {
+     "chunk_id": "chk_91d35bc9ffddff002ddb0ce2",
+     "rank": 3,
+     "score": 0.934,
+     "section": "03_incident_response.md#severity-and-escalation",
+     "source": "03_incident_response.md"
+    },
+    {
+     "chunk_id": "chk_e5202c5faa62a2d0c7c0752c",
+     "rank": 4,
+     "score": 0.9186,
+     "section": "02_station_maintenance.md#intake-and-safety",
+     "source": "02_station_maintenance.md"
+    }
+   ]
+  },
+  {
+   "baseline": {
+    "answer": "No \u2013 a full Lakeflow refresh is not the default or \u201cnormal\u201d recovery action. In most cases the recovery strategy relies on incremental refreshes or point\u2011in\u2011time restores from backup rather than re\u2011loading the entire lake. A full refresh is usually reserved for special circumstances (e.g., a major schema change or a catastrophic failure where all data must be rebuilt).",
+    "diagnostics": {
+     "answer_chars": 371,
+     "completion_tokens": 968,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 4026,
+     "max_tokens": 1800,
+     "prompt_tokens": 152,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 0,
+     "sources": 0,
+     "total_tokens": 1120,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 4026,
+    "score": "{\"answer_completeness\": 0.0, \"answer_correctness\": 0.0, \"category\": \"recovery\", \"citation_precision\": null, \"diagnostics\": {\"answer_chars\": 371, \"completion_tokens\": 968, \"content_blocks\": [\"reasoning\", \"text\"], \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 4026, \"max_tokens\": 1800, \"prompt_tokens\": 152, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 0, \"sources\": 0, \"total_tokens\": 1120, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"none\", \"retrieval_recall\": null, \"review_flags\": [], \"source_coverage\": null, \"uncited_sentences\": null, \"weak_citations\": null}"
+   },
+   "category": "recovery",
+   "expected_sources": [
+    "05_pipeline_recovery.md"
+   ],
+   "question": "Is a full Lakeflow refresh the normal recovery action?",
+   "question_id": "q10",
+   "rag": {
+    "answer": "No. A full Lakeflow refresh is not the normal recovery action; it requires explicit approval and a documented rollback, and a triggered selective refresh is preferred instead. [1]",
+    "citations": {
+     "1": "05_pipeline_recovery.md#lakeflow-recovery"
+    },
+    "diagnostics": {
+     "answer_chars": 179,
+     "completion_tokens": 130,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "context_chars": 1049,
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 510,
+     "max_tokens": 1800,
+     "preamble_dropped": 1,
+     "prompt_tokens": 567,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 1043,
+     "sources": 4,
+     "sources_in_context": 3,
+     "supplemental_added": 0,
+     "supplemental_headings": [
+      "Lakeflow recovery"
+     ],
+     "supplemental_queries": 1,
+     "total_tokens": 697,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 1553,
+    "score": "{\"answer_completeness\": 0.333, \"answer_correctness\": 0.333, \"category\": \"recovery\", \"citation_precision\": 1.0, \"diagnostics\": {\"answer_chars\": 179, \"completion_tokens\": 130, \"content_blocks\": [\"reasoning\", \"text\"], \"context_chars\": 1049, \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 510, \"max_tokens\": 1800, \"preamble_dropped\": 1, \"prompt_tokens\": 567, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 1043, \"sources\": 4, \"sources_in_context\": 3, \"supplemental_added\": 0, \"supplemental_queries\": 1, \"total_tokens\": 697, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"none\", \"retrieval_recall\": 1.0, \"review_flags\": [], \"source_coverage\": 1.0, \"uncited_sentences\": 1, \"weak_citations\": 0}"
+   },
+   "retrieved": [
+    {
+     "chunk_id": "chk_cf6be0a9e5dc4abd4741a0cc",
+     "rank": 1,
+     "score": 1.0,
+     "section": "05_pipeline_recovery.md#lakeflow-recovery",
+     "source": "05_pipeline_recovery.md"
+    },
+    {
+     "chunk_id": "chk_49796327668fb7705ae2c643",
+     "rank": 2,
+     "score": 0.9612,
+     "section": "08_security_and_access.md#release-controls",
+     "source": "08_security_and_access.md"
+    },
+    {
+     "chunk_id": "chk_f4cb09c50a727e68fd2e8818",
+     "rank": 3,
+     "score": 0.9612,
+     "section": "03_incident_response.md#recovery-validation",
+     "source": "03_incident_response.md"
+    }
+   ]
+  },
+  {
+   "baseline": {
+    "answer": "**GBFS\u202fstation_id**  \n- The ID that appears in the General Bikeshare Feed Specification (GBFS) feeds (e.g., `station_information.json`, `station_status.json`).  \n- It is a *stable, unique* identifier that the GBFS spec requires to",
+    "diagnostics": {
+     "answer_chars": 230,
+     "completion_tokens": 1800,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "empty_response": false,
+     "finish_reason": "length",
+     "generation_ms": 7655,
+     "max_tokens": 1800,
+     "prompt_tokens": 155,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 0,
+     "sources": 0,
+     "total_tokens": 1955,
+     "truncated": true
+    },
+    "error": "TruncatedModelResponse",
+    "latency_ms": 7655,
+    "score": "{\"answer_completeness\": 0.0, \"answer_correctness\": 0.0, \"category\": \"definitions\", \"citation_precision\": null, \"diagnostics\": {\"answer_chars\": 230, \"completion_tokens\": 1800, \"content_blocks\": [\"reasoning\", \"text\"], \"empty_response\": false, \"finish_reason\": \"length\", \"generation_ms\": 7655, \"max_tokens\": 1800, \"prompt_tokens\": 155, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 0, \"sources\": 0, \"total_tokens\": 1955, \"truncated\": true}, \"invalid_citations\": 0, \"refusal\": \"none\", \"retrieval_recall\": null, \"review_flags\": [\"error:TruncatedModelResponse\"], \"source_coverage\": null, \"uncited_sentences\": null, \"weak_citations\": null}"
+   },
+   "category": "definitions",
+   "expected_sources": [
+    "06_source_definitions.md"
+   ],
+   "question": "What is the difference between GBFS station_id and historical station identifiers?",
+   "question_id": "q11",
+   "rag": {
+    "answer": "GBFS station identifiers are UUIDs that uniquely identify a station in the live feed, while historical trip files use the older short\u2011name style identifiers. Historical identifiers should be joined to the station dimension via the short_name field, not directly to the GBFS UUID [1].",
+    "citations": {
+     "1": "06_source_definitions.md#gbfs"
+    },
+    "diagnostics": {
+     "answer_chars": 283,
+     "completion_tokens": 187,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "context_chars": 1381,
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 770,
+     "max_tokens": 1800,
+     "preamble_dropped": 0,
+     "prompt_tokens": 650,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 1184,
+     "sources": 4,
+     "sources_in_context": 4,
+     "supplemental_added": 0,
+     "supplemental_headings": [
+      "GBFS"
+     ],
+     "supplemental_queries": 1,
+     "total_tokens": 837,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 1954,
+    "score": "{\"answer_completeness\": 0.667, \"answer_correctness\": 0.667, \"category\": \"definitions\", \"citation_precision\": 1.0, \"diagnostics\": {\"answer_chars\": 283, \"completion_tokens\": 187, \"content_blocks\": [\"reasoning\", \"text\"], \"context_chars\": 1381, \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 770, \"max_tokens\": 1800, \"preamble_dropped\": 0, \"prompt_tokens\": 650, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 1184, \"sources\": 4, \"sources_in_context\": 4, \"supplemental_added\": 0, \"supplemental_queries\": 1, \"total_tokens\": 837, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"none\", \"retrieval_recall\": 1.0, \"review_flags\": [], \"source_coverage\": 1.0, \"uncited_sentences\": 1, \"weak_citations\": 0}"
+   },
+   "retrieved": [
+    {
+     "chunk_id": "chk_03a2a95eea5f263f4fb8c62e",
+     "rank": 1,
+     "score": 1.0,
+     "section": "06_source_definitions.md#gbfs",
+     "source": "06_source_definitions.md"
+    },
+    {
+     "chunk_id": "chk_ebdbec917494bddcd7e60fcf",
+     "rank": 2,
+     "score": 0.9839,
+     "section": "04_data_quality.md#contract-failures",
+     "source": "04_data_quality.md"
+    },
+    {
+     "chunk_id": "chk_c74c2c107ef03b9bb10a1e29",
+     "rank": 3,
+     "score": 0.9683,
+     "section": "01_station_rebalancing.md#completion",
+     "source": "01_station_rebalancing.md"
+    },
+    {
+     "chunk_id": "chk_d79c7c1b6c59da066b867301",
+     "rank": 4,
+     "score": 0.9458,
+     "section": "06_source_definitions.md#trip-history",
+     "source": "06_source_definitions.md"
+    }
+   ]
+  },
+  {
+   "baseline": {
+    "answer": "No. Open\u2011Meteo offers forecast data for a large number of geographic points (lat/long coordinates) and for many standard weather stations, but it does not cover every single individual station worldwide. The service is designed to provide quick, free forecasts for a broad set of locations rather than a comprehensive database of every station\u2019s observations.",
+    "diagnostics": {
+     "answer_chars": 359,
+     "completion_tokens": 197,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 1057,
+     "max_tokens": 1800,
+     "prompt_tokens": 153,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 0,
+     "sources": 0,
+     "total_tokens": 350,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 1057,
+    "score": "{\"answer_completeness\": 0.0, \"answer_correctness\": 0.0, \"category\": \"definitions\", \"citation_precision\": null, \"diagnostics\": {\"answer_chars\": 359, \"completion_tokens\": 197, \"content_blocks\": [\"reasoning\", \"text\"], \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 1057, \"max_tokens\": 1800, \"prompt_tokens\": 153, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 0, \"sources\": 0, \"total_tokens\": 350, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"none\", \"retrieval_recall\": null, \"review_flags\": [], \"source_coverage\": null, \"uncited_sentences\": null, \"weak_citations\": null}"
+   },
+   "category": "definitions",
+   "expected_sources": [
+    "06_source_definitions.md"
+   ],
+   "question": "Does Open-Meteo provide weather for every individual station?",
+   "question_id": "q12",
+   "rag": {
+    "answer": "No. Open\u2011Meteo provides city\u2011level weather observations using a single New York City latitude/longitude, not station\u2011level measurements\u30101\u3011.",
+    "citations": {},
+    "diagnostics": {
+     "answer_chars": 139,
+     "completion_tokens": 159,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "context_chars": 1336,
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 802,
+     "max_tokens": 1800,
+     "preamble_dropped": 0,
+     "prompt_tokens": 644,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 1435,
+     "sources": 4,
+     "sources_in_context": 4,
+     "supplemental_added": 0,
+     "supplemental_headings": [
+      "Weather"
+     ],
+     "supplemental_queries": 1,
+     "total_tokens": 803,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 2237,
+    "score": "{\"answer_completeness\": 0.333, \"answer_correctness\": 0.333, \"category\": \"definitions\", \"citation_precision\": null, \"diagnostics\": {\"answer_chars\": 139, \"completion_tokens\": 159, \"content_blocks\": [\"reasoning\", \"text\"], \"context_chars\": 1336, \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 802, \"max_tokens\": 1800, \"preamble_dropped\": 0, \"prompt_tokens\": 644, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 1435, \"sources\": 4, \"sources_in_context\": 4, \"supplemental_added\": 0, \"supplemental_queries\": 1, \"total_tokens\": 803, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"none\", \"retrieval_recall\": 1.0, \"review_flags\": [], \"source_coverage\": 0.0, \"uncited_sentences\": 1, \"weak_citations\": 0}"
+   },
+   "retrieved": [
+    {
+     "chunk_id": "chk_3380c64d7f2adb1224a8f01a",
+     "rank": 1,
+     "score": 1.0,
+     "section": "06_source_definitions.md#weather",
+     "source": "06_source_definitions.md"
+    },
+    {
+     "chunk_id": "chk_e5202c5faa62a2d0c7c0752c",
+     "rank": 2,
+     "score": 0.9685,
+     "section": "02_station_maintenance.md#intake-and-safety",
+     "source": "02_station_maintenance.md"
+    },
+    {
+     "chunk_id": "chk_44b8795009b6671301e7117a",
+     "rank": 3,
+     "score": 0.9394,
+     "section": "07_kpi_definitions.md#rebalancing-priority",
+     "source": "07_kpi_definitions.md"
+    },
+    {
+     "chunk_id": "chk_ebdbec917494bddcd7e60fcf",
+     "rank": 4,
+     "score": 0.9155,
+     "section": "04_data_quality.md#contract-failures",
+     "source": "04_data_quality.md"
+    }
+   ]
+  },
+  {
+   "baseline": {
+    "answer": "I don\u2019t have access to the specific formula or weighting scheme that your organization uses for its rebalancing priority score. In most mobility\u2011operations contexts, however, the score is derived from a combination of factors such as:\n\n| Factor | Typical Influence on Score |\n|--------|---------------------------|\n| **Current occupancy** | Stations that are too full or too empty get higher priority. |\n| **Forecasted demand** | Short\u2011term ridership predictions (e.g., peak hours, weather, events). |\n| **Distance to depot or nearest vehicle** | Closer stations are easier to service, so they may receive a higher or lower weight depending on strategy. |\n| **Historical usage patterns** | Stations that historically experience large swings in supply/demand may be weighted more heavily. |\n| **Operational constraints** | Time of day, vehicle availability, and route efficiency can adjust the score. |\n\nTypically, each factor is assigned a weight (often between 0 and 1), multiplied by a normalized metric (e.g., % of capacity used), and the weighted values are summed to produce a single priority score. The higher the score, the higher the priority for rebalancing.\n\nIf you need the exact calculation used by your organization, you\u2019ll need to consult the internal documentation or the team responsible for the rebalancing algorithm.",
+    "diagnostics": {
+     "answer_chars": 1334,
+     "completion_tokens": 736,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 3465,
+     "max_tokens": 1800,
+     "prompt_tokens": 151,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 0,
+     "sources": 0,
+     "total_tokens": 887,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 3465,
+    "score": "{\"answer_completeness\": 0.0, \"answer_correctness\": 0.0, \"category\": \"kpi\", \"citation_precision\": null, \"diagnostics\": {\"answer_chars\": 1334, \"completion_tokens\": 736, \"content_blocks\": [\"reasoning\", \"text\"], \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 3465, \"max_tokens\": 1800, \"prompt_tokens\": 151, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 0, \"sources\": 0, \"total_tokens\": 887, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"none\", \"retrieval_recall\": null, \"review_flags\": [], \"source_coverage\": null, \"uncited_sentences\": null, \"weak_citations\": null}"
+   },
+   "category": "kpi",
+   "expected_sources": [
+    "07_kpi_definitions.md"
+   ],
+   "question": "How is the rebalancing priority score calculated?",
+   "question_id": "q13",
+   "rag": {
+    "answer": "The rebalancing priority score is calculated as the sum of three components: severity points, deficit points, and station\u2011size points.  \n[1][3]",
+    "citations": {
+     "1": "07_kpi_definitions.md#rebalancing-priority",
+     "3": "01_station_rebalancing.md#priority-and-dispatch"
+    },
+    "diagnostics": {
+     "answer_chars": 143,
+     "completion_tokens": 168,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "context_chars": 1696,
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 1017,
+     "max_tokens": 1800,
+     "preamble_dropped": 0,
+     "prompt_tokens": 716,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 496,
+     "sources": 4,
+     "sources_in_context": 4,
+     "supplemental_added": 0,
+     "supplemental_headings": [
+      "Rebalancing priority"
+     ],
+     "supplemental_queries": 1,
+     "total_tokens": 884,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 1513,
+    "score": "{\"answer_completeness\": 1.0, \"answer_correctness\": 1.0, \"category\": \"kpi\", \"citation_precision\": 0.5, \"diagnostics\": {\"answer_chars\": 143, \"completion_tokens\": 168, \"content_blocks\": [\"reasoning\", \"text\"], \"context_chars\": 1696, \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 1017, \"max_tokens\": 1800, \"preamble_dropped\": 0, \"prompt_tokens\": 716, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 496, \"sources\": 4, \"sources_in_context\": 4, \"supplemental_added\": 0, \"supplemental_queries\": 1, \"total_tokens\": 884, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"none\", \"retrieval_recall\": 1.0, \"review_flags\": [], \"source_coverage\": 1.0, \"uncited_sentences\": 1, \"weak_citations\": 0}"
+   },
+   "retrieved": [
+    {
+     "chunk_id": "chk_44b8795009b6671301e7117a",
+     "rank": 1,
+     "score": 1.0,
+     "section": "07_kpi_definitions.md#rebalancing-priority",
+     "source": "07_kpi_definitions.md"
+    },
+    {
+     "chunk_id": "chk_c6ae884602a2e7aaed6f6141",
+     "rank": 2,
+     "score": 0.9761,
+     "section": "01_station_rebalancing.md#trigger-conditions",
+     "source": "01_station_rebalancing.md"
+    },
+    {
+     "chunk_id": "chk_83e5c9f4be5b55453ca4d6bd",
+     "rank": 3,
+     "score": 0.9761,
+     "section": "01_station_rebalancing.md#priority-and-dispatch",
+     "source": "01_station_rebalancing.md"
+    },
+    {
+     "chunk_id": "chk_4cdbef12caed866aeb9fbcee",
+     "rank": 4,
+     "score": 0.9327,
+     "section": "07_kpi_definitions.md#freshness-and-quality",
+     "source": "07_kpi_definitions.md"
+    }
+   ]
+  },
+  {
+   "baseline": {
+    "answer": "Freshness lag measures the time delay between when data is created or updated in the source system and when that same data becomes available in the destination or analytics layer. In other words, it\u2019s the \u201cage\u201d of the most recent data that has been ingested\u2014how long it has been since the latest record was produced versus when it is actually usable for reporting, monitoring, or decision\u2011making. A low freshness lag means the data is almost real\u2011time; a high lag indicates a backlog or delay in the data pipeline.",
+    "diagnostics": {
+     "answer_chars": 514,
+     "completion_tokens": 221,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 1307,
+     "max_tokens": 1800,
+     "prompt_tokens": 147,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 0,
+     "sources": 0,
+     "total_tokens": 368,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 1307,
+    "score": "{\"answer_completeness\": 0.0, \"answer_correctness\": 0.0, \"category\": \"kpi\", \"citation_precision\": null, \"diagnostics\": {\"answer_chars\": 514, \"completion_tokens\": 221, \"content_blocks\": [\"reasoning\", \"text\"], \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 1307, \"max_tokens\": 1800, \"prompt_tokens\": 147, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 0, \"sources\": 0, \"total_tokens\": 368, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"none\", \"retrieval_recall\": null, \"review_flags\": [], \"source_coverage\": null, \"uncited_sentences\": null, \"weak_citations\": null}"
+   },
+   "category": "kpi",
+   "expected_sources": [
+    "07_kpi_definitions.md"
+   ],
+   "question": "What does freshness lag measure?",
+   "question_id": "q14",
+   "rag": {
+    "answer": "Freshness lag measures the number of minutes between the current time and the latest source event timestamp. [1]",
+    "citations": {
+     "1": "07_kpi_definitions.md#freshness-and-quality"
+    },
+    "diagnostics": {
+     "answer_chars": 112,
+     "completion_tokens": 94,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "context_chars": 1367,
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 828,
+     "max_tokens": 1800,
+     "preamble_dropped": 0,
+     "prompt_tokens": 641,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 525,
+     "sources": 4,
+     "sources_in_context": 4,
+     "total_tokens": 735,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 1352,
+    "score": "{\"answer_completeness\": 0.667, \"answer_correctness\": 0.667, \"category\": \"kpi\", \"citation_precision\": 1.0, \"diagnostics\": {\"answer_chars\": 112, \"completion_tokens\": 94, \"content_blocks\": [\"reasoning\", \"text\"], \"context_chars\": 1367, \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 828, \"max_tokens\": 1800, \"preamble_dropped\": 0, \"prompt_tokens\": 641, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 525, \"sources\": 4, \"sources_in_context\": 4, \"total_tokens\": 735, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"none\", \"retrieval_recall\": 1.0, \"review_flags\": [], \"source_coverage\": 1.0, \"uncited_sentences\": 1, \"weak_citations\": 0}"
+   },
+   "retrieved": [
+    {
+     "chunk_id": "chk_4cdbef12caed866aeb9fbcee",
+     "rank": 1,
+     "score": 1.0,
+     "section": "07_kpi_definitions.md#freshness-and-quality",
+     "source": "07_kpi_definitions.md"
+    },
+    {
+     "chunk_id": "chk_1c8aa4aa6efb48f0f213deb6",
+     "rank": 2,
+     "score": 0.9839,
+     "section": "03_incident_response.md#stale-telemetry",
+     "source": "03_incident_response.md"
+    },
+    {
+     "chunk_id": "chk_f4cb09c50a727e68fd2e8818",
+     "rank": 3,
+     "score": 0.9607,
+     "section": "03_incident_response.md#recovery-validation",
+     "source": "03_incident_response.md"
+    },
+    {
+     "chunk_id": "chk_3380c64d7f2adb1224a8f01a",
+     "rank": 4,
+     "score": 0.8654,
+     "section": "06_source_definitions.md#weather",
+     "source": "06_source_definitions.md"
+    }
+   ]
+  },
+  {
+   "baseline": {
+    "answer": "Event Hubs secrets (such as SAS keys, connection strings, and other credentials) are not stored inside the Event Hubs service itself.  \nThey are kept in the Azure infrastructure that you choose to use for secrets management:\n\n| Where the secret lives | Typical storage location |\n|------------------------|--------------------------|\n| **Azure Key\u202fVault** | If you create a Key\u202fVault and store the Event Hubs credentials there, the secrets are encrypted and protected by Azure Key\u202fVault\u2019s access policies. |\n| **Azure portal \u2013 Shared Access Policies** | When you create an Event Hubs namespace, you can create shared\u2011access policies that generate keys and connection strings. Those values are stored in the Azure portal\u2019s configuration for that namespace and can be retrieved from the portal or via the Azure REST/SDK. |\n| **Application code / configuration** | In many scenarios the secrets are pulled from Key\u202fVault or the portal at runtime and injected into your application (e.g., via environment variables, app settings, or managed identities). |\n\nSo, in short: the actual secret values are stored in Azure Key\u202fVault if you use it, or in the Azure portal\u2019s namespace configuration (the \u201cShared Access Policies\u201d section) if you don\u2019t. They are not stored in the Event Hubs service itself.",
+    "diagnostics": {
+     "answer_chars": 1292,
+     "completion_tokens": 627,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 2612,
+     "max_tokens": 1800,
+     "prompt_tokens": 149,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 0,
+     "sources": 0,
+     "total_tokens": 776,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 2612,
+    "score": "{\"answer_completeness\": 0.333, \"answer_correctness\": 0.333, \"category\": \"security\", \"citation_precision\": null, \"diagnostics\": {\"answer_chars\": 1292, \"completion_tokens\": 627, \"content_blocks\": [\"reasoning\", \"text\"], \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 2612, \"max_tokens\": 1800, \"prompt_tokens\": 149, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 0, \"sources\": 0, \"total_tokens\": 776, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"none\", \"retrieval_recall\": null, \"review_flags\": [], \"source_coverage\": null, \"uncited_sentences\": null, \"weak_citations\": null}"
+   },
+   "category": "security",
+   "expected_sources": [
+    "08_security_and_access.md"
+   ],
+   "question": "Where are Event Hubs secrets stored?",
+   "question_id": "q15",
+   "rag": {
+    "answer": "Event Hubs connection strings are stored in Azure\u202fKey\u202fVault and are exposed only through an approved secret scope or the local Azure SDK identity.\u202f[1]",
+    "citations": {
+     "1": "08_security_and_access.md#secrets"
+    },
+    "diagnostics": {
+     "answer_chars": 150,
+     "completion_tokens": 105,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "context_chars": 1600,
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 1084,
+     "max_tokens": 1800,
+     "preamble_dropped": 0,
+     "prompt_tokens": 689,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 489,
+     "sources": 4,
+     "sources_in_context": 4,
+     "supplemental_added": 0,
+     "supplemental_headings": [
+      "Secrets"
+     ],
+     "supplemental_queries": 1,
+     "total_tokens": 794,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 1572,
+    "score": "{\"answer_completeness\": 0.667, \"answer_correctness\": 0.667, \"category\": \"security\", \"citation_precision\": 1.0, \"diagnostics\": {\"answer_chars\": 150, \"completion_tokens\": 105, \"content_blocks\": [\"reasoning\", \"text\"], \"context_chars\": 1600, \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 1084, \"max_tokens\": 1800, \"preamble_dropped\": 0, \"prompt_tokens\": 689, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 489, \"sources\": 4, \"sources_in_context\": 4, \"supplemental_added\": 0, \"supplemental_queries\": 1, \"total_tokens\": 794, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"none\", \"retrieval_recall\": 1.0, \"review_flags\": [], \"source_coverage\": 1.0, \"uncited_sentences\": 1, \"weak_citations\": 0}"
+   },
+   "retrieved": [
+    {
+     "chunk_id": "chk_86ab5b94ee465f04bb85d678",
+     "rank": 1,
+     "score": 1.0,
+     "section": "08_security_and_access.md#secrets",
+     "source": "08_security_and_access.md"
+    },
+    {
+     "chunk_id": "chk_1c8aa4aa6efb48f0f213deb6",
+     "rank": 2,
+     "score": 0.9761,
+     "section": "03_incident_response.md#stale-telemetry",
+     "source": "03_incident_response.md"
+    },
+    {
+     "chunk_id": "chk_ebdbec917494bddcd7e60fcf",
+     "rank": 3,
+     "score": 0.9472,
+     "section": "04_data_quality.md#contract-failures",
+     "source": "04_data_quality.md"
+    },
+    {
+     "chunk_id": "chk_91d35bc9ffddff002ddb0ce2",
+     "rank": 4,
+     "score": 0.9245,
+     "section": "03_incident_response.md#severity-and-escalation",
+     "source": "03_incident_response.md"
+    }
+   ]
+  },
+  {
+   "baseline": {
+    "answer": "Production workflows are often kept manual and \u201capproval\u2011gated\u201d for several practical and risk\u2011management reasons:\n\n| Reason | What it protects against | Typical outcome |\n|--------|--------------------------|-----------------|\n| **Risk mitigation** | Accidental or buggy code reaching customers | A safety net that forces a human check before a change can be released. |\n| **Quality assurance** | Incomplete testing, missing edge\u2011case coverage | Ensures that all automated tests, code reviews, and performance checks have passed before the final push. |\n| **Regulatory / compliance** | Legal or industry\u2011specific audit trails | Gated approvals create a documented chain of custody that auditors can verify. |\n| **Accountability** | Unclear ownership of a change | The approval step assigns responsibility to a specific person or team. |\n| **Change\u2011management discipline** | Unplanned or rushed deployments | A formal approval process forces teams to plan, document, and review changes. |\n| **Stakeholder alignment** | Mis\u2011aligned expectations between product, ops, and business | Approval gates give stakeholders a chance to sign off on scope, timing, and impact. |\n| **Rollback safety** | Difficulty in rolling back a faulty release | By gating, teams can catch problems early and avoid the need for emergency hot\u2011fixes. |\n\nIn short, manual, approval\u2011gated production workflows are a deliberate design choice to keep the final step of a release under human oversight, ensuring that every change has been fully vetted, tested, and authorized before it touches end users.",
+    "diagnostics": {
+     "answer_chars": 1571,
+     "completion_tokens": 428,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 2202,
+     "max_tokens": 1800,
+     "prompt_tokens": 150,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 0,
+     "sources": 0,
+     "total_tokens": 578,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 2202,
+    "score": "{\"answer_completeness\": 0.0, \"answer_correctness\": 0.0, \"category\": \"security\", \"citation_precision\": null, \"diagnostics\": {\"answer_chars\": 1571, \"completion_tokens\": 428, \"content_blocks\": [\"reasoning\", \"text\"], \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 2202, \"max_tokens\": 1800, \"prompt_tokens\": 150, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 0, \"sources\": 0, \"total_tokens\": 578, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"none\", \"retrieval_recall\": null, \"review_flags\": [], \"source_coverage\": null, \"uncited_sentences\": null, \"weak_citations\": null}"
+   },
+   "category": "security",
+   "expected_sources": [
+    "08_security_and_access.md"
+   ],
+   "question": "Why are production workflows manual and approval gated?",
+   "question_id": "q16",
+   "rag": {
+    "answer": "Production workflows are manual and approval\u2011gated because deployments mutate governed resources and live runs can incur cost, so plans are reviewed before deployment and destructive actions, continuous compute, full refresh, and new paid resources require explicit approval. [1]",
+    "citations": {
+     "1": "08_security_and_access.md#release-controls"
+    },
+    "diagnostics": {
+     "answer_chars": 279,
+     "completion_tokens": 151,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "context_chars": 1495,
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 567,
+     "max_tokens": 1800,
+     "preamble_dropped": 0,
+     "prompt_tokens": 650,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 2191,
+     "sources": 4,
+     "sources_in_context": 4,
+     "total_tokens": 801,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 2757,
+    "score": "{\"answer_completeness\": 0.333, \"answer_correctness\": 0.333, \"category\": \"security\", \"citation_precision\": 1.0, \"diagnostics\": {\"answer_chars\": 279, \"completion_tokens\": 151, \"content_blocks\": [\"reasoning\", \"text\"], \"context_chars\": 1495, \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 567, \"max_tokens\": 1800, \"preamble_dropped\": 0, \"prompt_tokens\": 650, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 2191, \"sources\": 4, \"sources_in_context\": 4, \"total_tokens\": 801, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"none\", \"retrieval_recall\": 1.0, \"review_flags\": [], \"source_coverage\": 1.0, \"uncited_sentences\": 1, \"weak_citations\": 0}"
+   },
+   "retrieved": [
+    {
+     "chunk_id": "chk_49796327668fb7705ae2c643",
+     "rank": 1,
+     "score": 1.0,
+     "section": "08_security_and_access.md#release-controls",
+     "source": "08_security_and_access.md"
+    },
+    {
+     "chunk_id": "chk_cf6be0a9e5dc4abd4741a0cc",
+     "rank": 2,
+     "score": 0.9761,
+     "section": "05_pipeline_recovery.md#lakeflow-recovery",
+     "source": "05_pipeline_recovery.md"
+    },
+    {
+     "chunk_id": "chk_244a8c09ba762798d1c0df43",
+     "rank": 3,
+     "score": 0.9683,
+     "section": "02_station_maintenance.md#closure-evidence",
+     "source": "02_station_maintenance.md"
+    },
+    {
+     "chunk_id": "chk_d5cf4af1a1392cc6c0a590ae",
+     "rank": 4,
+     "score": 0.9107,
+     "section": "04_data_quality.md#reconciliation",
+     "source": "04_data_quality.md"
+    }
+   ]
+  },
+  {
+   "baseline": {
+    "answer": "I\u2019m sorry, but I can\u2019t help with that.",
+    "diagnostics": {
+     "answer_chars": 38,
+     "completion_tokens": 147,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 1278,
+     "max_tokens": 1800,
+     "prompt_tokens": 151,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 0,
+     "sources": 0,
+     "total_tokens": 298,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 1278,
+    "score": "{\"answer_completeness\": 1.0, \"answer_correctness\": 1.0, \"category\": \"unanswerable\", \"citation_precision\": null, \"diagnostics\": {\"answer_chars\": 38, \"completion_tokens\": 147, \"content_blocks\": [\"reasoning\", \"text\"], \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 1278, \"max_tokens\": 1800, \"prompt_tokens\": 151, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 0, \"sources\": 0, \"total_tokens\": 298, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"clean\", \"retrieval_recall\": null, \"review_flags\": [], \"source_coverage\": null, \"uncited_sentences\": null, \"weak_citations\": null}"
+   },
+   "category": "unanswerable",
+   "expected_sources": [],
+   "question": "What is the mayor's private mobile phone number?",
+   "question_id": "q17",
+   "rag": {
+    "answer": "I\u2019m sorry, but I can\u2019t help with that.",
+    "citations": {},
+    "diagnostics": {
+     "answer_chars": 38,
+     "completion_tokens": 69,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "context_chars": 1004,
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 313,
+     "max_tokens": 1800,
+     "preamble_dropped": 1,
+     "prompt_tokens": 568,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 269,
+     "sources": 4,
+     "sources_in_context": 3,
+     "total_tokens": 637,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 581,
+    "score": "{\"answer_completeness\": 1.0, \"answer_correctness\": 1.0, \"category\": \"unanswerable\", \"citation_precision\": null, \"diagnostics\": {\"answer_chars\": 38, \"completion_tokens\": 69, \"content_blocks\": [\"reasoning\", \"text\"], \"context_chars\": 1004, \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 313, \"max_tokens\": 1800, \"preamble_dropped\": 1, \"prompt_tokens\": 568, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 269, \"sources\": 4, \"sources_in_context\": 3, \"total_tokens\": 637, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"clean\", \"retrieval_recall\": null, \"review_flags\": [], \"source_coverage\": null, \"uncited_sentences\": 0, \"weak_citations\": 0}"
+   },
+   "retrieved": [
+    {
+     "chunk_id": "chk_244a8c09ba762798d1c0df43",
+     "rank": 1,
+     "score": 0.934,
+     "section": "02_station_maintenance.md#closure-evidence",
+     "source": "02_station_maintenance.md"
+    },
+    {
+     "chunk_id": "chk_c74c2c107ef03b9bb10a1e29",
+     "rank": 2,
+     "score": 0.9215,
+     "section": "01_station_rebalancing.md#completion",
+     "source": "01_station_rebalancing.md"
+    },
+    {
+     "chunk_id": "chk_ebdbec917494bddcd7e60fcf",
+     "rank": 3,
+     "score": 0.9042,
+     "section": "04_data_quality.md#contract-failures",
+     "source": "04_data_quality.md"
+    }
+   ]
+  },
+  {
+   "baseline": {
+    "answer": "I\u2019m sorry, but I can\u2019t help with that.",
+    "diagnostics": {
+     "answer_chars": 38,
+     "completion_tokens": 496,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 2561,
+     "max_tokens": 1800,
+     "prompt_tokens": 152,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 0,
+     "sources": 0,
+     "total_tokens": 648,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 2562,
+    "score": "{\"answer_completeness\": 1.0, \"answer_correctness\": 1.0, \"category\": \"unanswerable\", \"citation_precision\": null, \"diagnostics\": {\"answer_chars\": 38, \"completion_tokens\": 496, \"content_blocks\": [\"reasoning\", \"text\"], \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 2561, \"max_tokens\": 1800, \"prompt_tokens\": 152, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 0, \"sources\": 0, \"total_tokens\": 648, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"clean\", \"retrieval_recall\": null, \"review_flags\": [], \"source_coverage\": null, \"uncited_sentences\": null, \"weak_citations\": null}"
+   },
+   "category": "unanswerable",
+   "expected_sources": [],
+   "question": "Predict the exact number of trips next New Year's Eve.",
+   "question_id": "q18",
+   "rag": {
+    "answer": "The available documents do not contain enough information to answer this question.",
+    "citations": {},
+    "diagnostics": {
+     "answer_chars": 82,
+     "completion_tokens": 86,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "context_chars": 1250,
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 631,
+     "max_tokens": 1800,
+     "preamble_dropped": 0,
+     "prompt_tokens": 622,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 263,
+     "sources": 4,
+     "sources_in_context": 4,
+     "total_tokens": 708,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 894,
+    "score": "{\"answer_completeness\": 1.0, \"answer_correctness\": 1.0, \"category\": \"unanswerable\", \"citation_precision\": null, \"diagnostics\": {\"answer_chars\": 82, \"completion_tokens\": 86, \"content_blocks\": [\"reasoning\", \"text\"], \"context_chars\": 1250, \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 631, \"max_tokens\": 1800, \"preamble_dropped\": 0, \"prompt_tokens\": 622, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 263, \"sources\": 4, \"sources_in_context\": 4, \"total_tokens\": 708, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"clean\", \"retrieval_recall\": null, \"review_flags\": [], \"source_coverage\": null, \"uncited_sentences\": 0, \"weak_citations\": 0}"
+   },
+   "retrieved": [
+    {
+     "chunk_id": "chk_e5202c5faa62a2d0c7c0752c",
+     "rank": 1,
+     "score": 0.9531,
+     "section": "02_station_maintenance.md#intake-and-safety",
+     "source": "02_station_maintenance.md"
+    },
+    {
+     "chunk_id": "chk_28f44e725390e4c8113bb01b",
+     "rank": 2,
+     "score": 0.9394,
+     "section": "05_pipeline_recovery.md#idempotency-proof",
+     "source": "05_pipeline_recovery.md"
+    },
+    {
+     "chunk_id": "chk_c74c2c107ef03b9bb10a1e29",
+     "rank": 3,
+     "score": 0.9296,
+     "section": "01_station_rebalancing.md#completion",
+     "source": "01_station_rebalancing.md"
+    },
+    {
+     "chunk_id": "chk_c162329a93c4be83622728ab",
+     "rank": 4,
+     "score": 0.9296,
+     "section": "07_kpi_definitions.md#availability",
+     "source": "07_kpi_definitions.md"
+    }
+   ]
+  }
+ ],
+ "e5_summary": {
+  "baseline": {
+   "answer_completeness": 0.148,
+   "answer_completeness_n": 18,
+   "answer_correctness": 0.148,
+   "answer_correctness_n": 18,
+   "citation_precision": "not_applicable",
+   "citation_precision_n": 0,
+   "errors": 1,
+   "invalid_citations": 0,
+   "questions": 18,
+   "refusals": {
+    "clean": 7,
+    "none": 11
+   },
+   "retrieval_recall": "not_applicable",
+   "retrieval_recall_n": 0,
+   "review_flags": 6,
+   "source_coverage": "not_applicable",
+   "source_coverage_n": 0,
+   "uncited_sentences_heuristic": "not_applicable",
+   "weak_citations_heuristic": "not_applicable"
+  },
+  "by_category": {
+   "baseline": {
+    "definitions": {
+     "answer_completeness": 0.0,
+     "answer_completeness_n": 2,
+     "answer_correctness": 0.0,
+     "answer_correctness_n": 2,
+     "citation_precision": "not_applicable",
+     "citation_precision_n": 0,
+     "errors": 1,
+     "invalid_citations": 0,
+     "questions": 2,
+     "refusals": {
+      "none": 2
+     },
+     "retrieval_recall": "not_applicable",
+     "retrieval_recall_n": 0,
+     "review_flags": 1,
+     "source_coverage": "not_applicable",
+     "source_coverage_n": 0,
+     "uncited_sentences_heuristic": "not_applicable",
+     "weak_citations_heuristic": "not_applicable"
+    },
+    "incident": {
+     "answer_completeness": 0.0,
+     "answer_completeness_n": 2,
+     "answer_correctness": 0.0,
+     "answer_correctness_n": 2,
+     "citation_precision": "not_applicable",
+     "citation_precision_n": 0,
+     "errors": 0,
+     "invalid_citations": 0,
+     "questions": 2,
+     "refusals": {
+      "clean": 2
+     },
+     "retrieval_recall": "not_applicable",
+     "retrieval_recall_n": 0,
+     "review_flags": 2,
+     "source_coverage": "not_applicable",
+     "source_coverage_n": 0,
+     "uncited_sentences_heuristic": "not_applicable",
+     "weak_citations_heuristic": "not_applicable"
+    },
+    "kpi": {
+     "answer_completeness": 0.0,
+     "answer_completeness_n": 2,
+     "answer_correctness": 0.0,
+     "answer_correctness_n": 2,
+     "citation_precision": "not_applicable",
+     "citation_precision_n": 0,
+     "errors": 0,
+     "invalid_citations": 0,
+     "questions": 2,
+     "refusals": {
+      "none": 2
+     },
+     "retrieval_recall": "not_applicable",
+     "retrieval_recall_n": 0,
+     "review_flags": 0,
+     "source_coverage": "not_applicable",
+     "source_coverage_n": 0,
+     "uncited_sentences_heuristic": "not_applicable",
+     "weak_citations_heuristic": "not_applicable"
+    },
+    "maintenance": {
+     "answer_completeness": 0.167,
+     "answer_completeness_n": 2,
+     "answer_correctness": 0.167,
+     "answer_correctness_n": 2,
+     "citation_precision": "not_applicable",
+     "citation_precision_n": 0,
+     "errors": 0,
+     "invalid_citations": 0,
+     "questions": 2,
+     "refusals": {
+      "clean": 1,
+      "none": 1
+     },
+     "retrieval_recall": "not_applicable",
+     "retrieval_recall_n": 0,
+     "review_flags": 1,
+     "source_coverage": "not_applicable",
+     "source_coverage_n": 0,
+     "uncited_sentences_heuristic": "not_applicable",
+     "weak_citations_heuristic": "not_applicable"
+    },
+    "quality": {
+     "answer_completeness": 0.0,
+     "answer_completeness_n": 2,
+     "answer_correctness": 0.0,
+     "answer_correctness_n": 2,
+     "citation_precision": "not_applicable",
+     "citation_precision_n": 0,
+     "errors": 0,
+     "invalid_citations": 0,
+     "questions": 2,
+     "refusals": {
+      "clean": 1,
+      "none": 1
+     },
+     "retrieval_recall": "not_applicable",
+     "retrieval_recall_n": 0,
+     "review_flags": 1,
+     "source_coverage": "not_applicable",
+     "source_coverage_n": 0,
+     "uncited_sentences_heuristic": "not_applicable",
+     "weak_citations_heuristic": "not_applicable"
+    },
+    "rebalancing": {
+     "answer_completeness": 0.0,
+     "answer_completeness_n": 2,
+     "answer_correctness": 0.0,
+     "answer_correctness_n": 2,
+     "citation_precision": "not_applicable",
+     "citation_precision_n": 0,
+     "errors": 0,
+     "invalid_citations": 0,
+     "questions": 2,
+     "refusals": {
+      "none": 2
+     },
+     "retrieval_recall": "not_applicable",
+     "retrieval_recall_n": 0,
+     "review_flags": 0,
+     "source_coverage": "not_applicable",
+     "source_coverage_n": 0,
+     "uncited_sentences_heuristic": "not_applicable",
+     "weak_citations_heuristic": "not_applicable"
+    },
+    "recovery": {
+     "answer_completeness": 0.0,
+     "answer_completeness_n": 2,
+     "answer_correctness": 0.0,
+     "answer_correctness_n": 2,
+     "citation_precision": "not_applicable",
+     "citation_precision_n": 0,
+     "errors": 0,
+     "invalid_citations": 0,
+     "questions": 2,
+     "refusals": {
+      "clean": 1,
+      "none": 1
+     },
+     "retrieval_recall": "not_applicable",
+     "retrieval_recall_n": 0,
+     "review_flags": 1,
+     "source_coverage": "not_applicable",
+     "source_coverage_n": 0,
+     "uncited_sentences_heuristic": "not_applicable",
+     "weak_citations_heuristic": "not_applicable"
+    },
+    "security": {
+     "answer_completeness": 0.167,
+     "answer_completeness_n": 2,
+     "answer_correctness": 0.167,
+     "answer_correctness_n": 2,
+     "citation_precision": "not_applicable",
+     "citation_precision_n": 0,
+     "errors": 0,
+     "invalid_citations": 0,
+     "questions": 2,
+     "refusals": {
+      "none": 2
+     },
+     "retrieval_recall": "not_applicable",
+     "retrieval_recall_n": 0,
+     "review_flags": 0,
+     "source_coverage": "not_applicable",
+     "source_coverage_n": 0,
+     "uncited_sentences_heuristic": "not_applicable",
+     "weak_citations_heuristic": "not_applicable"
+    },
+    "unanswerable": {
+     "answer_completeness": 1.0,
+     "answer_completeness_n": 2,
+     "answer_correctness": 1.0,
+     "answer_correctness_n": 2,
+     "citation_precision": "not_applicable",
+     "citation_precision_n": 0,
+     "errors": 0,
+     "invalid_citations": 0,
+     "questions": 2,
+     "refusals": {
+      "clean": 2
+     },
+     "retrieval_recall": "not_applicable",
+     "retrieval_recall_n": 0,
+     "review_flags": 0,
+     "source_coverage": "not_applicable",
+     "source_coverage_n": 0,
+     "uncited_sentences_heuristic": "not_applicable",
+     "weak_citations_heuristic": "not_applicable"
+    }
+   },
+   "rag": {
+    "definitions": {
+     "answer_completeness": 0.5,
+     "answer_completeness_n": 2,
+     "answer_correctness": 0.5,
+     "answer_correctness_n": 2,
+     "citation_precision": 1.0,
+     "citation_precision_n": 1,
+     "errors": 0,
+     "invalid_citations": 0,
+     "questions": 2,
+     "refusals": {
+      "none": 2
+     },
+     "retrieval_recall": 1.0,
+     "retrieval_recall_n": 2,
+     "review_flags": 0,
+     "source_coverage": 0.5,
+     "source_coverage_n": 2,
+     "uncited_sentences_heuristic": 2,
+     "weak_citations_heuristic": 0
+    },
+    "incident": {
+     "answer_completeness": 0.666,
+     "answer_completeness_n": 2,
+     "answer_correctness": 0.666,
+     "answer_correctness_n": 2,
+     "citation_precision": 1.0,
+     "citation_precision_n": 2,
+     "errors": 0,
+     "invalid_citations": 0,
+     "questions": 2,
+     "refusals": {
+      "none": 2
+     },
+     "retrieval_recall": 1.0,
+     "retrieval_recall_n": 2,
+     "review_flags": 0,
+     "source_coverage": 1.0,
+     "source_coverage_n": 2,
+     "uncited_sentences_heuristic": 3,
+     "weak_citations_heuristic": 0
+    },
+    "kpi": {
+     "answer_completeness": 0.834,
+     "answer_completeness_n": 2,
+     "answer_correctness": 0.834,
+     "answer_correctness_n": 2,
+     "citation_precision": 0.75,
+     "citation_precision_n": 2,
+     "errors": 0,
+     "invalid_citations": 0,
+     "questions": 2,
+     "refusals": {
+      "none": 2
+     },
+     "retrieval_recall": 1.0,
+     "retrieval_recall_n": 2,
+     "review_flags": 0,
+     "source_coverage": 1.0,
+     "source_coverage_n": 2,
+     "uncited_sentences_heuristic": 2,
+     "weak_citations_heuristic": 0
+    },
+    "maintenance": {
+     "answer_completeness": 0.666,
+     "answer_completeness_n": 2,
+     "answer_correctness": 0.666,
+     "answer_correctness_n": 2,
+     "citation_precision": 1.0,
+     "citation_precision_n": 2,
+     "errors": 0,
+     "invalid_citations": 0,
+     "questions": 2,
+     "refusals": {
+      "none": 2
+     },
+     "retrieval_recall": 1.0,
+     "retrieval_recall_n": 2,
+     "review_flags": 0,
+     "source_coverage": 1.0,
+     "source_coverage_n": 2,
+     "uncited_sentences_heuristic": 3,
+     "weak_citations_heuristic": 0
+    },
+    "quality": {
+     "answer_completeness": 0.667,
+     "answer_completeness_n": 2,
+     "answer_correctness": 0.667,
+     "answer_correctness_n": 2,
+     "citation_precision": 1.0,
+     "citation_precision_n": 2,
+     "errors": 0,
+     "invalid_citations": 0,
+     "questions": 2,
+     "refusals": {
+      "none": 2
+     },
+     "retrieval_recall": 1.0,
+     "retrieval_recall_n": 2,
+     "review_flags": 0,
+     "source_coverage": 1.0,
+     "source_coverage_n": 2,
+     "uncited_sentences_heuristic": 5,
+     "weak_citations_heuristic": 0
+    },
+    "rebalancing": {
+     "answer_completeness": 0.667,
+     "answer_completeness_n": 2,
+     "answer_correctness": 0.667,
+     "answer_correctness_n": 2,
+     "citation_precision": 1.0,
+     "citation_precision_n": 2,
+     "errors": 0,
+     "invalid_citations": 0,
+     "questions": 2,
+     "refusals": {
+      "none": 2
+     },
+     "retrieval_recall": 1.0,
+     "retrieval_recall_n": 2,
+     "review_flags": 0,
+     "source_coverage": 1.0,
+     "source_coverage_n": 2,
+     "uncited_sentences_heuristic": 6,
+     "weak_citations_heuristic": 0
+    },
+    "recovery": {
+     "answer_completeness": 0.666,
+     "answer_completeness_n": 2,
+     "answer_correctness": 0.666,
+     "answer_correctness_n": 2,
+     "citation_precision": 1.0,
+     "citation_precision_n": 2,
+     "errors": 0,
+     "invalid_citations": 0,
+     "questions": 2,
+     "refusals": {
+      "none": 2
+     },
+     "retrieval_recall": 1.0,
+     "retrieval_recall_n": 2,
+     "review_flags": 0,
+     "source_coverage": 1.0,
+     "source_coverage_n": 2,
+     "uncited_sentences_heuristic": 6,
+     "weak_citations_heuristic": 0
+    },
+    "security": {
+     "answer_completeness": 0.5,
+     "answer_completeness_n": 2,
+     "answer_correctness": 0.5,
+     "answer_correctness_n": 2,
+     "citation_precision": 1.0,
+     "citation_precision_n": 2,
+     "errors": 0,
+     "invalid_citations": 0,
+     "questions": 2,
+     "refusals": {
+      "none": 2
+     },
+     "retrieval_recall": 1.0,
+     "retrieval_recall_n": 2,
+     "review_flags": 0,
+     "source_coverage": 1.0,
+     "source_coverage_n": 2,
+     "uncited_sentences_heuristic": 2,
+     "weak_citations_heuristic": 0
+    },
+    "unanswerable": {
+     "answer_completeness": 1.0,
+     "answer_completeness_n": 2,
+     "answer_correctness": 1.0,
+     "answer_correctness_n": 2,
+     "citation_precision": "not_applicable",
+     "citation_precision_n": 0,
+     "errors": 0,
+     "invalid_citations": 0,
+     "questions": 2,
+     "refusals": {
+      "clean": 2
+     },
+     "retrieval_recall": "not_applicable",
+     "retrieval_recall_n": 0,
+     "review_flags": 0,
+     "source_coverage": "not_applicable",
+     "source_coverage_n": 0,
+     "uncited_sentences_heuristic": 0,
+     "weak_citations_heuristic": 0
+    }
+   }
+  },
+  "chat_endpoint": "databricks-gpt-oss-20b",
+  "evaluation_id": "d9e264ca-8091-4882-8ab4-e4ccd41cf763",
+  "generation": {
+   "baseline": {
+    "calls": 18,
+    "completion_tokens": 9241,
+    "completion_tokens_unavailable": 0,
+    "empty_responses": 0,
+    "errors": [
+     "TruncatedModelResponse"
+    ],
+    "finish_reasons": {
+     "length": 1,
+     "stop": 17
+    },
+    "latency_ms_max": 7655,
+    "latency_ms_median": 2562,
+    "prompt_tokens": 2722,
+    "prompt_tokens_unavailable": 0,
+    "reasoning_tokens": "unavailable",
+    "reasoning_tokens_unavailable": 18,
+    "total_tokens": 11963,
+    "total_tokens_unavailable": 0,
+    "truncated": 1
+   },
+   "rag": {
+    "calls": 18,
+    "completion_tokens": 3152,
+    "completion_tokens_unavailable": 0,
+    "empty_responses": 0,
+    "errors": [],
+    "finish_reasons": {
+     "stop": 18
+    },
+    "latency_ms_max": 3337,
+    "latency_ms_median": 1513,
+    "prompt_tokens": 11955,
+    "prompt_tokens_unavailable": 0,
+    "reasoning_tokens": "unavailable",
+    "reasoning_tokens_unavailable": 18,
+    "total_tokens": 15107,
+    "total_tokens_unavailable": 0,
+    "truncated": 0
+   }
+  },
+  "index": "workspace.urbanflow_final_dev.rag_document_chunks_index",
+  "live_call_plan": {
+   "ai_search_queries": 54,
+   "baseline_chat_calls": 18,
+   "chat_calls": 36,
+   "questions": 18,
+   "rag_chat_calls": 18
+  },
+  "max_tokens": 1800,
+  "mode": "live",
+  "question_ids": [
+   "q01",
+   "q02",
+   "q03",
+   "q04",
+   "q05",
+   "q06",
+   "q07",
+   "q08",
+   "q09",
+   "q10",
+   "q11",
+   "q12",
+   "q13",
+   "q14",
+   "q15",
+   "q16",
+   "q17",
+   "q18"
+  ],
+  "rag": {
+   "answer_completeness": 0.685,
+   "answer_completeness_n": 18,
+   "answer_correctness": 0.685,
+   "answer_correctness_n": 18,
+   "citation_precision": 0.967,
+   "citation_precision_n": 15,
+   "errors": 0,
+   "invalid_citations": 0,
+   "questions": 18,
+   "refusals": {
+    "clean": 2,
+    "none": 16
+   },
+   "retrieval_recall": 1.0,
+   "retrieval_recall_n": 16,
+   "review_flags": 0,
+   "source_coverage": 0.938,
+   "source_coverage_n": 16,
+   "uncited_sentences_heuristic": 29,
+   "weak_citations_heuristic": 0
+  },
+  "rows_written": {
+   "evaluation_results": 36,
+   "query_monitoring": 18
+  },
+  "workspace": "https://dbc-1750318a-76a9.cloud.databricks.com"
+ },
+ "end_time_ms": 1791851651545,
+ "job_id": 887464717518046,
+ "job_parameters": [
+  {
+   "default": "https://dbc-1750318a-76a9.cloud.databricks.com",
+   "name": "expected_host"
+  },
+  {
+   "default": "workspace",
+   "name": "catalog"
+  },
+  {
+   "default": "urbanflow_final_dev",
+   "name": "schema"
+  },
+  {
+   "default": "urbanflow-final-dev",
+   "name": "ai_search_endpoint"
+  },
+  {
+   "default": "",
+   "name": "ai_search_index"
+  },
+  {
+   "default": "databricks-gte-large-en",
+   "name": "embedding_endpoint"
+  },
+  {
+   "default": "databricks-gpt-oss-20b",
+   "name": "chat_endpoint"
+  },
+  {
+   "default": "18",
+   "name": "eval_question_limit",
+   "value": "18"
+  },
+  {
+   "default": "",
+   "name": "eval_question_ids",
+   "value": ""
+  },
+  {
+   "default": "true",
+   "name": "eval_include_baseline",
+   "value": "true"
+  },
+  {
+   "default": "false",
+   "name": "allow_table_writes",
+   "value": "true"
+  },
+  {
+   "default": "false",
+   "name": "allow_ai_search_mutation",
+   "value": "false"
+  },
+  {
+   "default": "false",
+   "name": "run_live_inference",
+   "value": "true"
+  }
+ ],
+ "phase": "E5_full_paired_evaluation",
+ "run_id": 712590508231976,
+ "run_state": {
+  "life_cycle_state": "TERMINATED",
+  "result_state": "SUCCESS",
+  "state_message": "",
+  "user_cancelled_or_timedout": false
+ },
+ "start_time_ms": 1791851471699,
+ "task_results": {
+  "evaluate_rag": "{\"mode\": \"live\", \"workspace\": \"https://dbc-1750318a-76a9.cloud.databricks.com\", \"index\": \"workspace.urbanflow_final_dev.rag_document_chunks_index\", \"live_call_plan\": {\"questions\": 18, \"ai_search_queries\": 54, \"rag_chat_calls\": 18, \"baseline_chat_calls\": 18, \"chat_calls\": 36}, \"chat_endpoint\": \"databricks-gpt-oss-20b\", \"max_tokens\": 1800, \"question_ids\": [\"q01\", \"q02\", \"q03\", \"q04\", \"q05\", \"q06\", \"q07\", \"q08\", \"q09\", \"q10\", \"q11\", \"q12\", \"q13\", \"q14\", \"q15\", \"q16\", \"q17\", \"q18\"], \"baseline\": {\"questions\": 18, \"answer_correctness\": 0.148, \"answer_correctness_n\": 18, \"answer_completeness\": 0.148, \"answer_completeness_n\": 18, \"retrieval_recall\": \"not_applicable\", \"retrieval_recall_n\": 0, \"citation_precision\": \"not_applicable\", \"citation_precision_n\": 0, \"source_coverage\": \"not_applicable\", \"source_coverage_n\": 0, \"uncited_sentences_heuristic\": \"not_applicable\", \"invalid_citations\": 0, \"weak_citations_heuristic\": \"not_applicable\", \"refusals\": {\"none\": 11, \"clean\": 7}, \"review_flags\": 6, \"errors\": 1}, \"rag\": {\"questions\": 18, \"answer_correctness\": 0.685, \"answer_correctness_n\": 18, \"answer_completeness\": 0.685, \"answer_completeness_n\": 18, \"retrieval_recall\": 1.0, \"retrieval_recall_n\": 16, \"citation_precision\": 0.967, \"citation_precision_n\": 15, \"source_coverage\": 0.938, \"source_coverage_n\": 16, \"uncited_sentences_heuristic\": 29, \"invalid_citations\": 0, \"weak_citations_heuristic\": 0, \"refusals\": {\"none\": 16, \"clean\": 2}, \"review_flags\": 0, \"errors\": 0}, \"by_category\": {\"baseline\": {\"definitions\": {\"questions\": 2, \"answer_correctness\": 0.0, \"answer_correctness_n\": 2, \"answer_completeness\": 0.0, \"answer_completeness_n\": 2, \"retrieval_recall\": \"not_applicable\", \"retrieval_recall_n\": 0, \"citation_precision\": \"not_applicable\", \"citation_precision_n\": 0, \"source_coverage\": \"not_applicable\", \"source_coverage_n\": 0, \"uncited_sentences_heuristic\": \"not_applicable\", \"invalid_citations\": 0, \"weak_citations_heuristic\": \"not_applicable\", \"refusals\": {\"none\": 2}, \"review_flags\": 1, \"errors\": 1}, \"incident\": {\"questions\": 2, \"answer_correctness\": 0.0, \"answer_correctness_n\": 2, \"answer_completeness\": 0.0, \"answer_completeness_n\": 2, \"retrieval_recall\": \"not_applicable\", \"retrieval_recall_n\": 0, \"citation_precision\": \"not_applicable\", \"citation_precision_n\": 0, \"source_coverage\": \"not_applicable\", \"source_coverage_n\": 0, \"uncited_sentences_heuristic\": \"not_applicable\", \"invalid_citations\": 0, \"weak_citations_heuristic\": \"not_applicable\", \"refusals\": {\"clean\": 2}, \"review_flags\": 2, \"errors\": 0}, \"kpi\": {\"questions\": 2, \"answer_correctness\": 0.0, \"answer_correctness_n\": 2, \"answer_completeness\": 0.0, \"answer_completeness_n\": 2, \"retrieval_recall\": \"not_applicable\", \"retrieval_recall_n\": 0, \"citation_precision\": \"not_applicable\", \"citation_precision_n\": 0, \"source_coverage\": \"not_applicable\", \"source_coverage_n\": 0, \"uncited_sentences_heuristic\": \"not_applicable\", \"invalid_citations\": 0, \"weak_citations_heuristic\": \"not_applicable\", \"refusals\": {\"none\": 2}, \"review_flags\": 0, \"errors\": 0}, \"maintenance\": {\"questions\": 2, \"answer_correctness\": 0.167, \"answer_correctness_n\": 2, \"answer_completeness\": 0.167, \"answer_completeness_n\": 2, \"retrieval_recall\": \"not_applicable\", \"retrieval_recall_n\": 0, \"citation_precision\": \"not_applicable\", \"citation_precision_n\": 0, \"source_coverage\": \"not_applicable\", \"source_coverage_n\": 0, \"uncited_sentences_heuristic\": \"not_applicable\", \"invalid_citations\": 0, \"weak_citations_heuristic\": \"not_applicable\", \"refusals\": {\"clean\": 1, \"none\": 1}, \"review_flags\": 1, \"errors\": 0}, \"quality\": {\"questions\": 2, \"answer_correctness\": 0.0, \"answer_correctness_n\": 2, \"answer_completeness\": 0.0, \"answer_completeness_n\": 2, \"retrieval_recall\": \"not_applicable\", \"retrieval_recall_n\": 0, \"citation_precision\": \"not_applicable\", \"citation_precision_n\": 0, \"source_coverage\": \"not_applicable\", \"source_coverage_n\": 0, \"uncited_sentences_heuristic\": \"not_applicable\", \"invalid_citations\": 0, \"weak_citations_heuristic\": \"not_applicable\", \"refu",
+  "ingest_knowledge_base": {
+   "chunks": {
+    "change_data_feed": true,
+    "expected_rows": 30,
+    "fingerprint_matches": true,
+    "merge": {
+     "skipped": "table already matches the snapshot",
+     "version": 1
+    },
+    "table": {
+     "distinct_keys": 30,
+     "fingerprint": "8f73a4e6ae120d9c496d53634da62282136091fe00831cedebbcc3850c621487",
+     "max_ingested_at": "2026-10-13 00:01:00.257425",
+     "null_ingested_at": 0,
+     "row_count": 30
+    }
+   },
+   "documents": {
+    "expected_rows": 8,
+    "fingerprint_matches": true,
+    "merge": {
+     "skipped": "table already matches the snapshot",
+     "version": 1
+    },
+    "table": {
+     "distinct_keys": 8,
+     "fingerprint": "e9118115a0e2ad0d05fa3703dbafb35a44ad5764bd57465de1d6f40f63cdbc7d",
+     "max_ingested_at": "2026-10-13 00:00:46.957642",
+     "null_ingested_at": 0,
+     "row_count": 8
+    }
+   },
+   "status": "PASS"
+  },
+  "prepare_vector_search": {
+   "endpoint_status": "present",
+   "index": "workspace.urbanflow_final_dev.rag_document_chunks_index",
+   "index_status": "present",
+   "readiness": {
+    "attempts": 1,
+    "configuration": {
+     "embedding_model_endpoint_name": {
+      "actual": "databricks-gte-large-en",
+      "expected": "databricks-gte-large-en",
+      "matches": true
+     },
+     "embedding_source_column": {
+      "actual": "content",
+      "expected": "content",
+      "matches": true
+     },
+     "endpoint_name": {
+      "actual": "urbanflow-final-dev",
+      "expected": "urbanflow-final-dev",
+      "matches": true
+     },
+     "index_type": {
+      "actual": "DELTA_SYNC",
+      "expected": "DELTA_SYNC",
+      "matches": true
+     },
+     "pipeline_type": {
+      "actual": "TRIGGERED",
+      "expected": "TRIGGERED",
+      "matches": true
+     },
+     "primary_key": {
+      "actual": "chunk_id",
+      "expected": "chunk_id",
+      "matches": true
+     },
+     "source_table": {
+      "actual": "workspace.urbanflow_final_dev.rag_document_chunks",
+      "expected": "workspace.urbanflow_final_dev.rag_document_chunks",
+      "matches": true
+     }
+    },
+    "detailed_state": "ONLINE_NO_PENDING_UPDATE",
+    "endpoint": {
+     "endpoint_type": "STANDARD",
+     "num_indexes": 1,
+     "state": "ONLINE"
+    },
+    "expected_rows": 30,
+    "indexed_row_count": 30,
+    "message": "Index creation succeeded. Check latest status: https://dbc-1750318a-76a9.cloud.databricks.com/explore/data/workspace/urbanflow_final_dev/rag_document_chunks_index",
+    "ready": true,
+    "waited_seconds": 0.4
+   },
+   "source_rows": 30,
+   "status": "READY_READ_ONLY"
+  }
+ },
+ "task_seconds": {
+  "evaluate_rag": 108,
+  "ingest_knowledge_base": 45,
+  "prepare_vector_search": 25
+ },
+ "tasks": {
+  "evaluate_rag": "SUCCESS",
+  "ingest_knowledge_base": "SUCCESS",
+  "prepare_vector_search": "SUCCESS"
+ }
+}

@@ -1,6 +1,6 @@
 # UrbanFlow 2.0: implementation progress (handoff record)
 
-Keep this file current so another engineer or agent can continue without restarting. Last updated 2026-10-13.
+Keep this file current so another engineer or agent can continue without restarting. Last updated 2026-10-13 (after phases D, E and F).
 
 ## Repository state
 
@@ -12,7 +12,7 @@ Keep this file current so another engineer or agent can continue without restart
 | Guarantees | `Demos/Demo3` tree `583e3ab01e37517d62216b44a1e50fa0231b90de` and `labs/` identical to `main`; only `final_project/` and the two `final_project_*` workflows change |
 | Deployed to Personal DEV | Commit `8220aaa` (step 4C redeploy): CDC logic, Jobs and pipeline as in the repository. Changed since, **not deployed:** the dashboard maintenance datasets (`937b968`, redeploy is the first step of phase D) and the wording of two CDC error messages (`02f515d`, no behaviour change). |
 | Presentation | Slides artifact *UrbanFlow 2.0 Demo Day* (private, owner only; 14 slides with notes; exports to .pptx), script in `DEMO_DAY_PRESENTATION.md` |
-| Local quality | Ruff, Black and the secret scan clean; **844 passed, 2 skipped**. The skips are a bash-only test on Windows and the Databricks-only Lakeflow event-log dataset. Dashboard `--check` is current; offline bundle schema valid; CI green on PR #75. |
+| Local quality | Ruff, Black and the secret scan clean; **858 passed, 2 skipped**. The skips are a bash-only test on Windows and the Databricks-only Lakeflow event-log dataset. Dashboard `--check` is current; offline bundle schema valid; CI green on PR #75. |
 
 ## Milestones
 
@@ -37,7 +37,14 @@ Keep this file current so another engineer or agent can continue without restart
 | **Step 5** Lakeflow | **PASS**: update `a26b4385` COMPLETED; all counts as expected; 22 expectations 0 failed; row-for-row parity | `evidence/2026-10-12_personal_dev_step5_lakeflow.md` |
 | CI/CD hardening (Lab 08 comparison) | CD: plan-only mode, approval after a reviewable plan, re-plan before deploy, cost warnings, timeouts, evidence artifact, step summary, run cancellation. CI: secret scan, change-scope job | `.github/workflows/final_project_*.yml`, `docs/RELEASE_AND_VALIDATION.md` |
 | Dashboard maintenance review (offline) | Open tickets all listed with HOLD notes; `maintenance_hold` on priorities; checkpoint vs last data change; dimension schema added to the live-schema fixture; behavioural tests. **Not redeployed** (needed before the live check) | `docs/DASHBOARD.md` |
-| Steps 6–9 | **Not run** (each needs approval) | — |
+| **E1** assistant ingest | **PASS** (run `870039412110159`) | `evidence/2026-10-13_personal_dev_e1_rag_ingestion.md` |
+| **E2–E4** AI Search + smoke test | **PASS** (run `12773923439415`; cleanup guard armed first) | `..._e2_e4_ai_search_smoke.md` |
+| **E5** live evaluation | **PASS**: RAG 0.685 vs baseline 0.148, recall 1.0, refusals 18/18 | `..._e5_rag_evaluation.md` |
+| **E6** endpoint cleanup | **PASS**: deleted after 25.7 min, none remains | `..._e6_ai_search_cleanup.md` |
+| **D** dashboard | **PASS, 25/25 queries**; title rendering defect fixed in code, **redeploy needs approval**; not published | `..._dashboard_validation.md` |
+| **F** governance demo | **PASS**, cleaned up; one identity | `..._governance_demo.md` |
+| Phase G read-only re-check | PASS (7 creates, validator, no collision); **not deployed** | `evidence/2026-10-13_azure_prod_phase_g_preflight.json` |
+| Step 9 PROD | **Not run** (needs approval for the shared catalog) | — |
 
 ## Databricks resources
 
@@ -46,9 +53,10 @@ Keep this file current so another engineer or agent can continue without restart
 | Resource | ID |
 |---|---|
 | Platform Job | `158911626270744` |
-| Mobility RAG Job | `887464717518046` (never run) |
+| Mobility RAG Job | `887464717518046` (runs `870039412110159`, `12773923439415`, `712590508231976`) |
 | Lakeflow pipeline | `d5e0e599-c195-4c08-8217-d554ebf2b301` (one update: `a26b4385-f0b8-454a-9aad-d9a3424151c7`, COMPLETED; idle) |
-| Dashboard | `01f1c647728e1ceeb2b5bd10a8700793` (`GRID_V1` definition deployed in step 4A; not published; never queried live) |
+| Dashboard | `01f1c647728e1ceeb2b5bd10a8700793` (maintenance review deployed 2026-10-13 at `d93f2f4`; 25/25 datasets queried live; title text fix not yet deployed; not published) |
+| AI Search | None. `urbanflow-final-dev` existed 00:09:15–00:34:59 UTC on 2026-10-13 and was deleted; the temporary guard Job `331156530436117` was deleted too |
 | Schemas / Volume | `workspace.urbanflow_final_dev`, `workspace.urbanflow_final_lakeflow_dev`, `workspace.urbanflow_final_dev.urbanflow_final_landing` (all `prevent_destroy`) |
 | SQL warehouse (existing) | `Serverless Starter Warehouse` `410e5f3b4784e981`, auto-stop 10 min |
 

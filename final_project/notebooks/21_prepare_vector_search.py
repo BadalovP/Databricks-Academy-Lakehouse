@@ -10,7 +10,7 @@
 # MAGIC
 # MAGIC **Academy labs:** Lab 12 (AI Search / Vector Search, Delta Sync, embeddings), Lab 10 (Change Data Feed as the sync source), Lab 6 (Unity Catalog governance of the index).
 # MAGIC
-# MAGIC **Actual validation:** Offline tests cover the index plan, the configuration checks and the provisioning state machine with a fake client; in the Final Project this notebook has not been run in a workspace yet.
+# MAGIC **Actual validation:** Validated live in Personal DEV on 2026-10-13 (Final Project run 12773923439415): endpoint `urbanflow-final-dev` (STANDARD) and the TRIGGERED Delta Sync index created; verification passed with 30 of 30 rows and a matching configuration after 1,089 s. Run 870039412110159 proved the dry run creates nothing. The endpoint was deleted after the evaluation (it existed 25.7 minutes). Offline tests cover the plan and the provisioning state machine.
 # MAGIC
 # MAGIC **Cost note:** an AI Search endpoint is billed while it exists, and syncing generates embeddings. The default run only inspects.
 

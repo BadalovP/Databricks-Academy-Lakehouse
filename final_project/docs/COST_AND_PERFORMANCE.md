@@ -77,6 +77,20 @@ In the CDC-only and Lakeflow-only runs, the disabled tasks only start, check the
 
 **Lakeflow update** `a26b4385-f0b8-454a-9aad-d9a3424151c7` (step 5): 129 s from request to `COMPLETED`, of which 34 s waiting for resources, 42 s initializing, 13 s setting up tables and 40 s computing the ten flows. The Job task `refresh_lakeflow` took 142 s.
 
+## Assistant, dashboard and governance (2026-10-13, measured durations)
+
+| Work | Run / object | Duration | Billable exposure |
+|---|---|---|---|
+| E1 ingest | RAG run `870039412110159` | 157 s (ingest task 115 s) | Serverless Job compute |
+| E2–E4 create, sync, smoke | RAG run `12773923439415` | 1,197 s (index wait 1,089 s) | Serverless Job compute; embeddings for 30 chunks; 2 chat calls (1,849 tokens) |
+| AI Search endpoint `urbanflow-final-dev` | 00:09:15.720 → 00:34:59 UTC | **25.7 min (0.43 endpoint-hours)** | ≈ 1.4 DBU at the measured 3.3 DBU/h, ≈ $0.10 list (estimate) |
+| E5 evaluation | RAG run `712590508231976` | 180 s (evaluation task 108 s) | 36 chat calls: 27,070 tokens in total (baseline 11,963, RAG 15,107); 54 AI Search queries |
+| Cleanup guard | Job `331156530436117`, 3 short runs | under 1 min each | Serverless Job compute (small) |
+| D query validation | 25 datasets on the Starter warehouse | 40 s of queries | Serverless SQL (warehouse auto-stop 10 min) |
+| F governance demo | Starter warehouse | 49 s | Serverless SQL |
+
+When this was written, `system.billing.usage` held data only up to 2026-10-12 22:00 UTC. The step 4–5 runs and everything on 2026-10-13 are therefore **not yet measured**. No figure above is presented as billed. Re-run the query at the end of this page after the billing tables catch up.
+
 ## Measured DBUs (from `system.billing.usage`, read-only)
 
 The billing tables reported usage up to 2026-10-12 20:00 UTC when they were read, so they cover the step 2 and 3 runs only. List prices come from `system.billing.list_prices` for this workspace (Premium, AWS `us-east-2`). They are **list prices, not the invoiced amount**: contract discounts or credits are not visible here.

@@ -10,7 +10,7 @@
 # MAGIC
 # MAGIC **Academy labs:** Lab 12 (RAG ingestion, chunking, governed document store), Lab 4 (MERGE), Lab 10 (Change Data Feed feeding Delta Sync), Lab 7 (reconciliation).
 # MAGIC
-# MAGIC **Actual validation:** Offline tests cover loading, chunking, the MERGE statements and the reconciliation fingerprint; in the Final Project this notebook has not been run in a workspace yet.
+# MAGIC **Actual validation:** Validated live in Personal DEV on 2026-10-13 (Final Project run 870039412110159): 8 documents and 30 chunks MERGEd, IDs and content hashes equal to the corpus, Change Data Feed on the chunk table. Two later runs found the tables already matching and skipped the MERGE (no commit). Offline tests cover loading, chunking, the MERGE statements and the reconciliation fingerprint.
 # MAGIC
 # MAGIC The procedures are **fictional training documents** written for this project; they describe no real operator.
 

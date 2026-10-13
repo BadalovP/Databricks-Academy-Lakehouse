@@ -150,8 +150,12 @@ def _query(dataset: str, fields: list[dict], disaggregated: bool = True) -> list
 
 
 def text(name: str, lines: list[str], x: int, y: int, w: int, h: int) -> dict:
+    # Lakeview concatenates `lines` without a separator (seen in the deployed definition on
+    # 2026-10-13: "## Current Operations**POINT-IN-TIME..."), so each line but the last carries
+    # its own blank-line break; otherwise a heading swallows the paragraph after it.
+    separated = [line.rstrip("\n") + "\n\n" for line in lines[:-1]] + lines[-1:]
     return {
-        "widget": {"name": name, "multilineTextboxSpec": {"lines": lines}},
+        "widget": {"name": name, "multilineTextboxSpec": {"lines": separated}},
         "position": {"x": x, "y": y, "width": w, "height": h},
     }
 

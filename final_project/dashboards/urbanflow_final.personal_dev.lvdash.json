@@ -555,7 +555,7 @@
             "name": "ops_title",
             "multilineTextboxSpec": {
               "lines": [
-                "## Current Operations",
+                "## Current Operations\n\n",
                 "**POINT-IN-TIME GBFS SNAPSHOT — NOT A HISTORICAL AVAILABILITY TREND.** The station executions loaded into this target (by default the committed, dated Citi Bike sample snapshot). Nothing on this page is charted over time."
               ]
             }
@@ -1098,7 +1098,7 @@
             "name": "demand_title",
             "multilineTextboxSpec": {
               "lines": [
-                "## Historical Demand",
+                "## Historical Demand\n\n",
                 "**REAL JANUARY 2024 CITI BIKE TRIPS** — every valid trip of execution `urbanflow-final-hist-devsample40` only. With the Job defaults this is the **40-ROW DEVELOPMENT SAMPLE**, so the counts illustrate the pipeline, not the month; each dataset carries its `data_scope` label. The archive is defined by ride END time."
               ]
             }
@@ -1619,7 +1619,7 @@
             "name": "weather_title",
             "multilineTextboxSpec": {
               "lines": [
-                "## Weather & Demand",
+                "## Weather & Demand\n\n",
                 "Hourly Open-Meteo archive for **one NYC reference coordinate** (40.7128, -74.0060) — **not station-level weather**. Charts show **association, not causation**: nothing controls for weekday, holidays or closures. Weather execution `urbanflow-final-weather-devsample48h`; trips outside its window have no weather and are counted, not hidden."
               ]
             }
@@ -2182,7 +2182,7 @@
             "name": "quality_title",
             "multilineTextboxSpec": {
               "lines": [
-                "## Data Quality & Reliability",
+                "## Data Quality & Reliability\n\n",
                 "Reconciliation identities for this target's executions and the Lakeflow expectations of the latest COMPLETED update of its isolated pipeline. Run IDs and results are recorded as evidence only after a live run."
               ]
             }
@@ -2697,7 +2697,7 @@
             "name": "maintenance_title",
             "multilineTextboxSpec": {
               "lines": [
-                "## Maintenance & Assistant",
+                "## Maintenance & Assistant\n\n",
                 "Station maintenance arrives through **Delta Change Data Feed**; the tickets are **FICTIONAL, SYNTHETIC DATA** on real sample station IDs. Assistant scores come only from approved **live** evaluations; offline fixture scores are never stored, so empty tables mean no live evaluation has run."
               ]
             }

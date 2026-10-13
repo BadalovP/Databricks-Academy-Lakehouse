@@ -2,14 +2,23 @@
 
 Databricks Academy **Final Project**: one integrated solution that covers Labs 1–12.
 
-> **Status: steps 1–5 passed live in Personal DEV on 2026-10-12.**
+> **Status: steps 1–8 passed live in Personal DEV (2026-10-12 and 2026-10-13).**
 > - deploy;
 > - platform sample run;
 > - strict idempotency (19/19);
-> - CDC inserts, updates, deletes and replay, including the checkpoint across an automatic `OPTIMIZE`;
-> - Lakeflow, with row-for-row parity to the imperative path.
+> - CDC with inserts, updates, deletes and replay, including the checkpoint across an automatic `OPTIMIZE`;
+> - Lakeflow (row-for-row parity);
+> - assistant: ingest, AI Search index, live evaluation with RAG 0.685 vs baseline 0.148 correctness and 18/18 refusal decisions; the endpoint was deleted after 25.7 minutes;
+> - 25/25 dashboard queries;
+> - governance demo on isolated copies.
 >
-> **Not live yet:** the dashboard on live data (the `GRID_V1` definition is deployed, not published), the assistant with AI Search, the governance demo, PROD on the Azure trial, and a run of the CD workflow. The shared Silver/Gold MERGEs still record metadata-only commits on replay. All data is a labelled development sample or fictional fixture.
+> **Open:**
+> - a dashboard title-rendering fix awaits one redeploy; the dashboard is unpublished;
+> - PROD on the Azure trial (needs approval for the shared catalog);
+> - the CD workflow run (needs merge and identities);
+> - Zerobus and the external Federation source (optional).
+>
+> All data is a labelled development sample or fictional fixture.
 > More than 700 offline tests (unit tests, local Spark and static checks) run in CI. Every live step needs explicit approval and is planned in [docs/RELEASE_AND_VALIDATION.md](docs/RELEASE_AND_VALIDATION.md). Results of the individual labs and of Demo 3 were produced in their own folders. They are not Final Project evidence and are not presented as such.
 
 | Document | Purpose |
@@ -205,7 +214,7 @@ Dry runs that connect to nothing:
 
 ## Known limitations
 
-- **Live validation is partial.** Steps 1–5 passed in Personal DEV: deploy, platform sample run, strict idempotency, CDC with inserts, updates, deletes and replay, and Lakeflow. The assistant, the dashboard data, governance and PROD have not run live yet. Each step and its approval is listed in [docs/RELEASE_AND_VALIDATION.md](docs/RELEASE_AND_VALIDATION.md).
+- **Live validation is DEV-only.** Steps 1–8 passed in Personal DEV. PROD, the CD workflow run, Zerobus and the external Federation source have not run live. Each step and its approval is listed in [docs/RELEASE_AND_VALIDATION.md](docs/RELEASE_AND_VALIDATION.md).
 - **The `azure_prod` CD identity needs Academy account administration.** An operator can deploy with their own login instead.
 - **Small samples.** The data is a 40-station snapshot and a 40-trip sample. The full-month path exists (`run_full_month`), but it is a separate, approved run.
 - **Federation and CDC.** Federation needs an approved foreign catalog. Without one, CDC runs on the committed fictional snapshots.

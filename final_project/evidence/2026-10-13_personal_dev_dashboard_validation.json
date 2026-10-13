@@ -1,0 +1,2048 @@
+{
+ "phase": "D dashboard update, live query validation, rendering check",
+ "code_commit": "d93f2f4",
+ "pre_plan_actions": {
+  "resources.dashboards.urbanflow_final_dashboard": "update",
+  "resources.jobs.urbanflow_final_platform": "skip",
+  "resources.jobs.urbanflow_final_rag": "skip",
+  "resources.pipelines.urbanflow_final_pipeline": "skip",
+  "resources.schemas.urbanflow_final_lakeflow_schema": "skip",
+  "resources.schemas.urbanflow_final_schema": "skip",
+  "resources.volumes.urbanflow_final_landing": "skip"
+ },
+ "pre_plan_non_skip_fields": {
+  "resources.dashboards.urbanflow_final_dashboard": [
+   "serialized_dashboard"
+  ],
+  "resources.jobs.urbanflow_final_platform": [],
+  "resources.jobs.urbanflow_final_rag": [],
+  "resources.pipelines.urbanflow_final_pipeline": [],
+  "resources.schemas.urbanflow_final_lakeflow_schema": [],
+  "resources.schemas.urbanflow_final_schema": [],
+  "resources.volumes.urbanflow_final_landing": []
+ },
+ "post_plan": {
+  "actions": {
+   "resources.dashboards.urbanflow_final_dashboard": "skip",
+   "resources.jobs.urbanflow_final_platform": "skip",
+   "resources.jobs.urbanflow_final_rag": "skip",
+   "resources.pipelines.urbanflow_final_pipeline": "skip",
+   "resources.schemas.urbanflow_final_lakeflow_schema": "skip",
+   "resources.schemas.urbanflow_final_schema": "skip",
+   "resources.volumes.urbanflow_final_landing": "skip"
+  },
+  "job_ids": {
+   "urbanflow_final_platform": 158911626270744,
+   "urbanflow_final_rag": 887464717518046
+  },
+  "phase": "post",
+  "status": "PASS",
+  "target": "personal_dev"
+ },
+ "query_validation": {
+  "dashboard": {
+   "display_name": "[personal_dev] UrbanFlow 2.0 Operations",
+   "path": "/Users/parvinbadalov@yahoo.com/.bundle/urbanflow_final_project/personal_dev/resources/[personal_dev] UrbanFlow 2.0 Operations.lvdash.json",
+   "lifecycle_state": "LifecycleState.ACTIVE",
+   "warehouse_id": "410e5f3b4784e981",
+   "update_time": "2026-10-13T00:40:35.674Z"
+  },
+  "deployed_equals_local_datasets": true,
+  "deployed_equals_local_pages": false,
+  "pages": [
+   [
+    "Current Operations",
+    12,
+    "GRID_V1"
+   ],
+   [
+    "Historical Demand",
+    11,
+    "GRID_V1"
+   ],
+   [
+    "Weather & Demand",
+    12,
+    "GRID_V1"
+   ],
+   [
+    "Data Quality & Reliability",
+    11,
+    "GRID_V1"
+   ],
+   [
+    "Maintenance & Assistant",
+    6,
+    "GRID_V1"
+   ]
+  ],
+  "datasets": {
+   "ops_headline": {
+    "seconds": 2.1,
+    "state": "StatementState.SUCCEEDED",
+    "columns": [
+     "total_stations_observed",
+     "available_stations",
+     "out_of_service_stations",
+     "low_bike_stations",
+     "low_dock_stations",
+     "both_low_stations",
+     "actionable_shortages",
+     "snapshot_observed_from",
+     "snapshot_observed_to",
+     "executions_included",
+     "reading_note"
+    ],
+    "row_count": 1,
+    "rows": [
+     {
+      "total_stations_observed": "40",
+      "available_stations": "25",
+      "out_of_service_stations": "2",
+      "low_bike_stations": "4",
+      "low_dock_stations": "9",
+      "both_low_stations": "0",
+      "actionable_shortages": "13",
+      "snapshot_observed_from": "2026-09-28T19:52:25.000Z",
+      "snapshot_observed_to": "2026-09-28T19:52:25.000Z",
+      "executions_included": "1",
+      "reading_note": "one GBFS snapshot - a point-in-time count, not a trend"
+     }
+    ]
+   },
+   "ops_breakdown": {
+    "seconds": 1.2,
+    "state": "StatementState.SUCCEEDED",
+    "columns": [
+     "availability_status",
+     "stations",
+     "percent_of_stations"
+    ],
+    "row_count": 4,
+    "rows": [
+     {
+      "availability_status": "AVAILABLE",
+      "stations": "25",
+      "percent_of_stations": "62.50"
+     },
+     {
+      "availability_status": "LOW_DOCKS",
+      "stations": "9",
+      "percent_of_stations": "22.50"
+     },
+     {
+      "availability_status": "LOW_BIKES",
+      "stations": "4",
+      "percent_of_stations": "10.00"
+     },
+     {
+      "availability_status": "OUT_OF_SERVICE",
+      "stations": "2",
+      "percent_of_stations": "5.00"
+     }
+    ]
+   },
+   "ops_priorities": {
+    "seconds": 2.5,
+    "state": "StatementState.SUCCEEDED",
+    "columns": [
+     "priority_score",
+     "action",
+     "station_name",
+     "station_id",
+     "availability_status",
+     "num_bikes_available",
+     "num_docks_available",
+     "capacity_estimate",
+     "severity_points",
+     "deficit_points",
+     "size_points",
+     "observed_at",
+     "maintenance_hold"
+    ],
+    "row_count": 13,
+    "rows": [
+     {
+      "priority_score": "4",
+      "action": "DELIVER_BIKES",
+      "station_name": "E 26 St & 3 Ave",
+      "station_id": "7c7cb750-6613-48a4-bfae-9240968f1fad",
+      "availability_status": "LOW_BIKES",
+      "num_bikes_available": "0",
+      "num_docks_available": "37",
+      "capacity_estimate": "38",
+      "severity_points": "1",
+      "deficit_points": "2",
+      "size_points": "1",
+      "observed_at": "2026-09-28T19:52:25.000Z",
+      "maintenance_hold": "clear"
+     },
+     {
+      "priority_score": "4",
+      "action": "COLLECT_BIKES",
+      "station_name": "Greenwich St & Hubert St",
+      "station_id": "66de867e-0aca-11e7-82f6-3863bb44ef7c",
+      "availability_status": "LOW_DOCKS",
+      "num_bikes_available": "25",
+      "num_docks_available": "0",
+      "capacity_estimate": "65",
+      "severity_points": "1",
+      "deficit_points": "2",
+      "size_points": "1",
+      "observed_at": "2026-09-28T19:52:25.000Z",
+      "maintenance_hold": "clear"
+     },
+     {
+      "priority_score": "4",
+      "action": "COLLECT_BIKES",
+      "station_name": "Bleecker St & Crosby St",
+      "station_id": "412c1416-d15b-4e6a-9691-da4c3cc0d0d2",
+      "availability_status": "LOW_DOCKS",
+      "num_bikes_available": "61",
+      "num_docks_available": "0",
+      "capacity_estimate": "63",
+      "severity_points": "1",
+      "deficit_points": "2",
+      "size_points": "1",
+      "observed_at": "2026-09-28T19:52:25.000Z",
+      "maintenance_hold": "clear"
+     },
+     {
+      "priority_score": "3",
+      "action": "DELIVER_BIKES",
+      "station_name": "E 22 St & 2 Ave",
+      "station_id": "6ff2eec8-2b72-490a-b1c3-f9892ab3a724",
+      "availability_status": "LOW_BIKES",
+      "num_bikes_available": "1",
+      "num_docks_available": "47",
+      "capacity_estimate": "48",
+      "severity_points": "1",
+      "deficit_points": "1",
+      "size_points": "1",
+      "observed_at": "2026-09-28T19:52:25.000Z",
+      "maintenance_hold": "clear"
+     },
+     {
+      "priority_score": "2",
+      "action": "DELIVER_BIKES",
+      "station_name": "E 20 St & FDR Dr",
+      "station_id": "c7ffe3fa-9cd6-4d35-9060-7d5822381442",
+      "availability_status": "LOW_BIKES",
+      "num_bikes_available": "2",
+      "num_docks_available": "70",
+      "capacity_estimate": "73",
+      "severity_points": "1",
+      "deficit_points": "0",
+      "size_points": "1",
+      "observed_at": "2026-09-28T19:52:25.000Z",
+      "maintenance_hold": "clear"
+     },
+     {
+      "priority_score": "2",
+      "action": "DELIVER_BIKES",
+      "station_name": "Lincoln Pl & Nostrand Ave",
+      "station_id": "3bdd81c8-3112-45e6-ae72-11a3f4fa5921",
+      "availability_status": "LOW_BIKES",
+      "num_bikes_available": "2",
+      "num_docks_available": "20",
+      "capacity_estimate": "23",
+      "severity_points": "1",
+      "deficit_points": "0",
+      "size_points": "1",
+      "observed_at": "2026-09-28T19:52:25.000Z",
+      "maintenance_hold": "clear"
+     },
+     {
+      "priority_score": "2",
+      "action": "COLLECT_BIKES",
+      "station_name": "Church Ave & Story St",
+      "station_id": "180b83a0-329c-4069-87be-df862cb1baed",
+      "availability_status": "LOW_DOCKS",
+      "num_bikes_available": "20",
+      "num_docks_available": "2",
+      "capacity_estimate": "23",
+      "severity_points": "1",
+      "deficit_points": "0",
+      "size_points": "1",
+      "observed_at": "2026-09-28T19:52:25.000Z",
+      "maintenance_hold": "HOLD - open maintenance ticket"
+     },
+     {
+      "priority_score": "2",
+      "action": "COLLECT_BIKES",
+      "station_name": "Parkside Ave & Ocean Ave",
+      "station_id": "1814900353536621062",
+      "availability_status": "LOW_DOCKS",
+      "num_bikes_available": "28",
+      "num_docks_available": "2",
+      "capacity_estimate": "31",
+      "severity_points": "1",
+      "deficit_points": "0",
+      "size_points": "1",
+      "observed_at": "2026-09-28T19:52:25.000Z",
+      "maintenance_hold": "clear"
+     },
+     {
+      "priority_score": "2",
+      "action": "COLLECT_BIKES",
+      "station_name": "Morningside Ave & W 123 St",
+      "station_id": "23539f3b-fb83-4f34-b8b8-9f1f37b5e646",
+      "availability_status": "LOW_DOCKS",
+      "num_bikes_available": "28",
+      "num_docks_available": "2",
+      "capacity_estimate": "34",
+      "severity_points": "1",
+      "deficit_points": "0",
+      "size_points": "1",
+      "observed_at": "2026-09-28T19:52:25.000Z",
+      "maintenance_hold": "clear"
+     },
+     {
+      "priority_score": "2",
+      "action": "COLLECT_BIKES",
+      "station_name": "W 35 St & 8 Ave",
+      "station_id": "96e72113-3681-4d19-88bb-032e76720093",
+      "availability_status": "LOW_DOCKS",
+      "num_bikes_available": "40",
+      "num_docks_available": "2",
+      "capacity_estimate": "43",
+      "severity_points": "1",
+      "deficit_points": "0",
+      "size_points": "1",
+      "observed_at": "2026-09-28T19:52:25.000Z",
+      "maintenance_hold": "clear"
+     },
+     {
+      "priority_score": "2",
+      "action": "COLLECT_BIKES",
+      "station_name": "Peck Slip & South St",
+      "station_id": "014a931b-8e1c-438a-8a22-f267ddd1e0d2",
+      "availability_status": "LOW_DOCKS",
+      "num_bikes_available": "42",
+      "num_docks_available": "2",
+      "capacity_estimate": "45",
+      "severity_points": "1",
+      "deficit_points": "0",
+      "size_points": "1",
+      "observed_at": "2026-09-28T19:52:25.000Z",
+      "maintenance_hold": "clear"
+     },
+     {
+      "priority_score": "2",
+      "action": "COLLECT_BIKES",
+      "station_name": "Leonard St & Church St",
+      "station_id": "66db7a0d-0aca-11e7-82f6-3863bb44ef7c",
+      "availability_status": "LOW_DOCKS",
+      "num_bikes_available": "43",
+      "num_docks_available": "2",
+      "capacity_estimate": "46",
+      "severity_points": "1",
+      "deficit_points": "0",
+      "size_points": "1",
+      "observed_at": "2026-09-28T19:52:25.000Z",
+      "maintenance_hold": "clear"
+     },
+     {
+      "priority_score": "2",
+      "action": "COLLECT_BIKES",
+      "station_name": "Stanton St & Chrystie St",
+      "station_id": "66db4671-0aca-11e7-82f6-3863bb44ef7c",
+      "availability_status": "LOW_DOCKS",
+      "num_bikes_available": "44",
+      "num_docks_available": "2",
+      "capacity_estimate": "47",
+      "severity_points": "1",
+      "deficit_points": "0",
+      "size_points": "1",
+      "observed_at": "2026-09-28T19:52:25.000Z",
+      "maintenance_hold": "clear"
+     }
+    ]
+   },
+   "ops_actions": {
+    "seconds": 1.2,
+    "state": "StatementState.SUCCEEDED",
+    "columns": [
+     "action",
+     "stations",
+     "avg_priority_score",
+     "worst_priority_score"
+    ],
+    "row_count": 2,
+    "rows": [
+     {
+      "action": "COLLECT_BIKES",
+      "stations": "9",
+      "avg_priority_score": "2.44",
+      "worst_priority_score": "4"
+     },
+     {
+      "action": "DELIVER_BIKES",
+      "stations": "4",
+      "avg_priority_score": "2.75",
+      "worst_priority_score": "4"
+     }
+    ]
+   },
+   "demand_daily": {
+    "seconds": 1.5,
+    "state": "StatementState.SUCCEEDED",
+    "columns": [
+     "execution_id",
+     "data_scope",
+     "trip_date",
+     "trips",
+     "member_trips",
+     "casual_trips",
+     "avg_trip_minutes",
+     "stations_with_trips"
+    ],
+    "row_count": 17,
+    "rows": [
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-14",
+      "trips": "1",
+      "member_trips": "1",
+      "casual_trips": "0",
+      "avg_trip_minutes": "27.12",
+      "stations_with_trips": "1"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-15",
+      "trips": "3",
+      "member_trips": "3",
+      "casual_trips": "0",
+      "avg_trip_minutes": "14.32",
+      "stations_with_trips": "3"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-16",
+      "trips": "2",
+      "member_trips": "1",
+      "casual_trips": "1",
+      "avg_trip_minutes": "10.86",
+      "stations_with_trips": "2"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-18",
+      "trips": "5",
+      "member_trips": "5",
+      "casual_trips": "0",
+      "avg_trip_minutes": "11.37",
+      "stations_with_trips": "5"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-19",
+      "trips": "1",
+      "member_trips": "0",
+      "casual_trips": "1",
+      "avg_trip_minutes": "13.93",
+      "stations_with_trips": "1"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-20",
+      "trips": "1",
+      "member_trips": "1",
+      "casual_trips": "0",
+      "avg_trip_minutes": "4.45",
+      "stations_with_trips": "1"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-21",
+      "trips": "1",
+      "member_trips": "1",
+      "casual_trips": "0",
+      "avg_trip_minutes": "7.52",
+      "stations_with_trips": "1"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-22",
+      "trips": "2",
+      "member_trips": "2",
+      "casual_trips": "0",
+      "avg_trip_minutes": "5.56",
+      "stations_with_trips": "2"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-23",
+      "trips": "3",
+      "member_trips": "3",
+      "casual_trips": "0",
+      "avg_trip_minutes": "8.97",
+      "stations_with_trips": "3"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-24",
+      "trips": "2",
+      "member_trips": "1",
+      "casual_trips": "1",
+      "avg_trip_minutes": "4.16",
+      "stations_with_trips": "2"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-25",
+      "trips": "2",
+      "member_trips": "2",
+      "casual_trips": "0",
+      "avg_trip_minutes": "5.0",
+      "stations_with_trips": "2"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-26",
+      "trips": "4",
+      "member_trips": "3",
+      "casual_trips": "1",
+      "avg_trip_minutes": "14.15",
+      "stations_with_trips": "4"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-27",
+      "trips": "3",
+      "member_trips": "3",
+      "casual_trips": "0",
+      "avg_trip_minutes": "14.45",
+      "stations_with_trips": "3"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-28",
+      "trips": "3",
+      "member_trips": "2",
+      "casual_trips": "1",
+      "avg_trip_minutes": "9.2",
+      "stations_with_trips": "3"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-29",
+      "trips": "3",
+      "member_trips": "3",
+      "casual_trips": "0",
+      "avg_trip_minutes": "12.65",
+      "stations_with_trips": "3"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-30",
+      "trips": "2",
+      "member_trips": "2",
+      "casual_trips": "0",
+      "avg_trip_minutes": "6.82",
+      "stations_with_trips": "2"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-31",
+      "trips": "2",
+      "member_trips": "2",
+      "casual_trips": "0",
+      "avg_trip_minutes": "4.88",
+      "stations_with_trips": "2"
+     }
+    ]
+   },
+   "demand_hourly": {
+    "seconds": 1.5,
+    "state": "StatementState.SUCCEEDED",
+    "columns": [
+     "execution_id",
+     "data_scope",
+     "day_of_week",
+     "day_of_week_number",
+     "hour_of_day",
+     "trips",
+     "member_trips",
+     "casual_trips"
+    ],
+    "row_count": 37,
+    "rows": [
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Sunday",
+      "day_of_week_number": "1",
+      "hour_of_day": "12",
+      "trips": "1",
+      "member_trips": "0",
+      "casual_trips": "1"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Sunday",
+      "day_of_week_number": "1",
+      "hour_of_day": "14",
+      "trips": "1",
+      "member_trips": "1",
+      "casual_trips": "0"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Sunday",
+      "day_of_week_number": "1",
+      "hour_of_day": "18",
+      "trips": "1",
+      "member_trips": "1",
+      "casual_trips": "0"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Sunday",
+      "day_of_week_number": "1",
+      "hour_of_day": "19",
+      "trips": "1",
+      "member_trips": "1",
+      "casual_trips": "0"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Sunday",
+      "day_of_week_number": "1",
+      "hour_of_day": "22",
+      "trips": "1",
+      "member_trips": "1",
+      "casual_trips": "0"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Monday",
+      "day_of_week_number": "2",
+      "hour_of_day": "9",
+      "trips": "1",
+      "member_trips": "1",
+      "casual_trips": "0"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Monday",
+      "day_of_week_number": "2",
+      "hour_of_day": "10",
+      "trips": "1",
+      "member_trips": "1",
+      "casual_trips": "0"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Monday",
+      "day_of_week_number": "2",
+      "hour_of_day": "12",
+      "trips": "1",
+      "member_trips": "1",
+      "casual_trips": "0"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Monday",
+      "day_of_week_number": "2",
+      "hour_of_day": "13",
+      "trips": "1",
+      "member_trips": "1",
+      "casual_trips": "0"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Monday",
+      "day_of_week_number": "2",
+      "hour_of_day": "19",
+      "trips": "1",
+      "member_trips": "1",
+      "casual_trips": "0"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Monday",
+      "day_of_week_number": "2",
+      "hour_of_day": "21",
+      "trips": "1",
+      "member_trips": "1",
+      "casual_trips": "0"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Monday",
+      "day_of_week_number": "2",
+      "hour_of_day": "22",
+      "trips": "2",
+      "member_trips": "2",
+      "casual_trips": "0"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Tuesday",
+      "day_of_week_number": "3",
+      "hour_of_day": "6",
+      "trips": "1",
+      "member_trips": "1",
+      "casual_trips": "0"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Tuesday",
+      "day_of_week_number": "3",
+      "hour_of_day": "7",
+      "trips": "1",
+      "member_trips": "1",
+      "casual_trips": "0"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Tuesday",
+      "day_of_week_number": "3",
+      "hour_of_day": "8",
+      "trips": "1",
+      "member_trips": "1",
+      "casual_trips": "0"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Tuesday",
+      "day_of_week_number": "3",
+      "hour_of_day": "12",
+      "trips": "1",
+      "member_trips": "0",
+      "casual_trips": "1"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Tuesday",
+      "day_of_week_number": "3",
+      "hour_of_day": "14",
+      "trips": "1",
+      "member_trips": "1",
+      "casual_trips": "0"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Tuesday",
+      "day_of_week_number": "3",
+      "hour_of_day": "16",
+      "trips": "1",
+      "member_trips": "1",
+      "casual_trips": "0"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Tuesday",
+      "day_of_week_number": "3",
+      "hour_of_day": "17",
+      "trips": "1",
+      "member_trips": "1",
+      "casual_trips": "0"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Wednesday",
+      "day_of_week_number": "4",
+      "hour_of_day": "9",
+      "trips": "2",
+      "member_trips": "1",
+      "casual_trips": "1"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Wednesday",
+      "day_of_week_number": "4",
+      "hour_of_day": "18",
+      "trips": "1",
+      "member_trips": "1",
+      "casual_trips": "0"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Wednesday",
+      "day_of_week_number": "4",
+      "hour_of_day": "22",
+      "trips": "1",
+      "member_trips": "1",
+      "casual_trips": "0"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Thursday",
+      "day_of_week_number": "5",
+      "hour_of_day": "7",
+      "trips": "1",
+      "member_trips": "1",
+      "casual_trips": "0"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Thursday",
+      "day_of_week_number": "5",
+      "hour_of_day": "10",
+      "trips": "1",
+      "member_trips": "1",
+      "casual_trips": "0"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Thursday",
+      "day_of_week_number": "5",
+      "hour_of_day": "13",
+      "trips": "2",
+      "member_trips": "2",
+      "casual_trips": "0"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Thursday",
+      "day_of_week_number": "5",
+      "hour_of_day": "17",
+      "trips": "1",
+      "member_trips": "1",
+      "casual_trips": "0"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Thursday",
+      "day_of_week_number": "5",
+      "hour_of_day": "19",
+      "trips": "1",
+      "member_trips": "1",
+      "casual_trips": "0"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Thursday",
+      "day_of_week_number": "5",
+      "hour_of_day": "20",
+      "trips": "1",
+      "member_trips": "1",
+      "casual_trips": "0"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Friday",
+      "day_of_week_number": "6",
+      "hour_of_day": "7",
+      "trips": "1",
+      "member_trips": "0",
+      "casual_trips": "1"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "day_of_week": "Friday",
+      "day_of_week_number": "6",
+      "hour_of_day": "10",
+      "trips": "1",
+      "member_trips": "0",
+      "casual_trips": "1"
+     }
+    ]
+   },
+   "demand_durations": {
+    "seconds": 1.3,
+    "state": "StatementState.SUCCEEDED",
+    "columns": [
+     "execution_id",
+     "data_scope",
+     "duration_bucket",
+     "trips",
+     "percent_of_trips"
+    ],
+    "row_count": 4,
+    "rows": [
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "duration_bucket": "01 1-5 min",
+      "trips": "13",
+      "percent_of_trips": "32.50"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "duration_bucket": "02 5-15 min",
+      "trips": "19",
+      "percent_of_trips": "47.50"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "duration_bucket": "03 15-30 min",
+      "trips": "7",
+      "percent_of_trips": "17.50"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "duration_bucket": "04 30-60 min",
+      "trips": "1",
+      "percent_of_trips": "2.50"
+     }
+    ]
+   },
+   "demand_headline": {
+    "seconds": 1.1,
+    "state": "StatementState.SUCCEEDED",
+    "columns": [
+     "execution_id",
+     "data_scope",
+     "valid_trips",
+     "member_trips",
+     "casual_trips",
+     "distinct_start_stations",
+     "first_ride_started",
+     "last_ride_ended"
+    ],
+    "row_count": 1,
+    "rows": [
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "data_scope": "40-ROW DEVELOPMENT SAMPLE",
+      "valid_trips": "40",
+      "member_trips": "35",
+      "casual_trips": "5",
+      "distinct_start_stations": "30",
+      "first_ride_started": "2024-01-14T19:43:39.741Z",
+      "last_ride_ended": "2024-01-31T22:22:45.520Z"
+     }
+    ]
+   },
+   "demand_rideable": {
+    "seconds": 1.0,
+    "state": "StatementState.SUCCEEDED",
+    "columns": [
+     "execution_id",
+     "rideable_type",
+     "trips",
+     "percent_of_trips"
+    ],
+    "row_count": 2,
+    "rows": [
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "rideable_type": "electric_bike",
+      "trips": "28",
+      "percent_of_trips": "70.00"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "rideable_type": "classic_bike",
+      "trips": "12",
+      "percent_of_trips": "30.00"
+     }
+    ]
+   },
+   "demand_top_stations": {
+    "seconds": 1.4,
+    "state": "StatementState.SUCCEEDED",
+    "columns": [
+     "execution_id",
+     "direction",
+     "station_name",
+     "station_short_name",
+     "trips"
+    ],
+    "row_count": 30,
+    "rows": [
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "origin",
+      "station_name": "E 102 St & 1 Ave",
+      "station_short_name": "7407.13",
+      "trips": "3"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "origin",
+      "station_name": "Bleecker St & Crosby St",
+      "station_short_name": "5679.08",
+      "trips": "3"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "origin",
+      "station_name": "Greenwich St & Perry St",
+      "station_short_name": "5922.04",
+      "trips": "2"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "origin",
+      "station_name": "Leonard St & Church St",
+      "station_short_name": "5359.11",
+      "trips": "2"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "origin",
+      "station_name": "6 Ave & W 33 St",
+      "station_short_name": "6364.07",
+      "trips": "2"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "origin",
+      "station_name": "W 40 St & 7 Ave",
+      "station_short_name": "6560.14",
+      "trips": "2"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "origin",
+      "station_name": "Greenwich St & Hubert St",
+      "station_short_name": "5470.10",
+      "trips": "2"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "origin",
+      "station_name": "Broadway & W 29 St",
+      "station_short_name": "6289.06",
+      "trips": "2"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "origin",
+      "station_name": "Warren St & Roosevelt Ave",
+      "station_short_name": "6346.07",
+      "trips": "1"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "origin",
+      "station_name": "Morningside Ave & W 123 St",
+      "station_short_name": "7741.01",
+      "trips": "1"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "origin",
+      "station_name": "E 20 St & FDR Dr",
+      "station_short_name": "5886.13",
+      "trips": "1"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "origin",
+      "station_name": "1 Ave & E 110 St",
+      "station_short_name": "7522.02",
+      "trips": "1"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "origin",
+      "station_name": "Central Park West & W 68 St",
+      "station_short_name": "7079.06",
+      "trips": "1"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "origin",
+      "station_name": "Church Ave & Story St",
+      "station_short_name": "3007.05",
+      "trips": "1"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "origin",
+      "station_name": "Lenox Ave & W 140 St",
+      "station_short_name": "7872.03",
+      "trips": "1"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "destination",
+      "station_name": "1 Ave & E 39 St",
+      "station_short_name": "6303.01",
+      "trips": "7"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "destination",
+      "station_name": "W 29 St & 9 Ave",
+      "station_short_name": "6416.06",
+      "trips": "6"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "destination",
+      "station_name": "E 91 St & 2 Ave",
+      "station_short_name": "7286.01",
+      "trips": "5"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "destination",
+      "station_name": "W Broadway & Watts St",
+      "station_short_name": "5569.07",
+      "trips": "5"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "destination",
+      "station_name": "E 1 St & Bowery",
+      "station_short_name": "5636.13",
+      "trips": "4"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "destination",
+      "station_name": "Pearl St & Hanover Square",
+      "station_short_name": "4993.02",
+      "trips": "3"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "destination",
+      "station_name": "Meserole Ave & Manhattan Ave",
+      "station_short_name": "5666.04",
+      "trips": "2"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "destination",
+      "station_name": "E 138 St & Grand Concourse",
+      "station_short_name": "7803.08",
+      "trips": "1"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "destination",
+      "station_name": "112 St & Northern Blvd",
+      "station_short_name": "6683.01",
+      "trips": "1"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "destination",
+      "station_name": "W 52 St & 5 Ave",
+      "station_short_name": "6700.01",
+      "trips": "1"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "destination",
+      "station_name": "Ocean Ave & Crooke Ave",
+      "station_short_name": "3408.05",
+      "trips": "1"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "destination",
+      "station_name": "Fresh Pond Rd & 69 Ave",
+      "station_short_name": "4945.06",
+      "trips": "1"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "destination",
+      "station_name": "Prospect Pl & Underhill Ave",
+      "station_short_name": "4116.08",
+      "trips": "1"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "destination",
+      "station_name": "Columbus Ave & W 103 St",
+      "station_short_name": "7595.17",
+      "trips": "1"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "direction": "destination",
+      "station_name": "E 103 St & Lexington Ave",
+      "station_short_name": "7463.09",
+      "trips": "1"
+     }
+    ]
+   },
+   "demand_day_type": {
+    "seconds": 1.2,
+    "state": "StatementState.SUCCEEDED",
+    "columns": [
+     "execution_id",
+     "day_type",
+     "days",
+     "trips",
+     "avg_trips_per_day",
+     "casual_percent"
+    ],
+    "row_count": 2,
+    "rows": [
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "day_type": "weekday",
+      "days": "12",
+      "trips": "31",
+      "avg_trips_per_day": "3.0",
+      "casual_percent": "12.90"
+     },
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "day_type": "weekend",
+      "days": "5",
+      "trips": "9",
+      "avg_trips_per_day": "2.0",
+      "casual_percent": "11.11"
+     }
+    ]
+   },
+   "weather_daily": {
+    "seconds": 1.3,
+    "state": "StatementState.SUCCEEDED",
+    "columns": [
+     "execution_id",
+     "data_scope",
+     "trip_date",
+     "trips",
+     "avg_temperature_celsius",
+     "total_precipitation_mm",
+     "avg_wind_speed_kmh",
+     "weather_coverage"
+    ],
+    "row_count": 17,
+    "rows": [
+     {
+      "execution_id": "urbanflow-final-weather-devsample48h",
+      "data_scope": "48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-14",
+      "trips": "1",
+      "avg_temperature_celsius": null,
+      "total_precipitation_mm": null,
+      "avg_wind_speed_kmh": null,
+      "weather_coverage": "0.0"
+     },
+     {
+      "execution_id": "urbanflow-final-weather-devsample48h",
+      "data_scope": "48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-15",
+      "trips": "3",
+      "avg_temperature_celsius": null,
+      "total_precipitation_mm": null,
+      "avg_wind_speed_kmh": null,
+      "weather_coverage": "0.0"
+     },
+     {
+      "execution_id": "urbanflow-final-weather-devsample48h",
+      "data_scope": "48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-16",
+      "trips": "2",
+      "avg_temperature_celsius": null,
+      "total_precipitation_mm": null,
+      "avg_wind_speed_kmh": null,
+      "weather_coverage": "0.0"
+     },
+     {
+      "execution_id": "urbanflow-final-weather-devsample48h",
+      "data_scope": "48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-18",
+      "trips": "5",
+      "avg_temperature_celsius": null,
+      "total_precipitation_mm": null,
+      "avg_wind_speed_kmh": null,
+      "weather_coverage": "0.0"
+     },
+     {
+      "execution_id": "urbanflow-final-weather-devsample48h",
+      "data_scope": "48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-19",
+      "trips": "1",
+      "avg_temperature_celsius": null,
+      "total_precipitation_mm": null,
+      "avg_wind_speed_kmh": null,
+      "weather_coverage": "0.0"
+     },
+     {
+      "execution_id": "urbanflow-final-weather-devsample48h",
+      "data_scope": "48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-20",
+      "trips": "1",
+      "avg_temperature_celsius": null,
+      "total_precipitation_mm": null,
+      "avg_wind_speed_kmh": null,
+      "weather_coverage": "0.0"
+     },
+     {
+      "execution_id": "urbanflow-final-weather-devsample48h",
+      "data_scope": "48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-21",
+      "trips": "1",
+      "avg_temperature_celsius": null,
+      "total_precipitation_mm": null,
+      "avg_wind_speed_kmh": null,
+      "weather_coverage": "0.0"
+     },
+     {
+      "execution_id": "urbanflow-final-weather-devsample48h",
+      "data_scope": "48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-22",
+      "trips": "2",
+      "avg_temperature_celsius": null,
+      "total_precipitation_mm": null,
+      "avg_wind_speed_kmh": null,
+      "weather_coverage": "0.0"
+     },
+     {
+      "execution_id": "urbanflow-final-weather-devsample48h",
+      "data_scope": "48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-23",
+      "trips": "3",
+      "avg_temperature_celsius": null,
+      "total_precipitation_mm": null,
+      "avg_wind_speed_kmh": null,
+      "weather_coverage": "0.0"
+     },
+     {
+      "execution_id": "urbanflow-final-weather-devsample48h",
+      "data_scope": "48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-24",
+      "trips": "2",
+      "avg_temperature_celsius": "0.4",
+      "total_precipitation_mm": "0.4",
+      "avg_wind_speed_kmh": "5.2",
+      "weather_coverage": "1.0"
+     },
+     {
+      "execution_id": "urbanflow-final-weather-devsample48h",
+      "data_scope": "48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-25",
+      "trips": "2",
+      "avg_temperature_celsius": "9.0",
+      "total_precipitation_mm": "0.8",
+      "avg_wind_speed_kmh": "14.6",
+      "weather_coverage": "1.0"
+     },
+     {
+      "execution_id": "urbanflow-final-weather-devsample48h",
+      "data_scope": "48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-26",
+      "trips": "4",
+      "avg_temperature_celsius": null,
+      "total_precipitation_mm": null,
+      "avg_wind_speed_kmh": null,
+      "weather_coverage": "0.0"
+     },
+     {
+      "execution_id": "urbanflow-final-weather-devsample48h",
+      "data_scope": "48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-27",
+      "trips": "3",
+      "avg_temperature_celsius": null,
+      "total_precipitation_mm": null,
+      "avg_wind_speed_kmh": null,
+      "weather_coverage": "0.0"
+     },
+     {
+      "execution_id": "urbanflow-final-weather-devsample48h",
+      "data_scope": "48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-28",
+      "trips": "3",
+      "avg_temperature_celsius": null,
+      "total_precipitation_mm": null,
+      "avg_wind_speed_kmh": null,
+      "weather_coverage": "0.0"
+     },
+     {
+      "execution_id": "urbanflow-final-weather-devsample48h",
+      "data_scope": "48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-29",
+      "trips": "3",
+      "avg_temperature_celsius": null,
+      "total_precipitation_mm": null,
+      "avg_wind_speed_kmh": null,
+      "weather_coverage": "0.0"
+     },
+     {
+      "execution_id": "urbanflow-final-weather-devsample48h",
+      "data_scope": "48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-30",
+      "trips": "2",
+      "avg_temperature_celsius": null,
+      "total_precipitation_mm": null,
+      "avg_wind_speed_kmh": null,
+      "weather_coverage": "0.0"
+     },
+     {
+      "execution_id": "urbanflow-final-weather-devsample48h",
+      "data_scope": "48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE",
+      "trip_date": "2024-01-31",
+      "trips": "2",
+      "avg_temperature_celsius": null,
+      "total_precipitation_mm": null,
+      "avg_wind_speed_kmh": null,
+      "weather_coverage": "0.0"
+     }
+    ]
+   },
+   "weather_buckets": {
+    "seconds": 1.0,
+    "state": "StatementState.SUCCEEDED",
+    "columns": [
+     "execution_id",
+     "data_scope",
+     "temperature_bucket",
+     "trips",
+     "days_in_bucket",
+     "avg_trips_per_day",
+     "avg_temperature_celsius"
+    ],
+    "row_count": 2,
+    "rows": [
+     {
+      "execution_id": "urbanflow-final-weather-devsample48h",
+      "data_scope": "48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE",
+      "temperature_bucket": "COLD_0_10C",
+      "trips": "4",
+      "days_in_bucket": "2",
+      "avg_trips_per_day": "2.0",
+      "avg_temperature_celsius": "4.7"
+     },
+     {
+      "execution_id": "urbanflow-final-weather-devsample48h",
+      "data_scope": "48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE",
+      "temperature_bucket": "UNKNOWN",
+      "trips": "36",
+      "days_in_bucket": "15",
+      "avg_trips_per_day": "2.4",
+      "avg_temperature_celsius": null
+     }
+    ]
+   },
+   "weather_precipitation": {
+    "seconds": 1.2,
+    "state": "StatementState.SUCCEEDED",
+    "columns": [
+     "execution_id",
+     "data_scope",
+     "precipitation_band",
+     "days",
+     "trips",
+     "avg_trips_per_day"
+    ],
+    "row_count": 2,
+    "rows": [
+     {
+      "execution_id": "urbanflow-final-weather-devsample48h",
+      "data_scope": "48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE",
+      "precipitation_band": "1 light (under 2 mm)",
+      "days": "2",
+      "trips": "4",
+      "avg_trips_per_day": "2.0"
+     },
+     {
+      "execution_id": "urbanflow-final-weather-devsample48h",
+      "data_scope": "48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE",
+      "precipitation_band": "unknown",
+      "days": "15",
+      "trips": "36",
+      "avg_trips_per_day": "2.4"
+     }
+    ]
+   },
+   "weather_series": {
+    "seconds": 2.2,
+    "state": "StatementState.SUCCEEDED",
+    "columns": [
+     "execution_id",
+     "weather_grid_label",
+     "covers_from",
+     "covers_to",
+     "hours_retrieved",
+     "hours_with_temperature",
+     "hours_with_precipitation",
+     "hours_with_wind",
+     "missing_temperature_hours",
+     "source",
+     "retrieved_at"
+    ],
+    "row_count": 1,
+    "rows": [
+     {
+      "execution_id": "urbanflow-final-weather-devsample48h",
+      "weather_grid_label": "open-meteo@40.7128,-74.0060",
+      "covers_from": "2024-01-24T00:00:00.000Z",
+      "covers_to": "2024-01-25T23:00:00.000Z",
+      "hours_retrieved": "48",
+      "hours_with_temperature": "48",
+      "hours_with_precipitation": "48",
+      "hours_with_wind": "48",
+      "missing_temperature_hours": "0",
+      "source": "open-meteo-archive",
+      "retrieved_at": "2026-10-12T16:50:05.301543Z"
+     }
+    ]
+   },
+   "weather_gaps": {
+    "seconds": 1.0,
+    "state": "StatementState.SUCCEEDED",
+    "columns": [
+     "execution_id",
+     "data_scope",
+     "trips",
+     "trips_with_weather",
+     "trips_without_weather",
+     "weather_coverage_percent",
+     "days_covered"
+    ],
+    "row_count": 1,
+    "rows": [
+     {
+      "execution_id": "urbanflow-final-weather-devsample48h",
+      "data_scope": "48-HOUR WEATHER / 40-TRIP DEVELOPMENT SAMPLE",
+      "trips": "40",
+      "trips_with_weather": "4",
+      "trips_without_weather": "36",
+      "weather_coverage_percent": "10.00",
+      "days_covered": "17"
+     }
+    ]
+   },
+   "quality_station": {
+    "seconds": 3.0,
+    "state": "StatementState.SUCCEEDED",
+    "columns": [
+     "bronze_rows",
+     "silver_rows",
+     "quarantine_rows",
+     "duplicate_rows",
+     "fact_rows",
+     "shortage_rows",
+     "priority_rows",
+     "accounted_rows",
+     "bronze_reconciles",
+     "fact_matches_silver",
+     "derived_tables_agree"
+    ],
+    "row_count": 1,
+    "rows": [
+     {
+      "bronze_rows": "40",
+      "silver_rows": "40",
+      "quarantine_rows": "0",
+      "duplicate_rows": "0",
+      "fact_rows": "40",
+      "shortage_rows": "13",
+      "priority_rows": "13",
+      "accounted_rows": "40",
+      "bronze_reconciles": "true",
+      "fact_matches_silver": "true",
+      "derived_tables_agree": "true"
+     }
+    ]
+   },
+   "quality_trip_rules": {
+    "seconds": 0.9,
+    "state": "StatementState.SUCCEEDED",
+    "columns": [
+     "execution_id",
+     "failed_rule",
+     "trips_failing"
+    ],
+    "row_count": 0,
+    "rows": []
+   },
+   "quality_lakeflow": {
+    "seconds": 2.8,
+    "state": "StatementState.SUCCEEDED",
+    "columns": [
+     "dataset",
+     "expectation",
+     "passed_records",
+     "failed_records"
+    ],
+    "row_count": 22,
+    "rows": [
+     {
+      "dataset": "workspace.urbanflow_final_lakeflow_dev.dim_station_development_sample",
+      "expectation": "short_name_present",
+      "passed_records": "40",
+      "failed_records": "0"
+     },
+     {
+      "dataset": "workspace.urbanflow_final_lakeflow_dev.dim_station_development_sample",
+      "expectation": "station_id_present",
+      "passed_records": "40",
+      "failed_records": "0"
+     },
+     {
+      "dataset": "workspace.urbanflow_final_lakeflow_dev.duplicate_station_status",
+      "expectation": "duplicate_has_event_id",
+      "passed_records": "0",
+      "failed_records": "0"
+     },
+     {
+      "dataset": "workspace.urbanflow_final_lakeflow_dev.fact_station_availability",
+      "expectation": "event_id_present",
+      "passed_records": "40",
+      "failed_records": "0"
+     },
+     {
+      "dataset": "workspace.urbanflow_final_lakeflow_dev.fact_station_availability",
+      "expectation": "observation_date_present",
+      "passed_records": "40",
+      "failed_records": "0"
+     },
+     {
+      "dataset": "workspace.urbanflow_final_lakeflow_dev.gold_daily_station_summary",
+      "expectation": "counts_are_positive",
+      "passed_records": "40",
+      "failed_records": "0"
+     },
+     {
+      "dataset": "workspace.urbanflow_final_lakeflow_dev.gold_daily_station_summary",
+      "expectation": "trend_claim_matches_observations",
+      "passed_records": "40",
+      "failed_records": "0"
+     },
+     {
+      "dataset": "workspace.urbanflow_final_lakeflow_dev.gold_rebalancing_priority",
+      "expectation": "action_is_known",
+      "passed_records": "13",
+      "failed_records": "0"
+     },
+     {
+      "dataset": "workspace.urbanflow_final_lakeflow_dev.gold_rebalancing_priority",
+      "expectation": "execution_is_attributed",
+      "passed_records": "13",
+      "failed_records": "0"
+     },
+     {
+      "dataset": "workspace.urbanflow_final_lakeflow_dev.gold_rebalancing_priority",
+      "expectation": "priority_is_actionable",
+      "passed_records": "13",
+      "failed_records": "0"
+     },
+     {
+      "dataset": "workspace.urbanflow_final_lakeflow_dev.gold_rebalancing_priority",
+      "expectation": "score_is_explainable",
+      "passed_records": "13",
+      "failed_records": "0"
+     },
+     {
+      "dataset": "workspace.urbanflow_final_lakeflow_dev.gold_station_shortage",
+      "expectation": "execution_is_attributed",
+      "passed_records": "13",
+      "failed_records": "0"
+     },
+     {
+      "dataset": "workspace.urbanflow_final_lakeflow_dev.gold_station_shortage",
+      "expectation": "shortage_is_actionable",
+      "passed_records": "13",
+      "failed_records": "0"
+     },
+     {
+      "dataset": "workspace.urbanflow_final_lakeflow_dev.gold_station_shortage",
+      "expectation": "shortage_status_is_known",
+      "passed_records": "13",
+      "failed_records": "0"
+     },
+     {
+      "dataset": "workspace.urbanflow_final_lakeflow_dev.quarantine_station_status",
+      "expectation": "has_failure_reason",
+      "passed_records": "0",
+      "failed_records": "0"
+     },
+     {
+      "dataset": "workspace.urbanflow_final_lakeflow_dev.silver_station_status",
+      "expectation": "bikes_not_negative",
+      "passed_records": "40",
+      "failed_records": "0"
+     },
+     {
+      "dataset": "workspace.urbanflow_final_lakeflow_dev.silver_station_status",
+      "expectation": "docks_not_negative",
+      "passed_records": "40",
+      "failed_records": "0"
+     },
+     {
+      "dataset": "workspace.urbanflow_final_lakeflow_dev.silver_station_status",
+      "expectation": "event_id_present",
+      "passed_records": "40",
+      "failed_records": "0"
+     },
+     {
+      "dataset": "workspace.urbanflow_final_lakeflow_dev.silver_station_status",
+      "expectation": "observed_at_present",
+      "passed_records": "40",
+      "failed_records": "0"
+     },
+     {
+      "dataset": "workspace.urbanflow_final_lakeflow_dev.silver_station_status",
+      "expectation": "out_of_service_is_not_actionable",
+      "passed_records": "40",
+      "failed_records": "0"
+     },
+     {
+      "dataset": "workspace.urbanflow_final_lakeflow_dev.silver_station_status",
+      "expectation": "station_id_present",
+      "passed_records": "40",
+      "failed_records": "0"
+     },
+     {
+      "dataset": "workspace.urbanflow_final_lakeflow_dev.silver_station_status",
+      "expectation": "status_is_known",
+      "passed_records": "40",
+      "failed_records": "0"
+     }
+    ]
+   },
+   "quality_monthly": {
+    "seconds": 2.2,
+    "state": "StatementState.SUCCEEDED",
+    "columns": [
+     "execution_id",
+     "landed_rows",
+     "valid_trips",
+     "quarantined_trips",
+     "duplicate_trips",
+     "reconciles",
+     "matched_trips",
+     "reference_coverage_percent",
+     "reading_note"
+    ],
+    "row_count": 1,
+    "rows": [
+     {
+      "execution_id": "urbanflow-final-hist-devsample40",
+      "landed_rows": "40",
+      "valid_trips": "40",
+      "quarantined_trips": "0",
+      "duplicate_trips": "0",
+      "reconciles": "true",
+      "matched_trips": "40",
+      "reference_coverage_percent": "100.00",
+      "reading_note": "coverage of the 40-station development reference dimension, not data quality"
+     }
+    ]
+   },
+   "maintenance_status": {
+    "seconds": 1.0,
+    "state": "StatementState.SUCCEEDED",
+    "columns": [
+     "status",
+     "severity",
+     "tickets",
+     "last_updated_at",
+     "data_scope"
+    ],
+    "row_count": 5,
+    "rows": [
+     {
+      "status": "CLOSED",
+      "severity": "HIGH",
+      "tickets": "1",
+      "last_updated_at": "2026-10-12T09:00:00.000Z",
+      "data_scope": "FICTIONAL, SYNTHETIC MAINTENANCE DATA"
+     },
+     {
+      "status": "IN_PROGRESS",
+      "severity": "MEDIUM",
+      "tickets": "1",
+      "last_updated_at": "2026-10-12T09:05:00.000Z",
+      "data_scope": "FICTIONAL, SYNTHETIC MAINTENANCE DATA"
+     },
+     {
+      "status": "OPEN",
+      "severity": "HIGH",
+      "tickets": "1",
+      "last_updated_at": "2026-10-12T07:15:00.000Z",
+      "data_scope": "FICTIONAL, SYNTHETIC MAINTENANCE DATA"
+     },
+     {
+      "status": "OPEN",
+      "severity": "LOW",
+      "tickets": "1",
+      "last_updated_at": "2026-10-12T07:20:00.000Z",
+      "data_scope": "FICTIONAL, SYNTHETIC MAINTENANCE DATA"
+     },
+     {
+      "status": "OPEN",
+      "severity": "MEDIUM",
+      "tickets": "1",
+      "last_updated_at": "2026-10-12T09:10:00.000Z",
+      "data_scope": "FICTIONAL, SYNTHETIC MAINTENANCE DATA"
+     }
+    ]
+   },
+   "maintenance_conflicts": {
+    "seconds": 2.1,
+    "state": "StatementState.SUCCEEDED",
+    "columns": [
+     "maintenance_id",
+     "station_name",
+     "maintenance_status",
+     "maintenance_severity",
+     "maintenance_updated_at",
+     "availability_status",
+     "priority_score",
+     "action",
+     "dispatch_note"
+    ],
+    "row_count": 4,
+    "rows": [
+     {
+      "maintenance_id": "MT-1004",
+      "station_name": "Church Ave & Story St",
+      "maintenance_status": "OPEN",
+      "maintenance_severity": "HIGH",
+      "maintenance_updated_at": "2026-10-12T07:15:00.000Z",
+      "availability_status": "LOW_DOCKS",
+      "priority_score": "2",
+      "action": "COLLECT_BIKES",
+      "dispatch_note": "HOLD - dispatcher decision before sending a van"
+     },
+     {
+      "maintenance_id": "MT-1002",
+      "station_name": "E 54 St & 1 Ave",
+      "maintenance_status": "IN_PROGRESS",
+      "maintenance_severity": "MEDIUM",
+      "maintenance_updated_at": "2026-10-12T09:05:00.000Z",
+      "availability_status": "AVAILABLE",
+      "priority_score": null,
+      "action": null,
+      "dispatch_note": "no rebalancing action pending"
+     },
+     {
+      "maintenance_id": "MT-1006",
+      "station_name": "1 Ave & E 110 St",
+      "maintenance_status": "OPEN",
+      "maintenance_severity": "MEDIUM",
+      "maintenance_updated_at": "2026-10-12T09:10:00.000Z",
+      "availability_status": "AVAILABLE",
+      "priority_score": null,
+      "action": null,
+      "dispatch_note": "no rebalancing action pending"
+     },
+     {
+      "maintenance_id": "MT-1005",
+      "station_name": "41 Ave & 67 St",
+      "maintenance_status": "OPEN",
+      "maintenance_severity": "LOW",
+      "maintenance_updated_at": "2026-10-12T07:20:00.000Z",
+      "availability_status": "AVAILABLE",
+      "priority_score": null,
+      "action": null,
+      "dispatch_note": "no rebalancing action pending"
+     }
+    ]
+   },
+   "maintenance_cdc": {
+    "seconds": 1.4,
+    "state": "StatementState.SUCCEEDED",
+    "columns": [
+     "commit_version",
+     "change_type",
+     "events",
+     "committed_at"
+    ],
+    "row_count": 5,
+    "rows": [
+     {
+      "commit_version": "1",
+      "change_type": "insert",
+      "events": "5",
+      "committed_at": "2026-10-12T16:51:52.000Z"
+     },
+     {
+      "commit_version": "3",
+      "change_type": "delete",
+      "events": "1",
+      "committed_at": "2026-10-12T22:07:27.000Z"
+     },
+     {
+      "commit_version": "3",
+      "change_type": "insert",
+      "events": "1",
+      "committed_at": "2026-10-12T22:07:27.000Z"
+     },
+     {
+      "commit_version": "3",
+      "change_type": "update_postimage",
+      "events": "2",
+      "committed_at": "2026-10-12T22:07:27.000Z"
+     },
+     {
+      "commit_version": "3",
+      "change_type": "update_preimage",
+      "events": "2",
+      "committed_at": "2026-10-12T22:07:27.000Z"
+     }
+    ]
+   },
+   "maintenance_checkpoint": {
+    "seconds": 2.3,
+    "state": "StatementState.SUCCEEDED",
+    "columns": [
+     "pipeline_key",
+     "processed_version",
+     "processed_at",
+     "last_data_change_version",
+     "history_events"
+    ],
+    "row_count": 1,
+    "rows": [
+     {
+      "pipeline_key": "station_maintenance",
+      "processed_version": "4",
+      "processed_at": "2026-10-12T22:48:35.201Z",
+      "last_data_change_version": "3",
+      "history_events": "11"
+     }
+    ]
+   },
+   "assistant_evaluation": {
+    "seconds": 1.3,
+    "state": "StatementState.SUCCEEDED",
+    "columns": [
+     "variant",
+     "questions",
+     "answer_correctness",
+     "retrieval_recall",
+     "source_coverage",
+     "errors",
+     "evaluated_at"
+    ],
+    "row_count": 2,
+    "rows": [
+     {
+      "variant": "live-baseline",
+      "questions": "18",
+      "answer_correctness": "0.148",
+      "retrieval_recall": null,
+      "source_coverage": null,
+      "errors": "1",
+      "evaluated_at": "2026-10-13T00:34:02.266Z"
+     },
+     {
+      "variant": "live-rag",
+      "questions": "18",
+      "answer_correctness": "0.685",
+      "retrieval_recall": "1.0",
+      "source_coverage": "0.938",
+      "errors": "0",
+      "evaluated_at": "2026-10-13T00:34:02.266Z"
+     }
+    ]
+   }
+  },
+  "widget_field_problems": [],
+  "succeeded": 25,
+  "total": 25,
+  "window_seconds": 39.6
+ },
+ "layout_check": {
+  "Current Operations": {
+   "widgets": 12,
+   "kinds": {
+    "text vNone": 2,
+    "counter v2": 7,
+    "bar v3": 2,
+    "table v2": 1
+   },
+   "issues": [
+    "ops_title: heading and body stored as one line (242 chars)"
+   ]
+  },
+  "Historical Demand": {
+   "widgets": 11,
+   "kinds": {
+    "text vNone": 1,
+    "counter v2": 4,
+    "bar v3": 4,
+    "line v3": 1,
+    "table v2": 1
+   },
+   "issues": [
+    "demand_title: heading and body stored as one line (335 chars)"
+   ]
+  },
+  "Weather & Demand": {
+   "widgets": 12,
+   "kinds": {
+    "text vNone": 1,
+    "counter v2": 4,
+    "line v3": 2,
+    "scatter v3": 3,
+    "bar v3": 2
+   },
+   "issues": [
+    "weather_title: heading and body stored as one line (358 chars)"
+   ]
+  },
+  "Data Quality & Reliability": {
+   "widgets": 11,
+   "kinds": {
+    "text vNone": 2,
+    "counter v2": 6,
+    "bar v3": 1,
+    "table v2": 2
+   },
+   "issues": [
+    "quality_title: heading and body stored as one line (238 chars)"
+   ]
+  },
+  "Maintenance & Assistant": {
+   "widgets": 6,
+   "kinds": {
+    "text vNone": 1,
+    "bar v3": 1,
+    "table v2": 4
+   },
+   "issues": [
+    "maintenance_title: heading and body stored as one line (316 chars)"
+   ]
+  }
+ },
+ "published": false,
+ "rendering_defect": "Lakeview stores multilineTextboxSpec.lines concatenated without separators; the five page titles render heading and body as one line. Fixed offline (build_dashboard.text adds blank-line breaks, regression test); not deployed (one deployment was approved)."
+}

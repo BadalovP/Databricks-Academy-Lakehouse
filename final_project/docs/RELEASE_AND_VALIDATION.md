@@ -2,7 +2,7 @@
 
 [← Main README](../README.md) · [Coverage matrix](LABS_1_TO_12_COVERAGE.md) · [Cost and performance](COST_AND_PERFORMANCE.md)
 
-**Status:** CI runs on every pull request. **Steps 1–5 have passed in Personal DEV**:
+**Status:** CI runs on every pull request. **Steps 1–8 have passed in Personal DEV.** On 2026-10-13 that added: the assistant (ingest, AI Search, live evaluation, endpoint deleted), the dashboard queries and the governance demo. Before that, steps 1–5 passed:
 - deploy;
 - platform sample run;
 - strict idempotency;
@@ -252,6 +252,12 @@ The optional Zerobus path and the governance demo each need their own approval. 
 | 2026-10-12 | `personal_dev` | 4C. Code-only redeploy of `8220aaa` (CDC checkpoint = newest scanned and reconciled version) | Platform Job unchanged | PASS: plan and post-plan all `skip`; deployed notebook verified |
 | 2026-10-12 | `personal_dev` | **4C. CDC `batch_003`: PASS** | Run `500336374896739` (CDC only, 220 s) | `source_merged: false`; scanned range [4, 4] (the `OPTIMIZE`) with no CDF rows, so no history or Silver MERGE; history 11; Silver 5 = `batch_003`; reconciliation 0; checkpoint **3 → 4**; `last_data_change_version` 3. Only the checkpoint table committed. [Evidence](../evidence/2026-10-12_personal_dev_step4_batch003.md) |
 | 2026-10-12 | `personal_dev` | **5. Lakeflow: PASS** | Run `441981394008476`; update `a26b4385-f0b8-454a-9aad-d9a3424151c7` | Update COMPLETED in 129 s. Bronze 40, Silver 40, quarantine 0, duplicates 0, dimension 40, fact 40, summary 40, shortages 13, priorities 13. 22 expectations, 0 failed records; no event-log errors or warnings. Row-for-row parity with the imperative tables. Main schema unchanged; pipeline idle. [Evidence](../evidence/2026-10-12_personal_dev_step5_lakeflow.md) |
-| — | — | 6–9 | — | No live run yet (each step needs its own approval) |
+| 2026-10-13 | `personal_dev` | **E1. Assistant ingest: PASS** | RAG Job run `870039412110159` | 8 documents, 30 chunks; IDs, hashes and section references equal the corpus; CDF on chunks; evaluation and monitoring tables empty; no AI Search created. [Evidence](../evidence/2026-10-13_personal_dev_e1_rag_ingestion.md) |
+| 2026-10-13 | `personal_dev` | **E2–E4. AI Search + smoke test: PASS** | Run `12773923439415`; endpoint created 00:09:15.720 UTC | A temporary cleanup guard Job (deletes at 150 min, tested) armed before creation. Index ready 30/30 at 00:27:37. q01 grounded and cited (keyword metric 0.0, a lexical-metric artefact); q17 refused. No raw text in monitoring. [Evidence](../evidence/2026-10-13_personal_dev_e2_e4_ai_search_smoke.md) |
+| 2026-10-13 | `personal_dev` | **E5. Live evaluation: PASS** | Run `712590508231976`, evaluation `d9e264ca…` | 36 chat calls. RAG correctness 0.685 vs baseline 0.148; recall 1.0; citation precision 0.967; coverage 0.938; refusal decisions 18/18 vs 13/18; 0 RAG errors vs 1 truncated baseline answer; median 1.5 s vs 2.6 s. Manual review: 0 unsupported RAG claims. [Evidence](../evidence/2026-10-13_personal_dev_e5_rag_evaluation.md) |
+| 2026-10-13 | `personal_dev` | **E6. Endpoint cleanup: PASS** | — | Index and endpoint deleted at 00:34:59 UTC (lifetime 25.7 min); `list_endpoints()` empty; tables intact; guard Job deleted. [Evidence](../evidence/2026-10-13_personal_dev_e6_ai_search_cleanup.md) |
+| 2026-10-13 | `personal_dev` | **D. Dashboard: PASS, one rendering defect** | Deploy of `d93f2f4`; dashboard `01f1c647…` | 1 update, post-plan all `skip`; 25/25 datasets ran (40 s), 0 widget-field mismatches; expected values present. Defect: page titles render merged (Lakeview concatenates text lines); fixed in code, redeploy needs approval; not published. [Evidence](../evidence/2026-10-13_personal_dev_dashboard_validation.md) |
+| 2026-10-13 | `personal_dev` | **F. Governance demo: PASS** | Isolated schema, 49 s | Filter: 0 → 28 → 40 rows by mapping; coordinates rounded; ride IDs hashed; policy metadata observed; rolled back; schema dropped; no GRANT; 0 masks/filters in the catalog afterwards. One identity only. [Evidence](../evidence/2026-10-13_personal_dev_governance_demo.md) |
+| — | — | 9 (PROD) | — | No live run yet (each step needs its own approval) |
 
 When a step passes, record it here. Add the notebook to `VALIDATED_LIVE_CLAIMS` in `tests/test_notebook_documentation.py` and update its **Actual validation** line with the run ID. Update the coverage matrix status to **Validated live**.

@@ -4,7 +4,11 @@
 
 **Status:** the dashboards are generated and tested offline. The `personal_dev` dashboard `01f1c647728e1ceeb2b5bd10a8700793` received the 12-column `GRID_V1` layout in step 4A. It has not been published.
 
-The maintenance review on 2026-10-13 changed three datasets after that deploy (below), so a dashboard-only redeploy comes first in approval item D. **No dataset query has been run against the live tables and no rendering has been checked**, so the dashboard is not validated live.
+**Live validation (2026-10-13):**
+- The maintenance review was deployed (one update, post-plan all `skip`).
+- **All 25 datasets of the deployed definition ran without error** in 40 seconds on the Starter warehouse, and every widget field matches its dataset.
+- The expected values appear: 4 open tickets with a HOLD for MT-1004, checkpoint 4 / last data change 3 / 11 events, 22 Lakeflow expectations with 0 failures, and the live assistant evaluation ([evidence](../evidence/2026-10-13_personal_dev_dashboard_validation.md)).
+- The structural rendering check found one defect. Lakeview concatenates a text widget's lines, so the page titles merged with their explanations. The generator now adds blank-line breaks, with a regression test. That fix is **not deployed yet**, and the dashboard is **not published**.
 
 ## How it is built
 
@@ -57,7 +61,7 @@ The CDC checkpoint table shows `processed_version` (the newest scanned and recon
 |---|---|
 | Maintenance, CDC | Live since step 4 (5 tickets, 11 events) |
 | `quality_lakeflow` | Live since step 5 (update `a26b4385`) |
-| `assistant_evaluation` | `rag_evaluation_results` does not exist until the assistant Job's first live evaluation. Until then the widget shows a "table not found" error, not an empty state. A dashboard query cannot test whether a table exists. The assistant's ingest step (approval item E, step 1) creates it empty with its own DDL (`urbanflow.rag.delta_store`), after which the widget shows an empty table. Item D's live check therefore runs after that ingest. |
+| `assistant_evaluation` | Live since E5: the latest evaluation, baseline vs RAG. Before E1, the table did not exist and the widget would have shown "table not found". The ingest creates it empty, and an empty table then renders an empty state. |
 
 ## Offline SQL verification
 

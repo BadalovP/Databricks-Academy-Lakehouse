@@ -10,7 +10,7 @@
 # MAGIC
 # MAGIC **Academy labs:** Lab 12 (RAG evaluation, monitoring), Lab 7 (quality checks as gates), Lab 9 (bounded, planned API calls).
 # MAGIC
-# MAGIC **Actual validation:** The offline fixture evaluation runs in the unit tests (`tests/test_rag_domain.py`, `tests/test_rag_evaluation.py`); in the Final Project this notebook has not been run in a workspace yet, so no live scores exist.
+# MAGIC **Actual validation:** Validated live in Personal DEV on 2026-10-13 (Final Project run 712590508231976, evaluation d9e264ca): 18 questions, baseline and RAG on `databricks-gpt-oss-20b`. RAG answer correctness 0.685 vs 0.148 (a lexical keyword metric), retrieval recall 1.0, citation precision 0.967, refusal decisions 18 of 18, 0 RAG errors. A two-question smoke test ran first (run 12773923439415). The offline fixture evaluation runs in the unit tests.
 # MAGIC
 # MAGIC - `run_live_inference=false` (default): deterministic offline fixture only. No charges.
 # MAGIC - `run_live_inference=true`: the same chat model answers each question twice - once without context (baseline) and once with AI Search retrieval (RAG). With `allow_table_writes=true` the scores go to `evaluation_results` and redacted query events to `query_monitoring`.

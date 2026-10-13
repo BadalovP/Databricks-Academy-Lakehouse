@@ -1,0 +1,444 @@
+{
+ "e2_watch": {
+  "endpoint_creation_timestamp_ms": 1791850155720,
+  "endpoint_events": [
+   {
+    "creation_timestamp_ms": 1791850155720,
+    "observed_at": "2026-10-13T00:09:26.655233+00:00",
+    "state": "EndpointStatusState.ONLINE"
+   }
+  ],
+  "run_id": 12773923439415,
+  "run_state": {
+   "life_cycle": "TERMINATED",
+   "message": "",
+   "result": "RunResultState.SUCCESS"
+  }
+ },
+ "e4_review_records": [
+  {
+   "baseline": "not_run",
+   "category": "rebalancing",
+   "expected_sources": [
+    "01_station_rebalancing.md"
+   ],
+   "question": "How is a station selected for bike delivery?",
+   "question_id": "q01",
+   "rag": {
+    "answer": "A station is selected for bike delivery when its available bikes fall to or below the low\u2011bike threshold, at which point it enters the rebalancing queue. Dispatchers then prioritize stations by the sum of severity points, deficit points, and station\u2011size points, choosing the highest\u2011scoring station first while checking nearby stations and current telemetry. If both bikes and docks are critically low, the action is **INSPECT STATION** rather than an automatic delivery. Out\u2011of\u2011service stations are excluded from this process. [4][3]",
+    "citations": {
+     "3": "01_station_rebalancing.md#priority-and-dispatch",
+     "4": "01_station_rebalancing.md#trigger-conditions"
+    },
+    "diagnostics": {
+     "answer_chars": 535,
+     "completion_tokens": 464,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "context_chars": 1681,
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 2032,
+     "max_tokens": 1800,
+     "preamble_dropped": 0,
+     "prompt_tokens": 715,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 1534,
+     "sources": 4,
+     "sources_in_context": 4,
+     "total_tokens": 1179,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 3567,
+    "score": "{\"answer_completeness\": 0.0, \"answer_correctness\": 0.0, \"category\": \"rebalancing\", \"citation_precision\": 1.0, \"diagnostics\": {\"answer_chars\": 535, \"completion_tokens\": 464, \"content_blocks\": [\"reasoning\", \"text\"], \"context_chars\": 1681, \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 2032, \"max_tokens\": 1800, \"preamble_dropped\": 0, \"prompt_tokens\": 715, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 1534, \"sources\": 4, \"sources_in_context\": 4, \"total_tokens\": 1179, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"none\", \"retrieval_recall\": 1.0, \"review_flags\": [], \"source_coverage\": 1.0, \"uncited_sentences\": 4, \"weak_citations\": 0}"
+   },
+   "retrieved": [
+    {
+     "chunk_id": "chk_e5202c5faa62a2d0c7c0752c",
+     "rank": 1,
+     "score": 0.9766,
+     "section": "02_station_maintenance.md#intake-and-safety",
+     "source": "02_station_maintenance.md"
+    },
+    {
+     "chunk_id": "chk_c162329a93c4be83622728ab",
+     "rank": 2,
+     "score": 0.9683,
+     "section": "07_kpi_definitions.md#availability",
+     "source": "07_kpi_definitions.md"
+    },
+    {
+     "chunk_id": "chk_83e5c9f4be5b55453ca4d6bd",
+     "rank": 3,
+     "score": 0.9541,
+     "section": "01_station_rebalancing.md#priority-and-dispatch",
+     "source": "01_station_rebalancing.md"
+    },
+    {
+     "chunk_id": "chk_c6ae884602a2e7aaed6f6141",
+     "rank": 4,
+     "score": 0.9485,
+     "section": "01_station_rebalancing.md#trigger-conditions",
+     "source": "01_station_rebalancing.md"
+    }
+   ]
+  },
+  {
+   "baseline": "not_run",
+   "category": "unanswerable",
+   "expected_sources": [],
+   "question": "What is the mayor's private mobile phone number?",
+   "question_id": "q17",
+   "rag": {
+    "answer": "I\u2019m sorry, but I can\u2019t help with that.",
+    "citations": {},
+    "diagnostics": {
+     "answer_chars": 38,
+     "completion_tokens": 102,
+     "content_blocks": [
+      "reasoning",
+      "text"
+     ],
+     "context_chars": 1004,
+     "empty_response": false,
+     "finish_reason": "stop",
+     "generation_ms": 872,
+     "max_tokens": 1800,
+     "preamble_dropped": 1,
+     "prompt_tokens": 568,
+     "reasoning_tokens": "unavailable",
+     "retrieval_ms": 417,
+     "sources": 4,
+     "sources_in_context": 3,
+     "total_tokens": 670,
+     "truncated": false
+    },
+    "error": null,
+    "latency_ms": 1290,
+    "score": "{\"answer_completeness\": 1.0, \"answer_correctness\": 1.0, \"category\": \"unanswerable\", \"citation_precision\": null, \"diagnostics\": {\"answer_chars\": 38, \"completion_tokens\": 102, \"content_blocks\": [\"reasoning\", \"text\"], \"context_chars\": 1004, \"empty_response\": false, \"finish_reason\": \"stop\", \"generation_ms\": 872, \"max_tokens\": 1800, \"preamble_dropped\": 1, \"prompt_tokens\": 568, \"reasoning_tokens\": \"unavailable\", \"retrieval_ms\": 417, \"sources\": 4, \"sources_in_context\": 3, \"total_tokens\": 670, \"truncated\": false}, \"invalid_citations\": 0, \"refusal\": \"clean\", \"retrieval_recall\": null, \"review_flags\": [], \"source_coverage\": null, \"uncited_sentences\": 0, \"weak_citations\": 0}"
+   },
+   "retrieved": [
+    {
+     "chunk_id": "chk_244a8c09ba762798d1c0df43",
+     "rank": 1,
+     "score": 0.934,
+     "section": "02_station_maintenance.md#closure-evidence",
+     "source": "02_station_maintenance.md"
+    },
+    {
+     "chunk_id": "chk_c74c2c107ef03b9bb10a1e29",
+     "rank": 2,
+     "score": 0.9215,
+     "section": "01_station_rebalancing.md#completion",
+     "source": "01_station_rebalancing.md"
+    },
+    {
+     "chunk_id": "chk_ebdbec917494bddcd7e60fcf",
+     "rank": 3,
+     "score": 0.9042,
+     "section": "04_data_quality.md#contract-failures",
+     "source": "04_data_quality.md"
+    }
+   ]
+  }
+ ],
+ "end_time_ms": 1791851290922,
+ "job_id": 887464717518046,
+ "job_parameters": [
+  {
+   "default": "https://dbc-1750318a-76a9.cloud.databricks.com",
+   "name": "expected_host"
+  },
+  {
+   "default": "workspace",
+   "name": "catalog"
+  },
+  {
+   "default": "urbanflow_final_dev",
+   "name": "schema"
+  },
+  {
+   "default": "urbanflow-final-dev",
+   "name": "ai_search_endpoint"
+  },
+  {
+   "default": "",
+   "name": "ai_search_index"
+  },
+  {
+   "default": "databricks-gte-large-en",
+   "name": "embedding_endpoint"
+  },
+  {
+   "default": "databricks-gpt-oss-20b",
+   "name": "chat_endpoint"
+  },
+  {
+   "default": "18",
+   "name": "eval_question_limit"
+  },
+  {
+   "default": "",
+   "name": "eval_question_ids",
+   "value": "q01,q17"
+  },
+  {
+   "default": "true",
+   "name": "eval_include_baseline",
+   "value": "false"
+  },
+  {
+   "default": "false",
+   "name": "allow_table_writes",
+   "value": "true"
+  },
+  {
+   "default": "false",
+   "name": "allow_ai_search_mutation",
+   "value": "true"
+  },
+  {
+   "default": "false",
+   "name": "run_live_inference",
+   "value": "true"
+  }
+ ],
+ "phase": "E2_E4_ai_search_and_smoke",
+ "run_id": 12773923439415,
+ "run_state": {
+  "life_cycle_state": "TERMINATED",
+  "result_state": "SUCCESS",
+  "state_message": "",
+  "user_cancelled_or_timedout": false
+ },
+ "start_time_ms": 1791850093764,
+ "task_results": {
+  "evaluate_rag": {
+   "baseline": "not_run",
+   "by_category": {
+    "baseline": "not_run",
+    "rag": {
+     "rebalancing": {
+      "answer_completeness": 0.0,
+      "answer_completeness_n": 1,
+      "answer_correctness": 0.0,
+      "answer_correctness_n": 1,
+      "citation_precision": 1.0,
+      "citation_precision_n": 1,
+      "errors": 0,
+      "invalid_citations": 0,
+      "questions": 1,
+      "refusals": {
+       "none": 1
+      },
+      "retrieval_recall": 1.0,
+      "retrieval_recall_n": 1,
+      "review_flags": 0,
+      "source_coverage": 1.0,
+      "source_coverage_n": 1,
+      "uncited_sentences_heuristic": 4,
+      "weak_citations_heuristic": 0
+     },
+     "unanswerable": {
+      "answer_completeness": 1.0,
+      "answer_completeness_n": 1,
+      "answer_correctness": 1.0,
+      "answer_correctness_n": 1,
+      "citation_precision": "not_applicable",
+      "citation_precision_n": 0,
+      "errors": 0,
+      "invalid_citations": 0,
+      "questions": 1,
+      "refusals": {
+       "clean": 1
+      },
+      "retrieval_recall": "not_applicable",
+      "retrieval_recall_n": 0,
+      "review_flags": 0,
+      "source_coverage": "not_applicable",
+      "source_coverage_n": 0,
+      "uncited_sentences_heuristic": 0,
+      "weak_citations_heuristic": 0
+     }
+    }
+   },
+   "chat_endpoint": "databricks-gpt-oss-20b",
+   "evaluation_id": "582a50be-ea28-452f-9b1d-be3f90564b7e",
+   "generation": {
+    "baseline": "not_run",
+    "rag": {
+     "calls": 2,
+     "completion_tokens": 566,
+     "completion_tokens_unavailable": 0,
+     "empty_responses": 0,
+     "errors": [],
+     "finish_reasons": {
+      "stop": 2
+     },
+     "latency_ms_max": 3567,
+     "latency_ms_median": 3567,
+     "prompt_tokens": 1283,
+     "prompt_tokens_unavailable": 0,
+     "reasoning_tokens": "unavailable",
+     "reasoning_tokens_unavailable": 2,
+     "total_tokens": 1849,
+     "total_tokens_unavailable": 0,
+     "truncated": 0
+    }
+   },
+   "index": "workspace.urbanflow_final_dev.rag_document_chunks_index",
+   "live_call_plan": {
+    "ai_search_queries": 6,
+    "baseline_chat_calls": 0,
+    "chat_calls": 2,
+    "questions": 2,
+    "rag_chat_calls": 2
+   },
+   "max_tokens": 1800,
+   "mode": "live",
+   "question_ids": [
+    "q01",
+    "q17"
+   ],
+   "rag": {
+    "answer_completeness": 0.5,
+    "answer_completeness_n": 2,
+    "answer_correctness": 0.5,
+    "answer_correctness_n": 2,
+    "citation_precision": 1.0,
+    "citation_precision_n": 1,
+    "errors": 0,
+    "invalid_citations": 0,
+    "questions": 2,
+    "refusals": {
+     "clean": 1,
+     "none": 1
+    },
+    "retrieval_recall": 1.0,
+    "retrieval_recall_n": 1,
+    "review_flags": 0,
+    "source_coverage": 1.0,
+    "source_coverage_n": 1,
+    "uncited_sentences_heuristic": 4,
+    "weak_citations_heuristic": 0
+   },
+   "rows_written": {
+    "evaluation_results": 2,
+    "query_monitoring": 2
+   },
+   "workspace": "https://dbc-1750318a-76a9.cloud.databricks.com"
+  },
+  "ingest_knowledge_base": {
+   "chunks": {
+    "change_data_feed": true,
+    "expected_rows": 30,
+    "fingerprint_matches": true,
+    "merge": {
+     "skipped": "table already matches the snapshot",
+     "version": 1
+    },
+    "table": {
+     "distinct_keys": 30,
+     "fingerprint": "8f73a4e6ae120d9c496d53634da62282136091fe00831cedebbcc3850c621487",
+     "max_ingested_at": "2026-10-13 00:01:00.257425",
+     "null_ingested_at": 0,
+     "row_count": 30
+    }
+   },
+   "documents": {
+    "expected_rows": 8,
+    "fingerprint_matches": true,
+    "merge": {
+     "skipped": "table already matches the snapshot",
+     "version": 1
+    },
+    "table": {
+     "distinct_keys": 8,
+     "fingerprint": "e9118115a0e2ad0d05fa3703dbafb35a44ad5764bd57465de1d6f40f63cdbc7d",
+     "max_ingested_at": "2026-10-13 00:00:46.957642",
+     "null_ingested_at": 0,
+     "row_count": 8
+    }
+   },
+   "status": "PASS"
+  },
+  "prepare_vector_search": {
+   "endpoint": "urbanflow-final-dev",
+   "endpoint_action": "created endpoint",
+   "index": "workspace.urbanflow_final_dev.rag_document_chunks_index",
+   "index_action": "created index (initial sync starts automatically)",
+   "source_rows": 30,
+   "status": "READY",
+   "table_versions_after": {
+    "chunks": 1,
+    "documents": 1,
+    "evaluation_results": 0,
+    "monitoring": 0
+   },
+   "verification": {
+    "attempts": 36,
+    "configuration": {
+     "embedding_model_endpoint_name": {
+      "actual": "databricks-gte-large-en",
+      "expected": "databricks-gte-large-en",
+      "matches": true
+     },
+     "embedding_source_column": {
+      "actual": "content",
+      "expected": "content",
+      "matches": true
+     },
+     "endpoint_name": {
+      "actual": "urbanflow-final-dev",
+      "expected": "urbanflow-final-dev",
+      "matches": true
+     },
+     "index_type": {
+      "actual": "DELTA_SYNC",
+      "expected": "DELTA_SYNC",
+      "matches": true
+     },
+     "pipeline_type": {
+      "actual": "TRIGGERED",
+      "expected": "TRIGGERED",
+      "matches": true
+     },
+     "primary_key": {
+      "actual": "chunk_id",
+      "expected": "chunk_id",
+      "matches": true
+     },
+     "source_table": {
+      "actual": "workspace.urbanflow_final_dev.rag_document_chunks",
+      "expected": "workspace.urbanflow_final_dev.rag_document_chunks",
+      "matches": true
+     }
+    },
+    "detailed_state": "ONLINE_TRIGGERED_UPDATE",
+    "endpoint": {
+     "endpoint_type": "STANDARD",
+     "num_indexes": 1,
+     "state": "ONLINE"
+    },
+    "expected_rows": 30,
+    "indexed_row_count": 30,
+    "message": "Index is online but is currently is in the process of re-syncing initial data. Check latest status: https://dbc-1750318a-76a9.cloud.databricks.com/explore/data/workspace/urbanflow_final_dev/rag_document_chunks_index",
+    "ready": true,
+    "waited_seconds": 1088.8
+   }
+  }
+ },
+ "task_seconds": {
+  "evaluate_rag": 33,
+  "ingest_knowledge_base": 43,
+  "prepare_vector_search": 1120
+ },
+ "tasks": {
+  "evaluate_rag": "SUCCESS",
+  "ingest_knowledge_base": "SUCCESS",
+  "prepare_vector_search": "SUCCESS"
+ }
+}

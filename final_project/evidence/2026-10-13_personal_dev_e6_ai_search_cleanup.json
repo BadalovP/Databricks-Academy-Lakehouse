@@ -1,0 +1,71 @@
+{
+ "phase": "E6 mandatory AI Search cleanup",
+ "cleanup": {
+  "started": "2026-10-13T00:34:40.513717+00:00",
+  "endpoint_before": {
+   "state": "EndpointStatusState.ONLINE",
+   "created_ms": 1791850155720,
+   "num_indexes": 1
+  },
+  "index_delete": "requested",
+  "index_gone_after_polls": 1,
+  "endpoint_delete": "requested",
+  "endpoint_delete_requested_at": "2026-10-13T00:34:58.872570+00:00",
+  "endpoint_gone_after_polls": 0,
+  "endpoint_gone_at": "2026-10-13T00:34:59.076834+00:00",
+  "endpoints_remaining": []
+ },
+ "independent_verification": {
+  "endpoints": [],
+  "get_endpoint": "NotFound",
+  "get_index": "ResourceDoesNotExist",
+  "active_runs": [],
+  "tables": [
+   {
+    "documents": "8",
+    "chunks": "30",
+    "evaluation_rows": "38",
+    "evaluations": "2",
+    "monitoring_rows": "20"
+   }
+  ],
+  "evaluations": [
+   {
+    "evaluation_id": "582a50be-ea28-452f-9b1d-be3f90564b7e",
+    "variant": "live-rag",
+    "n": "2",
+    "at": "2026-10-13T00:28:02.425Z"
+   },
+   {
+    "evaluation_id": "d9e264ca-8091-4882-8ab4-e4ccd41cf763",
+    "variant": "live-baseline",
+    "n": "18",
+    "at": "2026-10-13T00:34:02.266Z"
+   },
+   {
+    "evaluation_id": "d9e264ca-8091-4882-8ab4-e4ccd41cf763",
+    "variant": "live-rag",
+    "n": "18",
+    "at": "2026-10-13T00:34:02.266Z"
+   }
+  ]
+ },
+ "guard": {
+  "job_id": 331156530436117,
+  "schedule": "0 0/30 * * * ? UTC",
+  "expires_at_ms": 1791864235987,
+  "test_runs": {
+   "599932542123256": "FAILED (IPython reported SystemExit(0); logic correct, fixed)",
+   "247193340227492": "SUCCESS, decision none (endpoint absent)"
+  },
+  "scheduled_run": {
+   "402209363218717": "SUCCESS (scheduled, about 00:30 UTC, endpoint 21 minutes old)"
+  },
+  "deleted": "job and /Workspace/Users/<owner>/.urbanflow_final_guard deleted after verified cleanup; both ResourceDoesNotExist"
+ },
+ "endpoint_lifetime": {
+  "created_utc": "2026-10-13T00:09:15.720Z",
+  "deleted_utc": "2026-10-13T00:34:59Z",
+  "minutes": 25.7
+ }
+}

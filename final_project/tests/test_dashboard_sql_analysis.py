@@ -192,3 +192,22 @@ def test_the_checkpoint_dataset_separates_processed_and_last_data_change_version
     finally:
         for table in MAINTENANCE_TABLES:
             spark.sql(f"TRUNCATE TABLE spark_catalog.urbanflow_final_dev.{table}")
+
+
+def test_text_widget_lines_keep_their_breaks_when_lakeview_concatenates_them() -> None:
+    """Regression (deployed 2026-10-13): Lakeview joined title and body into one heading line."""
+    NL = chr(10)
+    definition = build_dashboard.build("personal_dev")
+    texts = [
+        item["widget"]["multilineTextboxSpec"]["lines"]
+        for page in definition["pages"]
+        for item in page["layout"]
+        if "multilineTextboxSpec" in item["widget"]
+    ]
+    assert len(texts) >= 5
+    for lines in texts:
+        assert all(line.endswith(NL * 2) for line in lines[:-1]), lines[:2]
+        rendered = "".join(lines)
+        if rendered.startswith("## "):
+            heading = rendered.split(NL, 1)[0]
+            assert "**" not in heading, heading  # the bold body is no longer part of the heading

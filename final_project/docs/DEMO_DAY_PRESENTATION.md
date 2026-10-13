@@ -17,7 +17,14 @@ A 25-minute talk: 20 minutes of presentation and demo, then 5 minutes of questio
   - then an automatic `OPTIMIZE` made version 4; the corrected design moved the checkpoint 3 → 4 in `batch_003` run `500336374896739` with no events;
 - step 5 Lakeflow run `441981394008476`: update `a26b4385` COMPLETED; 22 expectations with 0 failed records; row-for-row parity with the imperative tables.
 
-Not yet live (shown offline, and the talk says so unless it has run by then): the dashboard on live data, the assistant with AI Search, the governance demo, PROD, and the CD workflow itself.
+- 2026-10-13, assistant:
+  - ingest run `870039412110159`: 8 documents, 30 chunks;
+  - AI Search index ready with 30/30 rows;
+  - live evaluation run `712590508231976`: RAG correctness 0.685 vs baseline 0.148, recall 1.0, citation precision 0.967, refusal decisions 18/18, 0 RAG errors;
+  - endpoint deleted after 25.7 minutes, guarded by a scheduled cleanup Job.
+- 2026-10-13: all 25 dashboard queries ran. The governance demo filtered, masked, rolled back and dropped its schema.
+
+Not yet live: PROD on the Azure trial, the CD workflow run, the dashboard title fix and publication, Zerobus, and the external Federation source.
 
 ## Run of show
 
@@ -96,7 +103,12 @@ Not yet live (shown offline, and the talk says so unless it has run by then): th
 
 **Then the lesson:** "The Lab 12 design scoped excerpts by the first word of each title. That was right for runbooks named after systems. For our topic documents it dropped the very document that answered, so scoping is now opt-in. On the offline fixture, recall went from 0.625 to 0.938."
 
-**Demo:** `urbanflow-rag ask "What should an operator do when both bikes and docks are critically low?"` (expected: INSPECT STATION, cited to the rebalancing procedure) and `urbanflow-rag evaluate` (offline), or notebook 22 live after approval. **Say clearly:** "Offline numbers test our pipeline. Only the live baseline-versus-RAG run measures the model."
+**Live result (show the E5 evidence table):**
+- "Same model, same 18 questions. With retrieval it answered all 16 answerable questions with citations and refused the 2 it should. Without retrieval it refused 5 it could have answered, and wrote generic text for the rest."
+- "The scores were not tuned after the fact. One answer was right but scored 0 on my keyword metric, because the model wrote 'low‑bike threshold' with a Unicode hyphen. I report that as a metric limitation."
+- "The endpoint lived 26 minutes. A scheduled guard Job would have deleted it at 2.5 hours, even if my laptop had died."
+
+**Demo:** `urbanflow-rag ask "What should an operator do when both bikes and docks are critically low?"` (offline fixture). **Say clearly:** "The offline fixture tests the pipeline; the live run above measured the model." 
 
 ### 8. Zerobus (1 min)
 
@@ -144,7 +156,9 @@ Not yet live (shown offline, and the talk says so unless it has run by then): th
 | Why no Terraform, unlike Lab 08? | Every Final Project object is bundle-managed and no Azure infrastructure is created, so Terraform would add state and permissions without a resource to manage. |
 | Why was the CD workflow never run? | `workflow_dispatch` works only from the default branch, and the environments and identities do not exist yet. Every gate it calls was exercised live by operator releases with the same scripts. |
 | How is DEV kept from touching PROD? | Different cloud, workspace and metastore. Hosts are pinned per target, shared Academy hosts are refused, schemas are per target, and each dashboard is generated for one target only. |
-| Is the governance demo real enforcement? | It applies a real row filter and column masks on isolated copies and rolls them back. With one identity, multi-user enforcement is not demonstrated, and the docs say so. |
+| Is the governance demo real enforcement? | It ran live: the filter showed 0, 28 and then 40 stations as the mapping changed; coordinates were rounded and ride IDs hashed; everything was rolled back and the schema dropped. With one identity, multi-user enforcement is not demonstrated, and the docs say so. |
+| Why is RAG correctness only 0.685? | The metric is a literal keyword match. A manual review found every RAG claim supported by its cited procedure. The scores are reported as computed, with the limitations listed. |
+| What stops a forgotten AI Search endpoint? | A temporary scheduled Job that deletes only that endpoint once it is 150 minutes old, tested before creation and deleted afterwards. The endpoint was actually removed by hand after 25.7 minutes. |
 
 ## Timing variants
 
