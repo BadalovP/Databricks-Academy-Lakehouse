@@ -83,6 +83,7 @@ The CDC comparison uses the change feed itself: event counts per commit version,
 | Active runs | None |
 | Pipeline | Idle |
 | AI Search endpoints | None |
-| Warehouse `d8b8ff9942968cb8` | Existing serverless Small, auto-stop 10 min; no resize |
+| Warehouse `d8b8ff9942968cb8` | Existing serverless Small; no resize. **Auto-stopped at 08:33:28 UTC** after the verification queries |
+| Personal DEV at the same time | Warehouse stopped, no active runs, no AI Search endpoint |
 
 Machine-readable record: [`2026-10-13_azure_prod_step9_deploy_and_sample_run.json`](2026-10-13_azure_prod_step9_deploy_and_sample_run.json).
