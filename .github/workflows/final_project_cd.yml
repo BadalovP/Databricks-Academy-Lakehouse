@@ -14,6 +14,10 @@ name: Final Project · UrbanFlow 2.0 release
 #                  (environment secret DATABRICKS_CLIENT_SECRET)
 #   azure_prod   - native Databricks GitHub OIDC (workload identity federation), no secret
 #
+# Every workspace command runs inside the bundle folder, which has no default target, so each
+# one passes -t "$TARGET" (without it the CLI stops with "please specify target", the cause of
+# the first two plan_only failures on 2026-10-13).
+#
 # Every needs/if pair below is a plain AND-chain: a skipped or failed predecessor stops the
 # chain, and no downstream job uses always() to bypass GitHub's implicit success() check
 # (the Lab 08 lesson: a skipped job silently skipping its dependants).
@@ -174,7 +178,7 @@ jobs:
           set -euo pipefail
           databricks bundle validate -t "$TARGET"
           databricks bundle plan -t "$TARGET" --output json > "$RUNNER_TEMP/evidence/pre-plan.json"
-          databricks jobs list --output json > "$RUNNER_TEMP/pre-jobs.json"
+          databricks jobs list -t "$TARGET" --output json > "$RUNNER_TEMP/pre-jobs.json"
           python scripts/validate_release_plan.py --phase pre --target "$TARGET" --plan "$RUNNER_TEMP/evidence/pre-plan.json" --jobs "$RUNNER_TEMP/pre-jobs.json" > "$RUNNER_TEMP/evidence/pre-result.json"
           cat "$RUNNER_TEMP/evidence/pre-result.json"
           {
@@ -269,7 +273,7 @@ jobs:
         run: |
           set -euo pipefail
           databricks bundle plan -t "$TARGET" --output json > "$RUNNER_TEMP/evidence/pre-plan.json"
-          databricks jobs list --output json > "$RUNNER_TEMP/pre-jobs.json"
+          databricks jobs list -t "$TARGET" --output json > "$RUNNER_TEMP/pre-jobs.json"
           python scripts/validate_release_plan.py --phase pre --target "$TARGET" --plan "$RUNNER_TEMP/evidence/pre-plan.json" --jobs "$RUNNER_TEMP/pre-jobs.json" > "$RUNNER_TEMP/evidence/pre-result.json"
           cat "$RUNNER_TEMP/evidence/pre-result.json"
       - name: Deploy the Final Project bundle
@@ -302,7 +306,7 @@ jobs:
           set -euo pipefail
           token="urbanflow-final-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           python -c 'import json,sys; json.dump({"job_id": int(sys.argv[1]), "idempotency_token": sys.argv[2], "job_parameters": {"run_station_pipeline": "true", "run_historical": "true", "run_weather": "true", "run_federation_cdc": "true"}}, open(sys.argv[3], "w"))' "$JOB_ID" "$token" "$RUNNER_TEMP/run-request.json"
-          databricks jobs run-now --json @"$RUNNER_TEMP/run-request.json" --no-wait --output json > "$RUNNER_TEMP/submitted.json"
+          databricks jobs run-now -t "$TARGET" --json @"$RUNNER_TEMP/run-request.json" --no-wait --output json > "$RUNNER_TEMP/submitted.json"
           run_id=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["run_id"])' "$RUNNER_TEMP/submitted.json")
           # Recorded so the cancellation step below can stop exactly this run.
           echo "PLATFORM_RUN_ID=$run_id" >> "$GITHUB_ENV"
@@ -310,19 +314,19 @@ jobs:
           terminal=false
           # 160 polls x 15 s = 40 minutes, longer than the bounded sample run needs.
           for _ in $(seq 1 160); do
-            databricks jobs get-run "$run_id" --output json > "$RUNNER_TEMP/evidence/run.json"
+            databricks jobs get-run "$run_id" -t "$TARGET" --output json > "$RUNNER_TEMP/evidence/run.json"
             lifecycle=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["state"]["life_cycle_state"])' "$RUNNER_TEMP/evidence/run.json")
             if [[ "$lifecycle" =~ ^(TERMINATED|SKIPPED|INTERNAL_ERROR)$ ]]; then terminal=true; break; fi
             sleep 15
           done
           if [[ "$terminal" != "true" ]]; then
-            databricks jobs cancel-run "$run_id" || true
+            databricks jobs cancel-run "$run_id" -t "$TARGET" || true
             echo "::error::Run $run_id did not finish within 40 minutes and was cancelled."
             exit 1
           fi
           echo "PLATFORM_RUN_ID=" >> "$GITHUB_ENV"
           final_run_id=$(python -c 'import json,sys; d=json.load(open(sys.argv[1])); print(next(t["run_id"] for t in d["tasks"] if t["task_key"]=="validate_medallion"))' "$RUNNER_TEMP/evidence/run.json")
-          databricks jobs get-run-output "$final_run_id" --output json > "$RUNNER_TEMP/evidence/final-output.json"
+          databricks jobs get-run-output "$final_run_id" -t "$TARGET" --output json > "$RUNNER_TEMP/evidence/final-output.json"
           python scripts/validate_job_run.py --run "$RUNNER_TEMP/evidence/run.json" --job-id "$JOB_ID" --final-output "$RUNNER_TEMP/evidence/final-output.json" | tee "$RUNNER_TEMP/evidence/run-validation.txt"
           {
             echo "### Platform run $run_id"
@@ -335,7 +339,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          databricks jobs cancel-run "$PLATFORM_RUN_ID"
+          databricks jobs cancel-run "$PLATFORM_RUN_ID" -t "$TARGET"
           echo "::warning::Release cancelled; platform run $PLATFORM_RUN_ID was cancelled."
       - name: Upload release evidence
         if: always()

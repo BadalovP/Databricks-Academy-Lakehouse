@@ -393,6 +393,15 @@ def test_cd_is_manual_confirmed_approved_and_pinned_per_target() -> None:
     assert "FORBIDDEN_HOST_DBR_DEV: https://adb-7405604503619901.1.azuredatabricks.net" in text
     assert 'auth="github-oidc"' in text and jobs["release"]["permissions"]["id-token"] == "write"
     assert text.count('databricks current-user me -t "$TARGET" --output json') == 2
+    # Inside the bundle folder (no default target) every workspace command needs -t; two
+    # plan_only dispatches failed on 2026-10-13 because one command lacked it.
+    workspace_calls = [
+        line.strip()
+        for line in text.splitlines()
+        if re.search(r"\bdatabricks (jobs|current-user|warehouses|workspace|pipelines)\b", line)
+    ]
+    assert len(workspace_calls) == 9
+    assert all('-t "$TARGET"' in line for line in workspace_calls), workspace_calls
     assert jobs["plan"]["permissions"]["id-token"] == "write"
     assert "DATABRICKS_TOKEN" not in text and "azure/login" not in text
     assert jobs["plan"]["env"] == jobs["release"]["env"]
@@ -443,7 +452,7 @@ def test_cd_validates_the_plan_before_and_after_deploy_and_the_run_at_the_end() 
     assert 't["task_key"]=="validate_medallion"' in text
     assert text.count("--phase pre") == 2  # in the plan job and again right before deploying
     # The Job id and idempotency token travel in the request body; no positional id.
-    assert 'databricks jobs run-now --json @"$RUNNER_TEMP/run-request.json"' in text
+    assert 'databricks jobs run-now -t "$TARGET" --json @"$RUNNER_TEMP/run-request.json"' in text
     assert 'run-now "$JOB_ID"' not in text
     assert "schedule" not in text
 

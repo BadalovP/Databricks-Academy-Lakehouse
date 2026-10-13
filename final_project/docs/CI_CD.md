@@ -64,7 +64,7 @@ flowchart LR
 | CI on PR #75 | Final checks green; PR merged to `main` as `225545fd1f54607d23996c58daee7ef7e1c924fd` |
 | Workflow structure | Tested offline: triggers, inputs, job graph, environments, permissions, timeouts, no bypass conditions, `bash -n` on every `run:` block |
 | Release gates (plan validator, post-plan check) | Exercised live by the operator releases on `personal_dev` (steps 1, 4A, 4C, D, title fix) and on `azure_prod` (step 9: 7 creates, then post-plan all `skip`), with the same scripts the CD calls |
-| CD workflow run | **Not yet demonstrated at merge time.** The workflow is now on the default branch; environment, identity and bundle-state isolation checks must complete before one read-only `plan_only` dispatch. |
+| CD workflow run | **Partially demonstrated.** Two `plan_only` dispatches, both FAIL with zero cloud writes. The second authenticated as the service principal and produced a converged 7/7 `skip` plan, then stopped on a missing `-t` flag (fixed). One more dispatch, needing the owner's go-ahead, completes the demonstration ([evidence](../evidence/2026-10-13_github_cd_plan_only_run2.md)). |
 
 ## Required GitHub configuration (before the first CD run)
 
@@ -107,6 +107,7 @@ The Final Project does not create either identity without the owner's explicit r
 | State isolation | Both targets' `workspace.root_path` used `${workspace.current_user.userName}`, so a service principal would read an empty state folder and plan seven creates. Both are now **pinned to the existing deployment folders**. The owner plans stayed all `skip` on both targets after the change (read-only check), and a test guards the pin |
 | What `bundle plan` touches | Verified with `--debug`: only GET requests (state files, warehouses, dashboard and its published version, pipeline, two schemas, Volume, two Jobs); **no lock and no write**. The principal's read-only grants make a write impossible |
 | First dispatch | Run `38382998636` (on `225545f`): static validation passed. The plan job **failed** at `databricks current-user me` with `please specify target`, before any Databricks call. Fix: `-t "$TARGET"` on both identity checks ([evidence](../evidence/2026-10-13_github_cd_plan_only_closeout.md)) |
+| Corrected dispatch | Run [38389951946](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/38389951946) on `34b458b`. **Authenticated as `sp-urbanflow-final-dev`**; `bundle validate` and `bundle plan` passed. The uploaded plan is **7/7 `skip`** with no field change, so the principal recognised the existing deployment. The run then **failed** at `databricks jobs list` (same missing `-t`); the release validator passed offline on the uploaded plan. All workspace commands now pass `-t "$TARGET"`, with a test. Not re-dispatched ([evidence](../evidence/2026-10-13_github_cd_plan_only_run2.md)) |
 | Azure OIDC | **Blocked by identity setup:** no Final Project service principal or GitHub federation policy exists in the Academy account. Nothing was created there |
 
 ## Can a CD demonstration happen without any Azure identity?
