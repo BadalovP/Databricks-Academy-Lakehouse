@@ -357,6 +357,7 @@ def test_ci_runs_every_offline_gate_without_secrets_or_cloud_access() -> None:
         "pytest",
         "python scripts/build_dashboard.py --check",
         "python scripts/validate_bundle.py",
+        "python scripts/check_docs.py",
     ):
         assert gate in text
     # A `secrets.` context reference (not the scan_secrets.py file name) would mean CI authenticates.

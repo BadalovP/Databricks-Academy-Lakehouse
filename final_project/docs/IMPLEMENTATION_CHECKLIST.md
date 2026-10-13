@@ -1,5 +1,7 @@
 # UrbanFlow 2.0 - implementation checklist
 
+[← Final Project README](../README.md) · [Implementation progress](IMPLEMENTATION_PROGRESS.md) (current handoff record; this checklist is the historical working log)
+
 Working log for finishing the Final Project from the Codex handoff. Worktree:
 `C:\Users\User\Desktop\databricks-academy-lakehouse-final-project`, branch
 `feature/final-project-urbanflow-2`, based on `origin/main` `15a2902`.

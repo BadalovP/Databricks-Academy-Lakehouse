@@ -1,6 +1,11 @@
 # Demo Day presentation: UrbanFlow 2.0 (25 minutes)
 
-[← Main README](../README.md) · [Coverage matrix](LABS_1_TO_12_COVERAGE.md) · [Architecture](ARCHITECTURE.md)
+[← Final Project README](../README.md) · [Coverage matrix](LABS_1_TO_12_COVERAGE.md) · [Architecture](ARCHITECTURE.md)
+
+> [!NOTE]
+> **Current status (final release, 2026-10-13).** **Complete.** The talk covers every live-validated step, including the full protected GitHub CD on Personal DEV (run [38400575076](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/38400575076)). The slide deck was updated to match on 2026-10-13.
+>
+> Status terms: **Complete** · **Live-validated** · **Offline-tested** · **Documented but not demonstrated** · **Optional** (defined in the [Final Project README](../README.md)).
 
 A 25-minute talk: 20 minutes of presentation and demo, then 5 minutes of questions. The timing column can be compressed to 20 minutes or stretched to 30 (see [Timing variants](#timing-variants)). Each slide lists **what to show** and **what to say**.
 
@@ -27,7 +32,9 @@ A 25-minute talk: 20 minutes of presentation and demo, then 5 minutes of questio
 - 2026-10-13, Azure trial (PROD-style, not paid production): 7 resources created; sample run `240527908342651` gave the same 40 / 40 / 13 / 13, 40 trips, 48 hours, 4 matched trips, CDC 5 inserts with reconciliation 0.
 - Dashboard title fix deployed; published to the owner only.
 
-Not demonstrated at the release merge: a GitHub CD run (identity/environment closeout), multi-principal governance, Zerobus, Event Hubs, the full month and the external Federation source.
+- 2026-10-13, GitHub Actions: `plan_only` run 38392729496 PASS; **full protected CD run 38400575076 PASS**: approval, deploy, post-plan 7/7 `skip`, `replay_recorded` sample run `112906299302442` SUCCESS, business data unchanged ([evidence](../evidence/2026-10-13_github_cd_full_deploy.md)).
+
+Not demonstrated: GitHub CD to Azure (Azure was deployed by the operator; Azure OIDC untested), multi-principal governance, Zerobus, Event Hubs, the full month and the external Federation source.
 
 ## Run of show
 
@@ -121,10 +128,12 @@ Not demonstrated at the release merge: a GitHub CD run (identity/environment clo
 
 **Show:** the CD workflow graph. **Say:**
 
-- "CI runs a secret scan, lint, 858 passing tests at final release, a dashboard freshness check, offline bundle schema validation, and a change-scope check, so a Final Project PR cannot touch the labs or Demo 3."
+- "CI runs a secret scan, lint, 867 passing tests in the release run, a dashboard freshness check, offline bundle schema validation, and a change-scope check, so a Final Project PR cannot touch the labs or Demo 3."
 - "CD is manual and starts in plan-only mode. A read-only plan is validated and uploaded before anyone approves. After approval it plans again, deploys, and requires an all-`skip` post-deploy plan. An optional sample run is bounded, validated by script and cancelled if it overruns."
 - "Compared with Lab 08: same principles, no PAT, no Terraform (nothing in Azure to manage), and no automatic deploy on push." (Table in `CI_CD.md`.)
-- "PR #75 is merged and the manual CD workflow is on `main`; its first `plan_only` demonstration is tracked separately from the validated operator releases."
+- "It ran for real. Plan-only came first, because it is read-only and proves the service principal sees the existing deployment: 7 of 7 unchanged. The first deploy attempt failed on the deployment lock. The folder permission let the principal edit files but not create the lock. So I granted `CAN_MANAGE` on that one folder for one approved run, then removed it."
+- "The sample run replayed the recorded execution and `batch_003`. The Job's defaults would have reverted the CDC data and doubled the dashboard counts. Business data was unchanged; the shared tables wrote only metadata-only MERGE commits."
+- "Azure was deployed by me as the operator. GitHub CD reached Personal DEV only; Azure OIDC needs an Academy admin and is untested."
 
 ### 10. Cost, safety, honesty (1 min)
 
@@ -133,7 +142,7 @@ Not demonstrated at the release merge: a GitHub CD run (identity/environment clo
 - "No schedules, every task bounded, every billable switch off by default."
 - "Measured from `system.billing`: a full sample platform run is about 1.3 DBU, roughly 45 cents at list price. The verification queries cost more than the runs."
 - "The biggest risk is an AI Search endpoint left running: about 23 cents an hour, used or not. So it exists only for an approved window and is deleted at the end."
-- "Not done yet: the assistant with AI Search, dashboard on live data, governance demo, PROD, and the CD workflow run. Each has a bounded proposal." Point to the evidence table in [RELEASE_AND_VALIDATION.md](RELEASE_AND_VALIDATION.md).
+- "Not demonstrated: GitHub CD to Azure, multi-principal governance, the external Federation source, Event Hubs, Zerobus and the full month. Each is documented." Point to the evidence table in [RELEASE_AND_VALIDATION.md](RELEASE_AND_VALIDATION.md).
 
 ## Live demo checklist (before the talk)
 
@@ -157,7 +166,7 @@ Not demonstrated at the release merge: a GitHub CD run (identity/environment clo
 | What happens when CDF history has expired? | The run fails closed with `CdcRetentionGapError`: nothing is written and the checkpoint stays where it was. The message gives the re-baseline steps. This path is tested offline only. |
 | Is the Lakeflow pipeline a copy of the notebooks? | No. The declarative layer defines tables, expectations and the graph, and imports the same rule functions. Parity was proven live, row for row in both directions. |
 | Why no Terraform, unlike Lab 08? | Every Final Project object is bundle-managed and no Azure infrastructure is created, so Terraform would add state and permissions without a resource to manage. |
-| Why was the CD workflow never run? | `workflow_dispatch` works only from the default branch, and the environments and identities do not exist yet. Every gate it calls was exercised live by operator releases with the same scripts. |
+| Did the CD workflow actually deploy? | Yes, to Personal DEV: run 38400575076 planned, waited for my approval, deployed as a service principal, checked for drift and ran one bounded Job with no business data change ([evidence](../evidence/2026-10-13_github_cd_full_deploy.md)). Not to Azure: that needs an OIDC identity from an Academy admin. |
 | How is DEV kept from touching PROD? | Different cloud, workspace and metastore. Hosts are pinned per target, shared Academy hosts are refused, schemas are per target, and each dashboard is generated for one target only. |
 | Is the governance demo real enforcement? | It ran live: the filter showed 0, 28 and then 40 stations as the mapping changed; coordinates were rounded and ride IDs hashed; everything was rolled back and the schema dropped. With one identity, multi-user enforcement is not demonstrated, and the docs say so. |
 | Why is RAG correctness only 0.685? | The metric is a literal keyword match. A manual review found every RAG claim supported by its cited procedure. The scores are reported as computed, with the limitations listed. |
@@ -178,5 +187,5 @@ For a technical interview rather than Demo Day: one problem, one architecture, t
 | 0:45–2:00 | `evidence/2026-10-12_personal_dev_step2_pass.md` | "The first live run failed on three defects that offline tests could not see: a count copied from an earlier project, a missing task dependency, and an input file nobody landed. I fixed each in code with a regression test and recorded every failed run. The passing run reconciles 40 events through Silver to 13 actionable priorities, matching an independent calculation." |
 | 2:00–3:15 | `evidence/2026-10-12_personal_dev_step3_retry_pass.md` | "Then I proved replays are safe, with 19 strict criteria. The first attempt failed one: a Delta MERGE that changes nothing still commits, so the CDC checkpoint moved over an empty version. I added a compare-first guard. Now a replay changes no data and no timestamps, rewrites no files, and leaves the checkpoint alone. Some shared tables still write a metadata-only commit, and I say so." |
 | 3:15–4:15 | `evidence/2026-10-12_personal_dev_step4_batch003.md` | "CDC is Delta Change Data Feed over snapshots, not log-based CDC. After a live update-and-delete batch, Databricks ran an automatic OPTIMIZE. I stopped, reviewed my own first fix, and defined the checkpoint as 'scanned and reconciled'. The replay then moved it over the empty version with no events. Lakeflow, run once, matched the imperative tables row for row." |
-| 4:15–5:00 | `docs/IMPLEMENTATION_PROGRESS.md` | "The assistant, dashboard, governance demo and Azure trial release all passed with evidence. The remaining optional integrations need additional infrastructure or identities. Nothing billable is left running, and estimated costs are explicitly separated from measured billing records." |
+| 4:15–5:00 | `evidence/2026-10-13_github_cd_full_deploy.md` | "The assistant, dashboard, governance demo and Azure trial release all passed with evidence, and a protected GitHub Actions release deployed to Personal DEV as a least-privilege service principal. The remaining optional integrations need additional infrastructure or identities. Nothing billable is left running, and estimated costs are explicitly separated from measured billing records." |
 

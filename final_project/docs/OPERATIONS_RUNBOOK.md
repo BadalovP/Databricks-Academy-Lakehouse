@@ -1,6 +1,11 @@
 # Operations runbook
 
-[← Main README](../README.md) · [Release and validation](RELEASE_AND_VALIDATION.md) · [Architecture](ARCHITECTURE.md)
+[← Final Project README](../README.md) · [Release and validation](RELEASE_AND_VALIDATION.md) · [Architecture](ARCHITECTURE.md)
+
+> [!NOTE]
+> **Current status (final release, 2026-10-13).** **Complete.** Operator releases are live-validated on both targets, and the GitHub CD release on Personal DEV ([evidence](../evidence/2026-10-13_github_cd_full_deploy.md)). Both workspaces are idle: no AI Search endpoint, no schedule, warehouses auto-stopped.
+>
+> Status terms: **Complete** · **Live-validated** · **Offline-tested** · **Documented but not demonstrated** · **Optional** (defined in the [Final Project README](../README.md)).
 
 How to deploy, run, recover and govern UrbanFlow 2.0. Every procedure below was exercised in Personal DEV unless marked **(not yet exercised)**.
 
@@ -76,7 +81,7 @@ This is Delta Change Data Feed over imported snapshots, **not** database log-bas
 
 ## 5. Security and governance
 
-- **Identity.** DEV uses the owner's login. The CD design uses OAuth M2M for DEV and GitHub OIDC (no secret) for PROD; neither identity exists yet. No PAT or secret is in Git; the CD workflow pins hosts and refuses the shared Academy workspaces.
+- **Identity.** Operator releases use the owner's login. GitHub CD on DEV uses the OAuth M2M service principal `sp-urbanflow-final-dev`, which holds read grants only. For an approved deploy, grant it `CAN_MANAGE` on the bundle folder (the lock file needs it) and `CAN_MANAGE_RUN` on the platform Job, then remove both after the run. Its secret expires at 10:22 UTC on 2026-10-14. GitHub OIDC for PROD is documented but not created. No PAT or secret is in Git; the CD workflow pins hosts and refuses the shared Academy workspaces.
 - **Data access.** All objects live in Final-Project schemas with `prevent_destroy`. No `GRANT` is active anywhere; the least-privilege grants in `sql/20_governance_rls_cls.sql` stay commented.
 - **Row filter and masks** (`scripts/run_governance_demo.py`).
   - **Where:** they run only on isolated copies in `<schema>_governance_demo`.

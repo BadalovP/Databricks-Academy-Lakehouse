@@ -1,5 +1,7 @@
 # Great Expectations or Soda: the decision, and the measurement behind it
 
+[← Final Project README](../README.md) · [Architecture](ARCHITECTURE.md) · [Labs 1–12 coverage](LABS_1_TO_12_COVERAGE.md)
+
 The Academy requirement is "Great Expectations **or** Soda", so one suffices and adding both would
 be duplication. The choice was settled by measurement rather than preference.
 

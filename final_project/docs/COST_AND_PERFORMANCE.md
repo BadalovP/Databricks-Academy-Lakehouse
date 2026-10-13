@@ -1,6 +1,11 @@
 # Cost and performance analysis
 
-[← Main README](../README.md) · [Architecture](ARCHITECTURE.md) · [Release and validation](RELEASE_AND_VALIDATION.md)
+[← Final Project README](../README.md#19-cost-and-performance) · [Architecture](ARCHITECTURE.md) · [Release and validation](RELEASE_AND_VALIDATION.md)
+
+> [!NOTE]
+> **Current status (final release, 2026-10-13).** **Measured.** Final Project compute in Personal DEV ≈ 9.15 DBU (≈ $3.00 at list), from `system.billing.usage`. The shared SQL warehouse used 17.41 DBU (≈ $12.19), but it also serves other work. The full CD sample run (457 s) is **estimated** at ≈ 1.2 DBU (≈ $0.42). Azure trial billing is not readable. The design-time analysis below is kept, and the measured sections follow it.
+>
+> Status terms: **Complete** · **Live-validated** · **Offline-tested** · **Documented but not demonstrated** · **Optional** (defined in the [Final Project README](../README.md)).
 
 This analysis is mostly **design-time**. Steps 1–5 ran in Personal DEV, so wall-clock durations are measured (below). DBUs for the step 2 and 3 runs were read from `system.billing.usage` (below). Later runs were not yet in the billing tables when this was written. Prices change and differ by cloud, region and contract, so this page shows **cost drivers and hard upper bounds in units** (runs, minutes, requests). It does not invent dollar amounts. Measured figures will be added from system tables after the first approved run (see [Measuring after a live run](#measuring-after-a-live-run)).
 
@@ -17,7 +22,7 @@ This analysis is mostly **design-time**. Steps 1–5 ran in Personal DEV, so wal
 | SQL warehouse | While running (dashboard, governance demo) | Uses an existing serverless warehouse with auto-stop. The project creates no warehouse. | Not used until the dashboard is opened |
 | Zerobus (optional) | Per ingested data | At most 30 synthetic records per run. Dry run by default. | Not run |
 | GitHub Actions | Runner minutes | CI on PRs touching `final_project/`; CD manual only | CI only |
-| Storage | Data at rest | Small samples: 40 stations, 40 trips, 48 weather hours, 6 tickets, 30 chunks | Nothing written yet |
+| Storage | Data at rest | Small samples: 40 stations, 40 trips, 48 weather hours, 6 tickets, 30 chunks | Kilobytes written by the validation runs |
 
 **The single biggest cost risk is an AI Search endpoint left running.** It bills by the hour whether or not anyone queries it. The Lab 12 lesson is applied: create it only for an approved evaluation window, and delete it afterwards (with approval). The Delta tables remain and are cheap to keep.
 

@@ -1,8 +1,8 @@
 """Fail when a change set that touches the Final Project also touches anything outside it.
 
 The Final Project must leave Demo 3, the completed labs and shared infrastructure byte-for-byte
-unchanged, so a pull request may change only ``final_project/**`` and the two Final Project
-workflows. It also classifies the change as deployable or not: documentation and evidence
+unchanged, so a pull request may change only ``final_project/**``, the two Final Project
+workflows and the repository homepage ``README.md``. It also classifies the change as deployable or not: documentation and evidence
 alone never need a release.
 
 Usage: ``python scripts/check_change_scope.py --base <sha> [--head <sha>]`` - exit 1 when a file
@@ -21,7 +21,12 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 ALLOWED_FILES = (
     ".github/workflows/final_project_ci.yml",
     ".github/workflows/final_project_cd.yml",
+    # The repository homepage presents the whole portfolio, including the Final Project.
+    # It is the ONLY file outside final_project/ that a Final Project change may edit.
+    "README.md",
 )
+# Exact paths outside final_project/ that never change a deployment.
+NON_DEPLOYABLE_FILES = frozenset({"README.md"})
 ALLOWED_PREFIX = "final_project/"
 # Changes that never alter what a bundle deployment puts in a workspace.
 NON_DEPLOYABLE_PREFIXES = (
@@ -39,7 +44,7 @@ def out_of_scope(paths: list[str]) -> list[str]:
 
 
 def is_deployable(path: str) -> bool:
-    if path.startswith(NON_DEPLOYABLE_PREFIXES):
+    if path in NON_DEPLOYABLE_FILES or path.startswith(NON_DEPLOYABLE_PREFIXES):
         return False
     # Top-level Markdown (README) only; knowledge_base/*.md is RAG input and does deploy.
     relative = path.removeprefix(ALLOWED_PREFIX)

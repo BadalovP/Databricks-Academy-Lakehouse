@@ -1,6 +1,11 @@
 # UrbanFlow 2.0 architecture and design decisions
 
-[← Main README](../README.md) · [Labs 1–12 coverage](LABS_1_TO_12_COVERAGE.md) · [Cost and performance](COST_AND_PERFORMANCE.md) · [Release and validation](RELEASE_AND_VALIDATION.md)
+[← Final Project README](../README.md) · [Labs 1–12 coverage](LABS_1_TO_12_COVERAGE.md) · [Cost and performance](COST_AND_PERFORMANCE.md) · [Release and validation](RELEASE_AND_VALIDATION.md)
+
+> [!NOTE]
+> **Current status (final release, 2026-10-13).** **Complete.** The design below was live-validated in Personal DEV and on the Azure trial, and released through protected GitHub CD on Personal DEV ([evidence](../evidence/2026-10-13_github_cd_full_deploy.md)). Diagrams for every layer are in the [Final Project README](../README.md#5-high-level-architecture).
+>
+> Status terms: **Complete** · **Live-validated** · **Offline-tested** · **Documented but not demonstrated** · **Optional** (defined in the [Final Project README](../README.md)).
 
 ## Design goals
 
@@ -144,7 +149,7 @@ The landing area is the managed Volume `/Volumes/<catalog>/<schema>/urbanflow_fi
 ## Security boundaries
 
 - Git holds no PAT, connection string, SAS key or client secret.
-- **CD identities.** `personal_dev` uses OAuth M2M with a dedicated service principal, whose secret is a GitHub environment secret. `azure_prod` uses GitHub OIDC workload identity federation, with no secret.
+- **CD identities.** `personal_dev` uses OAuth M2M with a dedicated service principal, whose secret is a GitHub environment secret. `azure_prod` is designed for GitHub OIDC workload identity federation, with no secret. That identity needs Academy account administration, so it is documented but not demonstrated.
 - **CD workspace pinning.** CD pins the workspace host for each target and refuses the shared Academy workspaces `dbr_dev` and `dbr_dev_trial`.
 - **Event Hubs and Zerobus credentials.** Event Hubs credentials come from a Key Vault-backed secret scope and are never printed. The optional Zerobus path reads only `URBANFLOW_FINAL_ZEROBUS_*` and refuses values equal to Lab 11's.
 - **Assistant monitoring.** Monitoring stores a question hash and character count, never the raw question or answer.

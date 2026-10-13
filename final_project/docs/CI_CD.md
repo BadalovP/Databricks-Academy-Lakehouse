@@ -1,6 +1,11 @@
 # CI/CD: design, comparison with Lab 08, and the post-merge checklist
 
-[← Main README](../README.md) · [Release and validation](RELEASE_AND_VALIDATION.md) · [Operations runbook](OPERATIONS_RUNBOOK.md)
+[← Final Project README](../README.md#17-cicd) · [Release and validation](RELEASE_AND_VALIDATION.md) · [Operations runbook](OPERATIONS_RUNBOOK.md)
+
+> [!NOTE]
+> **Current status (final release, 2026-10-13).** **Complete; full protected GitHub CD live-validated on Personal DEV.** Plan-only run [38392729496](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/38392729496) passed (read-only). The full release [38400575076](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/38400575076) passed: static validation (867 passed, 1 skipped), service-principal plan 7/7 `skip`, reviewer approval, re-plan, deploy, unchanged post-deploy plan, and one bounded `replay_recorded` sample run (Databricks run `112906299302442`, 457 s) with no business data changed ([evidence](../evidence/2026-10-13_github_cd_full_deploy.md)). The Azure trial was deployed by the operator; **Azure GitHub OIDC is documented but not demonstrated.**
+>
+> Status terms: **Complete** · **Live-validated** · **Offline-tested** · **Documented but not demonstrated** · **Optional** (defined in the [Final Project README](../README.md)).
 
 The Final Project reuses the engineering principles of the Lab 08 TravelOps pipeline: tests before deployment, bundle validation, gated promotion, protected approvals, OIDC, post-deploy verification and cost warnings. It reuses **none of Lab 08's resources** (workflow, environments, Terraform, state or credentials). It is not a copy of Lab 08's job graph either. The Final Project deploys one Asset Bundle to two targets and needs no Terraform: all of its Databricks objects are bundle-managed, and it creates no Azure infrastructure.
 
@@ -8,8 +13,8 @@ The Final Project reuses the engineering principles of the Lab 08 TravelOps pipe
 
 ```mermaid
 flowchart LR
-  subgraph CI["final_project_ci.yml: every PR and push to main (final_project/** only)"]
-    S[secret scan] --> Q[Ruff · Black] --> T[pytest incl. local Spark] --> D[dashboard --check] --> B[bundle schema, offline]
+  subgraph CI["final_project_ci.yml: PRs and pushes touching final_project/**, its workflows or the root README"]
+    S[secret scan] --> Q[Ruff · Black] --> T[pytest incl. local Spark] --> D[dashboard --check] --> B[bundle schema, offline] --> DOC[docs links and Mermaid]
     SC[change scope + deployable?]
   end
   subgraph CD["final_project_cd.yml: manual workflow_dispatch only"]
@@ -20,6 +25,8 @@ flowchart LR
   end
   CI -. green PR .-> CD
 ```
+
+**Documentation gate.** `scripts/check_docs.py` runs in CI with no network and no extra dependency. It checks the repository homepage, this README, `docs/` and `evidence/`: relative links resolve, `#anchors` match GitHub heading slugs, every Mermaid block starts with a diagram type GitHub renders and its brackets balance, and no image is loaded from an unapproved remote host. Before a documentation release, the Mermaid blocks are also parsed with the official `mermaid` package under Node; that step is local because it needs Node packages.
 
 ## Comparison with Lab 08
 
@@ -64,9 +71,11 @@ flowchart LR
 | CI on PR #75 | Final checks green; PR merged to `main` as `225545fd1f54607d23996c58daee7ef7e1c924fd` |
 | Workflow structure | Tested offline: triggers, inputs, job graph, environments, permissions, timeouts, no bypass conditions, `bash -n` on every `run:` block |
 | Release gates (plan validator, post-plan check) | Exercised live by the operator releases on `personal_dev` (steps 1, 4A, 4C, D, title fix) and on `azure_prod` (step 9: 7 creates, then post-plan all `skip`), with the same scripts the CD calls |
-| CD workflow run | **Partially demonstrated.** Two `plan_only` dispatches, both FAIL with zero cloud writes. The second authenticated as the service principal and produced a converged 7/7 `skip` plan, then stopped on a missing `-t` flag (fixed). One more dispatch, needing the owner's go-ahead, completes the demonstration ([evidence](../evidence/2026-10-13_github_cd_plan_only_run2.md)). |
+| CD `plan_only` | **Live-validated.** Run [38392729496](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/38392729496) on `e497841`: service-principal sign-in, 7/7 `skip`, validator PASS, approval and release skipped, zero writes. Two earlier dispatches failed on a missing `-t` flag and are kept as evidence |
+| CD `deploy_and_sample_run` (Personal DEV) | **Live-validated.** Run [38400575076](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/38400575076) on `0d48970`: approval 12:55:46 UTC, deploy, post-plan 7/7 `skip`, sample run `112906299302442` SUCCESS with `replay_recorded`, business data unchanged. The earlier attempt [38397086064](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/38397086064) failed on the deployment lock with nothing written ([evidence](../evidence/2026-10-13_github_cd_full_deploy.md)) |
+| CD to `azure_prod` (GitHub OIDC) | **Documented but not demonstrated:** the OIDC service principal needs Academy account administration. Azure was deployed by the operator (step 9) |
 
-## Required GitHub configuration (before the first CD run)
+## Required GitHub configuration (configured on 2026-10-13)
 
 | Environment | Protection | Variables / secrets |
 |---|---|---|
@@ -95,6 +104,8 @@ flowchart LR
    - subject `repo:BadalovP/Databricks-Academy-Lakehouse:environment:final-project-azure_prod`.
 3. Grant the same object privileges, scoped to `dbr_dev.parvinbadalov_urbanflow_final_*`.
 
+**As implemented for `personal_dev`:** the principal holds only read grants by default, which is enough for `plan_only`. For the approved release it temporarily received `CAN_MANAGE` on the bundle folder alone (the CLI must create `deploy.lock`; `CAN_EDIT` cannot) and `CAN_MANAGE_RUN` on the platform Job. Both were removed after run 38400575076, restoring `CAN_READ` on the folder and `CAN_VIEW` on the Job. The OAuth secret expires on 2026-10-14 at 10:22 UTC.
+
 The Final Project does not create either identity without the owner's explicit request, and it does not contact the Academy administrators.
 
 ## Post-merge closeout (2026-10-13): identity and state isolation
@@ -108,6 +119,9 @@ The Final Project does not create either identity without the owner's explicit r
 | What `bundle plan` touches | Verified with `--debug`: only GET requests (state files, warehouses, dashboard and its published version, pipeline, two schemas, Volume, two Jobs); **no lock and no write**. The principal's read-only grants make a write impossible |
 | First dispatch | Run `38382998636` (on `225545f`): static validation passed. The plan job **failed** at `databricks current-user me` with `please specify target`, before any Databricks call. Fix: `-t "$TARGET"` on both identity checks ([evidence](../evidence/2026-10-13_github_cd_plan_only_closeout.md)) |
 | Corrected dispatch | Run [38389951946](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/38389951946) on `34b458b`. **Authenticated as `sp-urbanflow-final-dev`**; `bundle validate` and `bundle plan` passed. The uploaded plan is **7/7 `skip`** with no field change, so the principal recognised the existing deployment. The run then **failed** at `databricks jobs list` (same missing `-t`); the release validator passed offline on the uploaded plan. All workspace commands now pass `-t "$TARGET"`, with a test. Not re-dispatched ([evidence](../evidence/2026-10-13_github_cd_plan_only_run2.md)) |
+| Plan-only PASS | Run [38392729496](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/38392729496) on `e497841`: 860 passed, 1 skipped; SP plan 7/7 `skip`; validator PASS inside the workflow; zero writes |
+| Deploy attempt | Run [38397086064](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/38397086064) on `0d48970`: approval granted, then `Failed to acquire deployment lock: access denied` with folder `CAN_EDIT`. Nothing written, no Job run |
+| Full protected CD PASS | Run [38400575076](https://github.com/BadalovP/Databricks-Academy-Lakehouse/actions/runs/38400575076) on `0d48970` after an owner-approved temporary `CAN_MANAGE` on the bundle folder; sample run `112906299302442`; least privilege restored afterwards ([evidence](../evidence/2026-10-13_github_cd_full_deploy.md)) |
 | Azure OIDC | **Blocked by identity setup:** no Final Project service principal or GitHub federation policy exists in the Academy account. Nothing was created there |
 
 ### Sample-run profile (`sample_profile` input)
@@ -121,7 +135,7 @@ The platform Job's defaults describe a first run on an empty target: a new stati
 
 ## Can a CD demonstration happen without any Azure identity?
 
-**Yes, for `personal_dev`.** A Personal DEV release needs only:
+**Yes, for `personal_dev`, and it was demonstrated on 2026-10-13** ([evidence](../evidence/2026-10-13_github_cd_full_deploy.md)). A Personal DEV release needs only:
 1. PR #75 merged (complete: `225545f`, satisfying the default-branch rule for `workflow_dispatch`);
 2. the environments `final-project-approval` and `final-project-personal_dev`;
 3. the DEV OAuth M2M service principal, which the project owner can create in the personal workspace without the Academy.
@@ -140,6 +154,8 @@ The platform Job's defaults describe a first run on an empty target: a new stati
 Until then, operator releases with the owner's own login use the same plan gates. They are recorded for every DEV deploy in `RELEASE_AND_VALIDATION.md`.
 
 ## Post-merge demonstration checklist
+
+**Outcome (2026-10-13):** step 2 passed (run 38392729496). Step 4 passed and includes the deploy of step 3 (run 38400575076). Step 1, step 5's negative checks and step 6 were not run as separate dispatches; step 6 stays blocked by the Azure OIDC identity. The results are recorded in `RELEASE_AND_VALIDATION.md`.
 
 Run only after the configuration above exists and bundle-state isolation has been reviewed. Each dispatch is a separate, approved action.
 
