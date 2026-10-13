@@ -8,7 +8,8 @@
 - The maintenance review was deployed (one update, post-plan all `skip`).
 - **All 25 datasets of the deployed definition ran without error** in 40 seconds on the Starter warehouse, and every widget field matches its dataset.
 - The expected values appear: 4 open tickets with a HOLD for MT-1004, checkpoint 4 / last data change 3 / 11 events, 22 Lakeflow expectations with 0 failures, and the live assistant evaluation ([evidence](../evidence/2026-10-13_personal_dev_dashboard_validation.md)).
-- The structural rendering check found one defect. Lakeview concatenates a text widget's lines, so the page titles merged with their explanations. The generator now adds blank-line breaks, with a regression test. That fix is **not deployed yet**, and the dashboard is **not published**.
+- The structural rendering check found one defect. Lakeview concatenates a text widget's lines, so the page titles merged with their explanations. The generator now adds blank-line breaks, with a regression test. **Deployed later on 2026-10-13:** all five titles render as heading plus paragraph. The dashboard is published without embedded credentials, visible to the owner only ([evidence](../evidence/2026-10-13_personal_dev_dashboard_title_fix.md)).
+- The `azure_prod` dashboard `01f1c6ddd47616e8bb703a5342a603ba` was created by the step 9 deploy. Its reconciliation and maintenance datasets ran during the step 9 verification ([evidence](../evidence/2026-10-13_azure_prod_step9_deploy_and_sample_run.md)).
 
 ## How it is built
 

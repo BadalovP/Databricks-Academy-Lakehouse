@@ -89,6 +89,8 @@ In the CDC-only and Lakeflow-only runs, the disabled tasks only start, check the
 | D query validation | 25 datasets on the Starter warehouse | 40 s of queries | Serverless SQL (warehouse auto-stop 10 min) |
 | F governance demo | Starter warehouse | 49 s | Serverless SQL |
 
+| Azure trial sample run (step 9) | Platform run `240527908342651` | 473 s | Azure serverless Jobs (that workspace's own billing); comparable to the DEV run (458–485 s) |
+
 When this was written, `system.billing.usage` held data only up to 2026-10-12 22:00 UTC. The step 4–5 runs and everything on 2026-10-13 are therefore **not yet measured**. No figure above is presented as billed. Re-run the query at the end of this page after the billing tables catch up.
 
 ## Measured DBUs (from `system.billing.usage`, read-only)

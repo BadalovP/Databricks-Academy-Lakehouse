@@ -2,7 +2,7 @@
 
 Databricks Academy **Final Project**: one integrated solution that covers Labs 1–12.
 
-> **Status: steps 1–8 passed live in Personal DEV (2026-10-12 and 2026-10-13).**
+> **Status: complete.** Steps 1–8 passed live in Personal DEV (2026-10-12 and 2026-10-13). **Step 9:** the PROD-style deployment to the Academy Azure trial `dbr_dev_trial_2` (not paid production) and one sample run passed on 2026-10-13 with the same figures as DEV.
 > - deploy;
 > - platform sample run;
 > - strict idempotency (19/19);
@@ -10,13 +10,16 @@ Databricks Academy **Final Project**: one integrated solution that covers Labs 1
 > - Lakeflow (row-for-row parity);
 > - assistant: ingest, AI Search index, live evaluation with RAG 0.685 vs baseline 0.148 correctness and 18/18 refusal decisions; the endpoint was deleted after 25.7 minutes;
 > - 25/25 dashboard queries;
-> - governance demo on isolated copies.
+> - governance demo on isolated copies;
+> - dashboard title fix deployed and published to the owner only;
+> - Azure trial: 7 resources created, run `240527908342651` gave 40 / 40 / 13 / 13, 40 trips, 48 weather hours, CDC 5 inserts, reconciliation 0.
 >
-> **Open:**
-> - a dashboard title-rendering fix awaits one redeploy; the dashboard is unpublished;
-> - PROD on the Azure trial (needs approval for the shared catalog);
-> - the CD workflow run (needs merge and identities);
-> - Zerobus and the external Federation source (optional).
+> **Not demonstrated (documented, not blocking):**
+> - a GitHub CD run (needs the merged workflow plus environments and identities);
+> - multi-principal governance (one identity);
+> - the external Federation source, Event Hubs, Zerobus and the full January month (optional).
+>
+> RAG scores use a lexical keyword metric whose limitations are listed in the evidence.
 >
 > All data is a labelled development sample or fictional fixture.
 > More than 700 offline tests (unit tests, local Spark and static checks) run in CI. Every live step needs explicit approval and is planned in [docs/RELEASE_AND_VALIDATION.md](docs/RELEASE_AND_VALIDATION.md). Results of the individual labs and of Demo 3 were produced in their own folders. They are not Final Project evidence and are not presented as such.
@@ -214,7 +217,7 @@ Dry runs that connect to nothing:
 
 ## Known limitations
 
-- **Live validation is DEV-only.** Steps 1–8 passed in Personal DEV. PROD, the CD workflow run, Zerobus and the external Federation source have not run live. Each step and its approval is listed in [docs/RELEASE_AND_VALIDATION.md](docs/RELEASE_AND_VALIDATION.md).
+- **Live validation:** steps 1–8 in Personal DEV, step 9 on the Azure trial (PROD-style, not paid production). A GitHub CD run, Zerobus, Event Hubs, the full month and the external Federation source have not run live. Each step and its approval is listed in [docs/RELEASE_AND_VALIDATION.md](docs/RELEASE_AND_VALIDATION.md).
 - **The `azure_prod` CD identity needs Academy account administration.** An operator can deploy with their own login instead.
 - **Small samples.** The data is a 40-station snapshot and a 40-trip sample. The full-month path exists (`run_full_month`), but it is a separate, approved run.
 - **Federation and CDC.** Federation needs an approved foreign catalog. Without one, CDC runs on the committed fictional snapshots.

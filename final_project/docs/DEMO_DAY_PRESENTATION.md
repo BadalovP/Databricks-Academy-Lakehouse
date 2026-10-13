@@ -24,7 +24,10 @@ A 25-minute talk: 20 minutes of presentation and demo, then 5 minutes of questio
   - endpoint deleted after 25.7 minutes, guarded by a scheduled cleanup Job.
 - 2026-10-13: all 25 dashboard queries ran. The governance demo filtered, masked, rolled back and dropped its schema.
 
-Not yet live: PROD on the Azure trial, the CD workflow run, the dashboard title fix and publication, Zerobus, and the external Federation source.
+- 2026-10-13, Azure trial (PROD-style, not paid production): 7 resources created; sample run `240527908342651` gave the same 40 / 40 / 13 / 13, 40 trips, 48 hours, 4 matched trips, CDC 5 inserts with reconciliation 0.
+- Dashboard title fix deployed; published to the owner only.
+
+Not demonstrated: a GitHub CD run (identities), multi-principal governance, Zerobus, Event Hubs, the full month and the external Federation source.
 
 ## Run of show
 

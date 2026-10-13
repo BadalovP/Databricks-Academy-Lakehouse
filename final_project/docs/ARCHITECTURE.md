@@ -44,6 +44,7 @@ Six principles shape every component:
 The two targets are in **different clouds and different metastores**, so a DEV mistake cannot reach PROD data. Two limits apply, stated plainly:
 
 - `azure_prod` is an Academy **trial** workspace. It may expire, and it is not a production SLA.
+- **Validated on both targets (2026-10-13).** The same bundle created the seven resources in `dbr_dev_trial_2`. One sample run (`240527908342651`) produced the Personal DEV figures exactly, including the CDC checkpoint −1 → 1 after reconciliation ([evidence](../evidence/2026-10-13_azure_prod_step9_deploy_and_sample_run.md)). The two environments share no workspace, metastore, schema, Volume or checkpoint.
 - Both targets protect governed storage: the schemas and the Volume carry `lifecycle.prevent_destroy`, so `bundle destroy` cannot drop them.
 - `personal_dev` does not use `mode: development`, because that mode renames Unity Catalog schemas to `dev_<user>_<name>` while the Jobs and dashboards address the configured names.
 - Its catalog `dbr_dev` is shared with other Academy workspaces and students. Inside that catalog, isolation is at schema level. The Final Project uses only its own `parvinbadalov_urbanflow_final_*` schemas. Demo 3's `parvinbadalov_urbanflow` schema sits in the same catalog and is never referenced, and tests reject its name in SQL, dashboards and governance code.

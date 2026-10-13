@@ -63,7 +63,7 @@ flowchart LR
 |---|---|
 | CI on PR #75 | Runs on every push, green |
 | Workflow structure | Tested offline: triggers, inputs, job graph, environments, permissions, timeouts, no bypass conditions, `bash -n` on every `run:` block |
-| Release gates (plan validator, post-plan check) | Exercised live by the operator releases in steps 1, 4A and 4C, with the same scripts the CD calls |
+| Release gates (plan validator, post-plan check) | Exercised live by the operator releases on `personal_dev` (steps 1, 4A, 4C, D, title fix) and on `azure_prod` (step 9: 7 creates, then post-plan all `skip`), with the same scripts the CD calls |
 | CD workflow run | **Not run.** A `workflow_dispatch` workflow can be started only from the default branch, and the environments and identities below do not exist yet. PR #75 is not merged to bypass this. |
 
 ## Required GitHub configuration (before the first CD run)

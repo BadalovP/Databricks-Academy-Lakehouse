@@ -2,7 +2,7 @@
 
 [← Main README](../README.md) · [Coverage matrix](LABS_1_TO_12_COVERAGE.md) · [Cost and performance](COST_AND_PERFORMANCE.md)
 
-**Status:** CI runs on every pull request. **Steps 1–8 have passed in Personal DEV.** On 2026-10-13 that added: the assistant (ingest, AI Search, live evaluation, endpoint deleted), the dashboard queries and the governance demo. Before that, steps 1–5 passed:
+**Status:** CI runs on every pull request. **Steps 1–8 have passed in Personal DEV, and step 9 (the PROD-style Azure trial deployment and sample run) passed on 2026-10-13.** On 2026-10-13 that added: the assistant (ingest, AI Search, live evaluation, endpoint deleted), the dashboard queries and the governance demo. Before that, steps 1–5 passed:
 - deploy;
 - platform sample run;
 - strict idempotency;
@@ -112,7 +112,7 @@ Nothing was created. Azure CLI authentication (no stored secret), user `parvinba
 | `bundle plan -t azure_prod` | 7 creates, 0 updates, 0 deletes: the reviewed resources only. Job names carry `[azure_prod]`; no schedule, trigger or cluster. |
 | `validate_release_plan.py --phase pre` | PASS; no collision with the 16 existing Jobs |
 
-Deploying would create two schemas in the **shared** `dbr_dev` catalog, so it needs explicit approval (step 9).
+Deploying creates two schemas in the **shared** `dbr_dev` catalog. That was approved and done in step 9 on 2026-10-13, and nothing else in the catalog changed ([evidence](../evidence/2026-10-13_azure_prod_step9_deploy_and_sample_run.md)).
 
 ## Next approval request (consolidated: phases D–H)
 
@@ -258,6 +258,9 @@ The optional Zerobus path and the governance demo each need their own approval. 
 | 2026-10-13 | `personal_dev` | **E6. Endpoint cleanup: PASS** | — | Index and endpoint deleted at 00:34:59 UTC (lifetime 25.7 min); `list_endpoints()` empty; tables intact; guard Job deleted. [Evidence](../evidence/2026-10-13_personal_dev_e6_ai_search_cleanup.md) |
 | 2026-10-13 | `personal_dev` | **D. Dashboard: PASS, one rendering defect** | Deploy of `d93f2f4`; dashboard `01f1c647…` | 1 update, post-plan all `skip`; 25/25 datasets ran (40 s), 0 widget-field mismatches; expected values present. Defect: page titles render merged (Lakeview concatenates text lines); fixed in code, redeploy needs approval; not published. [Evidence](../evidence/2026-10-13_personal_dev_dashboard_validation.md) |
 | 2026-10-13 | `personal_dev` | **F. Governance demo: PASS** | Isolated schema, 49 s | Filter: 0 → 28 → 40 rows by mapping; coordinates rounded; ride IDs hashed; policy metadata observed; rolled back; schema dropped; no GRANT; 0 masks/filters in the catalog afterwards. One identity only. [Evidence](../evidence/2026-10-13_personal_dev_governance_demo.md) |
-| — | — | 9 (PROD) | — | No live run yet (each step needs its own approval) |
+| 2026-10-13 | `personal_dev` | **Dashboard title fix: PASS** | Deploy of `625916f`; dashboard `01f1c647…` | 1 update, post-plan all `skip`; the five titles render heading + paragraph; published revision 08:14:28 UTC, embedded credentials off, owner-only access. [Evidence](../evidence/2026-10-13_personal_dev_dashboard_title_fix.md) |
+| 2026-10-13 | `azure_prod` (Academy trial) | **9. Deploy: PASS** | Jobs `456376825048239` (platform), `1075074961516662` (RAG); pipeline `f5961757-69be-4800-8afe-dae6987d8bc0`; dashboard `01f1c6ddd47616e8bb703a5342a603ba`; schemas `dbr_dev.parvinbadalov_urbanflow_final_prod`, `..._final_lakeflow_prod`; Volume `urbanflow_final_landing` | Plan 7 creates / 0 updates / 0 deletes, validator PASS; post-plan all `skip`; `dbr_dev` gained only the two schemas. [Evidence](../evidence/2026-10-13_azure_prod_step9_deploy_and_sample_run.md) |
+| 2026-10-13 | `azure_prod` (Academy trial) | **9. Sample run: PASS** | Run `240527908342651` (473 s) | Every task succeeded; Lakeflow excluded. Independently verified: station 40/40/40, facts 40, shortages = priorities = 13, trips 40, weather 48 hours with 4 matched trips, quarantine and duplicates 0, reconciliation identities true; CDC 5 inserts, Silver 5, history 5, reconciliation 0, checkpoint −1 → 1. Identical to DEV. [Evidence](../evidence/2026-10-13_azure_prod_step9_deploy_and_sample_run.md) |
+| — | — | GitHub CD workflow run, Zerobus, Event Hubs, full month, external Federation | — | No live run yet (optional, or waiting for identities) |
 
 When a step passes, record it here. Add the notebook to `VALIDATED_LIVE_CLAIMS` in `tests/test_notebook_documentation.py` and update its **Actual validation** line with the run ID. Update the coverage matrix status to **Validated live**.

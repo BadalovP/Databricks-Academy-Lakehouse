@@ -1,6 +1,6 @@
 # UrbanFlow 2.0: implementation progress (handoff record)
 
-Keep this file current so another engineer or agent can continue without restarting. Last updated 2026-10-13 (after phases D, E and F).
+Keep this file current so another engineer or agent can continue without restarting. Last updated 2026-10-13 (final: step 9 on the Azure trial, dashboard title fix).
 
 ## Repository state
 
@@ -41,10 +41,10 @@ Keep this file current so another engineer or agent can continue without restart
 | **E2–E4** AI Search + smoke test | **PASS** (run `12773923439415`; cleanup guard armed first) | `..._e2_e4_ai_search_smoke.md` |
 | **E5** live evaluation | **PASS**: RAG 0.685 vs baseline 0.148, recall 1.0, refusals 18/18 | `..._e5_rag_evaluation.md` |
 | **E6** endpoint cleanup | **PASS**: deleted after 25.7 min, none remains | `..._e6_ai_search_cleanup.md` |
-| **D** dashboard | **PASS, 25/25 queries**; title rendering defect fixed in code, **redeploy needs approval**; not published | `..._dashboard_validation.md` |
+| **D** dashboard | **PASS, 25/25 queries**; title defect fixed and deployed (`625916f`); published to the owner only | `..._dashboard_validation.md`, `..._dashboard_title_fix.md` |
 | **F** governance demo | **PASS**, cleaned up; one identity | `..._governance_demo.md` |
-| Phase G read-only re-check | PASS (7 creates, validator, no collision); **not deployed** | `evidence/2026-10-13_azure_prod_phase_g_preflight.json` |
-| Step 9 PROD | **Not run** (needs approval for the shared catalog) | — |
+| Phase G read-only re-check | PASS (7 creates, validator, no collision) | `evidence/2026-10-13_azure_prod_phase_g_preflight.json` |
+| **Step 9** Azure PROD-style deploy + sample run | **PASS**: 7 resources; run `240527908342651` matches DEV on every figure | `evidence/2026-10-13_azure_prod_step9_deploy_and_sample_run.md` |
 
 ## Databricks resources
 
@@ -55,12 +55,17 @@ Keep this file current so another engineer or agent can continue without restart
 | Platform Job | `158911626270744` |
 | Mobility RAG Job | `887464717518046` (runs `870039412110159`, `12773923439415`, `712590508231976`) |
 | Lakeflow pipeline | `d5e0e599-c195-4c08-8217-d554ebf2b301` (one update: `a26b4385-f0b8-454a-9aad-d9a3424151c7`, COMPLETED; idle) |
-| Dashboard | `01f1c647728e1ceeb2b5bd10a8700793` (maintenance review deployed 2026-10-13 at `d93f2f4`; 25/25 datasets queried live; title text fix not yet deployed; not published) |
+| Dashboard | `01f1c647728e1ceeb2b5bd10a8700793` (title fix deployed at `625916f`; 25/25 datasets queried live; published, owner only, no embedded credentials) |
 | AI Search | None. `urbanflow-final-dev` existed 00:09:15–00:34:59 UTC on 2026-10-13 and was deleted; the temporary guard Job `331156530436117` was deleted too |
 | Schemas / Volume | `workspace.urbanflow_final_dev`, `workspace.urbanflow_final_lakeflow_dev`, `workspace.urbanflow_final_dev.urbanflow_final_landing` (all `prevent_destroy`) |
 | SQL warehouse (existing) | `Serverless Starter Warehouse` `410e5f3b4784e981`, auto-stop 10 min |
 
-**Azure trial** (`https://adb-7405618361895520.0.azuredatabricks.net`, `dbr_dev_trial_2`, Azure CLI auth, user `parvinbadalov@softserve.academy`): nothing deployed. Warehouse `d8b8ff9942968cb8` (serverless Small, stopped). This is an Academy **trial** workspace, not paid production.
+**Azure trial** (`https://adb-7405618361895520.0.azuredatabricks.net`, `dbr_dev_trial_2`, Azure CLI auth, user `parvinbadalov@softserve.academy`), deployed 2026-10-13 at `625916f`:
+- platform Job `456376825048239` (run `240527908342651`: PASS);
+- RAG Job `1075074961516662` (never run);
+- pipeline `f5961757-69be-4800-8afe-dae6987d8bc0` (never updated);
+- dashboard `01f1c6ddd47616e8bb703a5342a603ba`;
+- schemas `dbr_dev.parvinbadalov_urbanflow_final_prod` and `..._final_lakeflow_prod`, Volume `urbanflow_final_landing`. Warehouse `d8b8ff9942968cb8` (serverless Small, stopped). This is an Academy **trial** workspace, not paid production.
 
 ## Live run IDs (DEV)
 
@@ -100,7 +105,10 @@ None running. No AI Search endpoint exists, and the warehouses are stopped (auto
 
 ## Pending, each needing explicit approval
 
-The consolidated proposal for phases D–H is in `RELEASE_AND_VALIDATION.md` ("Next approval request"), with workspace, resources, compute, duration, cost, verification, cleanup and shared effects per phase. Recommended order: E1 (assistant ingest) → D (dashboard redeploy, live queries, rendering) → E2–E6 (AI Search, smoke test, evaluation, **mandatory endpoint deletion**) → F (governance demo) → G (Azure trial deploy, shared `dbr_dev` catalog). H is optional (Federation source, Event Hubs, Zerobus, full month).
+Phases D, E, F and G are done. Only optional items remain:
+- a GitHub CD run, once the environments and identities exist (`CI_CD.md`);
+- the external Federation source, Event Hubs, Zerobus and the full month (phase H in `RELEASE_AND_VALIDATION.md`);
+- a multi-principal governance test, which needs a second identity.
 
 ## Next steps without approval
 
